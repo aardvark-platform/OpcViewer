@@ -12,8 +12,8 @@ Ctrl + LMB to select a point on surface
 
 Clone the repository:
 ```
-git clone https://github.com/aardvark-community/hum.git
-cd OPCSelectionViewer
+git clone https://github.com/aardvark-platform/OpcViewer.git
+cd OPCViewer
 ```
 
 Build the project:
