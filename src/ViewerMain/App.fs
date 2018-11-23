@@ -137,7 +137,7 @@ module App =
           |> List.map(fun x -> x.tree |> QTree.getRoot) 
           |> List.map(fun x -> x.info.GlobalBoundingBox)
           |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
-                      
+      
       let opcInfos = 
         [
           for h in patchHierarchies do
@@ -149,6 +149,7 @@ module App =
               kdTree         = KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer
               localBB        = rootTree.info.LocalBoundingBox 
               globalBB       = rootTree.info.GlobalBoundingBox
+              neighborMap    = HMap.empty
             }
         ]
         |> List.map (fun info -> info.globalBB, info)

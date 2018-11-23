@@ -8,7 +8,7 @@ open Aardvark.Fake
 
 do Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
-DefaultSetup.install ["src/OPCSelectionViewer.sln"]
+DefaultSetup.install ["src/OPCViewer.sln"]
 
 Target "Start" (fun() ->
     let param (p : DotNetCli.CommandParams) =

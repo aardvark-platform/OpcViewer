@@ -10,7 +10,69 @@ open MBrace.FsPickler.Combinators
 open OpcSelectionViewer.KdTrees
 
 module KdTrees = 
- 
+  let rec neighborPatches (neighborMap : hmap<Box3d,BoxNeighbors>) (patchElements : QTree<Patch>[]) (patchTree : QTree<Patch>) : hmap<Box3d,BoxNeighbors> = 
+    let returnMap = 
+      match patchTree with 
+        | QTree.Node (n,f) -> 
+          f 
+            |> Array.map(fun node -> neighborPatches neighborMap f node)
+            |> Array.fold(fun unified current -> HMap.union unified current) neighborMap
+
+            
+            //Array.collect (fun node -> 
+            //  match node with
+            //   | QTree.Node (patch, children) -> 
+                  
+                  
+                  
+            //      match parentTree with 
+            //        | QTree.Node (p, c) ->
+                      
+                      
+            //          let map = neighborPatches neighborMap patchTree node
+
+            //   | QTree.Leaf (patch)
+                 
+                 
+            //     (QTree.Node parentTree)
+            //   | _ -> [|neighborMap|])
+            
+                 
+          
+        | QTree.Leaf l -> 
+          let blubb = 
+            seq [
+              for node in patchElements do
+                match node with
+                  | QTree.Node (n, f) ->
+                    yield n.info.GlobalBoundingBox
+                  | QTree.Leaf l ->
+                    yield l.info.GlobalBoundingBox
+            ]
+          
+          neighborMap
+        | _ -> neighborMap
+
+    
+
+    returnMap
+
+
+  let calculateNeighbors (pH : PatchHierarchy) =
+    let leaves = QTree.getLeaves pH.tree
+    
+    match pH.tree with
+      | QTree.Node (n,f) -> failwith ""
+      | QTree.Leaf l -> failwith ""
+      | _ -> failwith""
+      
+
+    for leaf in leaves do
+      leaf.info.GlobalBoundingBox |> ignore
+
+    failwith "neighborcalculation failed"
+
+  
   let makeInCoreKd a = 
     {
       kdTree = new ConcreteKdIntersectionTree()

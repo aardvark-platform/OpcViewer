@@ -13,12 +13,18 @@ type PickingAction =
   | RemoveLastPoint
   | ClearPoints
 
+type BoxNeighbors = {
+  neighbors : List<Box3d> 
+
+}
+  
 
 [<DomainType>]
 type OpcData = {
   [<NonIncremental>]
   patchHierarchy : PatchHierarchy
   kdTree         : hmap<Box3d, Level0KdTree>
+  neighborMap    : hmap<Box3d, BoxNeighbors>
 
   localBB        : Box3d
   globalBB       : Box3d
