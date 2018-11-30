@@ -9,70 +9,89 @@ open MBrace.FsPickler
 open MBrace.FsPickler.Combinators  
 open OpcSelectionViewer.KdTrees
 
-module KdTrees = 
-  let rec neighborPatches (neighborMap : hmap<Box3d,BoxNeighbors>) (patchElements : QTree<Patch>[]) (patchTree : QTree<Patch>) : hmap<Box3d,BoxNeighbors> = 
-    let returnMap = 
-      match patchTree with 
-        | QTree.Node (n,f) -> 
-          f 
-            |> Array.map(fun node -> neighborPatches neighborMap f node)
-            |> Array.fold(fun unified current -> HMap.union unified current) neighborMap
-
-            
-            //Array.collect (fun node -> 
-            //  match node with
-            //   | QTree.Node (patch, children) -> 
-                  
-                  
-                  
-            //      match parentTree with 
-            //        | QTree.Node (p, c) ->
-                      
-                      
-            //          let map = neighborPatches neighborMap patchTree node
-
-            //   | QTree.Leaf (patch)
-                 
-                 
-            //     (QTree.Node parentTree)
-            //   | _ -> [|neighborMap|])
-            
-                 
-          
-        | QTree.Leaf l -> 
-          let blubb = 
-            seq [
-              for node in patchElements do
-                match node with
-                  | QTree.Node (n, f) ->
-                    yield n.info.GlobalBoundingBox
-                  | QTree.Leaf l ->
-                    yield l.info.GlobalBoundingBox
-            ]
-          
-          neighborMap
-        | _ -> neighborMap
-
-    
-
-    returnMap
-
-
-  let calculateNeighbors (pH : PatchHierarchy) =
-    let leaves = QTree.getLeaves pH.tree
-    
-    match pH.tree with
-      | QTree.Node (n,f) -> failwith ""
-      | QTree.Leaf l -> failwith ""
-      | _ -> failwith""
-      
-
-    for leaf in leaves do
-      leaf.info.GlobalBoundingBox |> ignore
-
-    failwith "neighborcalculation failed"
-
+module Neighbors = 
+  let getElement (tree : QTree<'a>) = 
+    match tree with
+      | QTree.Node(n,f) -> n
+      | QTree.Leaf(n)   -> n
   
+  let inBox (box : Box3d) (point : V3d) =
+    box.Max.AllGreaterOrEqual(point) && box.Min.AllSmallerOrEqual(point)
+
+  let checkNeighborHood (currentBox : Box3d) (potentialNeighbor : Box3d) =
+    let currentCenter = currentBox.Center
+    let changeX = V3d((currentBox.RangeX.Size / 2.0) + (potentialNeighbor.RangeX.Size / 2.0), 0.0, 0.0)
+    let changeY = V3d(0.0, (currentBox.RangeY.Size / 2.0) + (potentialNeighbor.RangeY.Size / 2.0), 0.0)
+    let changeZ = V3d(0.0, 0.0, (currentBox.RangeZ.Size / 2.0) + (potentialNeighbor.RangeZ.Size / 2.0))
+
+    if inBox potentialNeighbor (currentCenter+changeX) || inBox potentialNeighbor (currentCenter-changeX) ||
+       inBox potentialNeighbor (currentCenter+changeY) || inBox potentialNeighbor (currentCenter-changeY) ||
+       inBox potentialNeighbor (currentCenter+changeZ) || inBox potentialNeighbor (currentCenter-changeZ) then 
+       true
+    else
+      false
+     
+  
+  let checkNeighborHoodofBlocks (potentialNeighbors : list<QTree<Patch>>) (currentNode : Box3d) : list<QTree<Patch>> = 
+    potentialNeighbors 
+      |> List.map(fun neighbor ->
+         match neighbor with 
+          | QTree.Node (n,f) -> 
+            if (checkNeighborHood currentNode n.info.GlobalBoundingBox2d) then
+              Some(neighbor)
+            else
+              None
+          | QTree.Leaf (n) ->
+            if (checkNeighborHood currentNode n.info.GlobalBoundingBox2d) then
+              Some(neighbor)
+            else
+              None)
+      |> List.choose id
+  
+  let rec calcNeighbors (potentialNeighbors : list<QTree<Patch>>) (currentNode : QTree<Patch>) : hmap<Box3d, BoxNeighbors> = 
+    let neighbors = 
+      match currentNode with
+        | QTree.Node (n,f) -> 
+          checkNeighborHoodofBlocks potentialNeighbors n.info.GlobalBoundingBox2d
+        | QTree.Leaf (n) ->
+          checkNeighborHoodofBlocks potentialNeighbors n.info.GlobalBoundingBox2d
+        
+    let potChildNeighbors = 
+      currentNode :: neighbors
+      |> List.map(fun node -> 
+        match node with 
+          | QTree.Node(n,f) ->
+            Some f
+          | QTree.Leaf(n) -> 
+            None
+      )
+      |> List.choose id
+      |> Array.concat
+      |> Array.toList
+
+    let returnMap = 
+      HMap.add
+        (getElement currentNode).info.GlobalBoundingBox 
+        {
+          neighbors = neighbors |> List.map(fun neighbor -> (getElement neighbor).info.GlobalBoundingBox)
+        }
+        HMap.empty
+    
+    match currentNode with 
+     | QTree.Node (n,f) ->
+       f |> Array.fold(fun hmap element -> HMap.union hmap (calcNeighbors potChildNeighbors element)) returnMap
+     | QTree.Leaf (n) -> returnMap
+
+  let neighborCalculation (opcs : List<PatchHierarchy>) =
+    let potentialNeighbors = 
+      opcs
+        |> List.map(fun opc -> opc.tree)
+    
+    potentialNeighbors |> List.fold (fun hmap element -> HMap.union hmap (calcNeighbors potentialNeighbors element)) HMap.empty
+
+    
+
+module KdTrees = 
   let makeInCoreKd a = 
     {
       kdTree = new ConcreteKdIntersectionTree()

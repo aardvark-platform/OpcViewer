@@ -149,13 +149,20 @@ module App =
               kdTree         = KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer
               localBB        = rootTree.info.LocalBoundingBox 
               globalBB       = rootTree.info.GlobalBoundingBox
-              neighborMap    = HMap.empty
             }
         ]
         |> List.map (fun info -> info.globalBB, info)
         |> HMap.ofList      
                       
       let camState = { FreeFlyController.initial with view = CameraView.lookAt (box.Center) V3d.OOO V3d.OOI; }
+      let neighborMap = 
+        opcInfos
+          |> HMap.toList
+          |> List.map(fun (box,opc) -> opc.patchHierarchy)
+          |> Neighbors.neighborCalculation
+
+      Log.line "%A" neighborMap
+
 
       let initialModel : Model = 
         { 
@@ -168,7 +175,7 @@ module App =
       
           pickingActive      = false
           opcInfos           = opcInfos
-          picking            = { PickingModel.initial with pickingInfos = opcInfos }
+          picking            = { PickingModel.initial with pickingInfos = opcInfos; neighborMap = neighborMap }
           dockConfig         =
             config {
                 content (

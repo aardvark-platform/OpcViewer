@@ -133,7 +133,6 @@ module IntersectionController =
     
     V3d(v,w,u)
 
-    
   let findCoordinates (kdTree : LazyKdTree) (index : int) (position : V3d) =
     let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
     let triangle                   = triangles.[index]
@@ -152,14 +151,6 @@ module IntersectionController =
     
     let exactUV = p0+p1+p2
     
-    let image = PixImage.Create(kdTree.texturePath).ToPixImage<byte>(Col.Format.RGB)
-    
-    let changePos = V2i (((float32 image.Size.X) * exactUV.X),((float32 image.Size.Y) * exactUV.Y))
-
-    image.GetMatrix<C3b>().SetCross(changePos, 5, C3b.Red) |> ignore
-
-    image.SaveAsImage (@".\testcoordSelect.png")
-
     exactUV
 
   let intersectKdTrees (bb : Box3d) (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
@@ -174,19 +165,7 @@ module IntersectionController =
       let hit = intersectSingleForIndex ray hitObject kdtree
       
       hit,c
-  
-  let createBoxMatrix (boxes : List<Box3d>) =
-    let sortedBoxes = 
-      boxes 
-        |> List.sortBy(fun box -> box.Center.X)
-        |> List.sortBy(fun box -> box.Center.Y)
-        |> List.sortBy(fun box -> box.Center.Z)
-    
-    
-
-    failwith "BoxMatrix is corrupt"
-    
-
+ 
 
   let mutable cache = HMap.empty
 
@@ -220,10 +199,55 @@ module IntersectionController =
                   | LazyKdTree kd ->    
                     Some (findCoordinates kd (snd values) position)
                         
-              Some values
+              Some ({ position = position; texCoords = coordinates})
             | None -> None
       ) 
   
+  let rec collectNeighborsBetween (neighborMap : hmap<Box3d,BoxNeighbors>) (maxDistance : float) (destinationPoint : IntersectionHit) (currentBB : Box3d) : List<Box3d>=
+    let neighbors = neighborMap |> HMap.tryFind(currentBB)
+
+    match neighbors with 
+      | Some neighbor -> 
+        neighbor.neighbors
+          |> List.map (fun nb -> if (V3d.Distance(nb.Center, destinationPoint.position)) < maxDistance then collectNeighborsBetween neighborMap maxDistance destinationPoint nb
+                                 else List.empty)
+          |> List.concat
+          |> List.distinct
+      | None -> List.empty
+
+
+
+
+  let collectImagePatches (neighborMap : hmap<Box3d,BoxNeighbors>) (hitPointsInfo : hmap<V3d,Box3d>) (hitpair : (IntersectionHit * IntersectionHit)) =
+    let startPoint, endPoint = hitpair
+    let distance = V3d.Distance(startPoint.position,endPoint.position)
+
+    
+
+    failwith""
+
+  let writeImageWithCoords (kdTree : LazyKdTree) (uv : V2f) = 
+    let image = PixImage.Create(kdTree.texturePath).ToPixImage<byte>(Col.Format.RGB)
+    
+    let changePos = V2i (((float32 image.Size.X) * uv.X),((float32 image.Size.Y) * uv.Y))
+
+    image.GetMatrix<C3b>().SetCross(changePos, 5, C3b.Red) |> ignore
+
+    image.SaveAsImage (@".\testcoordSelect.png")
+
+  let writeImageofIntersections (m : PickingModel) =
+    let hitPairs = 
+      m.intersectionPoints 
+      |> PList.toList
+      |> List.pairwise
+      
+    
+    
+    for pickPoint in hitPairs do
+      let ImagePatches = collectImagePatches m.neighborMap m.hitPointsInfo pickPoint
+      failwith""
+    
+
   let intersect (m : PickingModel) opc (hit : SceneHit) (boxId : Box3d) = 
     let fray = hit.globalRay.Ray
             
@@ -234,10 +258,12 @@ module IntersectionController =
       let closest = intersectWithOpc (Some kk.kdTree) opc fray
       
       match closest with
-        | Some (t,_) -> 
-          let hitpoint = fray.Ray.GetPointOnRay t
-          Log.line "hit surface at %A" hitpoint            
-          { m with intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint; hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo }            
+        | Some (hit) -> 
+          //let hitpoint = fray.Ray.GetPointOnRay t
+          Log.line "hit surface at %A" hit.position            
+          let model = { m with intersectionPoints = m.intersectionPoints |> PList.prepend hit; hitPointsInfo = HMap.add hit.position boxId m.hitPointsInfo }                      
+          writeImageofIntersections model
+          model
         | None -> m      
     | None -> m
       

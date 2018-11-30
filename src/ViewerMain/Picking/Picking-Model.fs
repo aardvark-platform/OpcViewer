@@ -18,13 +18,16 @@ type BoxNeighbors = {
 
 }
   
+type IntersectionHit = {
+  position  : V3d
+  texCoords : Option<V2f>
+}
 
 [<DomainType>]
 type OpcData = {
   [<NonIncremental>]
   patchHierarchy : PatchHierarchy
   kdTree         : hmap<Box3d, Level0KdTree>
-  neighborMap    : hmap<Box3d, BoxNeighbors>
 
   localBB        : Box3d
   globalBB       : Box3d
@@ -34,7 +37,8 @@ type OpcData = {
 type PickingModel = {
   pickingInfos         : hmap<Box3d, OpcData>
   hitPointsInfo        : hmap<V3d, Box3d>
-  intersectionPoints   : plist<V3d>  
+  intersectionPoints   : plist<IntersectionHit>  
+  neighborMap          : hmap<Box3d, BoxNeighbors>
 }  
 
 module PickingModel =
@@ -44,4 +48,5 @@ module PickingModel =
       pickingInfos       = HMap.empty
       hitPointsInfo      = HMap.empty
       intersectionPoints = PList.empty
+      neighborMap        = HMap.empty
     }

@@ -17,7 +17,7 @@ module PickingApp =
         match model.intersectionPoints.AsList with
           | [] -> [], HMap.empty
           | first :: rest -> 
-            rest, model.hitPointsInfo.Remove first
+            rest, model.hitPointsInfo.Remove first.position
         
       { model with intersectionPoints = points |> PList.ofList; hitPointsInfo = infos }
     | ClearPoints -> 
@@ -53,4 +53,4 @@ module PickingApp =
       |> Sg.uniform "PointSize" (Mod.constant 10.0)
 
   let view (model : MPickingModel) =
-    drawColoredPoints model.intersectionPoints
+    drawColoredPoints (model.intersectionPoints |> AList.map(fun hit -> hit.position))
