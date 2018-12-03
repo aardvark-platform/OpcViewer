@@ -1,4 +1,4 @@
-﻿namespace OpcSelectionViewer
+﻿namespace OpcOutlineTest
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
@@ -12,15 +12,14 @@ open Aardvark.Application
 
 open OpcSelectionViewer.Picking
 
-type Message =
+type OutlineMessage =
   | Camera           of FreeFlyController.Message
-  | KeyUp            of key : Keys
-  | KeyDown          of key : Keys  
   | UpdateDockConfig of DockConfig    
-  | PickingAction    of PickingAction
+  | SetLineThickness of Numeric.Action
+  | UseOutlines     
 
 [<DomainType>]
-type Model =
+type OutlineModel =
     {
         cameraState          : CameraControllerState                       
         fillMode             : FillMode                                
@@ -29,10 +28,10 @@ type Model =
         
         boxes                : list<Box3d>
         opcInfos             : hmap<Box3d, OpcData>
-        threads              : ThreadPool<Message>
+        threads              : ThreadPool<OutlineMessage>
         dockConfig           : DockConfig
-        picking              : PickingModel
-        pickingActive        : bool
+        lineThickness        : NumericInput
+        useOutlines          : bool
     }
-
+  
    
