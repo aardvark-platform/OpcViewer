@@ -199,38 +199,116 @@ module IntersectionController =
                   | LazyKdTree kd ->    
                     Some (findCoordinates kd (snd values) position)
                         
-              Some ({ position = position; texCoords = coordinates})
+              Some ({ 
+                hitBB     = bb
+                position  = position
+                texCoords = coordinates
+                })
             | None -> None
       ) 
-  
-  let rec collectNeighborsBetween (neighborMap : hmap<Box3d,BoxNeighbors>) (maxDistance : float) (destinationPoint : IntersectionHit) (currentBB : Box3d) : List<Box3d>=
-    let neighbors = neighborMap |> HMap.tryFind(currentBB)
 
-    match neighbors with 
-      | Some neighbor -> 
-        neighbor.neighbors
-          |> List.map (fun nb -> if (V3d.Distance(nb.Center, destinationPoint.position)) < maxDistance then collectNeighborsBetween neighborMap maxDistance destinationPoint nb
-                                 else List.empty)
-          |> List.concat
-          |> List.distinct
+  let checkDistanceOnXAxis (currentBox : Box3d) (destinationBox : Box3d) = 
+    Math.Abs (destinationBox.Center.X - currentBox.Center.X)
+
+  let checkDistanceOnYAxis (currentBox : Box3d) (destinationBox : Box3d) = 
+    Math.Abs (destinationBox.Center.Y - currentBox.Center.Y) 
+
+
+  let findshortestDistance(distanceFunc : Box3d->Box3d->float) (currentElement : NeighboringInfo) (testElement : NeighboringInfo) (destinationBox : Box3d) (calculatedMinDistance : float) =
+    let distance = distanceFunc testElement.globalBB2d destinationBox
+    
+    if calculatedMinDistance < distance then
+      currentElement, calculatedMinDistance
+    else
+      testElement, distance
+
+  let rec neighborLineList (neighborMap : hmap<Box3d,NeighboringInfo>) (destinationBox2d : Box3d) (currentBox : Box3d) = 
+    let currentInfo = 
+      neighborMap |> HMap.tryFind(currentBox)
+    
+    let box2DList = 
+      match currentInfo with
+        | Some info -> 
+          let newInfo =           
+            info.neighbors
+              |> List.choose(fun f -> neighborMap |> HMap.tryFind f)
+              |> List.fold(fun (f,d) value -> findshortestDistance checkDistanceOnXAxis f value destinationBox2d d) (info,Double.MaxValue)
+              |> fst
+          newInfo :: neighborLineList neighborMap destinationBox2d info.globalBB3d
+        | None -> List.empty
+    
+    failwith ""
+
+
+  let rec collectNeighborsBetween (neighborMap : hmap<Box3d,NeighboringInfo>) (maxDistance : float) (destinationBox2d : Box3d) (currentBox : Box3d) : List<List<NeighboringInfo>>=
+    let currentInfo = neighborMap |> HMap.tryFind(currentBox)
+
+    match currentInfo with 
+      | Some info -> 
+        let currLine = info :: neighborLineList neighborMap destinationBox2d info.globalBB3d
+        
+        let newInfo =           
+            info.neighbors
+              |> List.choose(fun f -> neighborMap |> HMap.tryFind f)
+              |> List.fold(fun (f,d) value -> findshortestDistance checkDistanceOnYAxis f value destinationBox2d d) (info,Double.MaxValue)
+              |> fst
+        
+        currLine :: collectNeighborsBetween neighborMap maxDistance destinationBox2d newInfo.globalBB3d
       | None -> List.empty
 
 
 
 
-  let collectImagePatches (neighborMap : hmap<Box3d,BoxNeighbors>) (hitPointsInfo : hmap<V3d,Box3d>) (hitpair : (IntersectionHit * IntersectionHit)) =
+  let collectImagePatches (neighborMap : hmap<Box3d,NeighboringInfo>) (hitpair : (IntersectionHit * IntersectionHit)) =
     let startPoint, endPoint = hitpair
-    let distance = V3d.Distance(startPoint.position,endPoint.position)
-
     
+    let distance = V3d.Distance(startPoint.hitBB.Center, endPoint.hitBB.Center)
+    
+    collectNeighborsBetween neighborMap distance endPoint.hitBB startPoint.hitBB
+      |> List.map(fun subList -> 
+        subList
+        |> List.sortBy(fun info -> info.globalBB2d.Center.X))  
 
-    failwith""
+  
+  let writeSubImageintoImage (startPos : V2i) (completeImage : PixImage<byte>) (subImage : PixImage<byte>) =
+    let subVolume = completeImage.Volume.SubVolume(V3i(startPos,0), (V3i(subImage.Size,0)))
+    subVolume.Set(subImage.Volume) |> ignore
+    completeImage
+    
+  let writeImageofMatrix (fileName : string) (pickPointPair : (IntersectionHit * IntersectionHit)) (patchInfos : List<List<NeighboringInfo>>) : string=
+    if not patchInfos.IsEmpty then
+      let startPickPoint, endPickPoint = pickPointPair
+      let firstXLine = patchInfos |> List.head
+      let firstInfo  = firstXLine |> List.head
+
+      let subImage = PixImage.Create(firstInfo.texturePath).ToPixImage<byte>(Col.Format.RGB)
+      let subImageSize = subImage.Size
+      
+      let completeSize = V2i(subImageSize.X * firstXLine.Length, subImageSize.Y * patchInfos.Length)
+      let completeImage = PixImage<byte>(Col.Format.RGB, completeSize)
+
+      let counterY = [0..(patchInfos.Length-1)]
+      
+
+      for indexY in counterY do
+        let patchXList = patchInfos.Item indexY
+        let counterX = [0..patchXList.Length-1]
+        
+        for indexX in counterX do
+          let patchInfo = patchXList.Item indexX
+          let currSubImage = PixImage.Create(patchInfo.texturePath).ToPixImage<byte>(Col.Format.RGB)
+          writeSubImageintoImage (V2i((indexX * subImageSize.X), (indexY * subImageSize.Y))) completeImage currSubImage |> ignore
+      fileName  
+    else
+      sprintf "failed to write %s" fileName
+    
+    
+    
 
   let writeImageWithCoords (kdTree : LazyKdTree) (uv : V2f) = 
     let image = PixImage.Create(kdTree.texturePath).ToPixImage<byte>(Col.Format.RGB)
     
     let changePos = V2i (((float32 image.Size.X) * uv.X),((float32 image.Size.Y) * uv.Y))
-
     image.GetMatrix<C3b>().SetCross(changePos, 5, C3b.Red) |> ignore
 
     image.SaveAsImage (@".\testcoordSelect.png")
@@ -240,12 +318,17 @@ module IntersectionController =
       m.intersectionPoints 
       |> PList.toList
       |> List.pairwise
-      
     
+    let mutable counter = 0;
+
+    hitPairs 
+      |> List.map (fun pickPointPair -> 
+           collectImagePatches m.neighborMap pickPointPair
+             |> writeImageofMatrix (sprintf @".\testcoordSelect%i.png" counter) pickPointPair
+             |> Log.line "Writing Image Filename: %s "         
+           counter <- counter+1
+           )
     
-    for pickPoint in hitPairs do
-      let ImagePatches = collectImagePatches m.neighborMap m.hitPointsInfo pickPoint
-      failwith""
     
 
   let intersect (m : PickingModel) opc (hit : SceneHit) (boxId : Box3d) = 
@@ -261,7 +344,9 @@ module IntersectionController =
         | Some (hit) -> 
           //let hitpoint = fray.Ray.GetPointOnRay t
           Log.line "hit surface at %A" hit.position            
-          let model = { m with intersectionPoints = m.intersectionPoints |> PList.prepend hit; hitPointsInfo = HMap.add hit.position boxId m.hitPointsInfo }                      
+          let model = { 
+            m with 
+              intersectionPoints = m.intersectionPoints |> PList.prepend hit }                      
           writeImageofIntersections model
           model
         | None -> m      

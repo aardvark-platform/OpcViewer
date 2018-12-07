@@ -13,14 +13,17 @@ type PickingAction =
   | RemoveLastPoint
   | ClearPoints
 
-type BoxNeighbors = {
-  neighbors : List<Box3d> 
-
+type NeighboringInfo = {
+  globalBB3d  : Box3d
+  globalBB2d  : Box3d
+  neighbors   : List<Box3d> 
+  texturePath : string
 }
   
 type IntersectionHit = {
-  position  : V3d
-  texCoords : Option<V2f>
+  hitBB      : Box3d
+  position   : V3d
+  texCoords  : Option<V2f>
 }
 
 [<DomainType>]
@@ -31,14 +34,14 @@ type OpcData = {
 
   localBB        : Box3d
   globalBB       : Box3d
+  globalBB2d     : Box3d
 }
 
 [<DomainType>]
 type PickingModel = {
   pickingInfos         : hmap<Box3d, OpcData>
-  hitPointsInfo        : hmap<V3d, Box3d>
   intersectionPoints   : plist<IntersectionHit>  
-  neighborMap          : hmap<Box3d, BoxNeighbors>
+  neighborMap          : hmap<Box3d, NeighboringInfo>
 }  
 
 module PickingModel =
@@ -46,7 +49,6 @@ module PickingModel =
   let initial = 
     {
       pickingInfos       = HMap.empty
-      hitPointsInfo      = HMap.empty
       intersectionPoints = PList.empty
       neighborMap        = HMap.empty
     }

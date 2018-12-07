@@ -10,7 +10,7 @@ open MBrace.FsPickler.Combinators
 open OpcSelectionViewer.KdTrees
 
 module Neighbors = 
-  let getElement (tree : QTree<'a>) = 
+  let getPatch (tree : QTree<'a>) = 
     match tree with
       | QTree.Node(n,f) -> n
       | QTree.Leaf(n)   -> n
@@ -48,14 +48,11 @@ module Neighbors =
               None)
       |> List.choose id
   
-  let rec calcNeighbors (potentialNeighbors : list<QTree<Patch>>) (currentNode : QTree<Patch>) : hmap<Box3d, BoxNeighbors> = 
-    let neighbors = 
-      match currentNode with
-        | QTree.Node (n,f) -> 
-          checkNeighborHoodofBlocks potentialNeighbors n.info.GlobalBoundingBox2d
-        | QTree.Leaf (n) ->
-          checkNeighborHoodofBlocks potentialNeighbors n.info.GlobalBoundingBox2d
-        
+  let rec calcNeighbors (potentialNeighbors : list<QTree<Patch>>) (currentNode : QTree<Patch>) : hmap<Box3d, NeighboringInfo> = 
+    let currPatch = getPatch currentNode
+    
+    let neighbors = checkNeighborHoodofBlocks potentialNeighbors currPatch.info.GlobalBoundingBox2d
+    
     let potChildNeighbors = 
       currentNode :: neighbors
       |> List.map(fun node -> 
@@ -68,12 +65,21 @@ module Neighbors =
       |> List.choose id
       |> Array.concat
       |> Array.toList
+    
+    let texturePath = 
+      if not currPatch.info.Textures.IsEmpty then 
+        let texture = (currPatch.info.Textures.Item 0)        
+        texture.fileName
+      else ""
 
     let returnMap = 
       HMap.add
-        (getElement currentNode).info.GlobalBoundingBox 
+        currPatch.info.GlobalBoundingBox 
         {
-          neighbors = neighbors |> List.map(fun neighbor -> (getElement neighbor).info.GlobalBoundingBox)
+          globalBB3d  = currPatch.info.GlobalBoundingBox
+          globalBB2d  = currPatch.info.GlobalBoundingBox2d
+          neighbors   = neighbors |> List.map(fun neighbor -> (getPatch neighbor).info.GlobalBoundingBox)
+          texturePath = texturePath
         }
         HMap.empty
     

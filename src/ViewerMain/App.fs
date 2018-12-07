@@ -149,6 +149,7 @@ module App =
               kdTree         = KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer
               localBB        = rootTree.info.LocalBoundingBox 
               globalBB       = rootTree.info.GlobalBoundingBox
+              globalBB2d     = rootTree.info.GlobalBoundingBox2d
             }
         ]
         |> List.map (fun info -> info.globalBB, info)

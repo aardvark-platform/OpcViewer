@@ -13,15 +13,15 @@ module PickingApp =
     | HitSurface (box, sceneHit) -> 
       IntersectionController.intersect model "" sceneHit box
     | RemoveLastPoint ->
-      let points, infos = 
+      let points = 
         match model.intersectionPoints.AsList with
-          | [] -> [], HMap.empty
+          | [] -> []
           | first :: rest -> 
-            rest, model.hitPointsInfo.Remove first.position
+            rest
         
-      { model with intersectionPoints = points |> PList.ofList; hitPointsInfo = infos }
+      { model with intersectionPoints = points |> PList.ofList }
     | ClearPoints -> 
-      { model with intersectionPoints = PList.empty; hitPointsInfo = HMap.empty}
+      { model with intersectionPoints = PList.empty }
     //| _ -> model
 
   let toV3f (input:V3d) : V3f= input |> V3f
