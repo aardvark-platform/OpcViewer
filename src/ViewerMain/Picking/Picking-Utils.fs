@@ -7,7 +7,7 @@ open Aardvark.Geometry
 open Aardvark.SceneGraph.Opc
 open MBrace.FsPickler    
 open MBrace.FsPickler.Combinators  
-open OpcSelectionViewer.KdTrees
+open Aardvark.VRVis.Opc.KdTrees
 
 module KdTrees = 
   let rec neighborPatches (neighborMap : hmap<Box3d,BoxNeighbors>) (patchElements : QTree<Patch>[]) (patchTree : QTree<Patch>) : hmap<Box3d,BoxNeighbors> = 
@@ -50,11 +50,7 @@ module KdTrees =
                     yield l.info.GlobalBoundingBox
             ]
           
-          neighborMap
-        | _ -> neighborMap
-
-    
-
+          neighborMap            
     returnMap
 
 
@@ -63,8 +59,7 @@ module KdTrees =
     
     match pH.tree with
       | QTree.Node (n,f) -> failwith ""
-      | QTree.Leaf l -> failwith ""
-      | _ -> failwith""
+      | QTree.Leaf l -> failwith ""      
       
 
     for leaf in leaves do

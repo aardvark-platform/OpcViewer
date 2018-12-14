@@ -5,7 +5,7 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Geometry
 open OpcSelectionViewer
-open OpcSelectionViewer.KdTrees
+open Aardvark.VRVis.Opc.KdTrees
 open Aardvark.SceneGraph.Opc
 
 type PickingAction = 

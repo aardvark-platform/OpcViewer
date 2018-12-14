@@ -155,7 +155,8 @@ module App =
         |> List.map (fun info -> info.globalBB, info)
         |> HMap.ofList      
                       
-      let camState = { FreeFlyController.initial with view = CameraView.lookAt (box.Center) V3d.OOO V3d.OOI; }
+      let up = if true then (box.Center.Normalized) else V3d.OOI
+      let camState = { FreeFlyController.initial with view = CameraView.lookAt (box.Max) box.Center up; }
 
       let initialModel : Model = 
         { 

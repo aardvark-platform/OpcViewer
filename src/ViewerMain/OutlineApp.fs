@@ -52,8 +52,7 @@ module OutlineApp =
       | SetLineThickness th ->
         { model with lineThickness = Numeric.update model.lineThickness th }
       | UseOutlines ->
-        { model with useOutlines = not model.useOutlines }
-      | _ -> model
+        { model with useOutlines = not model.useOutlines }      
                     
   let outlineView (m : MOutlineModel) : DomNode<OutlineMessage> =
 

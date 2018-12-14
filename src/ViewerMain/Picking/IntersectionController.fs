@@ -10,6 +10,7 @@ module IntersectionController =
   open System
   open System.Drawing
   open Aardvark.SceneGraph.Opc
+  open Aardvark.VRVis.Opc.KdTrees
 
   let hitBoxes (kd : hmap<Box3d, Level0KdTree>) (r : FastRay3d) (trafo : Trafo3d) =
     kd
@@ -136,7 +137,7 @@ module IntersectionController =
     
   let findCoordinates (kdTree : LazyKdTree) (index : int) (position : V3d) =
     let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
-    let triangle                   = triangles.[index]
+    let triangle = triangles.[index]
     
     let baryCentricCoords = calculateBarycentricCoordinates triangle position
 
@@ -230,9 +231,7 @@ module IntersectionController =
     let opcdata = m.pickingInfos |> HMap.tryFind boxId
     match opcdata with
     | Some kk ->
-
-      let closest = intersectWithOpc (Some kk.kdTree) opc fray
-      
+      let closest = intersectWithOpc (Some kk.kdTree) opc fray      
       match closest with
         | Some (t,_) -> 
           let hitpoint = fray.Ray.GetPointOnRay t
