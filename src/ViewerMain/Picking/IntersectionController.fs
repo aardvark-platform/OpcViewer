@@ -11,6 +11,7 @@ module IntersectionController =
   open System.Drawing
   open Aardvark.SceneGraph.Opc
   open Aardvark.VRVis.Opc.KdTrees
+  open Aardvark.Base.Geometry
 
   let hitBoxes (kd : hmap<Box3d, Level0KdTree>) (r : FastRay3d) (trafo : Trafo3d) =
     kd
@@ -56,8 +57,68 @@ module IntersectionController =
   let loadTrianglesWithIndices (kd : LazyKdTree) =
     loadTrianglesFromFileWithIndices kd.objectSetPath kd.affine.Forward
 
+  let createIndex2 (vi : Matrix<V3f>) (invalids : int64[])=
+
+        let invalids = invalids |> Array.map (fun x -> (x, x)) |> HMap.ofArray
+
+        let dx = vi.Info.DX
+        let dy = vi.Info.DY
+        let dxy = dx + dy
+        let mutable arr = Array.zeroCreate (int (vi.SX - 1L) * int (vi.SY - 1L) * 6)
+        let mutable cnt = 0
+        
+        vi.SubMatrix(V2l.Zero,vi.Size-V2l.II).ForeachXYIndex(fun x y index -> 
+
+            let inv = invalids |> HMap.tryFind index
+
+            match inv with
+                | Some _ ->
+                    arr.[cnt + 0] <- 0
+                    arr.[cnt + 1] <- 0
+                    arr.[cnt + 2] <- 0
+                    arr.[cnt + 3] <- 0
+                    arr.[cnt + 4] <- 0
+                    arr.[cnt + 5] <- 0
+                    cnt <- cnt + 6
+                | None ->                    
+                    let i00 = index
+                    let i10 = index + dy
+                    let i01 = index + dx
+                    let i11 = index + dxy
+                    
+                    arr.[cnt + 0] <- (int i00)
+                    arr.[cnt + 1] <- (int i10)
+                    arr.[cnt + 2] <- (int i11)
+                    arr.[cnt + 3] <- (int i00)
+                    arr.[cnt + 4] <- (int i11)
+                    arr.[cnt + 5] <- (int i01)
+                    cnt <- cnt + 6
+        )
+        Array.Resize(&arr, cnt)
+        arr
+
+  // load triangles from aaraFile and transform them with matrix
+  let loadTrianglesFromFile' (aaraFile : string) (matrix : M44d) =
+    let positions = aaraFile |> fromFile<V3f>
+    
+    let data = 
+        positions.Data |> Array.map (fun x ->  x.ToV3d() |> matrix.TransformPos)
+    
+    let invalidIndices = getInvalidIndices data
+    //let index = computeIndexArray (positions.Size.XY.ToV2i()) false (Set.ofArray invalidIndices)
+    let index = createIndex2 (positions.Size.XY.ToV2i())
+          
+    let triangles =             
+        index 
+            |> Seq.map(fun x -> data.[x])
+            |> Seq.chunkBySize 3
+            |> Seq.map(fun x -> Triangle3d(x))
+            |> Seq.toArray
+    
+    triangles
+
   let loadTriangles (kd : LazyKdTree) = 
-    loadTrianglesFromFile kd.objectSetPath kd.affine.Forward
+    loadTrianglesFromFile' kd.objectSetPath kd.affine.Forward
     
   let loadTriangleSet (kd : LazyKdTree) =
     kd |> loadTriangles |> TriangleSet
@@ -111,8 +172,8 @@ module IntersectionController =
         else            
             None
       with 
-        | _ -> 
-          Log.error "null ref exception in kdtree intersection" 
+        | e -> 
+          Log.error "null ref exception in kdtree intersection %A" e
           None 
 
   let calculateBarycentricCoordinates (triangle : Triangle3d) (pos : V3d) = 
@@ -227,9 +288,9 @@ module IntersectionController =
   
   let intersect (m : PickingModel) opc (hit : SceneHit) (boxId : Box3d) = 
     let fray = hit.globalRay.Ray
-            
-    let opcdata = m.pickingInfos |> HMap.tryFind boxId
-    match opcdata with
+    Log.line "try intersecting %A" boxId    
+    
+    match m.pickingInfos |> HMap.tryFind boxId with
     | Some kk ->
       let closest = intersectWithOpc (Some kk.kdTree) opc fray      
       match closest with
@@ -237,7 +298,11 @@ module IntersectionController =
           let hitpoint = fray.Ray.GetPointOnRay t
           Log.line "hit surface at %A" hitpoint            
           { m with intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint; hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo }            
-        | None -> m      
-    | None -> m
+        | None ->       
+          Log.error "[Intersection] didn't hit"
+          m
+    | None -> 
+      Log.error "[Intersection] box not found in picking infos"
+      m
       
   

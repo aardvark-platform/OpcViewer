@@ -13,8 +13,6 @@ open Aardvark.UI.Trafos
 open OpcSelectionViewer.Picking
 open OpcOutlineTest
 
-
-
 module SceneObjectHandling = 
   open Aardvark.SceneGraph.Opc
   open Aardvark.UI
@@ -29,35 +27,25 @@ module SceneObjectHandling =
   let pickable' (pick :IMod<Pickable>) (sg: ISg) =
     Sg.PickableApplicator (pick, Mod.constant sg)
 
-  let createSingleOpcSg (m : MModel) (data : Box3d*MOpcData) =
-    let boundingBox, opcData = data
+  let opcSg loadedHierarchies (m:MModel) (bb : Box3d) = 
     
-    let leaves = 
-      opcData.patchHierarchy.tree
-        |> QTree.getLeaves 
-        |> Seq.toList 
-        |> List.map(fun y -> (opcData.patchHierarchy.opcPaths.Opc_DirAbsPath, y))
-    
+    let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
     let sg = 
-      let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
-    
-      leaves 
-        |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info,dir, patch.info)) 
-        |> List.map(fun ((a,_),c,d) -> (a,c,d))
-        |> List.map (fun (g,dir,info) -> 
-        
+      loadedHierarchies
+        |> List.map (fun (g,dir,info) ->         
           let texPath = Patch.extractTexturePath (OpcPaths dir) info 0
           let tex = FileTexture(texPath,config) :> ITexture
                     
           Sg.ofIndexedGeometry g
-              |> Sg.trafo (Mod.constant info.Local2Global)             
-              |> Sg.diffuseTexture (Mod.constant tex)             
+              |> Sg.trafo (Mod.constant info.Local2Global)
+              |> Sg.diffuseTexture (Mod.constant tex)       
+              //|> Sg.andAlso(Sg.wireBox (Mod.constant C4b.VRVisGreen) (Mod.constant info.GlobalBoundingBox) |> Sg.noEvents)
           )
         |> Sg.ofList   
     
     let pickable = 
       adaptive {
-        let! bb = opcData.globalBB
+       // let! bb = opcData.globalBB
         return { shape = PickShape.Box bb; trafo = Trafo3d.Identity }
       }       
     
@@ -69,12 +57,51 @@ module SceneObjectHandling =
             fun sceneHit -> 
               let intersect = m.pickingActive |> Mod.force
               if intersect then              
-                true, Seq.ofList[(HitSurface (boundingBox,sceneHit)) |> PickingAction]
+                Log.error "hit an opc? %A" bb
+                true, Seq.ofList[(HitSurface (bb,sceneHit)) |> PickingAction]
               else 
                 false, Seq.ofList[]
           )      
       ]
 
+  let boxSg loadedHierarchies (m:MModel) (bb : Box3d) =
+    let sg = 
+      loadedHierarchies
+        |> List.map (fun (_,_,info) -> Sg.wireBox (Mod.constant C4b.VRVisGreen) (Mod.constant info.GlobalBoundingBox) |> Sg.noEvents)
+        |> Sg.ofList
+        |> Sg.effect [ 
+            toEffect Shader.stableTrafo
+            toEffect DefaultSurfaces.vertexColor       
+        ]    
+    sg
+
+  let createSingleOpcSg (m : MModel) (data : Box3d*MOpcData) =
+    let boundingBox, opcData = data
+    
+    let leaves = 
+      opcData.patchHierarchy.tree
+        |> QTree.getLeaves 
+        |> Seq.toList 
+        |> List.map(fun y -> (opcData.patchHierarchy.opcPaths.Opc_DirAbsPath, y))
+            
+    let loadedHierarchies = 
+        leaves 
+          |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info,dir, patch.info)) 
+          |> List.map(fun ((a,_),c,d) -> (a,c,d)) |> List.take 3
+
+    let globalBB = 
+      Sg.wireBox (Mod.constant C4b.Red) (Mod.constant boundingBox) 
+        |> Sg.noEvents 
+        |> Sg.effect [ 
+          toEffect Shader.stableTrafo
+          toEffect DefaultSurfaces.vertexColor       
+        ]  
+
+    [
+      opcSg loadedHierarchies m boundingBox; 
+      boxSg loadedHierarchies m boundingBox;
+      globalBB] |> Sg.ofList
+            
   let read a =
         StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
 
