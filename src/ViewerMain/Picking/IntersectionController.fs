@@ -56,47 +56,7 @@ module IntersectionController =
   
   let loadTrianglesWithIndices (kd : LazyKdTree) =
     loadTrianglesFromFileWithIndices kd.objectSetPath kd.affine.Forward
-
-  let createIndex2 (vi : Matrix<V3f>) (invalids : int64[])=
-
-        let invalids = invalids |> Array.map (fun x -> (x, x)) |> HMap.ofArray
-
-        let dx = vi.Info.DX
-        let dy = vi.Info.DY
-        let dxy = dx + dy
-        let mutable arr = Array.zeroCreate (int (vi.SX - 1L) * int (vi.SY - 1L) * 6)
-        let mutable cnt = 0
-        
-        vi.SubMatrix(V2l.Zero,vi.Size-V2l.II).ForeachXYIndex(fun x y index -> 
-
-            let inv = invalids |> HMap.tryFind index
-
-            match inv with
-                | Some _ ->
-                    arr.[cnt + 0] <- 0
-                    arr.[cnt + 1] <- 0
-                    arr.[cnt + 2] <- 0
-                    arr.[cnt + 3] <- 0
-                    arr.[cnt + 4] <- 0
-                    arr.[cnt + 5] <- 0
-                    cnt <- cnt + 6
-                | None ->                    
-                    let i00 = index
-                    let i10 = index + dy
-                    let i01 = index + dx
-                    let i11 = index + dxy
-                    
-                    arr.[cnt + 0] <- (int i00)
-                    arr.[cnt + 1] <- (int i10)
-                    arr.[cnt + 2] <- (int i11)
-                    arr.[cnt + 3] <- (int i00)
-                    arr.[cnt + 4] <- (int i11)
-                    arr.[cnt + 5] <- (int i01)
-                    cnt <- cnt + 6
-        )
-        Array.Resize(&arr, cnt)
-        arr
-
+  
   // load triangles from aaraFile and transform them with matrix
   let loadTrianglesFromFile' (aaraFile : string) (matrix : M44d) =
     let positions = aaraFile |> fromFile<V3f>
@@ -105,8 +65,8 @@ module IntersectionController =
         positions.Data |> Array.map (fun x ->  x.ToV3d() |> matrix.TransformPos)
     
     let invalidIndices = getInvalidIndices data
-    //let index = computeIndexArray (positions.Size.XY.ToV2i()) false (Set.ofArray invalidIndices)
-    let index = createIndex2 (positions.Size.XY.ToV2i())
+    let index = computeIndexArray (positions.Size.XY.ToV2i()) false (Set.ofArray invalidIndices)
+   // let index = createIndex2 (positions.Size.XY.ToV2i())
           
     let triangles =             
         index 
@@ -138,9 +98,9 @@ module IntersectionController =
                   //Log.line "cache hit %A" kd.boundingBox
                   t, cache
                 | None ->                                     
-                  Log.line "cache miss %A- loading kdtree" kd.boundingBox
+                  Log.line "cache miss %A- loading kdtree %A" kd.boundingBox kd.kdtreePath
 
-                  let mutable tree = loadKdtree kd.kdtreePath                                    
+                  let mutable tree = loadKdtree kd.kdtreePath
                   tree.KdIntersectionTree.ObjectSet <- (kd |> loadTriangleSet)
 
                   let key = tree.KdIntersectionTree.BoundingBox3d.ToString()
@@ -224,10 +184,10 @@ module IntersectionController =
 
     exactUV
 
-  let intersectKdTrees (bb : Box3d) (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
-      let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
-      let hit = intersectSingle ray hitObject kdtree
-      hit,c
+  //let intersectKdTrees (bb : Box3d) (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
+  //    let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
+  //    let hit = intersectSingle ray hitObject kdtree
+  //    hit,c
 
   let intersectKdTreeswithObjectIndex (bb : Box3d) (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
       let kdtree, c =  kdTreeMap |> HMap.find bb |> loadObjectSet cache

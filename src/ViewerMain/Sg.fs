@@ -75,6 +75,52 @@ module SceneObjectHandling =
         ]    
     sg
 
+  ///probably move to a shader
+  let screenAligned (forw : V3d) (up : V3d) (modelt: Trafo3d) =
+     let right = up.Cross forw
+     let rotTrafo = 
+         new Trafo3d(
+             new M44d(
+                 right.X, up.X, forw.X, 0.0,
+                 right.Y, up.Y, forw.Y, 0.0,
+                 right.Z, up.Z, forw.Z, 0.0,
+                 0.0,     0.0,  0.0,    1.0
+             ),
+             new M44d(
+                 right.X, right.Y, right.Z, 0.0,
+                 up.X,    up.Y,    up.Z,    0.0,
+                 forw.X,  forw.Y,  forw.Z,  0.0,
+                 0.0,     0.0,     0.0,     1.0
+             )
+     )
+     rotTrafo * modelt
+    
+  let billboardText (view : IMod<CameraView>) modelTrafo text =
+                     
+      let billboardTrafo = 
+          adaptive {
+              let! v = view
+              let! modelt = modelTrafo
+      
+              return screenAligned v.Forward v.Up modelt
+          }           
+      Sg.text (Font.create "Consolas" FontStyle.Regular) C4b.White text
+          |> Sg.noEvents
+          |> Sg.shader {
+            do! Shader.stableTrafo
+          }                      
+          |> Sg.trafo (0.05 |> Trafo3d.Scale |> Mod.constant )
+          |> Sg.trafo billboardTrafo  
+
+  let textSg loadedHierarchies (m:MModel) =
+    let sg = 
+      loadedHierarchies
+        |> List.map (fun (_,_,info) -> 
+           billboardText m.cameraState.view (info.GlobalBoundingBox.Center |> Trafo3d.Translation |> Mod.constant) (info.Name |> Mod.constant)
+         )
+        |> Sg.ofList        
+    sg
+    
   let createSingleOpcSg (m : MModel) (data : Box3d*MOpcData) =
     let boundingBox, opcData = data
     
@@ -84,10 +130,10 @@ module SceneObjectHandling =
         |> Seq.toList 
         |> List.map(fun y -> (opcData.patchHierarchy.opcPaths.Opc_DirAbsPath, y))
             
-    let loadedHierarchies = 
+    let loadedPatches = 
         leaves 
           |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info,dir, patch.info)) 
-          |> List.map(fun ((a,_),c,d) -> (a,c,d)) |> List.take 3
+          |> List.map(fun ((a,_),c,d) -> (a,c,d))|> List.skip 2 |> List.take 1
 
     let globalBB = 
       Sg.wireBox (Mod.constant C4b.Red) (Mod.constant boundingBox) 
@@ -98,8 +144,9 @@ module SceneObjectHandling =
         ]  
 
     [
-      opcSg loadedHierarchies m boundingBox; 
-      boxSg loadedHierarchies m boundingBox;
+      opcSg  loadedPatches m boundingBox; 
+      boxSg  loadedPatches m boundingBox;
+      textSg loadedPatches m
       globalBB] |> Sg.ofList
             
   let read a =
@@ -107,7 +154,6 @@ module SceneObjectHandling =
 
   let write a =
         StencilMode(StencilOperationFunction.Replace, StencilOperationFunction.Replace, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
-
     
   let pass0 = RenderPass.main
   let pass1 = RenderPass.after "outline" RenderPassOrder.Arbitrary pass0

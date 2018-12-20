@@ -134,10 +134,14 @@ module KdTrees =
 
     let cacheFile = System.IO.Path.ChangeExtension(masterKdPath, ".cache")
 
+    let blar = "G:\New_3D_Data\Stimson\MSL_Mastcam_Sol_1087_id_206226_OPC\OPC_000_000\patches\03-Patch-00001~0029\00-Patch-00027~0022-0.aakd"
+
     if System.IO.File.Exists(cacheFile) then
       Log.line "Found lazy kdtree cache"
       if load then
-        loadAs<list<Box3d*Level0KdTree>> cacheFile b |> HMap.ofList
+        let trees = loadAs<list<Box3d*Level0KdTree>> cacheFile b
+        let trees = trees |> List.filter(fun (_,(LazyKdTree k)) -> k.kdtreePath = blar)
+        trees |> HMap.ofList
       else
         HMap.empty
     else
@@ -235,52 +239,50 @@ module KdTrees =
 
     triangles
 
-  let loadObjectSet (cache : hmap<string, ConcreteKdIntersectionTree>) (computeIndices) (lvl0Tree : Level0KdTree) =       
-  
-    match lvl0Tree with
-      | InCoreKdTree kd -> 
-        kd.kdTree, cache
-      | LazyKdTree kd -> 
-      
-        let kdTree, cache =
-          match kd.kdTree with
-            | Some k -> k, cache
-            | None -> 
-              let tree = cache |> HMap.tryFind (kd.boundingBox.ToString())
-              match tree with
-                | Some t -> 
-                  //Log.line "cache hit %A" kd.boundingBox
-                  t, cache
-                | None ->                                     
-                  Log.line "cache miss %A- loading kdtree" kd.boundingBox
+  //let loadObjectSet (cache : hmap<string, ConcreteKdIntersectionTree>) (computeIndices) (lvl0Tree : Level0KdTree) =         
+  //  match lvl0Tree with
+  //    | InCoreKdTree kd -> 
+  //      kd.kdTree, cache
+  //    | LazyKdTree kd ->       
+  //      let kdTree, cache =
+  //        match kd.kdTree with
+  //          | Some k -> k, cache
+  //          | None -> 
+  //            let tree = cache |> HMap.tryFind (kd.boundingBox.ToString())
+  //            match tree with
+  //              | Some t -> 
+  //                //Log.line "cache hit %A" kd.boundingBox
+  //                t, cache
+  //              | None ->                                     
+  //                Log.line "cache miss %A- loading kdtree" kd.boundingBox
 
-                  let mutable tree = loadKdtree kd.kdtreePath                                    
-                  tree.KdIntersectionTree.ObjectSet <- (kd |> loadTriangles computeIndices)
+  //                let mutable tree = loadKdtree kd.kdtreePath                                    
+  //                tree.KdIntersectionTree.ObjectSet <- (kd |> loadTriangles computeIndices)
 
-                  let key = tree.KdIntersectionTree.BoundingBox3d.ToString()
+  //                let key = tree.KdIntersectionTree.BoundingBox3d.ToString()
                                                       
-                  tree, (HMap.add key tree cache)
-        kdTree, cache
+  //                tree, (HMap.add key tree cache)
+  //      kdTree, cache
 
   let loadKdTrees (h : PatchHierarchy) (trafo:Trafo3d) (mode:ViewerModality) (b : BinarySerializer) : hmap<Box3d,Level0KdTree> =
     loadKdTrees' (h) (trafo) (true) mode b
 
-  let intersectKdTrees (computeIndices) bb (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
+  //let intersectKdTrees (computeIndices) bb (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
 
-    let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache computeIndices
+  //  let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache computeIndices
 
-    let kdi = kdtree.KdIntersectionTree 
-    let mutable hit = ObjectRayHit.MaxRange
+  //  let kdi = kdtree.KdIntersectionTree 
+  //  let mutable hit = ObjectRayHit.MaxRange
             
-    let objFilter a b = true
-    try
-       // let hitFilter a b c d = false
-        if kdi.Intersect(ray, Func<_,_,_>(objFilter), null, 0.0, Double.MaxValue, &hit) then
-            //let point = ray.Ray.GetPointOnRay(hit.RayHit.T)
-            Some (hit.RayHit.T, hitObject),c
-        else            
-            None,c
-    with 
-      | _ -> 
-        Report.Error "null ref exception in kdtree intersection" 
-        None,c
+  //  let objFilter a b = true
+  //  try
+  //     // let hitFilter a b c d = false
+  //      if kdi.Intersect(ray, Func<_,_,_>(objFilter), null, 0.0, Double.MaxValue, &hit) then
+  //          //let point = ray.Ray.GetPointOnRay(hit.RayHit.T)
+  //          Some (hit.RayHit.T, hitObject),c
+  //      else            
+  //          None,c
+  //  with 
+  //    | _ -> 
+  //      Report.Error "null ref exception in kdtree intersection" 
+  //      None,c

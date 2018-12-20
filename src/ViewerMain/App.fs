@@ -199,8 +199,8 @@ module App =
 
       let camState = restoreCamState
 
-      let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0}
-      let camState = camState |> Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig |> updateFreeFlyConfig 0.0
+      let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
+      let camState = camState |> Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
 
       let initialDockConfig = 
         config {
