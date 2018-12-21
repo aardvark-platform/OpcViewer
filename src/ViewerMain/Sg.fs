@@ -95,6 +95,8 @@ module SceneObjectHandling =
      )
      rotTrafo * modelt
     
+  let linePass = RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main
+
   let billboardText (view : IMod<CameraView>) modelTrafo text =
                      
       let billboardTrafo = 

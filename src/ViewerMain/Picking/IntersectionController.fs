@@ -57,28 +57,12 @@ module IntersectionController =
   let loadTrianglesWithIndices (kd : LazyKdTree) =
     loadTrianglesFromFileWithIndices kd.objectSetPath kd.affine.Forward
   
-  // load triangles from aaraFile and transform them with matrix
-  let loadTrianglesFromFile' (aaraFile : string) (matrix : M44d) =
-    let positions = aaraFile |> fromFile<V3f>
-    
-    let data = 
-        positions.Data |> Array.map (fun x ->  x.ToV3d() |> matrix.TransformPos)
-    
-    let invalidIndices = getInvalidIndices data
-    let index = computeIndexArray (positions.Size.XY.ToV2i()) false (Set.ofArray invalidIndices)
-   // let index = createIndex2 (positions.Size.XY.ToV2i())
-          
-    let triangles =             
-        index 
-            |> Seq.map(fun x -> data.[x])
-            |> Seq.chunkBySize 3
-            |> Seq.map(fun x -> Triangle3d(x))
-            |> Seq.toArray
-    
-    triangles
-
+  let triangleIsNan (t:Triangle3d) =
+      t.P0.AnyNaN || t.P1.AnyNaN || t.P2.AnyNaN
+   
   let loadTriangles (kd : LazyKdTree) = 
-    loadTrianglesFromFile' kd.objectSetPath kd.affine.Forward
+    let indexing = (fun size invalidIndices -> LegacyCode.Class1.ComputeIndexArray(size, invalidIndices))
+    loadTrianglesFromFile' kd.objectSetPath indexing kd.affine.Forward
     
   let loadTriangleSet (kd : LazyKdTree) =
     kd |> loadTriangles |> TriangleSet
@@ -102,6 +86,7 @@ module IntersectionController =
 
                   let mutable tree = loadKdtree kd.kdtreePath
                   tree.KdIntersectionTree.ObjectSet <- (kd |> loadTriangleSet)
+                  Log.line "Objectset type %s" (tree.KdIntersectionTree.ObjectSet.ToString())
 
                   let key = tree.KdIntersectionTree.BoundingBox3d.ToString()
                                                       
@@ -235,12 +220,12 @@ module IntersectionController =
 
               let position = ray.Ray.GetPointOnRay (fst values)
 
-              let coordinates = 
-                match lvl0KdTree with
-                  | InCoreKdTree kd -> 
-                    None
-                  | LazyKdTree kd ->    
-                    Some (findCoordinates kd (snd values) position)
+              //let coordinates = 
+              //  match lvl0KdTree with
+              //    | InCoreKdTree kd -> 
+              //      None
+              //    | LazyKdTree kd ->    
+              //      Some (findCoordinates kd (snd values) position)
                         
               Some values
             | None -> None

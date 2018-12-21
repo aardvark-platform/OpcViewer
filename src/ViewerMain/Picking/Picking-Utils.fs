@@ -213,31 +213,31 @@ module KdTrees =
             Log.warn "Could not find level 0 kdtrees"
             HMap.empty
   
-  let triangleIsNan (t:Triangle3d) =
-    t.P0.AnyNaN || t.P1.AnyNaN || t.P2.AnyNaN
+  //let triangleIsNan (t:Triangle3d) =
+  //  t.P0.AnyNaN || t.P1.AnyNaN || t.P2.AnyNaN
 
-  let getInvalidIndices (positions : V3d[]) =
-    positions |> List.ofArray |> List.mapi (fun i x -> if x.AnyNaN then Some i else None) |> List.choose id    
+  //let getInvalidIndices (positions : V3d[]) =
+  //  positions |> List.ofArray |> List.mapi (fun i x -> if x.AnyNaN then Some i else None) |> List.choose id    
 
-  let loadTriangles (computeIndices : V2i -> int[] -> int []) (kd : LazyKdTree) = 
+  //let loadTriangles (computeIndices : V2i -> int[] -> int []) (kd : LazyKdTree) = 
     
-    let positions = kd.objectSetPath |> Aara.fromFile<V3f>
+  //  let positions = kd.objectSetPath |> Aara.fromFile<V3f>
 
-    let data = 
-      positions.Data |> Array.map (fun x ->  x.ToV3d() |> kd.affine.Forward.TransformPos)
+  //  let data = 
+  //    positions.Data |> Array.map (fun x ->  x.ToV3d() |> kd.affine.Forward.TransformPos)
 
-    let invalidIndices = getInvalidIndices data |> List.toArray
-    let index = computeIndices (positions.Size.XY.ToV2i()) invalidIndices //PRo3DCSharp.ComputeIndexArray(positions.Size.XY.ToV2i(), invalidIndices)                
+  //  let invalidIndices = getInvalidIndices data |> List.toArray
+  //  let index = computeIndices (positions.Size.XY.ToV2i()) invalidIndices //PRo3DCSharp.ComputeIndexArray(positions.Size.XY.ToV2i(), invalidIndices)                
             
-    let triangles =             
-      index 
-        |> Seq.map(fun x -> data.[x])
-        |> Seq.chunkBySize 3                               
-        |> Seq.map(fun x -> Triangle3d(x))
-        |> Seq.filter(fun x -> triangleIsNan x |> not) |> Seq.toArray
-        |> TriangleSet
+  //  let triangles =             
+  //    index 
+  //      |> Seq.map(fun x -> data.[x])
+  //      |> Seq.chunkBySize 3                               
+  //      |> Seq.map(fun x -> Triangle3d(x))
+  //      |> Seq.filter(fun x -> triangleIsNan x |> not) |> Seq.toArray
+  //      |> TriangleSet
 
-    triangles
+  //  triangles
 
   //let loadObjectSet (cache : hmap<string, ConcreteKdIntersectionTree>) (computeIndices) (lvl0Tree : Level0KdTree) =         
   //  match lvl0Tree with
