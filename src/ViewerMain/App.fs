@@ -21,10 +21,7 @@ open ``F# Sg``
 
 open OpcSelectionViewer.Picking
 
-
-
-module App = 
-  open SceneObjectHandling
+module App =   
   open Aardvark.Application
   open Aardvark.Base.DynamicLinkerTypes  
   
@@ -98,7 +95,7 @@ module App =
       let opcs = 
         m.opcInfos
           |> AMap.toASet
-          |> ASet.map(fun info -> SceneObjectHandling.createSingleOpcSg m info)
+          |> ASet.map(fun info -> Sg.createSingleOpcSg m info)
           |> Sg.set
           |> Sg.effect [ 
             toEffect Shader.stableTrafo

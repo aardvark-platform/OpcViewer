@@ -9,13 +9,12 @@ open Aardvark.Rendering.Text
 open FShade
 open Aardvark.UI.``F# Sg``
 open Aardvark.UI.Trafos
+open Aardvark.SceneGraph.Opc
 
 open OpcSelectionViewer.Picking
 open OpcOutlineTest
 
-module SceneObjectHandling = 
-  open Aardvark.SceneGraph.Opc
-  open Aardvark.UI
+module Sg = 
   open Aardvark.UI
 
   //open Aardvark.Physics.Sky
@@ -108,9 +107,9 @@ module SceneObjectHandling =
           }           
       Sg.text (Font.create "Consolas" FontStyle.Regular) C4b.White text
           |> Sg.noEvents
-          |> Sg.shader {
-            do! Shader.stableTrafo
-          }                      
+          |> Sg.effect [
+            Shader.stableTrafo |> toEffect
+          ]         
           |> Sg.trafo (0.05 |> Trafo3d.Scale |> Mod.constant )
           |> Sg.trafo billboardTrafo  
 
@@ -135,7 +134,7 @@ module SceneObjectHandling =
     let loadedPatches = 
         leaves 
           |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info,dir, patch.info)) 
-          |> List.map(fun ((a,_),c,d) -> (a,c,d))|> List.skip 2 |> List.take 1
+          |> List.map(fun ((a,_),c,d) -> (a,c,d)) //|> List.skip 2 |> List.take 1
 
     let globalBB = 
       Sg.wireBox (Mod.constant C4b.Red) (Mod.constant boundingBox) 
@@ -148,7 +147,7 @@ module SceneObjectHandling =
     [
       opcSg  loadedPatches m boundingBox; 
       boxSg  loadedPatches m boundingBox;
-      textSg loadedPatches m
+    //  textSg loadedPatches m
       globalBB] |> Sg.ofList
             
   let read a =
@@ -219,12 +218,12 @@ module SceneObjectHandling =
                         |> Sg.depthTest (Mod.constant DepthTestMode.None)
                         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
                         |> Sg.pass pass1
-                        |> Sg.shader {
-                            do! Shader.stableTrafo
-                            do! Shader.lines
-                            do! DefaultSurfaces.thickLine
-                            do! DefaultSurfaces.constantColor C4f.VRVisGreen
-                        }
+                        |> Sg.effect [
+                            Shader.stableTrafo |> toEffect
+                            Shader.lines |> toEffect
+                            DefaultSurfaces.thickLine |> toEffect
+                            DefaultSurfaces.constantColor C4f.VRVisGreen |> toEffect
+                        ]
                         |> Sg.uniform "LineWidth" m.lineThickness.value
 
                 yield mask
