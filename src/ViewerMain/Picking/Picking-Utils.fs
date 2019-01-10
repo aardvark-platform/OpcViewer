@@ -7,7 +7,7 @@ open Aardvark.Geometry
 open Aardvark.SceneGraph.Opc
 open MBrace.FsPickler    
 open MBrace.FsPickler.Combinators  
-open OpcSelectionViewer.KdTrees
+open Aardvark.VRVis.Opc.KdTrees
 
 module Utils = 
   let getPatch (tree : QTree<'a>) = 

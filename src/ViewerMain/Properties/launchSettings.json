@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Temp\\1285_TSC_Selzthaltunnel_2017\\Selzthaltunnel_RFB-Graz\\2017_Bestandsaufnahme\\OPC\\OPC\""
+      "commandLineArgs": "\"G:\\New_3D_Data\\Stimson\\MSL_Mastcam_Sol_1087_id_206226_OPC\""
     }
   }
 }

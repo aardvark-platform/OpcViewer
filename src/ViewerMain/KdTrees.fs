@@ -1,4 +1,4 @@
-namespace OpcSelectionViewer
+namespace Aardvark.VRVis.Opc
 
 open Aardvark.Geometry
 open Aardvark.Base

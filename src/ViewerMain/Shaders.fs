@@ -6,6 +6,27 @@ module Shader =
   open Aardvark.Base.Rendering
   open FShade
 
+  type SuperVertex = 
+        {
+            [<Position>] pos :  V4d
+            [<SourceVertexIndex>] i : int
+        }
+
+  let lines (t : Triangle<SuperVertex>) =
+        line {
+            yield t.P0
+            yield t.P1
+            restartStrip()
+            
+            yield t.P1
+            yield t.P2
+            restartStrip()
+
+            yield t.P2
+            yield t.P0
+            restartStrip()
+        }
+
   module PointSprite = 
     let internal pointSprite (p : Point<Vertex>) =
       triangle {

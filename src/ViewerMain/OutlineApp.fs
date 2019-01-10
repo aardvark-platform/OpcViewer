@@ -1,4 +1,4 @@
-﻿namespace OpcSelectionViewer
+﻿namespace OpcOutlineTest
 
 open System
 open System.IO
@@ -19,83 +19,70 @@ open Aardvark.Base.Geometry
 open Aardvark.Geometry
 open ``F# Sg``
 
+open OpcSelectionViewer
 open OpcSelectionViewer.Picking
 
+module GuiEx =
+    let iconToggle (dings : IMod<bool>) onIcon offIcon action =
+      let toggleIcon = dings |> Mod.map(fun isOn -> if isOn then onIcon else offIcon)
 
+      let attributes = 
+        amap {
+            let! icon = toggleIcon
+            yield clazz icon
+            yield onClick (fun _ -> action)
+        } |> AttributeMap.ofAMap
 
-module App = 
+      Incremental.i attributes AList.empty
+
+    let iconCheckBox (dings : IMod<bool>) action =
+      iconToggle dings "check square outline icon" "square icon" action
+
+module OutlineApp = 
   open SceneObjectHandling
   open Aardvark.Application
   open Aardvark.Base.DynamicLinkerTypes  
   
-  let update (model : Model) (msg : Message) =   
+  let update (model : OutlineModel) (msg : OutlineMessage) =   
     match msg with
-      | Camera m when model.pickingActive = false -> 
+      | OutlineMessage.Camera m -> 
         { model with cameraState = FreeFlyController.update model.cameraState m; }
-      | Message.KeyDown m ->
-        match m with
-          | Keys.LeftCtrl -> 
-            { model with pickingActive = true }
-          | _ -> model
-      | Message.KeyUp m ->
-        match m with
-          | Keys.LeftCtrl -> 
-            { model with pickingActive = false }
-          | Keys.Delete ->            
-            { model with picking = PickingApp.update model.picking (PickingAction.ClearPoints) }
-          | Keys.Back ->
-            { model with picking = PickingApp.update model.picking (PickingAction.RemoveLastPoint) }            
-          | _ -> model
-      | PickingAction msg -> 
-        { model with picking = PickingApp.update model.picking msg }        
-        ////IntersectionController.intersect model sceneHit box
-        //failwith "panike"
-        //model 
-      | UpdateDockConfig cfg ->
+      | OutlineMessage.UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
-      | _ -> model
+      | SetLineThickness th ->
+        { model with lineThickness = Numeric.update model.lineThickness th }
+      | UseOutlines ->
+        { model with useOutlines = not model.useOutlines }      
                     
-  let view (m : MModel) =
-                                                 
-      let box = 
-        m.patchHierarchies
-          |> List.map(fun x -> x.tree |> QTree.getRoot) 
-          |> List.map(fun x -> x.info.LocalBoundingBox)
-          |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
-      
+  let outlineView (m : MOutlineModel) : DomNode<OutlineMessage> =
+
       let opcs = 
         m.opcInfos
           |> AMap.toASet
-          |> ASet.map(fun info -> SceneObjectHandling.createSingleOpcSg m info)
+          |> ASet.map(fun info -> SceneObjectHandling.createOutlineOpcSg m info)
           |> Sg.set
-          |> Sg.effect [ 
-            toEffect Shader.stableTrafo
-            toEffect DefaultSurfaces.diffuseTexture       
-            ]
 
-      let scene = 
-        [
-          opcs
-          PickingApp.view m.picking
-        ] |> Sg.ofList
+      let scene = [ opcs ] |> Sg.ofList
 
       let renderControl =
-       FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl m.cameraState OutlineMessage.Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
            attribute "showFPS" "false";       // optional, default is false
            attribute "useMapping" "true"
            attribute "data-renderalways" "false"
            attribute "data-samples" "4"
-           onKeyDown (Message.KeyDown)
-           onKeyUp (Message.KeyUp)
-           //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
          ]) 
          (scene) 
+
+      let outlineUI (model:MOutlineModel) =
+          Html.table [
+            Html.row "Outlines:"      [GuiEx.iconCheckBox model.useOutlines UseOutlines ]  
+            Html.row "Thickness:"     [Numeric.view' [NumericInputType.Slider]   model.lineThickness  |> UI.map SetLineThickness ]
+        ]
+             
             
-      let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant          
-        
-      let cam = Mod.map2 Camera.create m.cameraState.view frustum 
+      let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant  
 
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
@@ -106,7 +93,7 @@ module App =
         | Some "controls" -> 
           require Html.semui (
             body [style "width: 100%; height:100%; background: transparent";] [
-               div[style "color:white"][text "UI COMES HERE"]
+               div[style "color:white"][outlineUI m]
             ]
           )
         | Some other -> 
@@ -118,10 +105,10 @@ module App =
           m.dockConfig
             |> docking [
               style "width:100%; height:100%; background:#F00"
-              onLayoutChanged UpdateDockConfig ]
+              onLayoutChanged OutlineMessage.UpdateDockConfig ]
         )
 
-  let app dir =
+  let appOutlines dir =
       Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
@@ -155,49 +142,43 @@ module App =
         |> List.map (fun info -> info.globalBB, info)
         |> HMap.ofList      
                       
-      let up = if true then (box.Center.Normalized) else V3d.OOI
-      let camState = { FreeFlyController.initial with view = CameraView.lookAt (box.Max) box.Center up; }
-      let neighborMap = 
-        opcInfos
-          |> HMap.toList
-          |> List.map(fun (box,opc) -> opc.patchHierarchy)
-          |> Neighbors.neighborCalculation
-      
-      neighborMap
-        |> HMap.map(fun key value -> Log.line "%A --> %A" value.globalBB3d value.neighbors)
-        |> ignore
+      let camState = { FreeFlyController.initial with view = CameraView.lookAt (box.Center) V3d.OOO V3d.OOI; }
 
-
-      let initialModel : Model = 
+      let initialModel : OutlineModel = 
         { 
           cameraState        = camState          
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
                     
-          threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
+          threads            = FreeFlyController.threads camState |> ThreadPool.map OutlineMessage.Camera
           boxes              = List.empty //kdTrees |> HMap.toList |> List.map fst
-      
-          pickingActive      = false
           opcInfos           = opcInfos
-          picking            = { PickingModel.initial with pickingInfos = opcInfos; neighborMap = neighborMap }
           dockConfig         =
             config {
                 content (
                     horizontal 10.0 [
                         element { id "render"; title "Render View"; weight 7.0 }                        
-                        element { id "controls"; title "Controls"; weight 3.0 }                                                    
-                    ]
+                        element { id "controls"; title "Controls"; weight 3.0 }                    ]
                 )
-                appName "OpcSelectionViewer"
+                appName "OpcOutlineTest"
                 useCachedConfig true
             }
+          lineThickness =
+                    {
+                        value   = 3.0
+                        min     = 1.0
+                        max     = 8.0
+                        step    = 1.0
+                        format  = "{0:0}"
+                    }
+          useOutlines = true
         }
 
       {
           initial = initialModel             
           update = update
-          view   = view          
+          view   =  outlineView          
           threads = fun m -> m.threads
-          unpersist = Unpersist.instance<Model, MModel>
+          unpersist = Unpersist.instance<OutlineModel, MOutlineModel>
       }
        
