@@ -161,8 +161,10 @@ module App =
           |> HMap.toList
           |> List.map(fun (box,opc) -> opc.patchHierarchy)
           |> Neighbors.neighborCalculation
-
-      Log.line "%A" neighborMap
+      
+      neighborMap
+        |> HMap.map(fun key value -> Log.line "%A --> %A" value.globalBB3d value.neighbors)
+        |> ignore
 
 
       let initialModel : Model = 

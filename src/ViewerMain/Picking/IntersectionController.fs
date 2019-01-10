@@ -31,8 +31,7 @@ module IntersectionController =
  
     let invalidIndices = getInvalidIndices data
     let index = computeIndexArray (positions.Size.XY.ToV2i()) false (Set.ofArray invalidIndices)
-    
-    
+        
     let triangleIndices = 
       index
         |> Seq.chunkBySize 3
@@ -237,10 +236,10 @@ module IntersectionController =
           newInfo :: neighborLineList neighborMap destinationBox2d info.globalBB3d
         | None -> List.empty
     
-    failwith ""
+    box2DList
 
 
-  let rec collectNeighborsBetween (neighborMap : hmap<Box3d,NeighboringInfo>) (maxDistance : float) (destinationBox2d : Box3d) (currentBox : Box3d) : List<List<NeighboringInfo>>=
+  let rec collectNeighborsBetween (neighborMap : hmap<Box3d,NeighboringInfo>) (destinationBox2d : Box3d) (currentBox : Box3d) : List<List<NeighboringInfo>>=
     let currentInfo = neighborMap |> HMap.tryFind(currentBox)
 
     match currentInfo with 
@@ -253,7 +252,7 @@ module IntersectionController =
               |> List.fold(fun (f,d) value -> findshortestDistance checkDistanceOnYAxis f value destinationBox2d d) (info,Double.MaxValue)
               |> fst
         
-        currLine :: collectNeighborsBetween neighborMap maxDistance destinationBox2d newInfo.globalBB3d
+        currLine :: collectNeighborsBetween neighborMap destinationBox2d newInfo.globalBB3d
       | None -> List.empty
 
 
@@ -261,10 +260,8 @@ module IntersectionController =
 
   let collectImagePatches (neighborMap : hmap<Box3d,NeighboringInfo>) (hitpair : (IntersectionHit * IntersectionHit)) =
     let startPoint, endPoint = hitpair
-    
-    let distance = V3d.Distance(startPoint.hitBB.Center, endPoint.hitBB.Center)
-    
-    collectNeighborsBetween neighborMap distance endPoint.hitBB startPoint.hitBB
+
+    collectNeighborsBetween neighborMap (Utils.roundedBox endPoint.hitBB 3) (Utils.roundedBox startPoint.hitBB 3)
       |> List.map(fun subList -> 
         subList
         |> List.sortBy(fun info -> info.globalBB2d.Center.X))  
@@ -274,7 +271,16 @@ module IntersectionController =
     let subVolume = completeImage.Volume.SubVolume(V3i(startPos,0), (V3i(subImage.Size,0)))
     subVolume.Set(subImage.Volume) |> ignore
     completeImage
+   
+  let drawCross (hit : IntersectionHit) (image : PixImage<byte>) =
+    hit.texCoords
+      |> Option.map (fun uv -> 
+           let changePos = V2i (((float32 image.Size.X) * uv.X),((float32 image.Size.Y) * uv.Y))
+           image.GetMatrix<C3b>().SetCross(changePos, 5, C3b.Red) |> ignore)
+      
     
+
+
   let writeImageofMatrix (fileName : string) (pickPointPair : (IntersectionHit * IntersectionHit)) (patchInfos : List<List<NeighboringInfo>>) : string=
     if not patchInfos.IsEmpty then
       let startPickPoint, endPickPoint = pickPointPair
@@ -297,6 +303,11 @@ module IntersectionController =
         for indexX in counterX do
           let patchInfo = patchXList.Item indexX
           let currSubImage = PixImage.Create(patchInfo.texturePath).ToPixImage<byte>(Col.Format.RGB)
+          if patchInfo.globalBB3d = startPickPoint.hitBB then
+            drawCross startPickPoint currSubImage |> ignore
+          elif patchInfo.globalBB3d = endPickPoint.hitBB then
+            drawCross endPickPoint currSubImage |> ignore
+          
           writeSubImageintoImage (V2i((indexX * subImageSize.X), (indexY * subImageSize.Y))) completeImage currSubImage |> ignore
       fileName  
     else

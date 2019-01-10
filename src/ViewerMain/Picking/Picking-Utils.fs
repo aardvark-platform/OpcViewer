@@ -9,11 +9,19 @@ open MBrace.FsPickler
 open MBrace.FsPickler.Combinators  
 open OpcSelectionViewer.KdTrees
 
-module Neighbors = 
+module Utils = 
   let getPatch (tree : QTree<'a>) = 
     match tree with
       | QTree.Node(n,f) -> n
       | QTree.Leaf(n)   -> n
+  
+  let roundedV3d (point : V3d) (digits : int) = 
+    V3d(Math.Round(point.X, digits), Math.Round(point.Y,digits), Math.Round(point.Z,digits))
+
+  let roundedBox (box : Box3d) (digits : int) =
+    Box3d(roundedV3d box.Min digits, roundedV3d box.Max digits)
+
+module Neighbors = 
   
   let inBox (box : Box3d) (point : V3d) =
     box.Max.AllGreaterOrEqual(point) && box.Min.AllSmallerOrEqual(point)
@@ -22,34 +30,33 @@ module Neighbors =
     let currentCenter = currentBox.Center
     let changeX = V3d((currentBox.RangeX.Size / 2.0) + (potentialNeighbor.RangeX.Size / 2.0), 0.0, 0.0)
     let changeY = V3d(0.0, (currentBox.RangeY.Size / 2.0) + (potentialNeighbor.RangeY.Size / 2.0), 0.0)
-    let changeZ = V3d(0.0, 0.0, (currentBox.RangeZ.Size / 2.0) + (potentialNeighbor.RangeZ.Size / 2.0))
+    //let changeZ = V3d(0.0, 0.0, (currentBox.RangeZ.Size / 2.0) + (potentialNeighbor.RangeZ.Size / 2.0))
 
     if inBox potentialNeighbor (currentCenter+changeX) || inBox potentialNeighbor (currentCenter-changeX) ||
-       inBox potentialNeighbor (currentCenter+changeY) || inBox potentialNeighbor (currentCenter-changeY) ||
-       inBox potentialNeighbor (currentCenter+changeZ) || inBox potentialNeighbor (currentCenter-changeZ) then 
-       true
+       inBox potentialNeighbor (currentCenter+changeY) || inBox potentialNeighbor (currentCenter-changeY) then
+       
+      //Log.line "neighbors: %A and %A" currentBox potentialNeighbor
+      //inBox potentialNeighbor (currentCenter+changeZ) || inBox potentialNeighbor (currentCenter-changeZ) then 
+      true
     else
+      //Log.line "NO neighbors: %A and %A" currentBox potentialNeighbor
       false
      
   
   let checkNeighborHoodofBlocks (potentialNeighbors : list<QTree<Patch>>) (currentNode : Box3d) : list<QTree<Patch>> = 
     potentialNeighbors 
       |> List.map(fun neighbor ->
-         match neighbor with 
-          | QTree.Node (n,f) -> 
-            if (checkNeighborHood currentNode n.info.GlobalBoundingBox2d) then
-              Some(neighbor)
-            else
-              None
-          | QTree.Leaf (n) ->
-            if (checkNeighborHood currentNode n.info.GlobalBoundingBox2d) then
-              Some(neighbor)
-            else
-              None)
+         let neighborPatch = Utils.getPatch neighbor
+         
+         if (checkNeighborHood currentNode neighborPatch.info.GlobalBoundingBox2d) then
+           Some (neighbor)
+         else
+           None
+        )
       |> List.choose id
   
   let rec calcNeighbors (potentialNeighbors : list<QTree<Patch>>) (currentNode : QTree<Patch>) : hmap<Box3d, NeighboringInfo> = 
-    let currPatch = getPatch currentNode
+    let currPatch = Utils.getPatch currentNode
     
     let neighbors = checkNeighborHoodofBlocks potentialNeighbors currPatch.info.GlobalBoundingBox2d
     
@@ -74,19 +81,25 @@ module Neighbors =
 
     let returnMap = 
       HMap.add
-        currPatch.info.GlobalBoundingBox 
+        (Utils.roundedBox currPatch.info.GlobalBoundingBox 3)
         {
           globalBB3d  = currPatch.info.GlobalBoundingBox
           globalBB2d  = currPatch.info.GlobalBoundingBox2d
-          neighbors   = neighbors |> List.map(fun neighbor -> (getPatch neighbor).info.GlobalBoundingBox)
+          neighbors   = neighbors |> List.map(fun neighbor -> (Utils.roundedBox (Utils.getPatch neighbor).info.GlobalBoundingBox 3))
           texturePath = texturePath
         }
         HMap.empty
     
-    match currentNode with 
-     | QTree.Node (n,f) ->
-       f |> Array.fold(fun hmap element -> HMap.union hmap (calcNeighbors potChildNeighbors element)) returnMap
-     | QTree.Leaf (n) -> returnMap
+    let map = 
+      match currentNode with 
+       | QTree.Node (n,f) ->
+         f |> Array.fold(fun hmap element -> HMap.union hmap (calcNeighbors potChildNeighbors element)) returnMap
+       | QTree.Leaf (n) -> returnMap
+
+    Log.line "Level: %i potNeighbors: %i neighbors: %i" currPatch.level potentialNeighbors.Length neighbors.Length
+    Log.line "current hmapSize: %i" (HMap.count map)
+
+    map
 
   let neighborCalculation (opcs : List<PatchHierarchy>) =
     let potentialNeighbors = 
