@@ -11,6 +11,7 @@ module IntersectionController =
   open System.Drawing
   open Aardvark.SceneGraph.Opc
   open Aardvark.VRVis.Opc.KdTrees
+  open Aardvark.Base.Geometry
 
   let hitBoxes (kd : hmap<Box3d, Level0KdTree>) (r : FastRay3d) (trafo : Trafo3d) =
     kd
@@ -54,9 +55,13 @@ module IntersectionController =
   
   let loadTrianglesWithIndices (kd : LazyKdTree) =
     loadTrianglesFromFileWithIndices kd.objectSetPath kd.affine.Forward
-
+  
+  let triangleIsNan (t:Triangle3d) =
+      t.P0.AnyNaN || t.P1.AnyNaN || t.P2.AnyNaN
+   
   let loadTriangles (kd : LazyKdTree) = 
-    loadTrianglesFromFile kd.objectSetPath kd.affine.Forward
+    let indexing = (fun size invalidIndices -> LegacyCode.Class1.ComputeIndexArray(size, invalidIndices))
+    loadTrianglesFromFile' kd.objectSetPath indexing kd.affine.Forward
     
   let loadTriangleSet (kd : LazyKdTree) =
     kd |> loadTriangles |> TriangleSet
@@ -76,10 +81,11 @@ module IntersectionController =
                   //Log.line "cache hit %A" kd.boundingBox
                   t, cache
                 | None ->                                     
-                  Log.line "cache miss %A- loading kdtree" kd.boundingBox
+                  Log.line "cache miss %A- loading kdtree %A" kd.boundingBox kd.kdtreePath
 
-                  let mutable tree = loadKdtree kd.kdtreePath                                    
+                  let mutable tree = loadKdtree kd.kdtreePath
                   tree.KdIntersectionTree.ObjectSet <- (kd |> loadTriangleSet)
+                  Log.line "Objectset type %s" (tree.KdIntersectionTree.ObjectSet.ToString())
 
                   let key = tree.KdIntersectionTree.BoundingBox3d.ToString()
                                                       
@@ -110,8 +116,8 @@ module IntersectionController =
         else            
             None
       with 
-        | _ -> 
-          Log.error "null ref exception in kdtree intersection" 
+        | e -> 
+          Log.error "null ref exception in kdtree intersection %A" e
           None 
 
   let calculateBarycentricCoordinates (triangle : Triangle3d) (pos : V3d) = 
@@ -153,10 +159,10 @@ module IntersectionController =
     
     exactUV
 
-  let intersectKdTrees (bb : Box3d) (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
-      let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
-      let hit = intersectSingle ray hitObject kdtree
-      hit,c
+  //let intersectKdTrees (bb : Box3d) (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
+  //    let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
+  //    let hit = intersectSingle ray hitObject kdtree
+  //    hit,c
 
   let intersectKdTreeswithObjectIndex (bb : Box3d) (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
       let kdtree, c =  kdTreeMap |> HMap.find bb |> loadObjectSet cache
@@ -345,9 +351,9 @@ module IntersectionController =
 
   let intersect (m : PickingModel) opc (hit : SceneHit) (boxId : Box3d) = 
     let fray = hit.globalRay.Ray
-            
-    let opcdata = m.pickingInfos |> HMap.tryFind boxId
-    match opcdata with
+    Log.line "try intersecting %A" boxId    
+    
+    match m.pickingInfos |> HMap.tryFind boxId with
     | Some kk ->
       let closest = intersectWithOpc (Some kk.kdTree) opc fray      
       match closest with
@@ -359,7 +365,11 @@ module IntersectionController =
               intersectionPoints = m.intersectionPoints |> PList.prepend hit }                      
           writeImageofIntersections model
           model
-        | None -> m      
-    | None -> m
+        | None ->       
+          Log.error "[Intersection] didn't hit"
+          m
+    | None -> 
+      Log.error "[Intersection] box not found in picking infos"
+      m
       
   

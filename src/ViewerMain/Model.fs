@@ -19,6 +19,13 @@ type Message =
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
 
+type CameraStateLean = 
+  { 
+     location : V3d
+     forward  : V3d
+     sky      : V3d
+  }
+
 [<DomainType>]
 type Model =
     {

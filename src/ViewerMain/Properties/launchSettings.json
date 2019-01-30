@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "\"G:\\New_3D_Data\\Stimson\\MSL_Mastcam_Sol_1087_id_206226_OPC\""
+      "commandLineArgs": "\"C:\\Temp\\20190129_Perjen\\20190129_Perjen_Ost\\RA\\OPC 1\\OPC\""
     }
   }
 }
