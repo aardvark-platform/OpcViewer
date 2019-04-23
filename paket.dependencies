@@ -3,9 +3,9 @@ source https://api.nuget.org/v3/index.json
 
 nuget FSharp.Core                           ~> 4.3.0
                                             
-nuget Aardvark.Base                         ~> 4.3.5
-nuget Aardvark.Base.Incremental             ~> 4.3.5
-nuget Aardvark.Base.FSharp                  ~> 4.3.5
+nuget Aardvark.Base                         ~> 4.3.7
+nuget Aardvark.Base.Incremental             ~> 4.3.7
+nuget Aardvark.Base.FSharp                  ~> 4.3.7
 
 nuget Aardvark.Base.Rendering               ~> 4.6.3
 nuget Aardvark.SceneGraph                   ~> 4.6.3
@@ -23,10 +23,11 @@ nuget Aardvark.Service                      ~> 4.4.8
 nuget Aardvark.UI                           ~> 4.4.8
 nuget Aardvark.UI.Primitives                ~> 4.4.8
 
-nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 4.2.1
+nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 4.2.2
 
 nuget Aardium                               ~> 1.0.18
 nuget Suave                                 ~> 2.2.1
+nuget Uncodium.Eigensystems                 ~> 1.0.1
 
 nuget FsPickler                             ~> 5.2.0
 nuget FsPickler.Json                        ~> 5.2.0

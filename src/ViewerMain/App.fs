@@ -74,6 +74,8 @@ module App =
             Log.line "[App] saving camstate"
             model.cameraState.view |> toCameraStateLean |> Serialization.save ".\camstate" |> ignore
             model
+          | Keys.Enter ->
+            { model with picking = PickingApp.update model.picking (PickingAction.AddBrush)}
           | _ -> model
       | PickingAction msg -> 
         { model with picking = PickingApp.update model.picking msg }

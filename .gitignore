@@ -14,3 +14,4 @@ bin/Debug
 /Aardvark.log
 *.g.fs
 /.paket/Paket.Restore.targets
+/src/ViewerMain/.domaincache
