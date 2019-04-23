@@ -175,7 +175,7 @@ module App =
 
             yield {
               patchHierarchy = h
-              kdTree         = KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer
+              kdTree         = Aardvark.VRVis.Opc.KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath (KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer)
               localBB        = rootTree.info.LocalBoundingBox 
               globalBB       = rootTree.info.GlobalBoundingBox
               neighborMap    = HMap.empty
@@ -184,7 +184,7 @@ module App =
         |> List.map (fun info -> info.globalBB, info)
         |> HMap.ofList      
                       
-      let up = if true then (box.Center.Normalized) else V3d.OOI
+      let up = V3d.OOI // if true then (box.Center.Normalized) else V3d.OOI
 
       let restoreCamState : CameraControllerState =
         if File.Exists ".\camstate" then          
