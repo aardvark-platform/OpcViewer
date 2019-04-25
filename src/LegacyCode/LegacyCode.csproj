@@ -8,6 +8,10 @@
     <OutputPath>..\..\bin\Debug\</OutputPath>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>..\..\bin\Release\</OutputPath>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Aardvark.Base" Version="4.3.5" />
   </ItemGroup>
