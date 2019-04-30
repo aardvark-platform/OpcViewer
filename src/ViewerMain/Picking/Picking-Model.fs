@@ -11,6 +11,8 @@ type PickingAction =
   | RemoveLastPoint
   | ClearPoints
   | AddBrush
+  | ShowDebugVis
+  | SetAlpha of Numeric.Action
 
 type BoxNeighbors = {
   neighbors : List<Box3d> 
@@ -39,15 +41,28 @@ type PickingModel = {
   pickingInfos         : hmap<Box3d, OpcData>
   hitPointsInfo        : hmap<V3d, Box3d>
   intersectionPoints   : plist<V3d>  
-  brush                : option<Brush>
+  brush                : list<Brush>
+  debugShadowVolume    : bool
+  alpha                : NumericInput
 }  
 
 module PickingModel =
+
+  let alpha =
+    {
+     min = 0.0
+     max = 1.0
+     value = 0.6
+     step = 0.05
+     format = "{0:0.00}"
+    }
 
   let initial = 
     {
       pickingInfos       = HMap.empty
       hitPointsInfo      = HMap.empty
       intersectionPoints = PList.empty
-      brush              = None
+      brush              = List.empty
+      debugShadowVolume  = false
+      alpha              = alpha
     }

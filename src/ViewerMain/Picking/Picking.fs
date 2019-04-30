@@ -88,8 +88,6 @@ module Sg =
 
   let drawColoredConnectionLines (points : alist<V3d>) (color : IMod<C4b>) (width : IMod<float>) =           
     
-    //let head = pointsGetHead points
-
     let toColoredEdges (color : C4b) (points : alist<V3d>) =
       points
         |> AList.toMod
@@ -205,22 +203,49 @@ module PickingApp =
       { model with intersectionPoints = PList.empty; hitPointsInfo = HMap.empty}
     | AddBrush -> 
       if model.intersectionPoints |> PList.count > 2 then
-        { model with brush = Some { points = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last) |> PList.toList; color = C4b.Blue} } // add starting point to end
+        //{ model with brush = Some { points = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last) |> PList.toList; color = C4b.Blue} } // add starting point to end
+        let newBrush = 
+          { 
+            points = (model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last) |> PList.toList)
+            color = 
+              match (model.brush |> List.length) % 6 with
+              | 0 -> C4b.DarkGreen
+              | 1 -> C4b.DarkCyan
+              | 2 -> C4b.DarkBlue
+              | 3 -> C4b.DarkMagenta
+              | 4 -> C4b.DarkRed
+              | _ -> C4b.DarkYellow
+          }
+        { model with brush = model.brush |> List.append [newBrush]; intersectionPoints = PList.empty }
       else
-        { model with brush = None }
+        //{ model with brush = None }
+        model
+    | ShowDebugVis -> { model with debugShadowVolume = not (model.debugShadowVolume) }
+    | SetAlpha a -> { model with alpha = Numeric.update model.alpha a }
 
   let view (model : MPickingModel) =
 
     let drawBrush brush = 
       brush 
-      |> Mod.map(fun x ->
-        match x with
-        | None -> Sg.empty
-        | Some b -> 
-          let alpha = 0.6
-          let volumeExtrusion = 2.0
-          Sg.drawColoredPolygon b.points b.color volumeExtrusion alpha
-            |> StencilAreaMasking.stencilAreaSG)
+      |> Mod.map2(fun alpha x ->
+          x |> List.map(fun b ->
+            let volumeExtrusion = 1.0
+            let polygonSG = Sg.drawColoredPolygon b.points b.color volumeExtrusion alpha
+
+            let debugVis =
+              polygonSG
+                |> Sg.depthTest (Mod.constant DepthTestMode.Less)
+                |> Sg.cullMode (Mod.constant (CullMode.CounterClockwise))
+                |> Sg.pass RenderPass.main
+                |> Sg.onOff model.debugShadowVolume
+
+            [
+              Sg.drawColoredConnectionLines (b.points |> AList.ofList) (Mod.constant(b.color)) (Mod.constant(2.0))
+              polygonSG |> StencilAreaMasking.stencilAreaSG
+              debugVis
+            ] |> Sg.ofList
+            )
+            |> Sg.ofList) model.alpha.value
       |> Sg.dynamic
     
     [ 

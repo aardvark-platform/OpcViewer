@@ -137,7 +137,13 @@ module App =
         | Some "controls" -> 
           require Html.semui (
             body [style "width: 100%; height:100%; background: transparent";] [
-               div[style "color:white"][text "UI COMES HERE"]
+              div[style "color:white; margin: 5px 15px 5px 5px"][
+                h3[][text "NIOBE"]
+                p[][text "Hold Ctrl-Left to add Point"]
+                p[][text "Press Enter to close Polygon"]
+                p[][text "Debug Volume "; Html.SemUi.toggleBox m.picking.debugShadowVolume PickingAction.ShowDebugVis |> UI.map PickingAction]
+                p[][text "Alpha"; Numeric.numericField (PickingAction.SetAlpha >> Seq.singleton) AttributeMap.empty m.picking.alpha Slider |> UI.map PickingAction]
+              ]
             ]
           )
         | Some other -> 
