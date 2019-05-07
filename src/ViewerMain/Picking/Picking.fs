@@ -26,17 +26,17 @@ module StencilAreaMasking =
       let operation = new StencilOperation(StencilOperationFunction.Zero, StencilOperationFunction.Zero, StencilOperationFunction.Zero)
       StencilMode(operation, compare)
 
-  let maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
-  let areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
+  //let maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
+  //let areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
 
-  let maskSG sg = 
+  let maskSG maskPass sg = 
     sg
       |> Sg.pass maskPass
       |> Sg.stencilMode (Mod.constant (writeZFail))
       |> Sg.cullMode (Mod.constant (CullMode.None))
       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
 
-  let fillSG sg =
+  let fillSG areaPass sg =
     sg
       |> Sg.pass areaPass
       |> Sg.stencilMode (Mod.constant (readMaskAndReset))
@@ -47,10 +47,10 @@ module StencilAreaMasking =
       |> Sg.blendMode (Mod.constant BlendMode.Blend)
       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
 
-  let stencilAreaSG sg =
+  let stencilAreaSG pass1 pass2 sg =
     [
-      maskSG sg   // one pass by using EXT_stencil_two_side :)
-      fillSG sg
+      maskSG pass1 sg   // one pass by using EXT_stencil_two_side :)
+      fillSG pass2 sg
     ] |> Sg.ofList
 
 module Sg =
@@ -208,7 +208,7 @@ module PickingApp =
           { 
             points = (model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last) |> PList.toList)
             color = 
-              match (model.brush |> List.length) % 6 with
+              match (model.brush |> PList.count) % 6 with
               | 0 -> C4b.DarkGreen
               | 1 -> C4b.DarkCyan
               | 2 -> C4b.DarkBlue
@@ -216,7 +216,7 @@ module PickingApp =
               | 4 -> C4b.DarkRed
               | _ -> C4b.DarkYellow
           }
-        { model with brush = model.brush |> List.append [newBrush]; intersectionPoints = PList.empty }
+        { model with brush = model.brush |> PList.append newBrush; intersectionPoints = PList.empty }
       else
         //{ model with brush = None }
         model
@@ -225,31 +225,37 @@ module PickingApp =
 
   let view (model : MPickingModel) =
 
+    let mutable maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
+    let mutable areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
+
     let drawBrush brush = 
       brush 
-      |> Mod.map2(fun alpha x ->
-          x |> List.map(fun b ->
+      |> AList.mapi(fun index b ->
+          //x |> List.mapi(fun index b ->
             let volumeExtrusion = 1.0
-            let polygonSG = Sg.drawColoredPolygon b.points b.color volumeExtrusion alpha
+            let polygonSG = Sg.drawColoredPolygon b.points b.color volumeExtrusion 0.6 //alpha..TODO..alpha 
 
             let debugVis =
               polygonSG
                 |> Sg.depthTest (Mod.constant DepthTestMode.Less)
-                |> Sg.cullMode (Mod.constant (CullMode.CounterClockwise))
+                |> Sg.cullMode (Mod.constant (CullMode.Clockwise))
                 |> Sg.pass RenderPass.main
                 |> Sg.onOff model.debugShadowVolume
 
-            [
-              Sg.drawColoredConnectionLines (b.points |> AList.ofList) (Mod.constant(b.color)) (Mod.constant(2.0))
-              polygonSG |> StencilAreaMasking.stencilAreaSG
-              debugVis
-            ] |> Sg.ofList
-            )
-            |> Sg.ofList) model.alpha.value
-      |> Sg.dynamic
+            let output = 
+              [
+                polygonSG |> StencilAreaMasking.stencilAreaSG maskPass areaPass
+                Sg.drawColoredConnectionLines (b.points |> AList.ofList) (Mod.constant(b.color)) (Mod.constant(2.0))
+                debugVis
+              ] |> Sg.ofList
+            
+            maskPass <- RenderPass.after "mask" RenderPassOrder.Arbitrary areaPass
+            areaPass <- RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
+            
+            output) |> AList.toASet |> Sg.set
     
     [ 
-      drawBrush model.brush
-      Sg.drawColoredPoints model.intersectionPoints (Mod.constant(C4f.Red))
       Sg.drawColoredConnectionLines model.intersectionPoints (Mod.constant(C4b.Yellow)) (Mod.constant(2.0))
+      Sg.drawColoredPoints model.intersectionPoints (Mod.constant(C4f.Red))
+      drawBrush model.brush
     ] |> Sg.ofList

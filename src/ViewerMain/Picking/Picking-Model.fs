@@ -41,7 +41,7 @@ type PickingModel = {
   pickingInfos         : hmap<Box3d, OpcData>
   hitPointsInfo        : hmap<V3d, Box3d>
   intersectionPoints   : plist<V3d>  
-  brush                : list<Brush>
+  brush                : plist<Brush>
   debugShadowVolume    : bool
   alpha                : NumericInput
 }  
@@ -62,7 +62,7 @@ module PickingModel =
       pickingInfos       = HMap.empty
       hitPointsInfo      = HMap.empty
       intersectionPoints = PList.empty
-      brush              = List.empty
+      brush              = PList.empty
       debugShadowVolume  = false
       alpha              = alpha
     }
