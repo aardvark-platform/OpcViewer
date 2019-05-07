@@ -230,29 +230,30 @@ module PickingApp =
 
     let drawBrush brush = 
       brush 
-      |> AList.mapi(fun index b ->
-          //x |> List.mapi(fun index b ->
-            let volumeExtrusion = 1.0
-            let polygonSG = Sg.drawColoredPolygon b.points b.color volumeExtrusion 0.6 //alpha..TODO..alpha 
+      |> AList.map(fun b ->
+        let alpha = 0.6
+        let volumeExtrusion = 1.0
+ 
+        let polygonSG = Sg.drawColoredPolygon b.points b.color volumeExtrusion alpha
 
-            let debugVis =
-              polygonSG
-                |> Sg.depthTest (Mod.constant DepthTestMode.Less)
-                |> Sg.cullMode (Mod.constant (CullMode.Clockwise))
-                |> Sg.pass RenderPass.main
-                |> Sg.onOff model.debugShadowVolume
+        let debugVis =
+          polygonSG
+            |> Sg.depthTest (Mod.constant DepthTestMode.Less)
+            |> Sg.cullMode (Mod.constant (CullMode.Clockwise))
+            |> Sg.pass RenderPass.main
+            |> Sg.onOff model.debugShadowVolume
 
-            let output = 
-              [
-                polygonSG |> StencilAreaMasking.stencilAreaSG maskPass areaPass
-                Sg.drawColoredConnectionLines (b.points |> AList.ofList) (Mod.constant(b.color)) (Mod.constant(2.0))
-                debugVis
-              ] |> Sg.ofList
+        let output = 
+          [
+            polygonSG |> StencilAreaMasking.stencilAreaSG maskPass areaPass
+            Sg.drawColoredConnectionLines (b.points |> AList.ofList) (Mod.constant(b.color)) (Mod.constant(2.0))
+            debugVis
+          ] |> Sg.ofList
             
-            maskPass <- RenderPass.after "mask" RenderPassOrder.Arbitrary areaPass
-            areaPass <- RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
-            
-            output) |> AList.toASet |> Sg.set
+        maskPass <- RenderPass.after "mask" RenderPassOrder.Arbitrary areaPass
+        areaPass <- RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
+           
+        output) |> AList.toASet |> Sg.set
     
     [ 
       Sg.drawColoredConnectionLines model.intersectionPoints (Mod.constant(C4b.Yellow)) (Mod.constant(2.0))
