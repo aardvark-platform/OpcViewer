@@ -158,10 +158,12 @@ module App =
               onLayoutChanged UpdateDockConfig ]
         )
 
-  let app dir =
+  let app dir axis =
       Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
+
+      
 
       let patchHierarchies =
         [ 

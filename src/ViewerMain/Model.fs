@@ -11,6 +11,7 @@ open Aardvark.UI.Primitives
 open Aardvark.Application
 
 open OpcSelectionViewer.Picking
+open OpcSelectionViewer.Axis
 
 type Message =
   | Camera           of FreeFlyController.Message
@@ -33,8 +34,8 @@ type Model =
         fillMode             : FillMode                                
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>        
-        
-        boxes                : list<Box3d>
+        axis                 : Option<Axis>
+        boxes                : list<Box3d>        
         opcInfos             : hmap<Box3d, OpcData>
         threads              : ThreadPool<Message>
         dockConfig           : DockConfig
