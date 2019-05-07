@@ -25,6 +25,7 @@
     <Compile Include="Picking\Picking.fs" />
     <Compile Include="OutlineModel.fs" />
     <Compile Include="Model.fs" />
+    <Compile Include="Axis.fs" />
     <Compile Include="Sg.fs" />
     <Compile Include="Opc.fs" />
     <Compile Include="OutlineApp.fs" />

@@ -20,6 +20,11 @@ module Serialization =
         let arr = File.ReadAllBytes(path)
         binarySerializer.UnPickle arr
 
+    let loadAsType<'a> path : 'a = 
+        let arr = File.ReadAllBytes(path)
+        let pickle = new Pickle<'a>(arr)
+        binarySerializer.UnPickleTyped pickle
+
     let writeToFile path (contents : string) =
         System.IO.File.WriteAllText(path, contents)  
 

@@ -1,29 +1,8 @@
 ﻿namespace OpcSelectionViewer
 
-module Axis = 
+module AxisFunctions = 
   open Aardvark.Base
   open Aardvark.Base.Incremental
-
-  type Stationing = {
-      sh : double
-      sv : double
-  }
-
-  type OrientedPoint = {
-      direction             : V3d
-      offsetToMainAxisPoint : V3d
-      position              : V3d
-      stationing            : Stationing
-  }
-
-  [<DomainType;ReferenceEquality>]
-  type Axis = {
-      [<NonIncremental>]
-      positions       : list<V3d>
-      pointList       : plist<OrientedPoint>
-      length          : float
-      rangeSv         : Range1d
-  }
 
   let createDomainAxis (ops : OrientedPoint[]) : Axis = 
       let length = 
@@ -42,6 +21,6 @@ module Axis =
       }
     
   let loadAxis (path : string) : Axis = 
-    let orientedPoints = OpcSelectionViewer.Serialization.loadAs path
+    let orientedPoints = OpcSelectionViewer.Serialization.loadAsType<OrientedPoint[]> path
     
     createDomainAxis orientedPoints

@@ -158,12 +158,13 @@ module App =
               onLayoutChanged UpdateDockConfig ]
         )
 
-  let app dir axis =
+  let app dir axisFile =
       Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
 
-      
+      let axis = 
+        axisFile |> Option.map(fun fileName -> AxisFunctions.loadAxis fileName)
 
       let patchHierarchies =
         [ 
@@ -226,7 +227,8 @@ module App =
           cameraState        = camState
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
-                    
+          axis               = axis
+          
           threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
           boxes              = List.empty //kdTrees |> HMap.toList |> List.map fst
       

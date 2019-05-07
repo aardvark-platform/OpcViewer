@@ -11,7 +11,6 @@ open Aardvark.UI.Primitives
 open Aardvark.Application
 
 open OpcSelectionViewer.Picking
-open OpcSelectionViewer.Axis
 
 type Message =
   | Camera           of FreeFlyController.Message
@@ -27,6 +26,27 @@ type CameraStateLean =
      sky      : V3d
   }
 
+  type Stationing = {
+      sh : double
+      sv : double
+  }
+
+  type OrientedPoint = {
+      direction             : V3d
+      offsetToMainAxisPoint : V3d
+      position              : V3d
+      stationing            : Stationing
+  }
+
+[<DomainType>]
+type Axis = {
+    [<NonIncremental>]
+    positions       : list<V3d>
+    pointList       : plist<OrientedPoint>
+    length          : float
+    rangeSv         : Range1d
+}
+
 [<DomainType>]
 type Model =
     {
@@ -34,6 +54,7 @@ type Model =
         fillMode             : FillMode                                
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>        
+        [<NonIncremental>]
         axis                 : Option<Axis>
         boxes                : list<Box3d>        
         opcInfos             : hmap<Box3d, OpcData>
