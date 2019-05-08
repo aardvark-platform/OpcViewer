@@ -40,8 +40,8 @@ type CameraStateLean =
 
 [<DomainType>]
 type Axis = {
-    [<NonIncremental>]
     positions       : list<V3d>
+    selectionOnAxis : Option<V3d>
     pointList       : plist<OrientedPoint>
     length          : float
     rangeSv         : Range1d
@@ -54,7 +54,6 @@ type Model =
         fillMode             : FillMode                                
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>        
-        [<NonIncremental>]
         axis                 : Option<Axis>
         boxes                : list<Box3d>        
         opcInfos             : hmap<Box3d, OpcData>

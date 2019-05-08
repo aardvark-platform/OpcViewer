@@ -75,7 +75,9 @@ module App =
             model.cameraState.view |> toCameraStateLean |> Serialization.save ".\camstate" |> ignore
             model
           | Keys.Enter ->
-            { model with picking = PickingApp.update model.picking (PickingAction.AddBrush)}
+            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush)
+            { model with picking = updatedPicking 
+                         axis    = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis}
           | _ -> model
       | PickingAction msg -> 
         { model with picking = PickingApp.update model.picking msg }
@@ -105,8 +107,7 @@ module App =
             ]
 
       let axis = 
-        m.axis
-          |> Sg.createAxisSg
+        m |> Sg.axisSgs
 
       let scene = 
         [
@@ -170,6 +171,7 @@ module App =
 
       let axis = 
         axisFile |> Option.map(fun fileName -> AxisFunctions.loadAxis fileName)
+                 |> Option.defaultValue None
 
       let patchHierarchies =
         [ 
