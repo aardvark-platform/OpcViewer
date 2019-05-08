@@ -27,6 +27,23 @@ module Shader =
             restartStrip()
         }
 
+  module VertexCameraShift = 
+    let internal toCameraShift (p : Vertex) =
+      vertex {
+        let (offset : float) = (uniform?depthOffset)
+        
+        let wp = p.wp
+        let viewVec = ((wp.XYZ - uniform.CameraLocation).Normalized)
+        let viewVec = V4d(viewVec.X, viewVec.Y, viewVec.Z, 0.0)
+        let wpShift = wp + viewVec * offset
+        let posShift = uniform.ViewProjTrafo * wpShift
+
+      return { p with pos = posShift; wp = wpShift }
+      }
+
+    let Effect = 
+      toEffect toCameraShift
+
   module PointSprite = 
     let internal pointSprite (p : Point<Vertex>) =
       triangle {
