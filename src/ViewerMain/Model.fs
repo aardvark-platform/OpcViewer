@@ -26,6 +26,27 @@ type CameraStateLean =
      sky      : V3d
   }
 
+  type Stationing = {
+      sh : double
+      sv : double
+  }
+
+  type OrientedPoint = {
+      direction             : V3d
+      offsetToMainAxisPoint : V3d
+      position              : V3d
+      stationing            : Stationing
+  }
+
+[<DomainType>]
+type Axis = {
+    positions       : list<V3d>
+    selectionOnAxis : Option<V3d>
+    pointList       : plist<OrientedPoint>
+    length          : float
+    rangeSv         : Range1d
+}
+
 [<DomainType>]
 type Model =
     {
@@ -33,8 +54,8 @@ type Model =
         fillMode             : FillMode                                
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>        
-        
-        boxes                : list<Box3d>
+        axis                 : Option<Axis>
+        boxes                : list<Box3d>        
         opcInfos             : hmap<Box3d, OpcData>
         threads              : ThreadPool<Message>
         dockConfig           : DockConfig

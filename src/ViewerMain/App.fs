@@ -75,7 +75,9 @@ module App =
             model.cameraState.view |> toCameraStateLean |> Serialization.save ".\camstate" |> ignore
             model
           | Keys.Enter ->
-            { model with picking = PickingApp.update model.picking (PickingAction.AddBrush)}
+            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush)
+            { model with picking = updatedPicking 
+                         axis    = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis}
           | _ -> model
       | PickingAction msg -> 
         { model with picking = PickingApp.update model.picking msg }
@@ -104,9 +106,13 @@ module App =
             toEffect DefaultSurfaces.diffuseTexture       
             ]
 
+      let axis = 
+        m |> Sg.axisSgs
+
       let scene = 
         [
           opcs
+          axis
           PickingApp.view m.picking
         ] |> Sg.ofList
 
@@ -158,10 +164,14 @@ module App =
               onLayoutChanged UpdateDockConfig ]
         )
 
-  let app dir =
+  let app dir axisFile =
       Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
+
+      let axis = 
+        axisFile |> Option.map(fun fileName -> AxisFunctions.loadAxis fileName)
+                 |> Option.defaultValue None
 
       let patchHierarchies =
         [ 
@@ -224,7 +234,8 @@ module App =
           cameraState        = camState
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
-                    
+          axis               = axis
+          
           threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
           boxes              = List.empty //kdTrees |> HMap.toList |> List.map fst
       
