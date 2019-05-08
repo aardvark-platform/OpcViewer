@@ -10,7 +10,7 @@ type PickingAction =
   | HitSurface of Box3d*SceneHit    
   | RemoveLastPoint
   | ClearPoints
-  | AddBrush
+  | AddBrush of Option<plist<V3d>>
   | ShowDebugVis
   | SetAlpha of Numeric.Action
 
@@ -22,6 +22,7 @@ type BoxNeighbors = {
 type Brush =
   {
     points : list<V3d>
+    pointsOnAxis : Option<list<V3d>>
     color  : C4b    
   }
 

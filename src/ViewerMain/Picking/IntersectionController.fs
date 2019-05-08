@@ -209,7 +209,12 @@ module IntersectionController =
                     let treeHit,c = kd |> intersectKdTreeswithObjectIndex bb hitObject cache ray                    
                     cache <- c
                     match treeHit with 
-                      | Some hit -> Some (hit,bb)
+                      | Some hit -> 
+                        match hit with
+                        | x, _ when System.Double.IsNaN(x) -> 
+                          Log.error("Invalid intersection point! TODO...check this!\n")
+                          None
+                        | _, _ -> Some (hit,bb)
                       | None -> None)
               |> List.sortBy(fun (t,_)-> fst t)
               |> List.tryHead            
@@ -241,7 +246,7 @@ module IntersectionController =
       match closest with
         | Some (t,_) -> 
           let hitpoint = fray.Ray.GetPointOnRay t
-          Log.line "hit surface at %A" hitpoint            
+          Log.line "hit surface at %A" hitpoint 
           { m with intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint; hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo }            
         | None ->       
           Log.error "[Intersection] didn't hit"

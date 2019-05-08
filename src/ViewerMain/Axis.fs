@@ -261,6 +261,9 @@ module AxisFunctions =
 
           {a with selectionOnAxis = selectedPoint}
       )
-    
-    
-    
+
+  let pointsOnAxis (points : plist<V3d>) (axis : Option<OpcSelectionViewer.Axis>) =
+    axis
+      |> Option.map(fun a -> 
+        points |> PList.map(fun p -> (getNearestPointOnAxis' p a).position))
+ 

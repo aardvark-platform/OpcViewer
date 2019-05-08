@@ -247,12 +247,13 @@ module PickingApp =
       { model with intersectionPoints = points |> PList.ofList; hitPointsInfo = infos }
     | ClearPoints -> 
       { model with intersectionPoints = PList.empty; hitPointsInfo = HMap.empty}
-    | AddBrush -> 
+    | AddBrush axisPoints -> 
       if model.intersectionPoints |> PList.count > 2 then
         //{ model with brush = Some { points = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last) |> PList.toList; color = C4b.Blue} } // add starting point to end
         let newBrush = 
           { 
             points = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last) |> PList.toList
+            pointsOnAxis = axisPoints |> Option.map(fun x -> x |> PList.prepend (x |> PList.last) |> PList.toList)
             color = 
               match (model.brush |> PList.count) % 6 with
               | 0 -> C4b.DarkGreen

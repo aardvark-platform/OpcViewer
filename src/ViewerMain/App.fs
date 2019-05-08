@@ -75,9 +75,11 @@ module App =
             model.cameraState.view |> toCameraStateLean |> Serialization.save ".\camstate" |> ignore
             model
           | Keys.Enter ->
-            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush)
-            { model with picking = updatedPicking 
-                         axis    = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis}
+            let pointsOnAxis = AxisFunctions.pointsOnAxis model.picking.intersectionPoints model.axis
+            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pointsOnAxis)
+            
+            let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
+            { model with picking = updatedPicking; axis = axis }
           | _ -> model
       | PickingAction msg -> 
         { model with picking = PickingApp.update model.picking msg }
