@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Temp\\20190129_Perjen\\OPC\\Ost\\Rohausbruch\" \"C:\\Temp\\20190129_Perjen\\axis_Perjen.aard\""
+      "commandLineArgs": "\"D:\\Work\\Data_Dibit8\\20190129_Perjen\\TestOpcs\" \"D:\\Work\\Data_Dibit8\\20190129_Perjen\\axis_Perjen.aard\""
     }
   }
 }

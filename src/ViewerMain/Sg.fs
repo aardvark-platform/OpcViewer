@@ -233,3 +233,16 @@ module Sg =
                 //Sg.ofSeq [regular; mask; outline] |> Sg.noEvents 
          } |> Sg.set
     test
+
+  let createAxisSg (axis : Option<OpcSelectionViewer.Axis>) =
+    match axis with
+      | Some a -> 
+        //if showStations then
+        //    for pp in (axis.pointList |> AList.toASet) do
+        //        yield Sg.showText view 
+        //                (Mod.constant (pp.position |> Trafo3d.Translation)) 
+        //                (Mod.constant (pp.stationing.sv.ToString()))
+        a.positions|> Array.ofList |> AxisFunctions.lines C4b.VRVisGreen 2.0
+        
+      | None -> Sg.empty
+      

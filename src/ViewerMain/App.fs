@@ -104,9 +104,14 @@ module App =
             toEffect DefaultSurfaces.diffuseTexture       
             ]
 
+      let axis = 
+        m.axis
+          |> Sg.createAxisSg
+
       let scene = 
         [
           opcs
+          axis
           PickingApp.view m.picking
         ] |> Sg.ofList
 
