@@ -55,92 +55,79 @@ module StencilAreaMasking =
 
 module Sg =
 
-  let toV3f (input:V3d) : V3f= input |> V3f
-
-  let pointsGetHead points =    
-    points 
-      |> AList.toMod 
-      |> Mod.map(fun x -> (PList.tryAt 0 x) |> Option.defaultValue V3d.Zero)
-
-  let drawColoredPoints (points : alist<V3d>) (color:IMod<C4f>) =
+  let drawOutline (points:alist<V3d>) (colorLine : IMod<C4b>) (colorPoint : IMod<C4b>) (offset:IMod<float>) (width : IMod<float>) =           
     
-    let head = pointsGetHead points
-      
-    let pointsF = 
-      points 
-        |> AList.toMod 
-        |> Mod.map2(
-          fun h points -> 
-            points |> PList.map(fun x -> (x-h) |> toV3f) |> PList.toArray
-            ) head
-       
-    Sg.draw IndexedGeometryMode.PointList
-      |> Sg.vertexAttribute DefaultSemantic.Positions pointsF
-      |> Sg.effect [
-         toEffect DefaultSurfaces.stableTrafo
-         toEffect DefaultSurfaces.sgColor
-         Shader.PointSprite.Effect
-      ]
-      |> Sg.translate' head
-      |> Sg.uniform "PointSize" (Mod.constant 10.0)
-      |> Sg.uniform "Color" color
-      |> Sg.depthTest (Mod.constant(DepthTestMode.None))
-
-  let drawColoredConnectionLines (points : alist<V3d>) (color : IMod<C4b>) (width : IMod<float>) =           
-    
-    let toColoredEdges (color : C4b) (points : alist<V3d>) =
+    // Increase Precision
+    let shift = 
       points
-        |> AList.toMod
-        |> Mod.map(fun x -> 
-          x |> PList.toList 
-            |> List.pairwise 
-            |> List.map(fun (a,b) -> new Line3d(a,b), color))
+        |> AList.toMod 
+        |> Mod.map(fun x -> (PList.tryAt 0 x) |> Option.defaultValue V3d.Zero)
 
-    let drawColoredEdges (width:IMod<float>) edges = 
-      edges
-        |> IndexedGeometryPrimitives.lines
-        |> Sg.ofIndexedGeometry
-        |> Sg.depthTest (Mod.constant(DepthTestMode.None))
-        |> Sg.uniform "LineWidth" width
-        |> Sg.effect [
-          toEffect DefaultSurfaces.stableTrafo
-          toEffect DefaultSurfaces.thickLine 
-          toEffect DefaultSurfaces.vertexColor      
+    let pointsF =
+      points 
+      |> AList.toMod 
+      |> Mod.map(fun x ->
+        let shift = (PList.tryAt 0 x) |> Option.defaultValue V3d.Zero
+        x |> PList.toSeq |> Seq.map(fun y -> V3f (y-shift)) |> Seq.toArray)
+
+    let indexArray = 
+      pointsF |> Mod.map(fun x -> ( Array.init (max 0 (x.Length * 2 - 1)) (fun a -> (a + 1)/ 2)))
+
+    let lines = 
+      Sg.draw IndexedGeometryMode.LineList
+      |> Sg.vertexAttribute DefaultSemantic.Positions pointsF 
+      |> Sg.index indexArray
+      |> Sg.uniform "Color" colorLine
+      |> Sg.uniform "LineWidth" width
+//      |> Sg.uniform "depthOffset" offset
+      |> Sg.effect [
+        toEffect DefaultSurfaces.stableTrafo
+        toEffect DefaultSurfaces.thickLine
+        toEffect DefaultSurfaces.sgColor
         ]
 
-    adaptive {
-      let! c = color
-      let! edges = toColoredEdges c points
-      return drawColoredEdges width edges
-    } |> Sg.dynamic
+    let points = 
+      Sg.draw IndexedGeometryMode.PointList
+      |> Sg.vertexAttribute DefaultSemantic.Positions pointsF 
+      |> Sg.uniform "Color" colorPoint
+      |> Sg.uniform "PointSize" (Mod.constant 10.0)
+      |> Sg.uniform "depthOffset" offset
+      |> Sg.effect [
+        toEffect DefaultSurfaces.stableTrafo
+        Shader.PointSprite.Effect
+        toEffect DefaultSurfaces.sgColor
+        ]
 
-  let drawColoredPolygon (points:list<V3d>) (color:C4b) (offset:float) (alpha:float) =
+    [ lines; points] |> Sg.ofSeq |> Sg.translate' shift
 
-    let planeFit (points:list<V3d>) : Plane3d =
-      let length = points |> List.length |> float
+  let planeFit (points:seq<V3d>) : Plane3d =
+    let length = points |> Seq.length |> float
 
-      let c = 
-        let sum = points |> List.reduce (fun x y -> V3d.Add(x,y))
+    let c = 
+        let sum = points |> Seq.reduce (fun x y -> V3d.Add(x,y))
         sum / length
 
-      let pDiffAvg = points |> List.map(fun x -> x - c)
-    
-      let mutable matrix = M33d.Zero
-      pDiffAvg |> Seq.iter(fun x -> matrix.AddOuterProduct(&x))
-      matrix <- matrix / length
-     
-      let mutable q = M33d.Zero
-      let mutable w = V3d.Zero
-      let passed = Eigensystems.Dsyevh3(&matrix, &q, &w)
-    
-      let n = 
+    let pDiffAvg = points |> Seq.map(fun x -> x - c)
+        
+    let mutable matrix = M33d.Zero
+    pDiffAvg |> Seq.iter(fun x -> matrix.AddOuterProduct(&x))
+    matrix <- matrix / length
+         
+    let mutable q = M33d.Zero
+    let mutable w = V3d.Zero
+    let passed = Eigensystems.Dsyevh3(&matrix, &q, &w)
+        
+    let n = 
         if w.X < w.Y then
-          if w.X < w.Z then q.C0
-          else q.C2
+            if w.X < w.Z then q.C0
+            else q.C2
         else if w.Y < w.Z then q.C1
         else q.C2
 
-      Plane3d(n, c)
+    Plane3d(n, c)
+
+  // old version
+  let drawColoredPolygon (points:list<V3d>) (color:C4b) (alpha:float) (offset:float) =
 
     let generatePolygonTriangles (color : C4b) (offset : float) (points:list<V3d>) =
      
@@ -186,6 +173,65 @@ module Sg =
         toEffect DefaultSurfaces.vertexColor
       ]
 
+  let drawFinishedBrush (points:alist<V3d>) (color:IMod<C4b>) (alpha:IMod<float>) (offset:IMod<float>) :ISg<'a> =
+        
+    let generatePolygonTriangles (color : C4b) (offset : float) (points:alist<V3d>) =
+      points 
+      |> AList.toMod
+      |> Mod.map(fun x -> 
+        let plane = planeFit x
+        let extrudeNormal = plane.Normal
+        let projPointsOnPlane = x |> PList.map(plane.Project) |> PList.toList
+
+        // Top and Bottom triangle-fan startPoint
+        let startPoint = projPointsOnPlane |> List.head
+        let startPos = startPoint + extrudeNormal * offset
+        let startNeg = startPoint - extrudeNormal * offset
+             
+        if projPointsOnPlane |> List.length < 3 then
+          []
+        else 
+          projPointsOnPlane
+          |> List.pairwise    // TODO PLIST.pairwise only reason to change type
+          |> List.mapi (fun i (a,b) -> 
+            // Shift points 
+            let aPos = a + extrudeNormal * offset
+            let bPos = b + extrudeNormal * offset
+            let aNeg = a - extrudeNormal * offset
+            let bNeg = b - extrudeNormal * offset
+                   
+            // Generate Triangles for watertight polygon
+            [
+              if i <> 0 then // first edge has to be skipped for top and bottom triangle generation
+                  yield Triangle3d(startPos, bPos, aPos), color // top
+                  yield Triangle3d(startNeg, aNeg, bNeg), color // bottom
+                 
+              yield Triangle3d(aPos, bNeg, aNeg), color // side1
+              yield Triangle3d(aPos, bPos, bNeg), color // side2
+            ]
+          ) |> List.concat
+        )
+
+    let colorAlpha = Mod.map2(fun (c:C4b) a  -> 
+      let col = c.ToC4d() 
+      C4d(col.R, col.G, col.B, a).ToC4b()) color alpha
+
+    adaptive {
+        let! colorAlpha = colorAlpha
+        let! o = offset
+        let! polygon = generatePolygonTriangles colorAlpha o points
+            
+        return 
+          polygon
+            |> IndexedGeometryPrimitives.triangles 
+            |> Sg.ofIndexedGeometry
+            |> Sg.effect [
+              toEffect DefaultSurfaces.stableTrafo
+              toEffect DefaultSurfaces.vertexColor
+            ]
+
+    } |> Sg.dynamic
+
 module PickingApp =
 
   let update (model : PickingModel) (msg : PickingAction) = 
@@ -206,7 +252,7 @@ module PickingApp =
         //{ model with brush = Some { points = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last) |> PList.toList; color = C4b.Blue} } // add starting point to end
         let newBrush = 
           { 
-            points = (model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last) |> PList.toList)
+            points = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last) |> PList.toList
             color = 
               match (model.brush |> PList.count) % 6 with
               | 0 -> C4b.DarkGreen
@@ -224,18 +270,22 @@ module PickingApp =
     | SetAlpha a -> { model with alpha = Numeric.update model.alpha a }
 
   let view (model : MPickingModel) =
+    let lineWidth = 2.0
+    let depthOffset = 0.01
 
     let mutable maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
     let mutable areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
 
-    let drawBrush brush = 
-      brush 
+    let drawBrush = 
+      model.brush 
       |> AList.map(fun b ->
         let alpha = 0.6
         let volumeExtrusion = 1.0
- 
-        let polygonSG = Sg.drawColoredPolygon b.points b.color volumeExtrusion alpha
 
+        let polygonSG = 
+          //Sg.drawColoredPolygon b.points b.color alpha volumeExtrusion 
+          Sg.drawFinishedBrush (b.points |> AList.ofList) (Mod.constant(b.color)) (Mod.constant(alpha)) (Mod.constant(volumeExtrusion))
+            
         let debugVis =
           polygonSG
             |> Sg.depthTest (Mod.constant DepthTestMode.Less)
@@ -246,7 +296,7 @@ module PickingApp =
         let output = 
           [
             polygonSG |> StencilAreaMasking.stencilAreaSG maskPass areaPass
-            Sg.drawColoredConnectionLines (b.points |> AList.ofList) (Mod.constant(b.color)) (Mod.constant(2.0))
+            Sg.drawOutline (b.points |> AList.ofList) (Mod.constant(C4b.Yellow)) (Mod.constant(C4b.Red)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth)) 
             debugVis
           ] |> Sg.ofList
             
@@ -256,7 +306,6 @@ module PickingApp =
         output) |> AList.toASet |> Sg.set
     
     [ 
-      Sg.drawColoredConnectionLines model.intersectionPoints (Mod.constant(C4b.Yellow)) (Mod.constant(2.0))
-      Sg.drawColoredPoints model.intersectionPoints (Mod.constant(C4f.Red))
-      drawBrush model.brush
+      Sg.drawOutline model.intersectionPoints (Mod.constant(C4b.Yellow)) (Mod.constant(C4b.Red)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth))
+      drawBrush
     ] |> Sg.ofList
