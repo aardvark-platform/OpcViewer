@@ -18,11 +18,11 @@ type BoxNeighbors = {
   neighbors : List<Box3d> 
 }
 
-//[<DomainType>]
+[<DomainType>]
 type Brush =
   {
-    points : list<V3d>
-    pointsOnAxis : Option<list<V3d>>
+    points : plist<V3d>
+    pointsOnAxis : Option<plist<V3d>>
     color  : C4b    
   }
 

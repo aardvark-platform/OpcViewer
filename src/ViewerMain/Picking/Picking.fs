@@ -126,111 +126,123 @@ module Sg =
 
     Plane3d(n, c)
 
-  // old version
-  let drawColoredPolygon (points:list<V3d>) (color:C4b) (alpha:float) (offset:float) =
+  let planeFitPolygon (points:plist<V3d>) offset color = 
+    let plane = planeFit points
+    let extrudeNormal = plane.Normal
+    let projPointsOnPlane = points |> PList.map(plane.Project) |> PList.toList
 
-    let generatePolygonTriangles (color : C4b) (offset : float) (points:list<V3d>) =
-     
-      let plane = planeFit points
-      let extrudeNormal = plane.Normal
-      let projPointsOnPlane = points |> List.map(plane.Project)
-
-      // Top and Bottom triangle-fan startPoint
-      let startPoint = projPointsOnPlane |> List.head
-      let startPos = startPoint + extrudeNormal * offset
-      let startNeg = startPoint - extrudeNormal * offset
-       
-      if projPointsOnPlane |> List.length < 3 then
-        []
-      else 
+    // Top and Bottom triangle-fan startPoint
+    let startPoint = projPointsOnPlane |> List.head
+    let startPos = startPoint + extrudeNormal * offset
+    let startNeg = startPoint - extrudeNormal * offset
+         
+    if projPointsOnPlane |> List.length < 3 then
+      []
+    else 
       projPointsOnPlane
-        |> List.pairwise
-        |> List.mapi (fun i (a,b) -> 
-          // Shift points 
-          let aPos = a + extrudeNormal * offset
-          let bPos = b + extrudeNormal * offset
-          let aNeg = a - extrudeNormal * offset
-          let bNeg = b - extrudeNormal * offset
-             
-          // Generate Triangles for watertight polygon
-          [
-            if i <> 0 then // first edge has to be skipped for top and bottom triangle generation
+      |> List.pairwise    // TODO PLIST.pairwise only reason to change type
+      |> List.mapi (fun i (a,b) -> 
+        // Shift points 
+        let aPos = a + extrudeNormal * offset
+        let bPos = b + extrudeNormal * offset
+        let aNeg = a - extrudeNormal * offset
+        let bNeg = b - extrudeNormal * offset
+               
+        // Generate Triangles for watertight polygon
+        [
+          if i <> 0 then // first edge has to be skipped for top and bottom triangle generation
               yield Triangle3d(startPos, bPos, aPos), color // top
               yield Triangle3d(startNeg, aNeg, bNeg), color // bottom
-           
-            yield Triangle3d(aPos, bNeg, aNeg), color // side1
-            yield Triangle3d(aPos, bPos, bNeg), color // side2
-          ])
-        |> List.concat
+             
+          yield Triangle3d(aPos, bNeg, aNeg), color // side1
+          yield Triangle3d(aPos, bPos, bNeg), color // side2
+        ]
+      ) |> List.concat
+    
+  let drawFinishedBrush (brush:MBrush) (alpha:IMod<float>) (offset:IMod<float>) :ISg<'a> =
+    let color = brush.color
+    let points = brush.points
+    let axisPoints = brush.pointsOnAxis
+    
+    let colorAlpha = Mod.map2(fun (c:C4b) a -> c.ToC4d() |> fun x -> C4d(x.R, x.G, x.B, a).ToC4b()) color alpha
 
-    let colorAlpha = color.ToC4d() |> (fun x -> C4d(x.R, x.G, x.B, alpha).ToC4b())
-    let polygon = generatePolygonTriangles colorAlpha offset points
-    polygon 
-      |> IndexedGeometryPrimitives.triangles 
-      |> Sg.ofIndexedGeometry
-      |> Sg.effect [
-        toEffect DefaultSurfaces.stableTrafo
-        toEffect DefaultSurfaces.vertexColor
-      ]
-
-  let drawFinishedBrush (points:alist<V3d>) (color:IMod<C4b>) (alpha:IMod<float>) (offset:IMod<float>) :ISg<'a> =
-        
     let generatePolygonTriangles (color : C4b) (offset : float) (points:alist<V3d>) =
       points 
       |> AList.toMod
       |> Mod.map(fun x -> 
-        let plane = planeFit x
-        let extrudeNormal = plane.Normal
-        let projPointsOnPlane = x |> PList.map(plane.Project) |> PList.toList
+        let triangles = planeFitPolygon x offset color
+        triangles
+          |> IndexedGeometryPrimitives.triangles 
+          |> Sg.ofIndexedGeometry
+          |> Sg.effect [
+            toEffect DefaultSurfaces.stableTrafo
+            toEffect DefaultSurfaces.vertexColor
+          ])
 
-        // Top and Bottom triangle-fan startPoint
-        let startPoint = projPointsOnPlane |> List.head
-        let startPos = startPoint + extrudeNormal * offset
-        let startNeg = startPoint - extrudeNormal * offset
-             
-        if projPointsOnPlane |> List.length < 3 then
-          []
-        else 
-          projPointsOnPlane
-          |> List.pairwise    // TODO PLIST.pairwise only reason to change type
-          |> List.mapi (fun i (a,b) -> 
-            // Shift points 
-            let aPos = a + extrudeNormal * offset
-            let bPos = b + extrudeNormal * offset
-            let aNeg = a - extrudeNormal * offset
-            let bNeg = b - extrudeNormal * offset
-                   
-            // Generate Triangles for watertight polygon
-            [
-              if i <> 0 then // first edge has to be skipped for top and bottom triangle generation
-                  yield Triangle3d(startPos, bPos, aPos), color // top
-                  yield Triangle3d(startNeg, aNeg, bNeg), color // bottom
-                 
-              yield Triangle3d(aPos, bNeg, aNeg), color // side1
-              yield Triangle3d(aPos, bPos, bNeg), color // side2
-            ]
-          ) |> List.concat
-        )
+    let temp :ISg<'a> = 
+      axisPoints |> Mod.bind(fun aP -> 
+      match aP with
+      | None ->
+        Mod.bind2(fun c o -> generatePolygonTriangles c o points) colorAlpha offset
+      | Some axPs -> 
+        offset |> Mod.map(fun o -> 
+          // Increase Precision
+          let shift = 
+            points
+              |> AList.toMod 
+              |> Mod.map(fun x -> (PList.tryAt 0 x) |> Option.defaultValue V3d.Zero)
 
-    let colorAlpha = Mod.map2(fun (c:C4b) a  -> 
-      let col = c.ToC4d() 
-      C4d(col.R, col.G, col.B, a).ToC4b()) color alpha
+          let shiftPoints p shiftVec =
+            let asdf = p |> AList.toMod
+            Mod.map2(fun x (s:V3d) -> x |> PList.toSeq |> Seq.map(fun (y:V3d) -> V3f (y-s)) |> Seq.toArray) asdf shiftVec
 
-    adaptive {
-        let! colorAlpha = colorAlpha
-        let! o = offset
-        let! polygon = generatePolygonTriangles colorAlpha o points
-            
-        return 
-          polygon
-            |> IndexedGeometryPrimitives.triangles 
-            |> Sg.ofIndexedGeometry
-            |> Sg.effect [
-              toEffect DefaultSurfaces.stableTrafo
-              toEffect DefaultSurfaces.vertexColor
-            ]
+          let pointsF = shiftPoints points shift
+          let axisPsF = shiftPoints axPs shift
 
-    } |> Sg.dynamic
+          let vertices = 
+            Mod.map2(fun ps aps -> 
+              
+              let dir = Array.map2(fun (p:V3f) (a:V3f) -> ((p-a).Normalized)) ps aps 
+              let offsetP = dir |> Array.map(fun (p:V3f) -> p * (float32 o))
+
+              let upper = Array.map2(+) ps offsetP 
+              let lower = Array.map2(-) ps offsetP 
+              
+              upper |> Array.append lower
+            ) pointsF axisPsF
+
+          let indexArray = 
+            vertices |> Mod.map(fun x -> 
+              // LUI idea -> use cylinder...same topolgy
+              // Top vertices
+              let top = Array.init (max 0 x.Length / 2 - 2)
+              ( Array.init (max 0 (x.Length * 2 - 1)) (fun a -> (a + 1)/ 2))
+              )
+
+          let triangles = 
+            Sg.draw IndexedGeometryMode.TriangleList
+              |> Sg.vertexAttribute DefaultSemantic.Positions vertices 
+              |> Sg.index indexArray
+              |> Sg.uniform "Color" colorAlpha
+              |> Sg.effect [
+                toEffect DefaultSurfaces.stableTrafo
+                toEffect DefaultSurfaces.sgColor
+                ]
+              |> Sg.translate' shift
+
+          triangles)
+        ) |> Mod.toASet |> Sg.set
+
+    let sg : ISg<'a> = 
+      adaptive {
+          let! colorAlpha = colorAlpha
+          let! o = offset
+          let! polygon = generatePolygonTriangles colorAlpha o points
+        
+          return polygon
+      } |> Mod.toASet |> Sg.set
+
+    sg
 
 module PickingApp =
 
@@ -249,11 +261,10 @@ module PickingApp =
       { model with intersectionPoints = PList.empty; hitPointsInfo = HMap.empty}
     | AddBrush axisPoints -> 
       if model.intersectionPoints |> PList.count > 2 then
-        //{ model with brush = Some { points = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last) |> PList.toList; color = C4b.Blue} } // add starting point to end
         let newBrush = 
-          { 
-            points = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last) |> PList.toList
-            pointsOnAxis = axisPoints |> Option.map(fun x -> x |> PList.prepend (x |> PList.last) |> PList.toList)
+          { // add starting point to end
+            points = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last)
+            pointsOnAxis = axisPoints |> Option.map(fun x -> x |> PList.prepend (x |> PList.last))
             color = 
               match (model.brush |> PList.count) % 6 with
               | 0 -> C4b.DarkGreen
@@ -265,7 +276,6 @@ module PickingApp =
           }
         { model with brush = model.brush |> PList.append newBrush; intersectionPoints = PList.empty }
       else
-        //{ model with brush = None }
         model
     | ShowDebugVis -> { model with debugShadowVolume = not (model.debugShadowVolume) }
     | SetAlpha a -> { model with alpha = Numeric.update model.alpha a }
@@ -280,13 +290,12 @@ module PickingApp =
     let drawBrush = 
       model.brush 
       |> AList.map(fun b ->
-        let alpha = 0.6
-        let volumeExtrusion = 1.0
+        let alpha = Mod.constant(0.6)
+        let volumeExtrusion = Mod.constant(1.0)
 
         let polygonSG = 
           //Sg.drawColoredPolygon b.points b.color alpha volumeExtrusion 
-          Sg.drawFinishedBrush (b.points |> AList.ofList) (Mod.constant(b.color)) (Mod.constant(alpha)) (Mod.constant(volumeExtrusion))
-            
+          Sg.drawFinishedBrush b alpha volumeExtrusion
         let debugVis =
           polygonSG
             |> Sg.depthTest (Mod.constant DepthTestMode.Less)
@@ -297,7 +306,7 @@ module PickingApp =
         let output = 
           [
             polygonSG |> StencilAreaMasking.stencilAreaSG maskPass areaPass
-            Sg.drawOutline (b.points |> AList.ofList) (Mod.constant(C4b.Yellow)) (Mod.constant(C4b.Red)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth)) 
+            Sg.drawOutline b.points (Mod.constant(C4b.Yellow)) (Mod.constant(C4b.Red)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth)) 
             debugVis
           ] |> Sg.ofList
             
