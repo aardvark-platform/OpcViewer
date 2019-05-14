@@ -6,15 +6,22 @@ open Aardvark.Base.Incremental
 open Aardvark.VRVis.Opc.KdTrees
 open Aardvark.SceneGraph.Opc
 
+[<DomainType>]
+type AxisPointInfo = {
+  pointsOnAxis : plist<V3d>
+  midPoint     : V3d
+}
+
 type PickingAction = 
   | HitSurface of Box3d*SceneHit    
   | RemoveLastPoint
   | ClearPoints
-  | AddBrush of plist<V3d>
+  | AddBrush of Option<AxisPointInfo>
   | ShowDebugVis
+  | UseAxisGeneration
+  | UseSinglePointAxisGeneration
   | SetAlpha of float
   | SetExtrusionOffset of float
-  | UseAxisGeneration
 
 type BoxNeighbors = {
   neighbors : List<Box3d> 
@@ -24,7 +31,7 @@ type BoxNeighbors = {
 type Brush =
   {
     points : plist<V3d>
-    pointsOnAxis : plist<V3d>
+    pointsOnAxis : Option<AxisPointInfo>
     color  : C4b    
   }
 
@@ -47,6 +54,7 @@ type PickingModel = {
   brush                : plist<Brush>
   debugShadowVolume    : bool
   useAxisForShadowV    : bool
+  useSinglePointForShadowV : bool
   alpha                : float
   extrusionOffset      : float
 }  
@@ -62,5 +70,6 @@ module PickingModel =
       debugShadowVolume  = false
       alpha              = 0.5
       useAxisForShadowV  = false
+      useSinglePointForShadowV = true
       extrusionOffset    = 1.0
     }

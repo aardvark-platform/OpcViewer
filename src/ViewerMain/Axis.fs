@@ -1,5 +1,7 @@
 ﻿namespace OpcSelectionViewer
 
+open OpcSelectionViewer.Picking
+
 module AxisFunctions = 
   open Aardvark.Base
   open Aardvark.UI
@@ -246,26 +248,38 @@ module AxisFunctions =
              points
                |> PList.map(fun p -> getNearestPointOnAxis' p a)
                |> PList.toList
-          
-          let size = (float pointsOnAxis.Length)
-          
-          let selectedPoint = 
-            if size > 0.0 then 
-             pointsOnAxis
-              //|> List.fold(fun a (b,t) -> a + (b.position / size)) V3d.OOO
+
+          match pointsOnAxis |> List.isEmpty with
+          | true -> {a with selectionOnAxis = None}
+          | false -> 
+            let midPoint = 
+              pointsOnAxis
               |> List.averageBy (fun (b,t) -> t) 
               |> fun x -> (getPositionFromT a x).position
-              |> Some
-            else
-              None
 
-          {a with selectionOnAxis = selectedPoint}
+            { a with selectionOnAxis = Some midPoint }
       )
 
   let pointsOnAxis (points : plist<V3d>) (axis : Option<OpcSelectionViewer.Axis>) =
     axis
-      |> Option.map(fun a -> 
-        points 
-          |> PList.map(fun p -> getNearestPointOnAxis' p a))
-      |> Option.defaultValue PList.empty
- 
+      |> Option.bind(fun a -> 
+        let pointsOnAxis = 
+          points
+            |> PList.map(fun p -> getNearestPointOnAxis' p a)
+           
+        match pointsOnAxis |> PList.isEmpty with
+        | true -> None
+        | false -> 
+          let midPoint = 
+            pointsOnAxis
+             |> PList.toList
+            |> List.averageBy (fun (b,t) -> t) 
+            |> fun x -> (getPositionFromT a x).position
+
+          let axisPoints = pointsOnAxis |> PList.map(fun (b,t) -> b.position)
+
+          Some
+            {
+              pointsOnAxis = axisPoints
+              midPoint    = midPoint
+            })

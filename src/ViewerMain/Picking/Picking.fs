@@ -160,7 +160,7 @@ module Sg =
         ]
       ) |> List.concat
   
-  let drawFinishedBrush (brush:MBrush) (alpha:IMod<float>) (offset:IMod<float>) (useAxis:IMod<bool>) :ISg<'a> =
+  let drawFinishedBrush (brush:MBrush) (alpha:IMod<float>) (offset:IMod<float>) (useAxis:IMod<bool>) (useSinglePoint:IMod<bool>) :ISg<'a> =
     let points = brush.points
     let axisPoints = brush.pointsOnAxis
     
@@ -180,9 +180,9 @@ module Sg =
           ])
 
     let sg :ISg<'a> = 
-      Mod.bind2(fun aP useA -> 
-      match useA, aP |> PList.isEmpty with
-      | true, false ->
+      Mod.bind2(fun axisInfo useA -> 
+      match useA, axisInfo with
+      | true, Some (api:MAxisPointInfo) ->
         offset |> Mod.map(fun o -> 
           
           // Increase Precision
@@ -199,28 +199,31 @@ module Sg =
               |> Seq.map(fun (y:V3d) -> V3f(y-s)) 
               |> Seq.toArray) asdf shiftVec
 
-          let pointsF = shiftPoints points shift
-          let axisPsF = shiftPoints axisPoints shift
+          let pointsF = (shiftPoints points shift) |> Mod.map(fun x -> x |> Array.skip 1) // UNDO closing loop... todo...rethink this
+          let axisPsF = shiftPoints api.pointsOnAxis shift
+          let axisMidPointF = Mod.map2(fun (m:V3d) (s:V3d) -> V3f(m-s)) api.midPoint shift
 
-          let vertices = 
-            Mod.map2(fun ps1 aps1 -> 
-              
-              let ps = ps1 |> Array.skip 1 // UNDO closing loop... todo...rethink this
-              let aps = aps1 |> Array.skip 1
+          let vertices =
+            let pMod = Mod.map2(fun ps aps -> (ps, aps)) pointsF axisPsF
+            let sMod = Mod.map2(fun s m -> (s,m)) useSinglePoint axisMidPointF
 
-              let dir = Array.map2(fun (p:V3f) (a:V3f) -> ((p-a).Normalized)) ps aps 
+            Mod.map2(fun (ps, aps) (useSingleP, (midPoint:V3f)) -> 
+              let dir = 
+                match useSingleP with
+                | true -> ps |> Array.map(fun (p:V3f) -> ((midPoint-p).Normalized))
+                | false -> Array.map2(fun (p:V3f) (a:V3f) -> ((a-p).Normalized)) ps aps 
+
               let offsetP = dir |> Array.map(fun (p:V3f) -> p * (float32 o))
 
               let upper = Array.map2(+) ps offsetP
               let lower = Array.map2(-) ps offsetP
 
               upper |> Array.append lower
-            ) pointsF axisPsF
+            ) pMod sMod
 
           let indexArray = 
             pointsF |> Mod.map(fun x -> 
-              let x = x |> Array.skip 1 // UNDO closing loop... todo...rethink this
-
+              
               let l = x.Length
               let indices = List<int>()
               // TOP
@@ -262,7 +265,7 @@ module Sg =
           triangles)
       | _ ->
         Mod.bind2(fun c o -> generatePolygonTriangles c o points) colorAlpha offset
-        ) (axisPoints |> AList.toMod) useAxis |> Mod.toASet |> Sg.set
+        ) axisPoints useAxis |> Mod.toASet |> Sg.set
   
     sg
 
@@ -281,15 +284,16 @@ module PickingApp =
       { model with intersectionPoints = points |> PList.ofList; hitPointsInfo = infos }
     | ClearPoints -> 
       { model with intersectionPoints = PList.empty; hitPointsInfo = HMap.empty}
-    | AddBrush axisPoints -> 
+    | AddBrush pointsOnAxis -> 
       if model.intersectionPoints |> PList.count > 2 then
         let newBrush = 
           { // add starting point to end
             points = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last)
-            pointsOnAxis = 
-              match axisPoints |> PList.isEmpty with 
-              | true -> axisPoints
-              | false -> axisPoints |> PList.prepend (axisPoints |> PList.last)
+            
+            pointsOnAxis = pointsOnAxis 
+              //match axisPoints with 
+              //| None -> None
+              //| false -> axisPoints |> PList.prepend (axisPoints |> PList.last)
             color = 
               match (model.brush |> PList.count) % 6 with
               | 0 -> C4b.DarkGreen
@@ -304,6 +308,7 @@ module PickingApp =
         model
     | ShowDebugVis -> { model with debugShadowVolume = not (model.debugShadowVolume) }
     | UseAxisGeneration -> {model with useAxisForShadowV = not (model.useAxisForShadowV) }
+    | UseSinglePointAxisGeneration -> {model with useSinglePointForShadowV = not (model.useSinglePointForShadowV) }
     | SetAlpha a -> { model with alpha = a } 
     | SetExtrusionOffset o -> { model with extrusionOffset = o }
 
@@ -319,21 +324,43 @@ module PickingApp =
       model.brush 
       |> AList.map(fun b ->
         let polygonSG = 
-          Sg.drawFinishedBrush b model.alpha model.extrusionOffset model.useAxisForShadowV
+          Sg.drawFinishedBrush b model.alpha model.extrusionOffset model.useAxisForShadowV model.useSinglePointForShadowV
 
         let axisDebugPoints = 
-          b.pointsOnAxis |> AList.map(fun x ->
-            let t = (Mod.constant(Trafo3d.Translation x))
-            Sg.sphere 3 b.color (Mod.constant 0.1)
-              |> Sg.noEvents
-              |> Sg.trafo t
-              |> Sg.uniform "WorldPos" (t |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
-              |> Sg.uniform "Size" (Mod.constant(0.1))
-              |> Sg.effect [
-                toEffect <| DefaultSurfaces.stableTrafo
-                toEffect <| DefaultSurfaces.vertexColor
-              ] 
-            ) |> AList.toASet |> Sg.set
+          b.pointsOnAxis 
+            |> Mod.map(fun x ->
+              x |> Option.map(fun a -> 
+                let points = 
+                  a.pointsOnAxis 
+                    |> AList.map(fun x -> 
+                      let t = (Mod.constant(Trafo3d.Translation x))
+                      Sg.sphere 3 b.color (Mod.constant 0.1)
+                        |> Sg.noEvents
+                        |> Sg.trafo t
+                        |> Sg.uniform "WorldPos" (t |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
+                        |> Sg.uniform "Size" (Mod.constant(0.1))
+                        |> Sg.effect [
+                          toEffect <| DefaultSurfaces.stableTrafo
+                          toEffect <| DefaultSurfaces.vertexColor
+                        ]) 
+
+                let midPoint =
+                  let t = a.midPoint |> Mod.map(fun x -> Trafo3d.Translation x)
+                  Sg.sphere 3 b.color (Mod.constant 0.2)
+                    |> Sg.noEvents
+                    |> Sg.trafo t
+                    |> Sg.uniform "WorldPos" (t |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
+                    |> Sg.uniform "Size" (Mod.constant(0.2))
+                    |> Sg.effect [
+                      toEffect <| DefaultSurfaces.stableTrafo
+                      toEffect <| DefaultSurfaces.vertexColor
+                    ]
+
+                points 
+                  |> AList.append (AList.single midPoint)
+                  |> ASet.ofAList 
+                  |> Sg.set)
+                |> Option.defaultValue Sg.empty) |> Sg.dynamic
 
         let debugShadowVolume =
           polygonSG

@@ -76,9 +76,7 @@ module App =
             model
           | Keys.Enter ->
             let pointsOnAxis = AxisFunctions.pointsOnAxis model.picking.intersectionPoints model.axis
-            let pos = pointsOnAxis |> PList.map(fun (p,t) -> p.position)
-            let t = pointsOnAxis |> PList.map(fun (p,t) -> t)
-            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pos)
+            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pointsOnAxis)
             
             let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
             { model with picking = updatedPicking; axis = axis }
@@ -153,6 +151,7 @@ module App =
                 p[][text "Press Enter to close Polygon"]
                 p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
                 p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useAxisForShadowV PickingAction.UseAxisGeneration "Use Axis Generation"] |> UI.map PickingAction
+                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useSinglePointForShadowV PickingAction.UseSinglePointAxisGeneration "Axis Single Point"] |> UI.map PickingAction
                 p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
                 p[][div[][text "Extrusion: "; slider { min = 0.05; max = 20.0; step = 0.5 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
               ]
