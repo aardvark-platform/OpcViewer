@@ -18,6 +18,7 @@ nuget Aardvark.Application.Slim.GL          ~> 4.8.2
 nuget Aardvark.Application.Slim.Vulkan      ~> 4.8.2
 
 nuget Aardvark.Geometry.Intersection        ~> 4.5.11
+nuget Aardvark.Geometry.PolyMesh            ~> 4.5.11
                                             
 nuget Aardvark.Service                      ~> 4.5.3
 nuget Aardvark.UI                           ~> 4.5.3

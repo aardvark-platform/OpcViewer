@@ -10,9 +10,11 @@ type PickingAction =
   | HitSurface of Box3d*SceneHit    
   | RemoveLastPoint
   | ClearPoints
-  | AddBrush of Option<plist<V3d>>
+  | AddBrush of plist<V3d>
   | ShowDebugVis
-  | SetAlpha of Numeric.Action
+  | SetAlpha of float
+  | SetExtrusionOffset of float
+  | UseAxisGeneration
 
 type BoxNeighbors = {
   neighbors : List<Box3d> 
@@ -22,7 +24,7 @@ type BoxNeighbors = {
 type Brush =
   {
     points : plist<V3d>
-    pointsOnAxis : Option<plist<V3d>>
+    pointsOnAxis : plist<V3d>
     color  : C4b    
   }
 
@@ -44,19 +46,12 @@ type PickingModel = {
   intersectionPoints   : plist<V3d>  
   brush                : plist<Brush>
   debugShadowVolume    : bool
-  alpha                : NumericInput
+  useAxisForShadowV    : bool
+  alpha                : float
+  extrusionOffset      : float
 }  
 
 module PickingModel =
-
-  let alpha =
-    {
-     min = 0.0
-     max = 1.0
-     value = 0.6
-     step = 0.05
-     format = "{0:0.00}"
-    }
 
   let initial = 
     {
@@ -65,5 +60,7 @@ module PickingModel =
       intersectionPoints = PList.empty
       brush              = PList.empty
       debugShadowVolume  = false
-      alpha              = alpha
+      alpha              = 0.5
+      useAxisForShadowV  = false
+      extrusionOffset    = 1.0
     }

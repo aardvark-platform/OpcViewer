@@ -76,7 +76,9 @@ module App =
             model
           | Keys.Enter ->
             let pointsOnAxis = AxisFunctions.pointsOnAxis model.picking.intersectionPoints model.axis
-            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pointsOnAxis)
+            let pos = pointsOnAxis |> PList.map(fun (p,t) -> p.position)
+            let t = pointsOnAxis |> PList.map(fun (p,t) -> t)
+            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pos)
             
             let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
             { model with picking = updatedPicking; axis = axis }
@@ -149,9 +151,12 @@ module App =
                 h3[][text "NIOBE"]
                 p[][text "Hold Ctrl-Left to add Point"]
                 p[][text "Press Enter to close Polygon"]
-                p[][text "Debug Volume "; Html.SemUi.toggleBox m.picking.debugShadowVolume PickingAction.ShowDebugVis |> UI.map PickingAction]
-                p[][text "Alpha"; Numeric.numericField (PickingAction.SetAlpha >> Seq.singleton) AttributeMap.empty m.picking.alpha Slider |> UI.map PickingAction]
+                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
+                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useAxisForShadowV PickingAction.UseAxisGeneration "Use Axis Generation"] |> UI.map PickingAction
+                p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
+                p[][div[][text "Extrusion: "; slider { min = 0.05; max = 20.0; step = 0.5 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
               ]
+
             ]
           )
         | Some other -> 

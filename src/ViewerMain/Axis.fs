@@ -233,13 +233,11 @@ module AxisFunctions =
           findSoundingPointIteratively 0 axisPointCursor pos epsilon maxDepth axis
  
       closest.T
-  
-  let getNearestTOnAxis' pos axis =
-    getNearestTOnAxis pos 1e-5 10 axis |> clamp 0.0 1.0
  
   let getNearestPointOnAxis' (pos : V3d) (axis : OpcSelectionViewer.Axis) = 
     let t = getNearestTOnAxis pos 1e-5 10 axis |> clamp 0.0 1.0      
-    t |> getPositionFromT axis
+    let p = t |> getPositionFromT axis
+    (p,t)
 
   let calcDebuggingPosition (points : plist<V3d>) (axis : Option<OpcSelectionViewer.Axis>) =
     axis
@@ -254,7 +252,9 @@ module AxisFunctions =
           let selectedPoint = 
             if size > 0.0 then 
              pointsOnAxis
-              |> List.fold(fun a b -> a + (b.position / size)) V3d.OOO
+              //|> List.fold(fun a (b,t) -> a + (b.position / size)) V3d.OOO
+              |> List.averageBy (fun (b,t) -> t) 
+              |> fun x -> (getPositionFromT a x).position
               |> Some
             else
               None
@@ -265,5 +265,7 @@ module AxisFunctions =
   let pointsOnAxis (points : plist<V3d>) (axis : Option<OpcSelectionViewer.Axis>) =
     axis
       |> Option.map(fun a -> 
-        points |> PList.map(fun p -> (getNearestPointOnAxis' p a).position))
+        points 
+          |> PList.map(fun p -> getNearestPointOnAxis' p a))
+      |> Option.defaultValue PList.empty
  
