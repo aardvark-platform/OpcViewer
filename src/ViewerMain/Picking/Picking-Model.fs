@@ -10,6 +10,7 @@ type VolumeGeneration =
   | Plane
   | AxisMidPoint
   | AxisPoints
+  | AxisPointsMidRing
 
 [<DomainType>]
 type AxisPointInfo = {
@@ -75,5 +76,5 @@ module PickingModel =
       alpha              = 0.5
       extrusionOffset    = 1.0
       volumeGeneration   = Some VolumeGeneration.Plane
-      volumeGenerationOptions = HMap.ofList [Plane, "Plane"; AxisMidPoint, "AxisMidPoint"; AxisPoints, "AxisPoints"]
+      volumeGenerationOptions = HMap.ofList [Plane, "Plane"; AxisMidPoint, "AxisMidPoint"; AxisPoints, "AxisPoints"; AxisPointsMidRing, "AxisPointsRing"]
     }

@@ -181,7 +181,7 @@ module Sg =
   
     sg |> Mod.toASet |> Sg.set
 
-  let drawFinishedBrushAxis (brush:MBrush) (alpha:IMod<float>) (offset:IMod<float>) (useSinglePoint:bool) :ISg<'a> =
+  let drawFinishedBrushAxis (brush:MBrush) (alpha:IMod<float>) (offset:IMod<float>) (volumeGeneration:VolumeGeneration) :ISg<'a> =
     
     let colorAlpha = Mod.map2(fun (c:C4b) a -> c.ToC4d() |> fun x -> C4d(x.R, x.G, x.B, a).ToC4b()) brush.color alpha
     
@@ -207,55 +207,108 @@ module Sg =
               |> Seq.toArray) asdf shiftVec
 
           let pointsF = (shiftPoints brush.points shift) |> Mod.map(fun x -> x |> Array.skip 1) // UNDO closing loop... todo...rethink this
-          let axisPsF = shiftPoints api.pointsOnAxis shift
-          let axisMidPointF = Mod.map2(fun (m:V3d) (s:V3d) -> V3f(m-s)) api.midPoint shift
 
-          let vertices =
-            let pMod = Mod.map2(fun ps aps -> (ps, aps)) pointsF axisPsF
+          let vertices = 
+            match volumeGeneration with
+            | AxisMidPoint -> 
+              let axisMidPointF = Mod.map2(fun (m:V3d) (s:V3d) -> V3f(m-s)) api.midPoint shift
+              
+              Mod.map2(fun ps (midPoint:V3f) -> 
+                let dir = ps |> Array.map(fun (p:V3f) -> ((midPoint-p).Normalized))
+                let offsetP = dir |> Array.map(fun (p:V3f) -> p * (float32 o))
 
-            Mod.map2(fun (ps, aps) (midPoint:V3f) -> 
-              let dir = 
-                match useSinglePoint with
-                | true -> ps |> Array.map(fun (p:V3f) -> ((midPoint-p).Normalized))
-                | false -> Array.map2(fun (p:V3f) (a:V3f) -> ((a-p).Normalized)) ps aps 
-
-              let offsetP = dir |> Array.map(fun (p:V3f) -> p * (float32 o))
-
-              let upper = Array.map2(+) ps offsetP
-              let lower = Array.map2(-) ps offsetP
-
-              upper |> Array.append lower
-            ) pMod axisMidPointF
+                let upper = Array.map2(+) ps offsetP
+                let lower = Array.map2(-) ps offsetP
+                upper |> Array.append lower
+              ) pointsF axisMidPointF
+            | AxisPoints -> 
+              let axisPsF = shiftPoints api.pointsOnAxis shift
+              
+              Mod.map2(fun ps aps ->
+                let dir = Array.map2(fun (p:V3f) (a:V3f) -> ((a-p).Normalized)) ps aps 
+                let offsetP = dir |> Array.map(fun (p:V3f) -> p * (float32 o))
+                let upper = Array.map2(+) ps offsetP
+                let lower = Array.map2(-) ps offsetP
+                upper |> Array.append lower) pointsF axisPsF
+            | AxisPointsMidRing -> 
+              let axisPsF = shiftPoints api.pointsOnAxis shift
+              
+              Mod.map2(fun ps aps ->
+                let dir = Array.map2(fun (p:V3f) (a:V3f) -> ((a-p).Normalized)) ps aps 
+                let offsetP = dir |> Array.map(fun (p:V3f) -> p * (float32 o))
+                let upper = Array.map2(+) ps offsetP
+                let lower = Array.map2(-) ps offsetP
+                ps |> Array.append upper |> Array.append lower ) pointsF axisPsF
+            | Plane -> failwith "cannot reach this"
 
           let indexArray = 
-            pointsF |> Mod.map(fun x -> 
+            match volumeGeneration with 
+            | Plane -> failwith ""
+            | AxisPoints  // same as MidPoint
+            | AxisMidPoint -> 
+              pointsF |> Mod.map(fun x -> 
               
-              let l = x.Length
-              let indices = List<int>()
-              // TOP
-              for i in 0 .. (l - 3) do 
-                indices.Add(0)      
-                indices.Add(i + 1)  
-                indices.Add(i + 2)  
+                let l = x.Length
+                let indices = List<int>()
+                // TOP
+                for i in 0 .. (l - 3) do 
+                  indices.Add(0)      
+                  indices.Add(i + 1)  
+                  indices.Add(i + 2)  
               
-              // BOTTOM
-              for i in 0 .. ( l - 3 ) do
-                indices.Add(l)
-                indices.Add(2*l - i - 1)
-                indices.Add(2*l - i - 2)
+                // BOTTOM
+                for i in 0 .. ( l - 3 ) do
+                  indices.Add(l)
+                  indices.Add(2*l - i - 1)
+                  indices.Add(2*l - i - 2)
               
-              // SIDE
-              for i in 0 .. l - 1 do
-                indices.Add(i)          
-                indices.Add(l + i)      
-                indices.Add((i + 1) % l)
+                // SIDE
+                for i in 0 .. l - 1 do
+                  indices.Add(i)          
+                  indices.Add(l + i)      
+                  indices.Add((i + 1) % l)
 
-                indices.Add(l + i)            
-                indices.Add(l + ((i + 1) % l))
-                indices.Add((i + 1) % l)      
+                  indices.Add(l + i)            
+                  indices.Add(l + ((i + 1) % l))
+                  indices.Add((i + 1) % l)      
 
-              indices.ToArray()
-              )
+                indices.ToArray())
+            | AxisPointsMidRing -> 
+              pointsF |> Mod.map(fun x -> 
+              
+                let l = x.Length
+                let indices = List<int>()
+                // TOP
+                for i in 0 .. (l - 3) do 
+                  indices.Add(0)      
+                  indices.Add(i + 1)  
+                  indices.Add(i + 2)  
+              
+                // BOTTOM
+                for i in 0 .. ( l - 3 ) do
+                  indices.Add(l)
+                  indices.Add(2*l - i - 1)
+                  indices.Add(2*l - i - 2)
+              
+                // SIDE
+                for i in 0 .. l - 1 do
+                  indices.Add(i)         // 0  
+                  indices.Add(2*l + i) // 6
+                  indices.Add((i + 1) % l) // 1
+                  
+                  indices.Add(2*l + i) // 6
+                  indices.Add(l + i)     // 3 
+                  indices.Add(2*l + ((i + 1) % l)) // 7
+
+                  indices.Add(l + i)           //3 
+                  indices.Add(l + ((i + 1) % l)) // 4
+                  indices.Add(2*l + ((i + 1) % l)) // 7
+                  
+                  indices.Add(2*l + i) // 6
+                  indices.Add(2*l + ((i + 1) % l)) // 7
+                  indices.Add((i + 1) % l)  // 1
+
+                indices.ToArray())
 
           let triangles = 
             Sg.draw IndexedGeometryMode.TriangleList
@@ -332,15 +385,11 @@ module PickingApp =
             |> Mod.map (fun x -> 
               match x with
               | None -> Sg.empty
-              | Some y -> 
-                match y with
+              | Some vg -> 
+                match vg with
                 | Plane -> Sg.drawFinishedBrushPlane b model.alpha model.extrusionOffset
-                | AxisMidPoint -> Sg.drawFinishedBrushAxis b model.alpha model.extrusionOffset true
-                | AxisPoints -> Sg.drawFinishedBrushAxis b model.alpha model.extrusionOffset false
+                | _ -> Sg.drawFinishedBrushAxis b model.alpha model.extrusionOffset vg
               ) |> Sg.dynamic
-        
-        //let polygonSG = 
-        //  Sg.drawFinishedBrush b model.alpha model.extrusionOffset model.useAxisForShadowV model.useSinglePointForShadowV
 
         let axisDebugPoints = 
           b.pointsOnAxis 
@@ -377,22 +426,22 @@ module PickingApp =
                   |> ASet.ofAList 
                   |> Sg.set)
                 |> Option.defaultValue Sg.empty) |> Sg.dynamic
+            |> Sg.onOff model.debugShadowVolume
 
         let debugShadowVolume =
           polygonSG
             |> Sg.depthTest (Mod.constant DepthTestMode.Less)
             |> Sg.cullMode (Mod.constant (CullMode.Front))
+            //|> Sg.fillMode (Mod.constant (FillMode.Line)) 
             |> Sg.pass RenderPass.main
-
-        let debugVis = 
-          Sg.ofList[ axisDebugPoints; debugShadowVolume]
             |> Sg.onOff model.debugShadowVolume
 
         let output = 
           [
             polygonSG |> StencilAreaMasking.stencilAreaSG maskPass areaPass
             Sg.drawOutline b.points (Mod.constant(C4b.Yellow)) (Mod.constant(C4b.Red)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth)) 
-            debugVis
+            axisDebugPoints
+            debugShadowVolume 
           ] |> Sg.ofList
             
         maskPass <- RenderPass.after "mask" RenderPassOrder.Arbitrary areaPass
