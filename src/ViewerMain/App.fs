@@ -149,13 +149,11 @@ module App =
                 h3[][text "NIOBE"]
                 p[][text "Hold Ctrl-Left to add Point"]
                 p[][text "Press Enter to close Polygon"]
+                p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.picking.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.picking.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
                 p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useAxisForShadowV PickingAction.UseAxisGeneration "Use Axis Generation"] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useSinglePointForShadowV PickingAction.UseSinglePointAxisGeneration "Axis Single Point"] |> UI.map PickingAction
                 p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
                 p[][div[][text "Extrusion: "; slider { min = 0.05; max = 20.0; step = 0.5 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
               ]
-
             ]
           )
         | Some other -> 

@@ -6,6 +6,11 @@ open Aardvark.Base.Incremental
 open Aardvark.VRVis.Opc.KdTrees
 open Aardvark.SceneGraph.Opc
 
+type VolumeGeneration = 
+  | Plane
+  | AxisMidPoint
+  | AxisPoints
+
 [<DomainType>]
 type AxisPointInfo = {
   pointsOnAxis : plist<V3d>
@@ -18,10 +23,9 @@ type PickingAction =
   | ClearPoints
   | AddBrush of Option<AxisPointInfo>
   | ShowDebugVis
-  | UseAxisGeneration
-  | UseSinglePointAxisGeneration
   | SetAlpha of float
   | SetExtrusionOffset of float
+  | SetVolumeGeneration of Option<VolumeGeneration>
 
 type BoxNeighbors = {
   neighbors : List<Box3d> 
@@ -53,10 +57,10 @@ type PickingModel = {
   intersectionPoints   : plist<V3d>  
   brush                : plist<Brush>
   debugShadowVolume    : bool
-  useAxisForShadowV    : bool
-  useSinglePointForShadowV : bool
   alpha                : float
   extrusionOffset      : float
+  volumeGeneration     : Option<VolumeGeneration>
+  volumeGenerationOptions : hmap<VolumeGeneration, string>
 }  
 
 module PickingModel =
@@ -69,7 +73,7 @@ module PickingModel =
       brush              = PList.empty
       debugShadowVolume  = false
       alpha              = 0.5
-      useAxisForShadowV  = false
-      useSinglePointForShadowV = true
       extrusionOffset    = 1.0
+      volumeGeneration   = Some VolumeGeneration.Plane
+      volumeGenerationOptions = HMap.ofList [Plane, "Plane"; AxisMidPoint, "AxisMidPoint"; AxisPoints, "AxisPoints"]
     }

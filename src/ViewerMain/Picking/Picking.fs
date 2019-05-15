@@ -160,10 +160,8 @@ module Sg =
         ]
       ) |> List.concat
   
-  let drawFinishedBrush (brush:MBrush) (alpha:IMod<float>) (offset:IMod<float>) (useAxis:IMod<bool>) (useSinglePoint:IMod<bool>) :ISg<'a> =
-    let points = brush.points
-    let axisPoints = brush.pointsOnAxis
-    
+  let drawFinishedBrushPlane (brush:MBrush) (alpha:IMod<float>) (offset:IMod<float>) =
+
     let colorAlpha = Mod.map2(fun (c:C4b) a -> c.ToC4d() |> fun x -> C4d(x.R, x.G, x.B, a).ToC4b()) brush.color alpha
 
     let generatePolygonTriangles (color : C4b) (offset : float) (points:alist<V3d>) =
@@ -179,15 +177,24 @@ module Sg =
             toEffect DefaultSurfaces.vertexColor
           ])
 
-    let sg :ISg<'a> = 
-      Mod.bind2(fun axisInfo useA -> 
-      match useA, axisInfo with
-      | true, Some (api:MAxisPointInfo) ->
+    let sg = Mod.bind2(fun c o -> generatePolygonTriangles c o brush.points) colorAlpha offset
+  
+    sg |> Mod.toASet |> Sg.set
+
+  let drawFinishedBrushAxis (brush:MBrush) (alpha:IMod<float>) (offset:IMod<float>) (useSinglePoint:bool) :ISg<'a> =
+    
+    let colorAlpha = Mod.map2(fun (c:C4b) a -> c.ToC4d() |> fun x -> C4d(x.R, x.G, x.B, a).ToC4b()) brush.color alpha
+    
+    let sg = 
+      brush.pointsOnAxis |> Mod.bind(fun axisInfo -> 
+      match axisInfo with
+      | None -> Mod.constant(Sg.empty)
+      | Some (api:MAxisPointInfo) ->
         offset |> Mod.map(fun o -> 
           
           // Increase Precision
           let shift = 
-            points
+            brush.points
               |> AList.toMod 
               |> Mod.map(fun x -> (PList.tryAt 0 x) |> Option.defaultValue V3d.Zero)
 
@@ -199,17 +206,16 @@ module Sg =
               |> Seq.map(fun (y:V3d) -> V3f(y-s)) 
               |> Seq.toArray) asdf shiftVec
 
-          let pointsF = (shiftPoints points shift) |> Mod.map(fun x -> x |> Array.skip 1) // UNDO closing loop... todo...rethink this
+          let pointsF = (shiftPoints brush.points shift) |> Mod.map(fun x -> x |> Array.skip 1) // UNDO closing loop... todo...rethink this
           let axisPsF = shiftPoints api.pointsOnAxis shift
           let axisMidPointF = Mod.map2(fun (m:V3d) (s:V3d) -> V3f(m-s)) api.midPoint shift
 
           let vertices =
             let pMod = Mod.map2(fun ps aps -> (ps, aps)) pointsF axisPsF
-            let sMod = Mod.map2(fun s m -> (s,m)) useSinglePoint axisMidPointF
 
-            Mod.map2(fun (ps, aps) (useSingleP, (midPoint:V3f)) -> 
+            Mod.map2(fun (ps, aps) (midPoint:V3f) -> 
               let dir = 
-                match useSingleP with
+                match useSinglePoint with
                 | true -> ps |> Array.map(fun (p:V3f) -> ((midPoint-p).Normalized))
                 | false -> Array.map2(fun (p:V3f) (a:V3f) -> ((a-p).Normalized)) ps aps 
 
@@ -219,7 +225,7 @@ module Sg =
               let lower = Array.map2(-) ps offsetP
 
               upper |> Array.append lower
-            ) pMod sMod
+            ) pMod axisMidPointF
 
           let indexArray = 
             pointsF |> Mod.map(fun x -> 
@@ -263,11 +269,9 @@ module Sg =
               |> Sg.translate' shift
               
           triangles)
-      | _ ->
-        Mod.bind2(fun c o -> generatePolygonTriangles c o points) colorAlpha offset
-        ) axisPoints useAxis |> Mod.toASet |> Sg.set
+        ) 
   
-    sg
+    sg |> Mod.toASet |> Sg.set
 
 module PickingApp =
 
@@ -307,10 +311,9 @@ module PickingApp =
       else
         model
     | ShowDebugVis -> { model with debugShadowVolume = not (model.debugShadowVolume) }
-    | UseAxisGeneration -> {model with useAxisForShadowV = not (model.useAxisForShadowV) }
-    | UseSinglePointAxisGeneration -> {model with useSinglePointForShadowV = not (model.useSinglePointForShadowV) }
     | SetAlpha a -> { model with alpha = a } 
     | SetExtrusionOffset o -> { model with extrusionOffset = o }
+    | SetVolumeGeneration x -> {model with volumeGeneration = x }
 
 
   let view (model : MPickingModel) =
@@ -323,8 +326,21 @@ module PickingApp =
     let drawBrush = 
       model.brush 
       |> AList.map(fun b ->
+        
         let polygonSG = 
-          Sg.drawFinishedBrush b model.alpha model.extrusionOffset model.useAxisForShadowV model.useSinglePointForShadowV
+          model.volumeGeneration 
+            |> Mod.map (fun x -> 
+              match x with
+              | None -> Sg.empty
+              | Some y -> 
+                match y with
+                | Plane -> Sg.drawFinishedBrushPlane b model.alpha model.extrusionOffset
+                | AxisMidPoint -> Sg.drawFinishedBrushAxis b model.alpha model.extrusionOffset true
+                | AxisPoints -> Sg.drawFinishedBrushAxis b model.alpha model.extrusionOffset false
+              ) |> Sg.dynamic
+        
+        //let polygonSG = 
+        //  Sg.drawFinishedBrush b model.alpha model.extrusionOffset model.useAxisForShadowV model.useSinglePointForShadowV
 
         let axisDebugPoints = 
           b.pointsOnAxis 
