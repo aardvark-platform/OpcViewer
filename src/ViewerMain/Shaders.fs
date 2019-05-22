@@ -27,6 +27,21 @@ module Shader =
             restartStrip()
         }
 
+  module DebugColor = 
+    let internal debugCol (p : Vertex) =
+      let c : C4b = uniform?Color
+      let c1 = c.ToC4d().ToV4d().XYZ
+      fragment {
+        let useDebugColor : bool = uniform?UseDebugColor 
+        if useDebugColor then
+          return V4d.IOOI
+        else
+          return V4d(c1, 0.3) 
+      }
+
+    let Effect = 
+        toEffect debugCol
+
   module VertexCameraShift = 
     let internal toCameraShift (p : Vertex) =
       vertex {

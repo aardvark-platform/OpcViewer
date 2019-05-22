@@ -159,7 +159,7 @@ module Sg =
           yield Triangle3d(aPos, bPos, bNeg), color // side2
         ]
       ) |> List.concat
-  
+
   let drawFinishedBrushPlane (brush:MBrush) (alpha:IMod<float>) (offset:IMod<float>) =
 
     let colorAlpha = Mod.map2(fun (c:C4b) a -> c.ToC4d() |> fun x -> C4d(x.R, x.G, x.B, a).ToC4b()) brush.color alpha
@@ -168,14 +168,17 @@ module Sg =
       points 
       |> AList.toMod
       |> Mod.map(fun x -> 
-        let triangles = planeFitPolygon x offset color
+        // increase Precision
+        let shift = x |> PList.tryAt 0 |> Option.defaultValue V3d.Zero
+        let shiftedPoints = x |> PList.toSeq |> Seq.map(fun (y:V3d) -> (y-shift)) |> PList.ofSeq
+
+        let triangles = planeFitPolygon shiftedPoints offset color
+
         triangles
-          |> IndexedGeometryPrimitives.triangles 
+          |> IndexedGeometryPrimitives.triangles
           |> Sg.ofIndexedGeometry
-          |> Sg.effect [
-            toEffect DefaultSurfaces.stableTrafo
-            toEffect DefaultSurfaces.vertexColor
-          ])
+          |> Sg.uniform "Color" colorAlpha
+          |> Sg.translate' (Mod.constant(shift)))
 
     let sg = Mod.bind2(fun c o -> generatePolygonTriangles c o brush.points) colorAlpha offset
   
@@ -192,9 +195,9 @@ module Sg =
       | Some (api:MAxisPointInfo) ->
         offset |> Mod.map(fun o -> 
           
-          // Increase Precision
-          let shift = 
-            brush.points
+          // increase Precision
+          let shiftVec p = 
+            p
               |> AList.toMod 
               |> Mod.map(fun x -> (PList.tryAt 0 x) |> Option.defaultValue V3d.Zero)
 
@@ -206,6 +209,7 @@ module Sg =
               |> Seq.map(fun (y:V3d) -> V3f(y-s)) 
               |> Seq.toArray) asdf shiftVec
 
+          let shift = shiftVec brush.points 
           let pointsF = (shiftPoints brush.points shift) |> Mod.map(fun x -> x |> Array.skip 1) // UNDO closing loop... todo...rethink this
 
           let vertices = 
@@ -216,10 +220,11 @@ module Sg =
               Mod.map2(fun ps (midPoint:V3f) -> 
                 let dir = ps |> Array.map(fun (p:V3f) -> ((midPoint-p).Normalized))
                 let offsetP = dir |> Array.map(fun (p:V3f) -> p * (float32 o))
-
-                let upper = Array.map2(+) ps offsetP
-                let lower = Array.map2(-) ps offsetP
-                upper |> Array.append lower
+                
+                let inner = Array.create ps.Length midPoint // use center point....
+                //let inner = Array.map2(+) ps offsetP  // shift from lasso points
+                let outer = Array.map2(-) ps offsetP
+                inner |> Array.append outer
               ) pointsF axisMidPointF
             | AxisPoints -> 
               let axisPsF = shiftPoints api.pointsOnAxis shift
@@ -227,18 +232,22 @@ module Sg =
               Mod.map2(fun ps aps ->
                 let dir = Array.map2(fun (p:V3f) (a:V3f) -> ((a-p).Normalized)) ps aps 
                 let offsetP = dir |> Array.map(fun (p:V3f) -> p * (float32 o))
-                let upper = Array.map2(+) ps offsetP
-                let lower = Array.map2(-) ps offsetP
-                upper |> Array.append lower) pointsF axisPsF
+                
+                let inner = Array.map2 (-) aps dir // use axisPoints and shift 1m to points
+                //let inner = Array.map2(+) ps offsetP  // shift from lasso points
+                let outer = Array.map2(-) ps offsetP
+                inner |> Array.append outer) pointsF axisPsF
             | AxisPointsMidRing -> 
               let axisPsF = shiftPoints api.pointsOnAxis shift
               
               Mod.map2(fun ps aps ->
                 let dir = Array.map2(fun (p:V3f) (a:V3f) -> ((a-p).Normalized)) ps aps 
                 let offsetP = dir |> Array.map(fun (p:V3f) -> p * (float32 o))
-                let upper = Array.map2(+) ps offsetP
-                let lower = Array.map2(-) ps offsetP
-                ps |> Array.append upper |> Array.append lower ) pointsF axisPsF
+
+                let inner = Array.map2 (-) aps dir // use axisPoints and shift 1m to points
+                //let inner = Array.map2(+) ps offsetP
+                let outer = Array.map2(-) ps offsetP
+                ps |> Array.append inner |> Array.append outer ) pointsF axisPsF
             | Plane -> failwith "cannot reach this"
 
           let indexArray = 
@@ -315,10 +324,6 @@ module Sg =
               |> Sg.vertexAttribute DefaultSemantic.Positions vertices 
               |> Sg.index indexArray
               |> Sg.uniform "Color" colorAlpha
-              |> Sg.effect [
-                toEffect DefaultSurfaces.stableTrafo
-                toEffect DefaultSurfaces.sgColor
-                ]
               |> Sg.translate' shift
               
           triangles)
@@ -347,7 +352,8 @@ module PickingApp =
           { // add starting point to end
             points = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last)
             
-            pointsOnAxis = pointsOnAxis 
+            // 1m shift for scene with axis outside of tunnel....REMOVE
+            pointsOnAxis = pointsOnAxis |> Option.map(fun x ->   {x with pointsOnAxis = x.pointsOnAxis |> PList.map(fun v -> v + V3d.OOI); midPoint = x.midPoint + V3d.OOI})
               //match axisPoints with 
               //| None -> None
               //| false -> axisPoints |> PList.prepend (axisPoints |> PList.last)
@@ -428,20 +434,41 @@ module PickingApp =
                 |> Option.defaultValue Sg.empty) |> Sg.dynamic
             |> Sg.onOff model.debugShadowVolume
 
-        let debugShadowVolume =
+        let debugVolume = 
           polygonSG
+            |> Sg.onOff model.debugShadowVolume
+            |> Sg.effect [
+              toEffect DefaultSurfaces.stableTrafo
+              Shader.DebugColor.Effect
+              ]
+
+        let debugShadowVolume =
+          debugVolume
+            |> Sg.uniform "UseDebugColor" (Mod.constant(false))
             |> Sg.depthTest (Mod.constant DepthTestMode.Less)
             |> Sg.cullMode (Mod.constant (CullMode.Front))
-            //|> Sg.fillMode (Mod.constant (FillMode.Line)) 
-            |> Sg.pass RenderPass.main
-            |> Sg.onOff model.debugShadowVolume
+            |> Sg.blendMode (Mod.constant(BlendMode.Blend))
+            
+        let debugShadowVolumeLines =
+          debugVolume
+            |> Sg.uniform "UseDebugColor" (Mod.constant(true))
+            |> Sg.fillMode (Mod.constant (FillMode.Line))
+
+        let coloredPoylogn =
+          polygonSG 
+            |> Sg.effect [
+              toEffect DefaultSurfaces.stableTrafo
+              toEffect DefaultSurfaces.sgColor
+              ]
+            |> StencilAreaMasking.stencilAreaSG maskPass areaPass
 
         let output = 
           [
-            polygonSG |> StencilAreaMasking.stencilAreaSG maskPass areaPass
+            coloredPoylogn
             Sg.drawOutline b.points (Mod.constant(C4b.Yellow)) (Mod.constant(C4b.Red)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth)) 
             axisDebugPoints
             debugShadowVolume 
+            debugShadowVolumeLines
           ] |> Sg.ofList
             
         maskPass <- RenderPass.after "mask" RenderPassOrder.Arbitrary areaPass
