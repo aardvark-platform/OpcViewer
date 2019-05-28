@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "\"D:\\Work\\Data_Dibit8\\20190129_Perjen\\TestOpcs\" \"D:\\Work\\Data_Dibit8\\20190129_Perjen\\axis_Perjen.aard\""
+      "commandLineArgs": "\"D:\\REPOS2\\OPC-DATA\\Selzthaltunnel_RFB-Graz\\opc\" \"D:\\REPOS2\\OPC-DATA\\Selzthaltunnel_RFB-Graz\\axis_Selzthal.aard\""
     }
   }
 }
