@@ -150,13 +150,13 @@ module IntersectionController =
                   tree, (HMap.add key tree cache)
         kdTree, cache
 
-  let intersectSingle ray (hitObject : 'a) (kdTree:ConcreteKdIntersectionTree) = 
+  let intersectSingle ray (kdTree:ConcreteKdIntersectionTree) = 
     let kdi = kdTree.KdIntersectionTree 
     let mutable hit = ObjectRayHit.MaxRange
     let objFilter _ _ = true              
     try           
       if kdi.Intersect(ray, Func<_,_,_>(objFilter), null, 0.0, Double.MaxValue, &hit) then              
-          Some (hit.RayHit.T, hitObject)
+          Some (hit.RayHit.T)
       else            
           None
     with 
@@ -226,9 +226,9 @@ module IntersectionController =
 
     exactUV
 
-  let intersectKdTrees bb (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
+  let intersectKdTrees bb (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
       let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
-      let hit = intersectSingle ray hitObject kdtree
+      let hit = intersectSingle ray kdtree
       hit,c
   
   let createBoxMatrix (boxes : List<Box3d>) =
@@ -272,7 +272,7 @@ module IntersectionController =
 
   let mutable cache = HMap.empty
 
-  let intersectWithOpc (kdTree0 : option<hmap<Box3d, Level0KdTree>>) (hitObject : 'a) ray =
+  let intersectWithOpc (kdTree0 : option<hmap<Box3d, Level0KdTree>>) ray =
     kdTree0 
       |> Option.bind(fun kd ->
           let boxes = hitBoxes kd ray Trafo3d.Identity
@@ -281,26 +281,26 @@ module IntersectionController =
             boxes 
               |> List.choose(
                   fun bb -> 
-                    let treeHit,c = kd |> intersectKdTrees bb hitObject cache ray
+                    let treeHit,c = kd |> intersectKdTrees bb cache ray
                     cache <- c
                     treeHit)
-              |> List.filter(fun (t,_) -> t.IsNaN() |> not)
-              |> List.sortBy(fun (t,_)-> t)
+              |> List.filter(fun t -> t.IsNaN() |> not)
+              |> List.sortBy(fun t-> t)
             
           let closest = 
               allhits |> List.tryHead            
           closest
       )
   
-  let intersect (m : PickingModel) (opc:plist<InCoreKdTree>) (hit : SceneHit) (boxId : Box3d) (axisfunc:V3d->V3d) = 
+  let intersect (m : PickingModel) (hit : SceneHit) (boxId : Box3d) (axisfunc:V3d->V3d) = 
     let fray = hit.globalRay.Ray
     Log.line "try intersecting %A" boxId    
     
     match m.pickingInfos |> HMap.tryFind boxId with
     | Some kk ->
-      let closest = intersectWithOpc (Some kk.kdTree) opc fray      
+      let closest = intersectWithOpc (Some kk.kdTree) fray      
       match closest with
-        | Some (t,_) -> 
+        | Some t -> 
           let hitpoint = fray.Ray.GetPointOnRay t
           Log.line "hit surface at %A" hitpoint 
           
@@ -312,8 +312,8 @@ module IntersectionController =
               let dir = (p - axisPoint).Normalized          
               FastRay3d(Ray3d(axisPoint, dir))              
           
-            match intersectWithOpc (Some kk.kdTree) opc ray with
-            | Some (t,_) -> Some (ray.Ray.GetPointOnRay t)
+            match intersectWithOpc (Some kk.kdTree) ray with
+            | Some t -> Some (ray.Ray.GetPointOnRay t)
             | None -> None
 
           let calculateSegment (startP:V3d) (endP:V3d) (hitF : V3d -> V3d option) : Segment =
