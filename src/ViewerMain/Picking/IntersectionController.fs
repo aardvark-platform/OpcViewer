@@ -226,17 +226,9 @@ module IntersectionController =
 
     exactUV
 
-  //let intersectKdTrees (bb : Box3d) (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
-  //    let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
-  //    let hit = intersectSingle ray hitObject kdtree
-  //    hit,c
-
-  let intersectKdTreeswithObjectIndex (bb : Box3d) (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
-      let kdtree, c =  kdTreeMap |> HMap.find bb |> loadObjectSet cache
-      
-      //let triangleSet = kdtree.KdIntersectionTree.
-      let hit = intersectSingleForIndex ray hitObject kdtree
-      
+  let intersectKdTrees bb (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
+      let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
+      let hit = intersectSingle ray hitObject kdtree
       hit,c
   
   let createBoxMatrix (boxes : List<Box3d>) =
@@ -245,55 +237,62 @@ module IntersectionController =
         |> List.sortBy(fun box -> box.Center.X)
         |> List.sortBy(fun box -> box.Center.Y)
         |> List.sortBy(fun box -> box.Center.Z)
-    
-    
 
     failwith "BoxMatrix is corrupt"
     
 
+  let interval = 0.02
+
+  let calculateSegment (startP:V3d) (endP:V3d) (hitF : V3d -> V3d option * FastRay3d) =
+    let vec  = (endP - startP)
+    let dir  = vec.Normalized
+    let l    = vec.Length
+        
+    let casts = 
+      [ 0.0 .. interval .. l] 
+        |> List.map(fun x -> startP + x * dir)
+        |> List.map hitF
+
+    //let rays = casts |> List.map snd //debug showing rays
+    let hits = casts |> List.choose fst    
+    {
+      startPoint = startP
+      endPoint = endP
+      points = hits
+    }
+
+  let addProjectedSegment point hitF (brush : Brush) =
+    let previous = brush.points |> PList.toList |> List.head
+    let segment  = calculateSegment previous point hitF
+    
+    { brush with 
+        points   = brush.points |> PList.prepend point
+        segments = brush.segments |> PList.append segment  
+    }
 
   let mutable cache = HMap.empty
 
   let intersectWithOpc (kdTree0 : option<hmap<Box3d, Level0KdTree>>) (hitObject : 'a) ray =
-    kdTree0
+    kdTree0 
       |> Option.bind(fun kd ->
           let boxes = hitBoxes kd ray Trafo3d.Identity
           
-          let closest = 
+          let allhits = 
             boxes 
               |> List.choose(
                   fun bb -> 
-                    let treeHit,c = kd |> intersectKdTreeswithObjectIndex bb hitObject cache ray                    
+                    let treeHit,c = kd |> intersectKdTrees bb hitObject cache ray
                     cache <- c
-                    match treeHit with 
-                      | Some hit -> 
-                        match hit with
-                        | x, _ when System.Double.IsNaN(x) -> 
-                          Log.error("Invalid intersection point! TODO...check this!\n")
-                          None
-                        | _, _ -> Some (hit,bb)
-                      | None -> None)
-              |> List.sortBy(fun (t,_)-> fst t)
-              |> List.tryHead            
-          
-          match closest with
-            | Some (values,bb) -> 
-              let lvl0KdTree = kd |> HMap.find bb
-
-              let position = ray.Ray.GetPointOnRay (fst values)
-
-              //let coordinates = 
-              //  match lvl0KdTree with
-              //    | InCoreKdTree kd -> 
-              //      None
-              //    | LazyKdTree kd ->    
-              //      Some (findCoordinates kd (snd values) position)
-                        
-              Some values
-            | None -> None
-      ) 
+                    treeHit)
+              |> List.filter(fun (t,_) -> t.IsNaN() |> not)
+              |> List.sortBy(fun (t,_)-> t)
+            
+          let closest = 
+              allhits |> List.tryHead            
+          closest
+      )
   
-  let intersect (m : PickingModel) opc (hit : SceneHit) (boxId : Box3d) = 
+  let intersect (m : PickingModel) (opc:plist<InCoreKdTree>) (hit : SceneHit) (boxId : Box3d) (axisfunc:V3d->V3d) = 
     let fray = hit.globalRay.Ray
     Log.line "try intersecting %A" boxId    
     
@@ -304,7 +303,50 @@ module IntersectionController =
         | Some (t,_) -> 
           let hitpoint = fray.Ray.GetPointOnRay t
           Log.line "hit surface at %A" hitpoint 
-          { m with intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint; hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo }            
+          
+          let axisPoint = (axisfunc hitpoint) + V3d.OOI // shift axis to tunnel center
+          
+          let intersectFunc (p:V3d) : Option<V3d> = 
+            let ray = 
+              // ViewerModality.XYZ - standard axis centered projection
+              let dir = (p - axisPoint).Normalized          
+              FastRay3d(Ray3d(axisPoint, dir))              
+          
+            match intersectWithOpc (Some kk.kdTree) opc ray with
+            | Some (t,_) -> Some (ray.Ray.GetPointOnRay t)
+            | None -> None
+
+          let calculateSegment (startP:V3d) (endP:V3d) (hitF : V3d -> V3d option) : Segment =
+            
+            let interval = 0.02
+            
+            let vec  = (endP - startP)
+            let dir  = vec.Normalized
+
+            let hits = 
+              [ 0.0 .. interval .. vec.Length] 
+                |> List.map(fun x -> startP + x * dir)
+                |> List.map hitF
+                |> List.choose (fun x -> x)
+
+            {
+              startPoint = startP
+              endPoint = endP
+              points = hits
+            }
+
+          if m.intersectionPoints |> PList.isEmpty then
+            { m with
+                intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint
+                hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo
+            }
+          else
+            { m with
+                intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint
+                hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo
+                segments = m.segments |> PList.append (calculateSegment (m.intersectionPoints |> PList.first) hitpoint intersectFunc)
+            }    
+
         | None ->       
           Log.error "[Intersection] didn't hit"
           m

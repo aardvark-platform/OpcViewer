@@ -18,8 +18,14 @@ type AxisPointInfo = {
   midPoint     : V3d
 }
 
+type Segment = {
+  startPoint : V3d
+  endPoint   : V3d
+  points     : list<V3d>  
+}
+
 type PickingAction = 
-  | HitSurface of Box3d*SceneHit    
+  | HitSurface of Box3d*SceneHit*(V3d -> V3d)
   | RemoveLastPoint
   | ClearPoints
   | AddBrush of Option<AxisPointInfo>
@@ -36,6 +42,7 @@ type BoxNeighbors = {
 type Brush =
   {
     points : plist<V3d>
+    segments : plist<Segment>
     pointsOnAxis : Option<AxisPointInfo>
     color  : C4b    
   }
@@ -56,6 +63,7 @@ type PickingModel = {
   pickingInfos         : hmap<Box3d, OpcData>
   hitPointsInfo        : hmap<V3d, Box3d>
   intersectionPoints   : plist<V3d>  
+  segments             : plist<Segment>
   brush                : plist<Brush>
   debugShadowVolume    : bool
   alpha                : float
@@ -77,4 +85,5 @@ module PickingModel =
       extrusionOffset    = 1.0
       volumeGeneration   = Some VolumeGeneration.Plane
       volumeGenerationOptions = HMap.ofList [Plane, "Plane"; AxisMidPoint, "AxisMidPoint"; AxisPoints, "AxisPoints"; AxisPointsMidRing, "AxisPointsRing"]
+      segments = PList.empty
     }

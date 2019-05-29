@@ -82,7 +82,17 @@ module App =
             { model with picking = updatedPicking; axis = axis }
           | _ -> model
       | PickingAction msg -> 
-        { model with picking = PickingApp.update model.picking msg }
+        let pickingModel =
+          match msg with
+          | HitSurface (a,b,_) -> 
+            match model.axis with
+            | Some axis -> 
+              let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
+              PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
+            | None -> PickingApp.update model.picking msg
+          | _ -> PickingApp.update model.picking msg
+        { model with picking = pickingModel }
+
         ////IntersectionController.intersect model sceneHit box
         //failwith "panike"
         //model 

@@ -57,7 +57,7 @@ module Sg =
               let intersect = m.pickingActive |> Mod.force
               if intersect then              
                 Log.error "hit an opc? %A" bb
-                true, Seq.ofList[(HitSurface (bb,sceneHit)) |> PickingAction]
+                true, Seq.ofList[(HitSurface (bb,sceneHit, fun a -> a)) |> PickingAction]
               else 
                 false, Seq.ofList[]
           )      
@@ -146,9 +146,10 @@ module Sg =
 
     [
       opcSg  loadedPatches m boundingBox; 
-      boxSg  loadedPatches m boundingBox;
-    //  textSg loadedPatches m
-      globalBB] |> Sg.ofList
+      //boxSg  loadedPatches m boundingBox;
+      textSg loadedPatches m
+      //globalBB
+    ] |> Sg.ofList
             
   let read a =
         StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)

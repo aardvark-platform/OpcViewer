@@ -210,7 +210,7 @@ module Sg =
               |> Seq.toArray) asdf shiftVec
 
           let shift = shiftVec brush.points 
-          let pointsF = (shiftPoints brush.points shift) |> Mod.map(fun x -> x |> Array.skip 1) // UNDO closing loop... todo...rethink this
+          let pointsF = (shiftPoints brush.points shift) |> Mod.map(fun x -> x |> Array.skip 1) // undo closing polygon (duplicates not needed)
 
           let vertices = 
             match volumeGeneration with
@@ -335,8 +335,8 @@ module PickingApp =
 
   let update (model : PickingModel) (msg : PickingAction) = 
     match msg with
-    | HitSurface (box, sceneHit) -> 
-      IntersectionController.intersect model "" sceneHit box
+    | HitSurface (box, sceneHit, axisPoint) -> 
+      IntersectionController.intersect model PList.empty sceneHit box axisPoint
     | RemoveLastPoint ->
       let points, infos = 
         match model.intersectionPoints.AsList with
@@ -351,12 +351,10 @@ module PickingApp =
         let newBrush = 
           { // add starting point to end
             points = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last)
-            
             // 1m shift for scene with axis outside of tunnel....REMOVE
-            pointsOnAxis = pointsOnAxis |> Option.map(fun x ->   {x with pointsOnAxis = x.pointsOnAxis |> PList.map(fun v -> v + V3d.OOI); midPoint = x.midPoint + V3d.OOI})
-              //match axisPoints with 
-              //| None -> None
-              //| false -> axisPoints |> PList.prepend (axisPoints |> PList.last)
+            pointsOnAxis = pointsOnAxis |> Option.map(fun x -> {x with pointsOnAxis = x.pointsOnAxis |> PList.map(fun v -> v + V3d.OOI); midPoint = x.midPoint + V3d.OOI})
+            // TODO...close
+            segments = model.segments
             color = 
               match (model.brush |> PList.count) % 6 with
               | 0 -> C4b.DarkGreen
@@ -366,7 +364,7 @@ module PickingApp =
               | 4 -> C4b.DarkRed
               | _ -> C4b.DarkYellow
           }
-        { model with brush = model.brush |> PList.append newBrush; intersectionPoints = PList.empty }
+        { model with brush = model.brush |> PList.append newBrush; intersectionPoints = PList.empty; segments = PList.empty }
       else
         model
     | ShowDebugVis -> { model with debugShadowVolume = not (model.debugShadowVolume) }
@@ -462,10 +460,14 @@ module PickingApp =
               ]
             |> StencilAreaMasking.stencilAreaSG maskPass areaPass
 
+        let segmentOutline = 
+          b.segments |> AList.map(fun x -> x.points |> AList.ofList) |> AList.concat
+
         let output = 
           [
             coloredPoylogn
             Sg.drawOutline b.points (Mod.constant(C4b.Yellow)) (Mod.constant(C4b.Red)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth)) 
+            Sg.drawOutline segmentOutline (Mod.constant(C4b.DarkYellow)) (Mod.constant(C4b.DarkRed)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth)) 
             axisDebugPoints
             debugShadowVolume 
             debugShadowVolumeLines
@@ -476,7 +478,11 @@ module PickingApp =
            
         output) |> AList.toASet |> Sg.set
     
+    let projOutline = 
+      model.segments |> AList.map(fun x -> x.points |> AList.ofList) |> AList.concat
+        
     [ 
       Sg.drawOutline model.intersectionPoints (Mod.constant(C4b.Yellow)) (Mod.constant(C4b.Red)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth))
+      Sg.drawOutline projOutline (Mod.constant(C4b.DarkYellow)) (Mod.constant(C4b.Red)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth))
       drawBrush
     ] |> Sg.ofList
