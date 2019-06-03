@@ -28,7 +28,7 @@ type PickingAction =
   | HitSurface of Box3d*SceneHit*(V3d -> V3d)
   | RemoveLastPoint
   | ClearPoints
-  | AddBrush of Option<AxisPointInfo>
+  | AddBrush of (plist<V3d> -> Option<AxisPointInfo>)
   | ShowDebugVis
   | SetAlpha of float
   | SetExtrusionOffset of float

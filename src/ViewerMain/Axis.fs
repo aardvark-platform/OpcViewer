@@ -260,7 +260,7 @@ module AxisFunctions =
             { a with selectionOnAxis = Some midPoint }
       )
 
-  let pointsOnAxis (points : plist<V3d>) (axis : Option<OpcSelectionViewer.Axis>) =
+  let pointsOnAxis (axis : Option<OpcSelectionViewer.Axis>) (points : plist<V3d>) =
     axis
       |> Option.bind(fun a -> 
         let pointsOnAxis = 

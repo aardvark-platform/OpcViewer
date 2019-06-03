@@ -75,8 +75,8 @@ module App =
             model.cameraState.view |> toCameraStateLean |> Serialization.save ".\camstate" |> ignore
             model
           | Keys.Enter ->
-            let pointsOnAxis = AxisFunctions.pointsOnAxis model.picking.intersectionPoints model.axis
-            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pointsOnAxis)
+            let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
+            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pointsOnAxisFunc)
             
             let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
             { model with picking = updatedPicking; axis = axis }
@@ -132,7 +132,7 @@ module App =
        FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
-           attribute "showFPS" "false";       // optional, default is false
+           attribute "showFPS" "true";       // optional, default is false
            attribute "useMapping" "true"
            attribute "data-renderalways" "false"
            attribute "data-samples" "4"
@@ -162,7 +162,7 @@ module App =
                 p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.picking.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.picking.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
                 p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
                 p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
-                p[][div[][text "Extrusion: "; slider { min = 0.05; max = 20.0; step = 0.5 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
+                p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
               ]
             ]
           )

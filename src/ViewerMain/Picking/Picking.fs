@@ -346,14 +346,31 @@ module PickingApp =
       { model with intersectionPoints = points |> PList.ofList; hitPointsInfo = infos }
     | ClearPoints -> 
       { model with intersectionPoints = PList.empty; hitPointsInfo = HMap.empty}
-    | AddBrush pointsOnAxis -> 
+    | AddBrush pointsOnAxisFunc ->
       if model.intersectionPoints |> PList.count > 2 then
+        
+        let p, pa =
+          if false then
+            // REGULAR CASE - add starting point to end
+            let p = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last)
+            let pa = pointsOnAxisFunc model.intersectionPoints
+            (p,pa)
+          else
+            // SEGMENT TEST-CASE - add starting point to end (last edge is NOT subdivided -  only for testing)
+            let points = 
+              model.segments 
+              |> PList.map(fun x -> x.points |> PList.ofList) 
+              |> PList.concat
+
+            let p = points |> PList.prepend (model.intersectionPoints |> PList.last)
+            let pa = points |> pointsOnAxisFunc
+            (p,pa) 
+        
         let newBrush = 
-          { // add starting point to end
-            points = model.intersectionPoints |> PList.prepend (model.intersectionPoints |> PList.last)
+          { 
             // 1m shift for scene with axis outside of tunnel....REMOVE
-            pointsOnAxis = pointsOnAxis |> Option.map(fun x -> {x with pointsOnAxis = x.pointsOnAxis |> PList.map(fun v -> v + V3d.OOI); midPoint = x.midPoint + V3d.OOI})
-            // TODO...close
+            pointsOnAxis = pa |> Option.map(fun x -> {x with pointsOnAxis = x.pointsOnAxis |> PList.map(fun v -> v + V3d.OOI); midPoint = x.midPoint + V3d.OOI})
+            points = p
             segments = model.segments
             color = 
               match (model.brush |> PList.count) % 6 with
