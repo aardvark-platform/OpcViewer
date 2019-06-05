@@ -425,7 +425,6 @@ module PickingApp =
         { model with brush = model.brush |> PList.concat2 testBrushes; intersectionPoints = PList.empty; segments = PList.empty; groupedBrushes = newGrouped }
       else 
         model
-
     | AddBrush pointsOnAxisFunc ->
       if model.intersectionPoints.Count > 2 then
         
@@ -448,6 +447,26 @@ module PickingApp =
             let pa = pointsOnAxisFunc model.intersectionPoints
             (p,pa)
         
+        let p, pa = 
+          // Fix winding order (if axis is available!)
+          match pa with
+          | None -> (p,pa)
+          | Some paa -> 
+            let axisPoint = paa.pointsOnAxis |> PList.skip 1 |> PList.first
+            let p0 = p |> PList.first
+            let p1 = p |> PList.skip 1 |> PList.first
+            let p2 = p |> PList.skip 2 |> PList.first
+
+            let dir1 = (axisPoint-p1).Normalized
+            let dir2 = (p0-p1).Cross(p2-p1).Normalized
+
+            if dir1.Dot(dir2) |> sign < 0 then
+              let pRev = p |> PList.toList |> List.rev |> PList.ofList
+              let aRev = { paa with pointsOnAxis = paa.pointsOnAxis |> PList.toList |> List.rev |> PList.ofList }
+              (pRev, Some aRev)
+            else 
+              (p,pa)
+
         let newBrush = 
           { 
             // 1m shift for scene with axis outside of tunnel....REMOVE
@@ -455,7 +474,7 @@ module PickingApp =
             points = p
             segments = model.segments
             color = 
-              match model.brush.Count % 6 with
+              match model.brush.Count % 2 with
               | 0 -> C4b.DarkGreen
               | 1 -> C4b.DarkCyan
               | 2 -> C4b.DarkBlue
