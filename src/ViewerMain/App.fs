@@ -80,6 +80,12 @@ module App =
             
             let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
             { model with picking = updatedPicking; axis = axis }
+          | Keys.T ->
+            let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
+            let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
+            
+            let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
+            { model with picking = updatedPicking; axis = axis }
           | _ -> model
       | PickingAction msg -> 
         let pickingModel =

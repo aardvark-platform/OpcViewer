@@ -29,6 +29,7 @@ type PickingAction =
   | RemoveLastPoint
   | ClearPoints
   | AddBrush of (plist<V3d> -> Option<AxisPointInfo>)
+  | AddTestBrushes of (plist<V3d> -> Option<AxisPointInfo>)
   | ShowDebugVis
   | SetAlpha of float
   | SetExtrusionOffset of float
@@ -65,6 +66,7 @@ type PickingModel = {
   intersectionPoints   : plist<V3d>  
   segments             : plist<Segment>
   brush                : plist<Brush>
+  groupedBrushes       : hmap<C4b, plist<Brush>>
   debugShadowVolume    : bool
   alpha                : float
   extrusionOffset      : float
@@ -80,6 +82,7 @@ module PickingModel =
       hitPointsInfo      = HMap.empty
       intersectionPoints = PList.empty
       brush              = PList.empty
+      groupedBrushes     = HMap.empty
       debugShadowVolume  = false
       alpha              = 0.5
       extrusionOffset    = 1.0

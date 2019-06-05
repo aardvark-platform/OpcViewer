@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "\"D:\\REPOS2\\OPC-DATA\\Selzthaltunnel_RFB-Graz\\opc\" \"D:\\REPOS2\\OPC-DATA\\Selzthaltunnel_RFB-Graz\\axis_Selzthal.aard\""
+      "commandLineArgs": "\"D:\\REPOS2\\OPC-DATA\\Rohausbruch\\Data\" \"D:\\REPOS2\\OPC-DATA\\Rohausbruch\\axis_Perjen.aard\""
     }
   }
 }
