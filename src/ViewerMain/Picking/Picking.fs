@@ -453,12 +453,13 @@ module PickingApp =
           match pa with
           | None -> (p,pa)
           | Some paa -> 
+            // for higher Precision shift by AxisPoint
             let axisPoint = paa.pointsOnAxis |> PList.skip 1 |> PList.first
             let p0 = p |> PList.first                  |> fun x -> x - axisPoint
             let p1 = p |> PList.skip 1 |> PList.first  |> fun x -> x - axisPoint
             let p2 = p |> PList.skip 2 |> PList.first  |> fun x -> x - axisPoint
 
-            let dir1 = p1.Normalized
+            let dir1 = p1.Normalized  // already shifted by axisPoint
             let x1 = (p0-p1).Normalized
             let x2 = (p2-p1).Normalized
             let dir2 = (x1.Cross(x2)).Normalized
