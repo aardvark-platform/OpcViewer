@@ -48,11 +48,14 @@ module StencilAreaMasking =
       |> Sg.blendMode (Mod.constant BlendMode.Blend)
       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
 
-  let stencilAreaSG pass1 pass2 sg =
+  let stencilArea pass1 pass2 sg1 sg2 =
     [
-      maskSG pass1 sg   // one pass by using EXT_stencil_two_side :)
-      fillSG pass2 sg
+      maskSG pass1 sg1   // one pass by using EXT_stencil_two_side :)
+      fillSG pass2 sg2
     ] |> Sg.ofList
+
+  let stencilAreaSG pass1 pass2 sg =
+    stencilArea pass1 pass2 sg sg
 
   let stencilAreaGroupedSG pass1 pass2 (color:IMod<V4f>) sg =
 
@@ -62,15 +65,11 @@ module StencilAreaMasking =
       |> Sg.vertexBufferValue DefaultSemantic.Colors color
       |> Sg.effect [ toEffect DefaultSurfaces.vertexColor]
 
-    [
-      maskSG pass1 sg   // one pass by using EXT_stencil_two_side :)
-      fillSG pass2 fullscreenSg // second pass use single fullscreenquad
-    ] |> Sg.ofList
+    stencilArea pass1 pass2 sg fullscreenSg
 
 module Sg =
 
-  let drawOutline (points:alist<V3d>) (colorLine : IMod<C4b>) (colorPoint : IMod<C4b>) (offset:IMod<float>) (width : IMod<float>) =           
-    
+  let drawOutline (colorLine : IMod<C4b>) (colorPoint : IMod<C4b>) (pointSize : IMod<float>) (offset:IMod<float>) (width : IMod<float>) (visible: IMod<bool>) (points:alist<V3d>) =           
     // Increase Precision
     let shift = 
       points
@@ -104,7 +103,7 @@ module Sg =
       Sg.draw IndexedGeometryMode.PointList
       |> Sg.vertexAttribute DefaultSemantic.Positions pointsF 
       |> Sg.uniform "Color" colorPoint
-      |> Sg.uniform "PointSize" (Mod.constant 10.0)
+      |> Sg.uniform "PointSize" pointSize
       |> Sg.uniform "depthOffset" offset
       |> Sg.effect [
         toEffect DefaultSurfaces.stableTrafo
@@ -112,7 +111,15 @@ module Sg =
         toEffect DefaultSurfaces.sgColor
         ]
 
-    [ lines; points] |> Sg.ofSeq |> Sg.translate' shift
+    let sg = [ lines; points] |> Sg.ofSeq |> Sg.translate' shift
+
+    visible |> Mod.map(fun x -> 
+      match x with
+      | true -> sg
+      | false -> Sg.empty) |> Sg.dynamic
+
+  let drawOutlineSimple (offset:IMod<float>) (width : IMod<float>) (visible: IMod<bool>) (points:alist<V3d>) = drawOutline (Mod.constant(C4b.Yellow)) (Mod.constant(C4b.Red)) (Mod.constant (10.0)) offset width visible points
+  let drawOutlineDetail (offset:IMod<float>) (width : IMod<float>) (visible: IMod<bool>) (points:alist<V3d>) = drawOutline (Mod.constant(C4b.DarkYellow)) (Mod.constant(C4b.DarkRed)) (Mod.constant (5.0)) offset width visible points
 
   let planeFit (points:seq<V3d>) : Plane3d =
     let length = points |> Seq.length |> float
@@ -154,7 +161,7 @@ module Sg =
       []
     else 
       projPointsOnPlane
-      |> List.pairwise    // TODO PLIST.pairwise only reason to change type
+      |> List.pairwise
       |> List.mapi (fun i (a,b) -> 
         // Shift points 
         let aPos = a + extrudeNormal * offset
@@ -175,7 +182,7 @@ module Sg =
 
   let drawFinishedBrushPlane (brush:MBrush) (alpha:IMod<float>) (offset:IMod<float>) =
 
-    let colorAlpha = Mod.map2(fun (c:C4b) a -> c.ToC4d() |> fun x -> C4d(x.R, x.G, x.B, a).ToC4b()) brush.color alpha
+    let colorAlpha = Mod.map2(fun (c:C4b) a -> c.ToC4f() |> fun x -> C4f(x.R, x.G, x.B, float32 a).ToV4f()) brush.color alpha
 
     let generatePolygonTriangles (offset : float) (points:alist<V3d>) =
       let shiftAndPosAndCol =
@@ -188,23 +195,20 @@ module Sg =
 
           let triangles = planeFitPolygon shiftedPoints offset
           let pos = triangles |> Seq.collect (fun t -> [| V3f t.P0; V3f t.P1; V3f t.P2 |]) |> Seq.toArray
-          colorAlpha |> Mod.map (fun c -> c.ToC4f().ToV4f()) |> Mod.map (fun cc ->
-            shift, pos, cc
-          )
-        )
+          colorAlpha |> Mod.map (fun cc -> shift, pos, cc))
 
       Sg.draw IndexedGeometryMode.TriangleList
         |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.map (fun (_,p,_) -> p) shiftAndPosAndCol)
         |> Sg.vertexBufferValue DefaultSemantic.Colors (Mod.map (fun (_,_,c) -> c) shiftAndPosAndCol)
         |> Sg.translate' (Mod.map (fun (s,_,_) -> s) shiftAndPosAndCol)
 
-    let sg = Mod.map(fun o -> generatePolygonTriangles o brush.points) offset
+    let sg = offset |> Mod.map(fun o -> generatePolygonTriangles o brush.points) 
   
     sg |> Mod.toASet |> Sg.set
 
   let drawFinishedBrushAxis (brush:MBrush) (alpha:IMod<float>) (offset:IMod<float>) (volumeGeneration:VolumeGeneration) :ISg<'a> =
     
-    let colorAlpha = Mod.map2(fun (c:C4b) a -> c.ToC4d() |> fun x -> C4d(x.R, x.G, x.B, a).ToC4b()) brush.color alpha
+    let colorAlpha = Mod.map2(fun (c:C4b) a -> c.ToC4f() |> fun x -> C4f(x.R, x.G, x.B, float32 a).ToV4f()) brush.color alpha
     
     let sg = 
       brush.pointsOnAxis |> Mod.bind(fun axisInfo -> 
@@ -215,17 +219,15 @@ module Sg =
           
           // increase Precision
           let shiftVec p = 
-            p
-              |> AList.toMod 
+            p |> AList.toMod 
               |> Mod.map(fun x -> (PList.tryAt 0 x) |> Option.defaultValue V3d.Zero)
 
           let shiftPoints p shiftVec =
             let asdf = p |> AList.toMod
             Mod.map2(fun x (s:V3d) -> 
-              x 
-              |> PList.toSeq 
-              |> Seq.map(fun (y:V3d) -> V3f(y-s)) 
-              |> Seq.toArray) asdf shiftVec
+              x |> PList.toSeq 
+                |> Seq.map(fun (y:V3d) -> V3f(y-s)) 
+                |> Seq.toArray) asdf shiftVec
 
           let shift = shiftVec brush.points 
           let pointsF = (shiftPoints brush.points shift) |> Mod.map(fun x -> x |> Array.skip 1) // undo closing polygon (duplicates not needed)
@@ -340,9 +342,8 @@ module Sg =
           let triangles = 
             Sg.draw IndexedGeometryMode.TriangleList
               |> Sg.vertexAttribute DefaultSemantic.Positions vertices 
-              |> Sg.vertexBufferValue DefaultSemantic.Colors (colorAlpha |> Mod.map (fun c -> c.ToC4f().ToV4f()))
+              |> Sg.vertexBufferValue DefaultSemantic.Colors colorAlpha
               |> Sg.index indexArray
-              //|> Sg.uniform "Color" colorAlpha
               |> Sg.translate' shift
               
           triangles)
@@ -463,6 +464,7 @@ module PickingApp =
             if dir1.Dot(dir2) |> sign < 0 then
               let pRev = p |> PList.toList |> List.rev |> PList.ofList
               let aRev = { paa with pointsOnAxis = paa.pointsOnAxis |> PList.toList |> List.rev |> PList.ofList }
+              printfn "Fixed winding order!"
               (pRev, Some aRev)
             else 
               (p,pa)
@@ -493,13 +495,14 @@ module PickingApp =
       else
         model
     | ShowDebugVis -> { model with debugShadowVolume = not (model.debugShadowVolume) }
+    | UseGrouping -> { model with useGrouping = not (model.useGrouping) }
+    | ShowOutline  -> { model with showOutline = not (model.showOutline) }
+    | ShowOutlineDetail  -> { model with showDetailOutline = not (model.showDetailOutline) }
     | SetAlpha a -> { model with alpha = a } 
     | SetExtrusionOffset o -> { model with extrusionOffset = o }
     | SetVolumeGeneration x -> {model with volumeGeneration = x }
 
   let view (model : MPickingModel) =
-    
-    let useGrouping = true
     
     let lineWidth = 2.0
     let depthOffset = 0.01
@@ -507,11 +510,81 @@ module PickingApp =
     let mutable maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
     let mutable areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
 
-    let drawBrush = 
+    let debugClippingVolumeSg polygonSG = 
+      let debugVolume = 
+        polygonSG
+          |> Sg.onOff model.debugShadowVolume
+          |> Sg.effect [
+            toEffect DefaultSurfaces.stableTrafo
+            Shader.DebugColor.Effect
+            ]
+
+      let debugShadowVolume =
+        debugVolume
+          |> Sg.uniform "UseDebugColor" (Mod.constant(false))
+          |> Sg.depthTest (Mod.constant DepthTestMode.Less)
+          |> Sg.cullMode (Mod.constant (CullMode.Front))
+          |> Sg.blendMode (Mod.constant(BlendMode.Blend))
+        
+      let debugShadowVolumeLines =
+        debugVolume
+          |> Sg.uniform "UseDebugColor" (Mod.constant(true))
+          |> Sg.fillMode (Mod.constant (FillMode.Line))
+
+      [ debugShadowVolume; debugShadowVolumeLines] |> Sg.ofList
+
+    let brushOutlineSg (b:MBrush) = 
+      let detailOutline = 
+        b.segments 
+          |> AList.map(fun x -> x.points |> AList.ofList) 
+          |> AList.concat
+          |> Sg.drawOutlineDetail (Mod.constant(depthOffset)) (Mod.constant(lineWidth)) model.showDetailOutline
+
+      let outline = 
+        b.points
+          |> Sg.drawOutlineSimple (Mod.constant(depthOffset)) (Mod.constant(lineWidth)) model.showOutline
+
+      [outline; detailOutline] |> Sg.ofList
+
+    let debugAxisSg (b:MBrush) = 
+      
+      let pointSG size t = 
+        Sg.sphere 3 b.color (Mod.constant size)
+        |> Sg.noEvents
+        |> Sg.trafo t
+        |> Sg.uniform "WorldPos" (t |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
+        |> Sg.uniform "Size" (Mod.constant(size))
+        |> Sg.effect [
+          toEffect <| DefaultSurfaces.stableTrafo
+          toEffect <| DefaultSurfaces.vertexColor
+        ]
+      
+      b.pointsOnAxis 
+        |> Mod.map(fun x ->
+          x |> Option.map(fun a -> 
+            let points = 
+              a.pointsOnAxis 
+                |> AList.map(fun x -> 
+                  let t = (Mod.constant(Trafo3d.Translation x))
+                  pointSG 0.1 t) 
+
+            let midPoint =
+              let t = a.midPoint |> Mod.map(fun x -> Trafo3d.Translation x)
+              pointSG 0.2 t
+
+            points 
+              |> AList.append (AList.single midPoint)
+              |> ASet.ofAList 
+              |> Sg.set)
+            |> Option.defaultValue Sg.empty) 
+        |> Sg.dynamic
+        |> Sg.onOff model.debugShadowVolume
+
+    let drawSeqBrushes = 
       model.brush 
       |> AList.map(fun b ->
         
-        let polygonSG = 
+        let clippingPolygon = 
           model.volumeGeneration 
             |> Mod.map (fun x -> 
               match x with
@@ -522,93 +595,30 @@ module PickingApp =
                 | _ -> Sg.drawFinishedBrushAxis b model.alpha model.extrusionOffset vg
               ) |> Sg.dynamic
 
-        let axisDebugPoints = 
-          b.pointsOnAxis 
-            |> Mod.map(fun x ->
-              x |> Option.map(fun a -> 
-                let points = 
-                  a.pointsOnAxis 
-                    |> AList.map(fun x -> 
-                      let t = (Mod.constant(Trafo3d.Translation x))
-                      Sg.sphere 3 b.color (Mod.constant 0.1)
-                        |> Sg.noEvents
-                        |> Sg.trafo t
-                        |> Sg.uniform "WorldPos" (t |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
-                        |> Sg.uniform "Size" (Mod.constant(0.1))
-                        |> Sg.effect [
-                          toEffect <| DefaultSurfaces.stableTrafo
-                          toEffect <| DefaultSurfaces.vertexColor
-                        ]) 
-
-                let midPoint =
-                  let t = a.midPoint |> Mod.map(fun x -> Trafo3d.Translation x)
-                  Sg.sphere 3 b.color (Mod.constant 0.2)
-                    |> Sg.noEvents
-                    |> Sg.trafo t
-                    |> Sg.uniform "WorldPos" (t |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
-                    |> Sg.uniform "Size" (Mod.constant(0.2))
-                    |> Sg.effect [
-                      toEffect <| DefaultSurfaces.stableTrafo
-                      toEffect <| DefaultSurfaces.vertexColor
-                    ]
-
-                points 
-                  |> AList.append (AList.single midPoint)
-                  |> ASet.ofAList 
-                  |> Sg.set)
-                |> Option.defaultValue Sg.empty) |> Sg.dynamic
-            |> Sg.onOff model.debugShadowVolume
-
-        let debugVolume = 
-          polygonSG
-            |> Sg.onOff model.debugShadowVolume
-            |> Sg.effect [
-              toEffect DefaultSurfaces.stableTrafo
-              Shader.DebugColor.Effect
-              ]
-
-        let debugShadowVolume =
-          debugVolume
-            |> Sg.uniform "UseDebugColor" (Mod.constant(false))
-            |> Sg.depthTest (Mod.constant DepthTestMode.Less)
-            |> Sg.cullMode (Mod.constant (CullMode.Front))
-            |> Sg.blendMode (Mod.constant(BlendMode.Blend))
-            
-        let debugShadowVolumeLines =
-          debugVolume
-            |> Sg.uniform "UseDebugColor" (Mod.constant(true))
-            |> Sg.fillMode (Mod.constant (FillMode.Line))
-
-        let coloredPoylogn =
-          polygonSG 
+        let coloredPolygon =
+          clippingPolygon 
             |> Sg.effect [
               toEffect DefaultSurfaces.stableTrafo
               toEffect DefaultSurfaces.vertexColor
               ]
             |> StencilAreaMasking.stencilAreaSG maskPass areaPass
-
-        let segmentOutline = 
-          b.segments |> AList.map(fun x -> x.points |> AList.ofList) |> AList.concat
-
-        let output = 
-          [
-            coloredPoylogn
-            Sg.drawOutline b.points (Mod.constant(C4b.Yellow)) (Mod.constant(C4b.Red)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth)) 
-            Sg.drawOutline segmentOutline (Mod.constant(C4b.DarkYellow)) (Mod.constant(C4b.DarkRed)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth)) 
-            axisDebugPoints
-            debugShadowVolume 
-            debugShadowVolumeLines
-          ] |> Sg.ofList
-            
+  
         maskPass <- RenderPass.after "mask" RenderPassOrder.Arbitrary areaPass
         areaPass <- RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
            
-        output) |> AList.toASet |> Sg.set
+        [
+          coloredPolygon
+          debugClippingVolumeSg clippingPolygon
+          brushOutlineSg b
+          //debugAxisSg b
+        ] |> Sg.ofList) 
+      |> AList.toASet 
+      |> Sg.set
 
-    let groupedBrushes =
+    let drawGroupedBrushes =
       model.groupedBrushes 
       |> AMap.map(fun groupColor x -> 
-        let polygonSG = 
+        let clippingPolygon = 
           x |> AList.map (fun b ->
             model.volumeGeneration 
               |> Mod.map (fun x -> 
@@ -622,54 +632,50 @@ module PickingApp =
             |> AList.toASet 
             |> Sg.set
         
-        let colorAlpha =   
-          model.alpha |> Mod.map(fun a -> groupColor.ToC4d() |> fun x -> C4d(x.R, x.G, x.B, a).ToC4f().ToV4f())
-
         let coloredPolygon =
-          polygonSG
+          
+          let groupColorAlpha = model.alpha |> Mod.map(fun a -> groupColor.ToC4f() |> fun x -> C4f(x.R, x.G, x.B, float32 a).ToV4f())
+          
+          clippingPolygon
             |> Sg.effect [
               toEffect DefaultSurfaces.stableTrafo
               toEffect DefaultSurfaces.vertexColor
               ]
-            |> StencilAreaMasking.stencilAreaGroupedSG maskPass areaPass colorAlpha
-  
-        let debugVolume = 
-          polygonSG
-            |> Sg.onOff model.debugShadowVolume
-            |> Sg.effect [
-              toEffect DefaultSurfaces.stableTrafo
-              Shader.DebugColor.Effect
-              ]
+            |> StencilAreaMasking.stencilAreaGroupedSG maskPass areaPass groupColorAlpha
 
-        let debugShadowVolume =
-          debugVolume
-            |> Sg.uniform "UseDebugColor" (Mod.constant(false))
-            |> Sg.depthTest (Mod.constant DepthTestMode.Less)
-            |> Sg.cullMode (Mod.constant (CullMode.Front))
-            |> Sg.blendMode (Mod.constant(BlendMode.Blend))
-            
-        let debugShadowVolumeLines =
-          debugVolume
-            |> Sg.uniform "UseDebugColor" (Mod.constant(true))
-            |> Sg.fillMode (Mod.constant (FillMode.Line))
+        let brushOutlines = 
+          x |> AList.map( fun b -> brushOutlineSg b) |> AList.toASet |> Sg.set
 
         maskPass <- RenderPass.after "mask" RenderPassOrder.Arbitrary areaPass
         areaPass <- RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
 
         [
          coloredPolygon
-         debugShadowVolume
-         debugShadowVolumeLines
+         debugClippingVolumeSg clippingPolygon
+         brushOutlines
         ] |> Sg.ofList)
     |> AMap.toASet
     |> ASet.map snd
     |> Sg.set
 
-    let projOutline = 
-      model.segments |> AList.map(fun x -> x.points |> AList.ofList) |> AList.concat
+    let sketchOutlineDetail = 
+      model.segments 
+        |> AList.map(fun x -> x.points |> AList.ofList) 
+        |> AList.concat
+        |> Sg.drawOutlineDetail (Mod.constant(depthOffset)) (Mod.constant(lineWidth)) model.showDetailOutline
+
+    let sketchOutline = 
+      model.intersectionPoints 
+        |> Sg.drawOutlineSimple (Mod.constant(depthOffset)) (Mod.constant(lineWidth)) (Mod.constant(true))
+
+    let finishedBrushes = 
+      model.useGrouping |> Mod.map(fun x ->
+        match x with
+        | true -> drawGroupedBrushes
+        | false -> drawSeqBrushes ) |> Sg.dynamic
 
     [ 
-      yield Sg.drawOutline model.intersectionPoints (Mod.constant(C4b.Yellow)) (Mod.constant(C4b.Red)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth))
-      yield Sg.drawOutline projOutline (Mod.constant(C4b.DarkYellow)) (Mod.constant(C4b.Red)) (Mod.constant(depthOffset)) (Mod.constant(lineWidth))
-      if useGrouping then yield groupedBrushes else yield drawBrush
+      sketchOutline
+      sketchOutlineDetail 
+      finishedBrushes
     ] |> Sg.ofList

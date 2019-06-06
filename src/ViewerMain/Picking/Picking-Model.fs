@@ -31,6 +31,9 @@ type PickingAction =
   | AddBrush of (plist<V3d> -> Option<AxisPointInfo>)
   | AddTestBrushes of (plist<V3d> -> Option<AxisPointInfo>)
   | ShowDebugVis
+  | ShowOutline
+  | ShowOutlineDetail
+  | UseGrouping
   | SetAlpha of float
   | SetExtrusionOffset of float
   | SetVolumeGeneration of Option<VolumeGeneration>
@@ -68,6 +71,9 @@ type PickingModel = {
   brush                : plist<Brush>
   groupedBrushes       : hmap<C4b, plist<Brush>>
   debugShadowVolume    : bool
+  useGrouping          : bool
+  showOutline          : bool
+  showDetailOutline    : bool
   alpha                : float
   extrusionOffset      : float
   volumeGeneration     : Option<VolumeGeneration>
@@ -84,6 +90,9 @@ module PickingModel =
       brush              = PList.empty
       groupedBrushes     = HMap.empty
       debugShadowVolume  = false
+      useGrouping        = true
+      showOutline        = true
+      showDetailOutline  = false
       alpha              = 0.5
       extrusionOffset    = 1.0
       volumeGeneration   = Some VolumeGeneration.Plane
