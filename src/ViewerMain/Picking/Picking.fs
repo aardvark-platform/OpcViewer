@@ -454,17 +454,19 @@ module PickingApp =
           | None -> (p,pa)
           | Some paa -> 
             let axisPoint = paa.pointsOnAxis |> PList.skip 1 |> PList.first
-            let p0 = p |> PList.first
-            let p1 = p |> PList.skip 1 |> PList.first
-            let p2 = p |> PList.skip 2 |> PList.first
+            let p0 = p |> PList.first                  |> fun x -> x - axisPoint
+            let p1 = p |> PList.skip 1 |> PList.first  |> fun x -> x - axisPoint
+            let p2 = p |> PList.skip 2 |> PList.first  |> fun x -> x - axisPoint
 
-            let dir1 = (axisPoint-p1).Normalized
-            let dir2 = (p0-p1).Cross(p2-p1).Normalized
+            let dir1 = p1.Normalized
+            let x1 = (p0-p1).Normalized
+            let x2 = (p2-p1).Normalized
+            let dir2 = (x1.Cross(x2)).Normalized
 
             if dir1.Dot(dir2) |> sign < 0 then
               let pRev = p |> PList.toList |> List.rev |> PList.ofList
               let aRev = { paa with pointsOnAxis = paa.pointsOnAxis |> PList.toList |> List.rev |> PList.ofList }
-              printfn "Fixed winding order!"
+              printfn "\n\n\nFixed winding order \n\n\n"
               (pRev, Some aRev)
             else 
               (p,pa)
@@ -488,7 +490,7 @@ module PickingApp =
         let newGrouped =
             model.groupedBrushes |> HMap.alter newBrush.color (fun x -> 
               match x with 
-              | Some y -> Some (y |> PList.append newBrush)
+              | Some y -> Some (y |> PList.prepend newBrush)
               | None -> Some (PList.single newBrush))
            
         { model with brush = model.brush |> PList.prepend newBrush; intersectionPoints = PList.empty; segments = PList.empty; groupedBrushes = newGrouped }
