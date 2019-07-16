@@ -15,18 +15,17 @@
     <RunWorkingDirectory>$(OutputPath)\netcoreapp2.0</RunWorkingDirectory>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Remove="Picking\**" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Serialization.fs" />
-    <Compile Include="KdTrees.fs" />
-    <Compile Include="Shaders.fs" />
-    <Compile Include="Picking\Picking-Model.fs" />
-    <Compile Include="Picking\Picking-Utils.fs" />
-    <Compile Include="Picking\IntersectionController.fs" />
-    <Compile Include="Picking\Picking.fs" />
     <Compile Include="OutlineModel.fs" />
     <Compile Include="Model.fs" />
+    <Compile Include="OutlineSg.fs" />
+    <Compile Include="Neighbouring.fs" />
     <Compile Include="Axis.fs" />
-    <Compile Include="Sg.fs" />
+    <Compile Include="AxisSg.fs" />
     <Compile Include="Opc.fs" />
     <Compile Include="OutlineApp.fs" />
     <Compile Include="App.fs" />
@@ -36,6 +35,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LegacyCode\LegacyCode.csproj" />
+    <ProjectReference Include="..\OPCViewer.Base\OPCViewer.Base.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

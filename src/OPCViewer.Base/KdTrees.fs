@@ -4,7 +4,6 @@ open Aardvark.Geometry
 open Aardvark.Base
 open System.IO
 
-
 module KdTrees = 
   type LazyKdTree = {
       kdTree          : option<ConcreteKdIntersectionTree>

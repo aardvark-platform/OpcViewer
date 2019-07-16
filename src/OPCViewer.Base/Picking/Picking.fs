@@ -1,12 +1,14 @@
-namespace OpcSelectionViewer.Picking
+namespace OpcViewer.Base.Picking
 
 open Aardvark.UI
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
-open OpcSelectionViewer
-open Uncodium
 open System.Collections.Generic
+
+open Uncodium
+
+open OpcViewer.Base
 
 module StencilAreaMasking =
 
@@ -68,6 +70,7 @@ module StencilAreaMasking =
     stencilArea pass1 pass2 sg fullscreenSg
 
 module Sg =
+  
 
   let drawOutline (colorLine : IMod<C4b>) (colorPoint : IMod<C4b>) (pointSize : IMod<float>) (offset:IMod<float>) (width : IMod<float>) (visible: IMod<bool>) (points:alist<V3d>) =           
     // Increase Precision

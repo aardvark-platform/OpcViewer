@@ -1,4 +1,4 @@
-namespace OpcSelectionViewer.Picking
+namespace OpcViewer.Base.Picking
 
 open Aardvark.UI
 open Aardvark.Base

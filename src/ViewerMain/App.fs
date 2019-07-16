@@ -19,7 +19,8 @@ open Aardvark.Base.Geometry
 open Aardvark.Geometry
 open ``F# Sg``
 
-open OpcSelectionViewer.Picking
+open OpcViewer.Base
+open OpcViewer.Base.Picking
 
 module App =   
   open Aardvark.Application
@@ -117,7 +118,7 @@ module App =
       let opcs = 
         m.opcInfos
           |> AMap.toASet
-          |> ASet.map(fun info -> Sg.createSingleOpcSg m info)
+          |> ASet.map(fun info -> Sg.createSingleOpcSg m.pickingActive m.cameraState.view info)
           |> Sg.set
           |> Sg.effect [ 
             toEffect Shader.stableTrafo
@@ -125,7 +126,7 @@ module App =
             ]
 
       let axis = 
-        m |> Sg.axisSgs
+        m |> AxisSg.axisSgs
 
       let scene = 
         [
@@ -146,7 +147,7 @@ module App =
            onKeyUp (Message.KeyUp)
            //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
          ]) 
-         (scene) 
+         (scene |> Sg.map PickingAction) 
             
       let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant          
         
@@ -187,7 +188,7 @@ module App =
               onLayoutChanged UpdateDockConfig ]
         )
 
-  let app dir axisFile =
+  let app dir axisFile (rotate : bool) =
       Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton

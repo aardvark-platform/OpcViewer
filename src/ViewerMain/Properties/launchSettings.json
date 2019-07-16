@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "\"D:\\REPOS2\\OPC-DATA\\Rohausbruch\\Data\" \"D:\\REPOS2\\OPC-DATA\\Rohausbruch\\axis_Perjen.aard\""
+      "commandLineArgs": "\"E:\\Aardwork\\Exomars\\_SCENES\\cd - Copy\\Surface\\Cape_Desire_RGB\" rotate"
     }
   }
 }

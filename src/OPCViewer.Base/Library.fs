@@ -1,4 +1,4 @@
-﻿namespace OPCViewer.Base
+﻿namespace OpcViewer.Base
 
 module Say =
     let hello name =

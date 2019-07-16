@@ -1,4 +1,4 @@
-﻿namespace OpcSelectionViewer.Picking
+﻿namespace OpcViewer.Base.Picking
 
 open Aardvark.Base
 
@@ -59,17 +59,17 @@ module legacy =
     indexArray
 
 module IntersectionController = 
-  open Aardvark.Application
-  open Aardvark.Base
-  open Aardvark.UI
-  open OpcSelectionViewer
-  open KdTrees
-  open Aardvark.Geometry
   open System
   open System.Drawing
-  open Aardvark.SceneGraph.Opc
-  open Aardvark.VRVis.Opc.KdTrees
+
+  open Aardvark.Base
   open Aardvark.Base.Geometry
+  open Aardvark.Application
+  open Aardvark.UI  
+  open Aardvark.Geometry
+  open Aardvark.SceneGraph.Opc
+  open Aardvark.VRVis.Opc.KdTrees  
+  open OpcViewer.Base.Picking
 
   let hitBoxes (kd : hmap<Box3d, Level0KdTree>) (r : FastRay3d) (trafo : Trafo3d) =
     kd
@@ -141,7 +141,7 @@ module IntersectionController =
                 | None ->                                     
                   Log.line "cache miss %A- loading kdtree %A" kd.boundingBox kd.kdtreePath
 
-                  let mutable tree = loadKdtree kd.kdtreePath
+                  let mutable tree = KdTrees.loadKdtree kd.kdtreePath
                   tree.KdIntersectionTree.ObjectSet <- (kd |> loadTriangleSet)
                   Log.line "Objectset type %s" (tree.KdIntersectionTree.ObjectSet.ToString())
 
