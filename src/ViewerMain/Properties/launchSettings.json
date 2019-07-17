@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "\"E:\\Aardwork\\Exomars\\_SCENES\\cd - Copy\\Surface\\Cape_Desire_RGB\" rotate"
+      "commandLineArgs": "opc=\"H:\\New_3D_Data\\Stimson\\Job_Stimson_HiRISE_DTM_correct\\result\\Stimson_HiRISE_DTM_correct\" -rotate"
     }
   }
 }

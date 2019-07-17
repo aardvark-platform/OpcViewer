@@ -359,7 +359,7 @@ module PickingApp =
   let update (model : PickingModel) (msg : PickingAction) = 
     match msg with
     | HitSurface (box, sceneHit, axisPoint) -> 
-      IntersectionController.intersect model sceneHit box axisPoint
+      Intersect.perform model sceneHit box axisPoint
     | RemoveLastPoint ->
       let points, infos = 
         match model.intersectionPoints.AsList with

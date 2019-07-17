@@ -20,5 +20,8 @@
     <Compile Include="Library.fs" />
     <None Include="paket.references" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LegacyCode\LegacyCode.csproj" />
+  </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

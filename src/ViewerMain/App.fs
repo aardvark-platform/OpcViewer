@@ -135,6 +135,20 @@ module App =
           PickingApp.view m.picking
         ] |> Sg.ofList
 
+      let textOverlays (cv : IMod<CameraView>) = 
+        div [js "oncontextmenu" "event.preventDefault();"] [ 
+           let style' = "color: white; font-family:Consolas;"
+    
+           yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left" ] [          
+           //yield table [] []
+              yield table [] [
+                tr[][
+                    td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
+                ]
+              ]
+           ]
+        ]
+
       let renderControl =
        FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
          (AttributeMap.ofList [ 
@@ -157,7 +171,7 @@ module App =
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
           require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
-              div [clazz "ui"; style "background: #1B1C1E"] [renderControl]
+              div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)]
           )
         | Some "controls" -> 
           require Html.semui (
@@ -226,7 +240,7 @@ module App =
         |> List.map (fun info -> info.globalBB, info)
         |> HMap.ofList      
                       
-      let up = V3d.OOI // if true then (box.Center.Normalized) else V3d.OOI
+      let up = if rotate then (box.Center.Normalized) else V3d.OOI
 
       let restoreCamState : CameraControllerState =
         if File.Exists ".\camstate" then          

@@ -34,7 +34,6 @@
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\LegacyCode\LegacyCode.csproj" />
     <ProjectReference Include="..\OPCViewer.Base\OPCViewer.Base.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
