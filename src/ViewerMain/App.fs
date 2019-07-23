@@ -19,7 +19,8 @@ open Aardvark.Base.Geometry
 open Aardvark.Geometry
 open ``F# Sg``
 
-open OpcSelectionViewer.Picking
+open OpcViewer.Base
+open OpcViewer.Base.Picking
 
 module App =   
   open Aardvark.Application
@@ -117,7 +118,7 @@ module App =
       let opcs = 
         m.opcInfos
           |> AMap.toASet
-          |> ASet.map(fun info -> Sg.createSingleOpcSg m info)
+          |> ASet.map(fun info -> Sg.createSingleOpcSg m.pickingActive m.cameraState.view info)
           |> Sg.set
           |> Sg.effect [ 
             toEffect Shader.stableTrafo
@@ -125,7 +126,7 @@ module App =
             ]
 
       let axis = 
-        m |> Sg.axisSgs
+        m |> AxisSg.axisSgs
 
       let scene = 
         [
@@ -133,6 +134,20 @@ module App =
           axis
           PickingApp.view m.picking
         ] |> Sg.ofList
+
+      let textOverlays (cv : IMod<CameraView>) = 
+        div [js "oncontextmenu" "event.preventDefault();"] [ 
+           let style' = "color: white; font-family:Consolas;"
+    
+           yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left" ] [          
+           //yield table [] []
+              yield table [] [
+                tr[][
+                    td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
+                ]
+              ]
+           ]
+        ]
 
       let renderControl =
        FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
@@ -146,7 +161,7 @@ module App =
            onKeyUp (Message.KeyUp)
            //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
          ]) 
-         (scene) 
+         (scene |> Sg.map PickingAction) 
             
       let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant          
         
@@ -156,7 +171,7 @@ module App =
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
           require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
-              div [clazz "ui"; style "background: #1B1C1E"] [renderControl]
+              div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)]
           )
         | Some "controls" -> 
           require Html.semui (
@@ -187,7 +202,7 @@ module App =
               onLayoutChanged UpdateDockConfig ]
         )
 
-  let app dir axisFile =
+  let app dir axisFile (rotate : bool) =
       Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
@@ -225,7 +240,7 @@ module App =
         |> List.map (fun info -> info.globalBB, info)
         |> HMap.ofList      
                       
-      let up = V3d.OOI // if true then (box.Center.Normalized) else V3d.OOI
+      let up = if rotate then (box.Center.Normalized) else V3d.OOI
 
       let restoreCamState : CameraControllerState =
         if File.Exists ".\camstate" then          

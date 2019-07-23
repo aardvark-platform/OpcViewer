@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>..\..\bin\Release</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OutputPath>..\..\bin\Debug</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="KdTrees.fs" />
+    <Compile Include="Shaders.fs" />
+    <Compile Include="Picking\Picking-Utils.fs" />
+    <Compile Include="Picking\Picking-Model.fs" />
+    <Compile Include="Picking\IntersectionController.fs" />
+    <Compile Include="Picking\Picking.fs" />
+    <Compile Include="Sg.fs" />
+    <Compile Include="Library.fs" />
+    <None Include="paket.references" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LegacyCode\LegacyCode.csproj" />
+  </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>

@@ -1,4 +1,4 @@
-﻿namespace OpcSelectionViewer
+﻿namespace OpcViewer.Base
 
 module Shader =
   open Aardvark.Base.Rendering.Effects

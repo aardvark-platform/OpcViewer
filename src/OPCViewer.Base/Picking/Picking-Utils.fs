@@ -1,4 +1,4 @@
-﻿namespace OpcSelectionViewer.Picking
+﻿namespace OpcViewer.Base.Picking
 
 open System
 open Aardvark.Base
@@ -9,67 +9,10 @@ open MBrace.FsPickler
 open MBrace.FsPickler.Combinators  
 open Aardvark.VRVis.Opc.KdTrees
 
-module Neighbouring = 
-  let rec neighborPatches (neighborMap : hmap<Box3d,BoxNeighbors>) (patchElements : QTree<Patch>[]) (patchTree : QTree<Patch>) : hmap<Box3d,BoxNeighbors> = 
-    let returnMap = 
-      match patchTree with 
-        | QTree.Node (n,f) -> 
-          f 
-            |> Array.map(fun node -> neighborPatches neighborMap f node)
-            |> Array.fold(fun unified current -> HMap.union unified current) neighborMap
 
-            
-            //Array.collect (fun node -> 
-            //  match node with
-            //   | QTree.Node (patch, children) -> 
-                  
-                  
-                  
-            //      match parentTree with 
-            //        | QTree.Node (p, c) ->
-                      
-                      
-            //          let map = neighborPatches neighborMap patchTree node
-
-            //   | QTree.Leaf (patch)
-                 
-                 
-            //     (QTree.Node parentTree)
-            //   | _ -> [|neighborMap|])
-            
-                 
-          
-        | QTree.Leaf l -> 
-          let blubb = 
-            seq [
-              for node in patchElements do
-                match node with
-                  | QTree.Node (n, f) ->
-                    yield n.info.GlobalBoundingBox
-                  | QTree.Leaf l ->
-                    yield l.info.GlobalBoundingBox
-            ]
-          
-          neighborMap            
-    returnMap
-
-  let calculateNeighbors (pH : PatchHierarchy) =
-    let leaves = QTree.getLeaves pH.tree
-    
-    match pH.tree with
-      | QTree.Node (n,f) -> failwith ""
-      | QTree.Leaf l -> failwith ""      
-      
-
-    for leaf in leaves do
-      leaf.info.GlobalBoundingBox |> ignore
-
-    failwith "neighborcalculation failed"
 
 module KdTrees = 
-  
-
-  
+    
   let makeInCoreKd a = 
     {
       kdTree = new ConcreteKdIntersectionTree()
@@ -135,9 +78,7 @@ module KdTrees =
         (h.kdTreeAggZero2d_FileAbsPath)
 
     let cacheFile = System.IO.Path.ChangeExtension(masterKdPath, ".cache")
-
-    let blar = "G:\New_3D_Data\Stimson\MSL_Mastcam_Sol_1087_id_206226_OPC\OPC_000_000\patches\03-Patch-00001~0029\00-Patch-00027~0022-0.aakd"
-
+    
     if System.IO.File.Exists(cacheFile) then
       Log.line "Found lazy kdtree cache"
       if load then

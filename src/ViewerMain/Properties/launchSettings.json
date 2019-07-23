@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "\"D:\\REPOS2\\OPC-DATA\\Rohausbruch\\Data\" \"D:\\REPOS2\\OPC-DATA\\Rohausbruch\\axis_Perjen.aard\""
+      "commandLineArgs": "opc=\"H:\\New_3D_Data\\Stimson\\Job_Stimson_HiRISE_DTM_correct\\result\\Stimson_HiRISE_DTM_correct\" -rotate"
     }
   }
 }

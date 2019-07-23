@@ -19,8 +19,9 @@ open Aardvark.Base.Geometry
 open Aardvark.Geometry
 open ``F# Sg``
 
+open OpcViewer.Base
+open OpcViewer.Base.Picking
 open OpcSelectionViewer
-open OpcSelectionViewer.Picking
 
 module GuiEx =
     let iconToggle (dings : IMod<bool>) onIcon offIcon action =
@@ -58,7 +59,7 @@ module OutlineApp =
       let opcs = 
         m.opcInfos
           |> AMap.toASet
-          |> ASet.map(fun info -> Sg.createOutlineOpcSg m info)
+          |> ASet.map(fun info -> OutlineSg.createOutlineOpcSg m info)
           |> Sg.set
 
       let scene = [ opcs ] |> Sg.ofList

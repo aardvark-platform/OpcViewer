@@ -10,7 +10,8 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.Application
 
-open OpcSelectionViewer.Picking
+open OpcViewer.Base
+open OpcViewer.Base.Picking
 
 type OutlineMessage =
   | Camera           of FreeFlyController.Message

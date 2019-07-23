@@ -1,15 +1,17 @@
 ﻿namespace OpcSelectionViewer
 
-open OpcSelectionViewer.Picking
+open Aardvark.Base
+open Aardvark.UI
+open Aardvark.UI.Trafos 
+open Aardvark.Base.Rendering
+open Aardvark.Base.Incremental
+open System.IO
+open System
+
+open OpcViewer.Base.Picking
 
 module AxisFunctions = 
-  open Aardvark.Base
-  open Aardvark.UI
-  open Aardvark.UI.Trafos 
-  open Aardvark.Base.Rendering
-  open Aardvark.Base.Incremental
-  open System.IO
-  open System
+  
 
   type AxisPoint = {
     index           : int
