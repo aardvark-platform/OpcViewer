@@ -11,6 +11,9 @@ open Aardvark.UI.Primitives
 open Aardvark.Application
 
 open OpcViewer.Base.Picking
+open OpcViewer.Base.Attributes
+
+
 
 type Message =
   | Camera           of FreeFlyController.Message
@@ -18,6 +21,8 @@ type Message =
   | KeyDown          of key : Keys  
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
+  | AttributeAction  of AttributeAction
+
 
 type CameraStateLean = 
   { 
@@ -61,6 +66,8 @@ type Model =
         dockConfig           : DockConfig
         picking              : PickingModel
         pickingActive        : bool
+
+        opcAttributes        : AttributeModel
     }
 
    
