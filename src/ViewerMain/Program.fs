@@ -15,8 +15,11 @@ let main argv =
     Aardium.init()
 
     use app = new OpenGlApplication()
-    let opcDir = "C:\Users\laura\VRVis\Data\CapeDesire\Surface\Cape_Desire_RGB"
-    let instance =  OpcSelectionViewer.App.app argv.[0] |> App.start  
+    //let opcDir = "C:\Users\laura\VRVis\Data\CapeDesire\Surface\Cape_Desire_RGB"
+    let opcDir = argv.[0];
+    let axisFile = if argv.Length > 1 then Some(argv.[1]) else None
+    
+    let instance =  OpcSelectionViewer.App.app opcDir axisFile |> App.start 
     //let instance = OpcOutlineTest.OutlineApp.appOutlines opcDir |> App.start 
 
     // use can use whatever suave server to start you mutable app. 
@@ -30,7 +33,7 @@ let main argv =
     WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
         Suave.Files.browseHome
-    ]  
+    ] |> ignore
 
     Aardium.run {
         url "http://localhost:4321/"

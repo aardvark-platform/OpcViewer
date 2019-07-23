@@ -25,6 +25,7 @@
     <Compile Include="Picking\Picking.fs" />
     <Compile Include="OutlineModel.fs" />
     <Compile Include="Model.fs" />
+    <Compile Include="Axis.fs" />
     <Compile Include="Sg.fs" />
     <Compile Include="Opc.fs" />
     <Compile Include="OutlineApp.fs" />
@@ -32,6 +33,9 @@
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <None Include="paket.references" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LegacyCode\LegacyCode.csproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

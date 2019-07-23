@@ -21,13 +21,34 @@ open ``F# Sg``
 
 open OpcSelectionViewer.Picking
 
-
-
-module App = 
-  open SceneObjectHandling
+module App =   
   open Aardvark.Application
   open Aardvark.Base.DynamicLinkerTypes  
   
+  let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
+    let s' = cam.freeFlyConfig.moveSensitivity + incr
+    Log.line "[App] sensitivity: %A" s'
+    let config = 
+      { 
+        cam.freeFlyConfig with
+          panMouseSensitivity       = exp(s') * 0.0025
+          dollyMouseSensitivity     = exp(s') * 0.0025
+          zoomMouseWheelSensitivity = exp(s') * 0.1
+          moveSensitivity           = s'          
+      }    
+
+    { cam with freeFlyConfig = config }
+
+  let toCameraStateLean (view : CameraView) : CameraStateLean = 
+    {
+      location = view.Location
+      forward  = view.Forward
+      sky      = view.Sky
+    }
+
+  let fromCameraStateLean (c : CameraStateLean) : CameraView = 
+    CameraView.lookAt c.location (c.location + c.forward) c.sky    
+
   let update (model : Model) (msg : Message) =   
     match msg with
       | Camera m when model.pickingActive = false -> 
@@ -44,10 +65,40 @@ module App =
           | Keys.Delete ->            
             { model with picking = PickingApp.update model.picking (PickingAction.ClearPoints) }
           | Keys.Back ->
-            { model with picking = PickingApp.update model.picking (PickingAction.RemoveLastPoint) }            
+            { model with picking = PickingApp.update model.picking (PickingAction.RemoveLastPoint) }
+          | Keys.PageUp ->             
+            { model with cameraState = model.cameraState |>  updateFreeFlyConfig +0.5 }
+          | Keys.PageDown ->             
+            { model with cameraState = model.cameraState |>  updateFreeFlyConfig -0.5 }
+          | Keys.Space ->    
+            Log.line "[App] saving camstate"
+            model.cameraState.view |> toCameraStateLean |> Serialization.save ".\camstate" |> ignore
+            model
+          | Keys.Enter ->
+            let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
+            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pointsOnAxisFunc)
+            
+            let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
+            { model with picking = updatedPicking; axis = axis }
+          | Keys.T ->
+            let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
+            let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
+            
+            let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
+            { model with picking = updatedPicking; axis = axis }
           | _ -> model
       | PickingAction msg -> 
-        { model with picking = PickingApp.update model.picking msg }        
+        let pickingModel =
+          match msg with
+          | HitSurface (a,b,_) -> 
+            match model.axis with
+            | Some axis -> 
+              let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
+              PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
+            | None -> PickingApp.update model.picking msg
+          | _ -> PickingApp.update model.picking msg
+        { model with picking = pickingModel }
+
         ////IntersectionController.intersect model sceneHit box
         //failwith "panike"
         //model 
@@ -66,16 +117,20 @@ module App =
       let opcs = 
         m.opcInfos
           |> AMap.toASet
-          |> ASet.map(fun info -> SceneObjectHandling.createSingleOpcSg m info)
+          |> ASet.map(fun info -> Sg.createSingleOpcSg m info)
           |> Sg.set
           |> Sg.effect [ 
             toEffect Shader.stableTrafo
             toEffect DefaultSurfaces.diffuseTexture       
             ]
 
+      let axis = 
+        m |> Sg.axisSgs
+
       let scene = 
         [
           opcs
+          axis
           PickingApp.view m.picking
         ] |> Sg.ofList
 
@@ -83,7 +138,7 @@ module App =
        FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
-           attribute "showFPS" "false";       // optional, default is false
+           attribute "showFPS" "true";       // optional, default is false
            attribute "useMapping" "true"
            attribute "data-renderalways" "false"
            attribute "data-samples" "4"
@@ -106,7 +161,18 @@ module App =
         | Some "controls" -> 
           require Html.semui (
             body [style "width: 100%; height:100%; background: transparent";] [
-               div[style "color:white"][text "UI COMES HERE"]
+              div[style "color:white; margin: 5px 15px 5px 5px"][
+                h3[][text "NIOBE"]
+                p[][text "Hold Ctrl-Left to add Point"]
+                p[][text "Press Enter to close Polygon"]
+                p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.picking.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.picking.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
+                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
+                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useGrouping PickingAction.UseGrouping "Use Grouping"] |> UI.map PickingAction
+                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showOutline PickingAction.ShowOutline "Show Outline"] |> UI.map PickingAction
+                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showDetailOutline PickingAction.ShowOutlineDetail "Show Outline Detail"] |> UI.map PickingAction
+                p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
+                p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
+              ]
             ]
           )
         | Some other -> 
@@ -121,10 +187,14 @@ module App =
               onLayoutChanged UpdateDockConfig ]
         )
 
-  let app dir =
+  let app dir axisFile =
       Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
+
+      let axis = 
+        axisFile |> Option.map(fun fileName -> AxisFunctions.loadAxis fileName)
+                 |> Option.defaultValue None
 
       let patchHierarchies =
         [ 
@@ -146,7 +216,7 @@ module App =
 
             yield {
               patchHierarchy = h
-              kdTree         = KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer
+              kdTree         = Aardvark.VRVis.Opc.KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath (KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer)
               localBB        = rootTree.info.LocalBoundingBox 
               globalBB       = rootTree.info.GlobalBoundingBox
               neighborMap    = HMap.empty
@@ -155,31 +225,47 @@ module App =
         |> List.map (fun info -> info.globalBB, info)
         |> HMap.ofList      
                       
-      let camState = { FreeFlyController.initial with view = CameraView.lookAt (box.Center) V3d.OOO V3d.OOI; }
+      let up = V3d.OOI // if true then (box.Center.Normalized) else V3d.OOI
 
+      let restoreCamState : CameraControllerState =
+        if File.Exists ".\camstate" then          
+          Log.line "[App] restoring camstate"
+          let csLight : CameraStateLean = Serialization.loadAs ".\camstate"
+          { FreeFlyController.initial with view = csLight |> fromCameraStateLean }
+        else 
+          { FreeFlyController.initial with view = CameraView.lookAt (box.Max) box.Center up; }                    
+
+      let camState = restoreCamState
+
+      let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
+      let camState = camState |> Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
+
+      let initialDockConfig = 
+        config {
+          content (
+              horizontal 10.0 [
+                  element { id "render"; title "Render View"; weight 7.0 }
+                  element { id "controls"; title "Controls"; weight 3.0 }                         
+              ]
+          )
+          appName "OpcSelectionViewer"
+          useCachedConfig true
+        }
+            
       let initialModel : Model = 
         { 
-          cameraState        = camState          
+          cameraState        = camState
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
-                    
+          axis               = axis
+          
           threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
           boxes              = List.empty //kdTrees |> HMap.toList |> List.map fst
       
           pickingActive      = false
           opcInfos           = opcInfos
           picking            = { PickingModel.initial with pickingInfos = opcInfos }
-          dockConfig         =
-            config {
-                content (
-                    horizontal 10.0 [
-                        element { id "render"; title "Render View"; weight 7.0 }                        
-                        element { id "controls"; title "Controls"; weight 3.0 }                                                    
-                    ]
-                )
-                appName "OpcSelectionViewer"
-                useCachedConfig true
-            }
+          dockConfig         = initialDockConfig            
         }
 
       {

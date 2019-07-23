@@ -27,6 +27,38 @@ module Shader =
             restartStrip()
         }
 
+  module DebugColor = 
+    let internal debugCol (p : Vertex) =
+      let c : C4b = uniform?Color
+      let c1 = c.ToC4d().ToV4d().XYZ
+      fragment {
+        let useDebugColor : bool = uniform?UseDebugColor 
+        if useDebugColor then
+          return V4d.IOOI
+        else
+          return V4d(c1, 0.3) 
+      }
+
+    let Effect = 
+        toEffect debugCol
+
+  module VertexCameraShift = 
+    let internal toCameraShift (p : Vertex) =
+      vertex {
+        let (offset : float) = (uniform?depthOffset)
+        
+        let wp = p.wp
+        let viewVec = ((wp.XYZ - uniform.CameraLocation).Normalized)
+        let viewVec = V4d(viewVec.X, viewVec.Y, viewVec.Z, 0.0)
+        let wpShift = wp + viewVec * offset
+        let posShift = uniform.ViewProjTrafo * wpShift
+
+      return { p with pos = posShift; wp = wpShift }
+      }
+
+    let Effect = 
+      toEffect toCameraShift
+
   module PointSprite = 
     let internal pointSprite (p : Point<Vertex>) =
       triangle {

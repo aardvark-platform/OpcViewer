@@ -38,8 +38,7 @@ module GuiEx =
     let iconCheckBox (dings : IMod<bool>) action =
       iconToggle dings "check square outline icon" "square icon" action
 
-module OutlineApp = 
-  open SceneObjectHandling
+module OutlineApp =   
   open Aardvark.Application
   open Aardvark.Base.DynamicLinkerTypes  
   
@@ -52,15 +51,14 @@ module OutlineApp =
       | SetLineThickness th ->
         { model with lineThickness = Numeric.update model.lineThickness th }
       | UseOutlines ->
-        { model with useOutlines = not model.useOutlines }
-      | _ -> model
+        { model with useOutlines = not model.useOutlines }      
                     
   let outlineView (m : MOutlineModel) : DomNode<OutlineMessage> =
 
       let opcs = 
         m.opcInfos
           |> AMap.toASet
-          |> ASet.map(fun info -> SceneObjectHandling.createOutlineOpcSg m info)
+          |> ASet.map(fun info -> Sg.createOutlineOpcSg m info)
           |> Sg.set
 
       let scene = [ opcs ] |> Sg.ofList
@@ -81,8 +79,7 @@ module OutlineApp =
             Html.row "Outlines:"      [GuiEx.iconCheckBox model.useOutlines UseOutlines ]  
             Html.row "Thickness:"     [Numeric.view' [NumericInputType.Slider]   model.lineThickness  |> UI.map SetLineThickness ]
         ]
-             
-            
+                         
       let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant  
 
       page (fun request -> 

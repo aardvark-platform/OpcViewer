@@ -9,15 +9,12 @@ open Aardvark.Rendering.Text
 open FShade
 open Aardvark.UI.``F# Sg``
 open Aardvark.UI.Trafos
+open Aardvark.SceneGraph.Opc
 
 open OpcSelectionViewer.Picking
 open OpcOutlineTest
 
-
-
-module SceneObjectHandling = 
-  open Aardvark.SceneGraph.Opc
-  open Aardvark.UI
+module Sg = 
   open Aardvark.UI
 
   //open Aardvark.Physics.Sky
@@ -29,35 +26,25 @@ module SceneObjectHandling =
   let pickable' (pick :IMod<Pickable>) (sg: ISg) =
     Sg.PickableApplicator (pick, Mod.constant sg)
 
-  let createSingleOpcSg (m : MModel) (data : Box3d*MOpcData) =
-    let boundingBox, opcData = data
+  let opcSg loadedHierarchies (m:MModel) (bb : Box3d) = 
     
-    let leaves = 
-      opcData.patchHierarchy.tree
-        |> QTree.getLeaves 
-        |> Seq.toList 
-        |> List.map(fun y -> (opcData.patchHierarchy.opcPaths.Opc_DirAbsPath, y))
-    
+    let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
     let sg = 
-      let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
-    
-      leaves 
-        |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info,dir, patch.info)) 
-        |> List.map(fun ((a,_),c,d) -> (a,c,d))
-        |> List.map (fun (g,dir,info) -> 
-        
+      loadedHierarchies
+        |> List.map (fun (g,dir,info) ->         
           let texPath = Patch.extractTexturePath (OpcPaths dir) info 0
           let tex = FileTexture(texPath,config) :> ITexture
                     
           Sg.ofIndexedGeometry g
-              |> Sg.trafo (Mod.constant info.Local2Global)             
-              |> Sg.diffuseTexture (Mod.constant tex)             
+              |> Sg.trafo (Mod.constant info.Local2Global)
+              |> Sg.diffuseTexture (Mod.constant tex)       
+              //|> Sg.andAlso(Sg.wireBox (Mod.constant C4b.VRVisGreen) (Mod.constant info.GlobalBoundingBox) |> Sg.noEvents)
           )
         |> Sg.ofList   
     
     let pickable = 
       adaptive {
-        let! bb = opcData.globalBB
+       // let! bb = opcData.globalBB
         return { shape = PickShape.Box bb; trafo = Trafo3d.Identity }
       }       
     
@@ -69,18 +56,106 @@ module SceneObjectHandling =
             fun sceneHit -> 
               let intersect = m.pickingActive |> Mod.force
               if intersect then              
-                true, Seq.ofList[(HitSurface (boundingBox,sceneHit)) |> PickingAction]
+                Log.error "hit an opc? %A" bb
+                true, Seq.ofList[(HitSurface (bb,sceneHit, fun a -> a)) |> PickingAction]
               else 
                 false, Seq.ofList[]
           )      
       ]
 
+  let boxSg loadedHierarchies (m:MModel) (bb : Box3d) =
+    let sg = 
+      loadedHierarchies
+        |> List.map (fun (_,_,info) -> Sg.wireBox (Mod.constant C4b.VRVisGreen) (Mod.constant info.GlobalBoundingBox) |> Sg.noEvents)
+        |> Sg.ofList
+        |> Sg.effect [ 
+            toEffect Shader.stableTrafo
+            toEffect DefaultSurfaces.vertexColor       
+        ]    
+    sg
+
+  ///probably move to a shader
+  let screenAligned (forw : V3d) (up : V3d) (modelt: Trafo3d) =
+     let right = up.Cross forw
+     let rotTrafo = 
+         new Trafo3d(
+             new M44d(
+                 right.X, up.X, forw.X, 0.0,
+                 right.Y, up.Y, forw.Y, 0.0,
+                 right.Z, up.Z, forw.Z, 0.0,
+                 0.0,     0.0,  0.0,    1.0
+             ),
+             new M44d(
+                 right.X, right.Y, right.Z, 0.0,
+                 up.X,    up.Y,    up.Z,    0.0,
+                 forw.X,  forw.Y,  forw.Z,  0.0,
+                 0.0,     0.0,     0.0,     1.0
+             )
+     )
+     rotTrafo * modelt
+    
+  let linePass = RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main
+
+  let billboardText (view : IMod<CameraView>) modelTrafo text =
+                     
+      let billboardTrafo = 
+          adaptive {
+              let! v = view
+              let! modelt = modelTrafo
+      
+              return screenAligned v.Forward v.Up modelt
+          }           
+      Sg.text (Font.create "Consolas" FontStyle.Regular) C4b.White text
+          |> Sg.noEvents
+          |> Sg.effect [
+            Shader.stableTrafo |> toEffect
+          ]         
+          |> Sg.trafo (0.05 |> Trafo3d.Scale |> Mod.constant )
+          |> Sg.trafo billboardTrafo  
+
+  let textSg loadedHierarchies (m:MModel) =
+    let sg = 
+      loadedHierarchies
+        |> List.map (fun (_,_,info) -> 
+           billboardText m.cameraState.view (info.GlobalBoundingBox.Center |> Trafo3d.Translation |> Mod.constant) (info.Name |> Mod.constant)
+         )
+        |> Sg.ofList        
+    sg
+    
+  let createSingleOpcSg (m : MModel) (data : Box3d*MOpcData) =
+    let boundingBox, opcData = data
+    
+    let leaves = 
+      opcData.patchHierarchy.tree
+        |> QTree.getLeaves 
+        |> Seq.toList 
+        |> List.map(fun y -> (opcData.patchHierarchy.opcPaths.Opc_DirAbsPath, y))
+            
+    let loadedPatches = 
+        leaves 
+          |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info,dir, patch.info)) 
+          |> List.map(fun ((a,_),c,d) -> (a,c,d)) //|> List.skip 2 |> List.take 1
+
+    let globalBB = 
+      Sg.wireBox (Mod.constant C4b.Red) (Mod.constant boundingBox) 
+        |> Sg.noEvents 
+        |> Sg.effect [ 
+          toEffect Shader.stableTrafo
+          toEffect DefaultSurfaces.vertexColor       
+        ]  
+
+    [
+      opcSg  loadedPatches m boundingBox; 
+      //boxSg  loadedPatches m boundingBox;
+      textSg loadedPatches m
+      //globalBB
+    ] |> Sg.ofList
+            
   let read a =
         StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
 
   let write a =
         StencilMode(StencilOperationFunction.Replace, StencilOperationFunction.Replace, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
-
     
   let pass0 = RenderPass.main
   let pass1 = RenderPass.after "outline" RenderPassOrder.Arbitrary pass0
@@ -144,12 +219,12 @@ module SceneObjectHandling =
                         |> Sg.depthTest (Mod.constant DepthTestMode.None)
                         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
                         |> Sg.pass pass1
-                        |> Sg.shader {
-                            do! Shader.stableTrafo
-                            do! Shader.lines
-                            do! DefaultSurfaces.thickLine
-                            do! DefaultSurfaces.constantColor C4f.VRVisGreen
-                        }
+                        |> Sg.effect [
+                            Shader.stableTrafo |> toEffect
+                            Shader.lines |> toEffect
+                            DefaultSurfaces.thickLine |> toEffect
+                            DefaultSurfaces.constantColor C4f.VRVisGreen |> toEffect
+                        ]
                         |> Sg.uniform "LineWidth" m.lineThickness.value
 
                 yield mask
@@ -159,3 +234,26 @@ module SceneObjectHandling =
                 //Sg.ofSeq [regular; mask; outline] |> Sg.noEvents 
          } |> Sg.set
     test
+
+  let createAxisSg (positions : List<V3d>) =
+    positions |> Array.ofList |> AxisFunctions.lines C4b.VRVisGreen 2.0
+    
+  let addDebuggingAxisPointSphere (selectionPos : Option<V3d>) = 
+    selectionPos |> 
+      Option.map(fun pos -> Mod.constant pos |> AxisFunctions.sphere C4b.VRVisGreen 0.1)
+      |> Option.defaultValue Sg.empty
+
+  let axisSgs (model : MModel) = 
+    aset {
+      let! axis = model.axis
+      
+      match axis with
+        | Some a -> 
+          let! positions = a.positions
+          yield createAxisSg positions
+          
+          let! selectionPos = a.selectionOnAxis
+          yield addDebuggingAxisPointSphere selectionPos
+        | None -> yield Sg.empty
+    } |> Sg.set
+      
