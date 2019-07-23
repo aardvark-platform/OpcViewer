@@ -11,13 +11,28 @@ open Aardvark.UI.Primitives
 open Aardvark.Application
 
 open OpcSelectionViewer.Picking
+//open Aardvark.UI.Primitives.Mutable.CameraControllerStateModule
+
+type Time = float
 
 type Message =
-  | Camera           of FreeFlyController.Message
-  | KeyUp            of key : Keys
-  | KeyDown          of key : Keys  
-  | UpdateDockConfig of DockConfig    
-  | PickingAction    of PickingAction
+  | Camera                  of FreeFlyController.Message
+  | KeyUp                   of key : Keys
+  | KeyDown                 of key : Keys  
+  | UpdateDockConfig        of DockConfig    
+  | PickingAction           of PickingAction
+  | Down                    of button : MouseButtons * pos : V2i
+  | Up                      of button : MouseButtons
+  | Zoom                    of V2i
+  | Pan                     of V2i
+  | SetT                    of float
+  | AnimateCameraViewSwitch          
+  | AnimateCameraJump 
+  | AnimateCameraComplete
+  | AnimateCameraReturn
+  | Tick                    of Time
+
+
 
 type CameraStateLean = 
   { 
@@ -61,6 +76,23 @@ type Model =
         dockConfig           : DockConfig
         picking              : PickingModel
         pickingActive        : bool
+        zoomFactor           : float
+        dragStart            : V2i
+        movePos              : V2i
+        zoom                 : bool
+        panVector            : V2i
+        prevPanVec           : V2i
+        pan                  : bool
+        pers_to_ortho        : float
+        camViewAnimRunning   : bool
+        camJumpAnimRunning   : bool
+        camCompAnimRunning   : bool
+        camRetAnimRunning    : bool
+        cameraAnimEndTime    : float
+        targetPosition       : V3d
+        perspectiveView      : bool
+        originalCamPos       : V3d
+
     }
 
    
