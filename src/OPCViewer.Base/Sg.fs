@@ -13,11 +13,103 @@ open Aardvark.SceneGraph.Opc
 
 //open OpcSelectionViewer.Picking
 //open OpcOutlineTest
+module Patch =
+    let load (opcPaths : OpcPaths) (mode : ViewerModality) (p : PatchFileInfo) (selAttribute:string) =
+        let sw = System.Diagnostics.Stopwatch()
+        sw.Start()
+        let patch_DirAbsPath = opcPaths.Patches_DirAbsPath +/ p.Name
+
+        let pos = 
+          match mode, p.Positions2d with
+          | ViewerModality.SvBR, Some p2 -> p2
+          | _ -> p.Positions          
+        
+        let positions   = patch_DirAbsPath +/ pos |> fromFile<V3f>
+        let coordinates = patch_DirAbsPath +/ (List.head p.Coordinates) |> fromFile<V2f>
+
+        let scl = 
+            let x = p.Attributes |> List.tryFind( fun x -> x = (selAttribute + ".aara")) 
+            match x with
+            | Some name ->
+                let data =
+                    //match name with
+                    //| "Positions2d.aara" ->
+                    //    let a = Path.combine [patch_DirAbsPath; "Patches"; p.Name; name] |> fromFile<V3f> 
+                    //    a.Data |> Array.map (fun k -> k.Z)
+                    //| _ -> 
+                        let a = Path.combine [patch_DirAbsPath; name] |> fromFile<double>
+                        a.Data |> Array.map (fun a -> float32 a)                     
+
+                //let buffer = ArrayBuffer(data) :> IBuffer                  
+                //Mod.constant buffer 
+                data :> Array
+            | None -> [|V4f.OOOO|] :> Array
+                
+        sw.Stop()
+
+        let coordinates = coordinates.Data |> Array.map (fun v -> V2f(v.X, 1.0f-v.Y))
+
+        let index = createIndex (positions.AsMatrix())
+
+        let a : float = 0.0
+
+        let indexAttributes =
+            let def = [
+                DefaultSemantic.Positions, positions.Data :> Array
+                DefaultSemantic.DiffuseColorCoordinates, coordinates :> Array
+                Sym.ofString("Scalar"), scl 
+            ]
+            
+            def |> SymDict.ofList 
+
+      
+        let geometry =
+            IndexedGeometry(
+                Mode              = IndexedGeometryMode.TriangleList,
+                IndexArray        = index,
+                IndexedAttributes = indexAttributes
+            )
+                                        
+        geometry, sw.MicroTime 
+
 
 module Sg = 
   open Aardvark.UI
   open OpcViewer.Base.Picking
+  open OpcViewer.Base.Attributes
+  
+  let addAttributeFalsecolorMappingParameters  (selectedScalar:IMod<Option<MScalarLayer>>) (isg:ISg<'a>) =
+            
+        let isSelected = selectedScalar |> Mod.map( fun s -> s.IsSome )
 
+        let upperBound = 
+            adaptive {
+                let! scalar = selectedScalar
+            
+                match scalar with 
+                 | Some s -> 
+                    let! range = s.actualRange
+                    return range.Max
+                 | None -> return 1.0
+            }
+
+        let lowerBound = 
+            adaptive {
+                let! scalar = selectedScalar
+            
+                match scalar with 
+                 | Some s -> 
+                    let! range = s.actualRange
+                    return range.Min
+                 | None -> return 1.0
+            }
+            
+        isg
+            |> Sg.uniform "falseColors"    isSelected
+            |> Sg.uniform "lowerBound"     lowerBound
+            |> Sg.uniform "upperBound"     upperBound
+   
+  
   //open Aardvark.Physics.Sky
   let transparent = RenderPass.after "transparent" RenderPassOrder.BackToFront RenderPass.main 
 
@@ -27,7 +119,7 @@ module Sg =
   let pickable' (pick :IMod<Pickable>) (sg: ISg) =
     Sg.PickableApplicator (pick, Mod.constant sg)
 
-  let opcSg loadedHierarchies (picking : IMod<bool>) (bb : Box3d) = 
+  let opcSg loadedHierarchies (selectedScalar:IMod<Option<MScalarLayer>>) (picking : IMod<bool>) (bb : Box3d) = 
     
     let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
     let sg = 
@@ -49,7 +141,8 @@ module Sg =
         return { shape = PickShape.Box bb; trafo = Trafo3d.Identity }
       }       
     
-    sg      
+    sg    
+      |> addAttributeFalsecolorMappingParameters selectedScalar
       |> pickable' pickable
       |> Sg.noEvents      
       |> Sg.withEvents [
@@ -123,32 +216,40 @@ module Sg =
         |> Sg.ofList        
     sg
     
-  let createSingleOpcSg (picking : IMod<bool>) (view : IMod<CameraView>) (data : Box3d*MOpcData) =
-    let boundingBox, opcData = data
+  let createSingleOpcSg (selectedScalar:IMod<Option<MScalarLayer>>) (picking : IMod<bool>) (view : IMod<CameraView>) (data : Box3d*MOpcData) =
+    adaptive {
+        let boundingBox, opcData = data
     
-    let leaves = 
-      opcData.patchHierarchy.tree
-        |> QTree.getLeaves 
-        |> Seq.toList 
-        |> List.map(fun y -> (opcData.patchHierarchy.opcPaths.Opc_DirAbsPath, y))
+        let leaves = 
+          opcData.patchHierarchy.tree
+            |> QTree.getLeaves 
+            |> Seq.toList 
+            |> List.map(fun y -> (opcData.patchHierarchy.opcPaths.Opc_DirAbsPath, y))
+
+        let! scalar = selectedScalar
+        let! attribute = match scalar with
+                            | Some s -> s.label
+                            | _ -> Mod.constant ""
             
-    let loadedPatches = 
-        leaves 
-          |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info,dir, patch.info)) 
-          |> List.map(fun ((a,_),c,d) -> (a,c,d)) //|> List.skip 2 |> List.take 1
+        let loadedPatches = 
+            leaves 
+              |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info attribute,dir, patch.info)) 
+              |> List.map(fun ((a,_),c,d) -> (a,c,d)) //|> List.skip 2 |> List.take 1
 
-    //let globalBB = 
-    //  Sg.wireBox (Mod.constant C4b.Red) (Mod.constant boundingBox) 
-    //    |> Sg.noEvents 
-    //    |> Sg.effect [ 
-    //      toEffect Shader.stableTrafo
-    //      toEffect DefaultSurfaces.vertexColor       
-    //    ]  
+        //let globalBB = 
+        //  Sg.wireBox (Mod.constant C4b.Red) (Mod.constant boundingBox) 
+        //    |> Sg.noEvents 
+        //    |> Sg.effect [ 
+        //      toEffect Shader.stableTrafo
+        //      toEffect DefaultSurfaces.vertexColor       
+        //    ]  
 
-    [
-      opcSg loadedPatches picking boundingBox
-      //boxSg  loadedPatches m boundingBox;
-      textSg loadedPatches view
-      //globalBB
-    ] |> Sg.ofList         
+        return [
+          opcSg loadedPatches selectedScalar picking boundingBox
+          //boxSg  loadedPatches m boundingBox;
+          textSg loadedPatches view
+          //globalBB
+        ] |> Sg.ofList 
+    } |> Sg.dynamic 
+      
       

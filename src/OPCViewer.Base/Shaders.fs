@@ -108,3 +108,31 @@ module Shader =
     
     let Effect = 
       toEffect pointSpriteQuad
+
+
+
+  module AttributeShader = 
+
+      type AttrVertex =
+            {
+                [<Position>]                pos     : V4d            
+                [<WorldPosition>]           wp      : V4d
+                [<TexCoord>]                tc      : V2d
+                [<Color>]                   c       : V4d
+                [<Normal>]                  n       : V3d
+                [<Semantic("Scalar")>]      scalar  : float
+                [<Semantic("LightDir")>]    ldir    : V3d
+            }
+  
+      let falseColorLegendGray (v : AttrVertex) =
+          fragment {   
+              if (uniform?falseColors) 
+              then
+                 let fcUpperBound     = uniform?upperBound
+                 let fcLowerBound     = uniform?lowerBound
+                 let k = (v.scalar - fcLowerBound) / (fcUpperBound-fcLowerBound) 
+                 let value = clamp 0.0 1.0 k
+                 return V4d(value, value, value, 1.0) 
+              else
+                  return v.c
+          }

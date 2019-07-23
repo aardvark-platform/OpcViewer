@@ -21,6 +21,7 @@ open ``F# Sg``
 
 open OpcViewer.Base
 open OpcViewer.Base.Picking
+open OpcViewer.Base.Attributes
 
 module App =   
   open Aardvark.Application
@@ -105,6 +106,9 @@ module App =
         //model 
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
+      | AttributeAction msg ->
+            let opcAttributes = SurfaceAttributes.update model.opcAttributes msg
+            {model with opcAttributes = opcAttributes }
       | _ -> model
                     
   let view (m : MModel) =
@@ -118,11 +122,12 @@ module App =
       let opcs = 
         m.opcInfos
           |> AMap.toASet
-          |> ASet.map(fun info -> Sg.createSingleOpcSg m.pickingActive m.cameraState.view info)
+          |> ASet.map(fun info -> Sg.createSingleOpcSg m.opcAttributes.selectedScalar m.pickingActive m.cameraState.view info)
           |> Sg.set
           |> Sg.effect [ 
             toEffect Shader.stableTrafo
-            toEffect DefaultSurfaces.diffuseTexture       
+            toEffect DefaultSurfaces.diffuseTexture  
+            toEffect Shader.AttributeShader.falseColorLegendGray
             ]
 
       let axis = 
@@ -190,6 +195,8 @@ module App =
               ]
             ]
           )
+        | Some "falseColors" -> 
+            SurfaceAttributes.view m.opcAttributes |> UI.map AttributeAction
         | Some other -> 
           let msg = sprintf "Unknown page: %A" other
           body [] [
@@ -260,7 +267,8 @@ module App =
           content (
               horizontal 10.0 [
                   element { id "render"; title "Render View"; weight 7.0 }
-                  element { id "controls"; title "Controls"; weight 3.0 }                         
+                  element { id "controls"; title "Controls"; weight 3.0 } 
+                  element { id "falseColors"; title "FalseColors"; weight 3.0 }  
               ]
           )
           appName "OpcSelectionViewer"
@@ -268,6 +276,7 @@ module App =
         }
             
       let initialModel : Model = 
+
         { 
           cameraState        = camState
           fillMode           = FillMode.Fill                    
@@ -280,7 +289,9 @@ module App =
           pickingActive      = false
           opcInfos           = opcInfos
           picking            = { PickingModel.initial with pickingInfos = opcInfos }
-          dockConfig         = initialDockConfig            
+          dockConfig         = initialDockConfig       
+          
+          opcAttributes      = SurfaceAttributes.initModel dir
         }
 
       {

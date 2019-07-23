@@ -39,7 +39,7 @@ module OutlineSg =
       let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
     
       leaves 
-        |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info,dir, patch.info)) 
+        |> List.map(fun (dir,patch) -> (Aardvark.SceneGraph.Opc.Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info,dir, patch.info)) 
         |> List.map(fun ((a,_),c,d) -> (a,c,d))
         |> List.map (fun (g,dir,info) -> 
         
