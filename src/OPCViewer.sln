@@ -6,11 +6,11 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ViewerMain", "ViewerMain\Vi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LegacyCode", "LegacyCode\LegacyCode.csproj", "{E852F37A-6F1B-4C3C-A092-08044616E633}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "3DGis", "3DGis\3DGis.fsproj", "{F1086F42-5030-43D7-9BFE-62A02F854E64}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "3DGis", "3DGis\3DGis.fsproj", "{F1086F42-5030-43D7-9BFE-62A02F854E64}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ViewPlannerDSS", "ViewPlannerDSS\ViewPlannerDSS.fsproj", "{B5AAAC5D-22A1-451D-BC9F-8CCFB44B2FF3}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ViewPlannerDSS", "ViewPlannerDSS\ViewPlannerDSS.fsproj", "{B5AAAC5D-22A1-451D-BC9F-8CCFB44B2FF3}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "OPCViewer.Base", "OPCViewer.Base\OPCViewer.Base.fsproj", "{E5A50336-5AC3-45E3-AA0D-09B74F5E7FB1}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "OPCViewer.Base", "OPCViewer.Base\OPCViewer.Base.fsproj", "{E5A50336-5AC3-45E3-AA0D-09B74F5E7FB1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
