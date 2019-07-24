@@ -169,7 +169,7 @@ module App =
       let opcs = 
         m.opcInfos
           |> AMap.toASet
-          |> ASet.map(fun info -> Sg.createSingleOpcSg m.pickingActive m.cameraState.view info)
+          |> ASet.map(fun info -> Sg.createSingleOpcSg (Mod.constant None) m.pickingActive m.cameraState.view info)
           |> Sg.set
           |> Sg.effect [ 
             toEffect Shader.stableTrafo
