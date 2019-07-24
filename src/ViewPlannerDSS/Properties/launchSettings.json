@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "OpcViewer": {
+    "ViewPlannerDSS": {
       "commandName": "Project",
       "commandLineArgs": "opc=\"C:\\Users\\schalko\\1087_004777_MSLMST_0013\" -rotate"
     }

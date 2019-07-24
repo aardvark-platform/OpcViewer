@@ -136,8 +136,10 @@ module Sg =
     //let mutable matrix = M33d.Zero
     //pDiffAvg |> Seq.iter(fun x -> matrix.AddOuterProduct(&x))
     let mutable matrix = M33d.Zero
-    pDiffAvg |> Seq.iter(fun x -> let mutable y = x //.ToV3f()
-                                  (&matrix).AddOuterProduct(&y))
+    pDiffAvg |> Seq.iter(fun x -> 
+      let mutable y = x //.ToV3f()
+      (matrix).AddOuterProduct(&y))
+
     matrix <- matrix / length
          
     let mutable q = M33d.Zero
