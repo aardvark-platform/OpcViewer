@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "opc=\"C:\\Users\\schalko\\1087_004777_MSLMST_0013\" -rotate"
+      "commandLineArgs": "opc=\"C:\\Users\\laura\\VRVis\\Data\\Donut_medium_georef_compl\" "
     }
   }
 }
