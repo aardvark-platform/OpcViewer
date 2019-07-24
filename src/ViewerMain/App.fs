@@ -127,7 +127,7 @@ module App =
           |> Sg.effect [ 
             toEffect Shader.stableTrafo
             toEffect DefaultSurfaces.diffuseTexture  
-            toEffect Shader.AttributeShader.falseColorLegendGray
+            toEffect Shader.AttributeShader.falseColorLegend //falseColorLegendGray
             ]
 
       let axis = 
@@ -176,7 +176,12 @@ module App =
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
           require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
-              div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)]
+              div [clazz "ui"; style "background: #1B1C1E"] [
+                renderControl; 
+                textOverlays (m.cameraState.view);
+                SurfaceAttributes.scalarsColorLegend m.opcAttributes
+              ]
+              
           )
         | Some "controls" -> 
           require Html.semui (

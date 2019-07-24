@@ -82,32 +82,87 @@ module Sg =
             
         let isSelected = selectedScalar |> Mod.map( fun s -> s.IsSome )
 
-        let upperBound = 
-            adaptive {
-                let! scalar = selectedScalar
+        //let upperBound = 
+        //    adaptive {
+        //        let! scalar = selectedScalar
             
-                match scalar with 
-                 | Some s -> 
-                    let! range = s.actualRange
-                    return range.Max
-                 | None -> return 1.0
-            }
+        //        match scalar with 
+        //         | Some s -> 
+        //            let! range = s.actualRange
+        //            return range.Max
+        //         | None -> return 1.0
+        //    }
 
-        let lowerBound = 
-            adaptive {
-                let! scalar = selectedScalar
+        //let lowerBound = 
+        //    adaptive {
+        //        let! scalar = selectedScalar
             
-                match scalar with 
+        //        match scalar with 
+        //         | Some s -> 
+        //            let! range = s.actualRange
+        //            return range.Min
+        //         | None -> return 1.0
+        //    }
+
+        let interval = selectedScalar |> Mod.bind ( fun x ->
+                        match x with 
+                            | Some s -> s.colorLegend.interval.value
+                            | None   -> Mod.constant(1.0)
+                        )
+
+        let inverted = selectedScalar |> Mod.bind ( fun x ->
+                        match x with 
+                            | Some s -> s.colorLegend.invertMapping
+                            | None   -> Mod.constant(false)
+                        )     
+        
+        let upperB = selectedScalar |> Mod.bind ( fun x ->
+                        match x with 
+                            | Some s -> s.colorLegend.upperBound.value
+                            | None   -> Mod.constant(1.0)
+                        )
+
+        let lowerB = selectedScalar |> Mod.bind ( fun x ->
+                        match x with 
+                            | Some s -> s.colorLegend.lowerBound.value
+                            | None   -> Mod.constant(1.0)
+                        )
+
+        let upperC = 
+          selectedScalar 
+            |> Mod.bind (fun x ->
+               match x with 
                  | Some s -> 
-                    let! range = s.actualRange
-                    return range.Min
-                 | None -> return 1.0
-            }
+                   s.colorLegend.upperColor.c 
+                     |> Mod.map(fun x -> 
+                       let t = x.ToC3f()
+                       let t1 = HSVf.FromC3f(t)
+                       let t2 = (float)t1.H
+                       t2)
+                 | None -> Mod.constant(1.0)
+               )
+        let lowerC = 
+          selectedScalar 
+            |> Mod.bind ( fun x ->
+              match x with 
+                | Some s -> 
+                  s.colorLegend.lowerColor.c 
+                    |> Mod.map(fun x -> ((float)(HSVf.FromC3f (x.ToC3f())).H))
+                | None   -> Mod.constant(0.0)
+              )
+              
             
         isg
             |> Sg.uniform "falseColors"    isSelected
-            |> Sg.uniform "lowerBound"     lowerBound
-            |> Sg.uniform "upperBound"     upperBound
+            //|> Sg.uniform "lowerBound"     lowerBound
+            //|> Sg.uniform "upperBound"     upperBound
+            |> Sg.uniform "startC"         lowerC  
+            |> Sg.uniform "endC"           upperC
+            |> Sg.uniform "interval"       interval
+            |> Sg.uniform "inverted"       inverted
+            |> Sg.uniform "lowerBound"     lowerB
+            |> Sg.uniform "upperBound"     upperB
+            
    
   
   //open Aardvark.Physics.Sky

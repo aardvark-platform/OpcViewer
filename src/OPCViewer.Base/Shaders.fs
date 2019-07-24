@@ -123,6 +123,65 @@ module Shader =
                 [<Semantic("Scalar")>]      scalar  : float
                 [<Semantic("LightDir")>]    ldir    : V3d
             }
+
+      [<ReflectedDefinition>]
+      let hsv2rgb (h : float) (s : float) (v : float) =
+        let h = Fun.Frac(h)
+        let chr = v * s
+        let x = chr * (1.0 - Fun.Abs(Fun.Frac(h * 3.0) * 2.0 - 1.0))
+        let m = v - chr
+        let t = (int)(h * 6.0)
+        match t with
+            | 0 -> V3d(chr + m, x + m, m)
+            | 1 -> V3d(x + m, chr + m, m)
+            | 2 -> V3d(m, chr + m, x + m)
+            | 3 -> V3d(m, x + m, chr + m)
+            | 4 -> V3d(x + m, m, chr + m)
+            | 5 -> V3d(chr + m, m, x + m)
+            | _ -> V3d(chr + m, x + m, m)
+
+      [<ReflectedDefinition>]
+      let mapFalseColors value : float =         
+          let invert           = uniform?inverted
+          let fcUpperBound     = uniform?upperBound
+          let fcLowerBound     = uniform?lowerBound
+          let fcInterval       = uniform?interval
+          let fcUpperHueBound  = uniform?endC
+          let fcLowerHueBound  = uniform?startC
+
+          let low         = if (invert = false) then fcLowerBound else fcUpperBound
+          let up          = if (invert = false) then fcUpperBound else fcLowerBound
+          let interval    = if (invert = false) then fcInterval   else -1.0 * fcInterval        
+
+          let rangeValue = up - low + interval
+          let normInterv = (interval / rangeValue)
+
+          //map range to 0..1 according to lower/upperbound
+          let k = (value - low + interval) / rangeValue
+
+          //discretize lookup
+          let bucket = floor (k / normInterv)
+          let k = ((float) bucket) * normInterv |> clamp 0.0 1.0
+
+          let uH = fcUpperHueBound * 255.0
+          let lH = fcLowerHueBound * 255.0
+          //map values to hue range
+          let fcHueUpperBound = if (uH < lH) then uH + 1.0 else uH
+          let rangeHue = uH - lH // fcHueUpperBound - lH
+          (k * rangeHue) + lH
+          
+          
+      let falseColorLegend (v : AttrVertex) =
+          fragment {    
+
+              if (uniform?falseColors) 
+              then
+                  let hue = mapFalseColors v.scalar 
+                  let c = hsv2rgb ((clamp 0.0 255.0 hue)/ 255.0 ) 1.0 1.0 
+                  return v.c * V4d(c.X, c.Y, c.Z, 1.0)
+              else
+                  return v.c
+          }
   
       let falseColorLegendGray (v : AttrVertex) =
           fragment {   

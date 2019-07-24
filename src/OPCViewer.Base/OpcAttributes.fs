@@ -9,11 +9,11 @@ open Aardvark.SceneGraph
 open Aardvark.Rendering.Text
 open FShade
 open Aardvark.UI
-open Aardvark.UI.``F# Sg``
+open Aardvark.UI.Operators
 open Aardvark.UI.Trafos
 open Aardvark.SceneGraph.Opc
 
-open OpcViewer.Base.Picking //OpcSelectionViewer.Picking
+open OpcViewer.Base.FalseColors //OpcSelectionViewer.Picking
 
 module UI = 
     let dropDown'' (values : alist<'a>)(selected : IMod<Option<'a>>) (change : Option<'a> -> 'msg) (f : 'a ->string)  =
@@ -59,7 +59,7 @@ module SurfaceAttributes =
             actualRange  = node |> get "ChannelsActualRange"  |> Range1d.Parse
             definedRange = definedRange 
             index        = index
-            //colorLegend  = (FalseColorsModel.initDefinedScalarsLegend definedRange)
+            colorLegend  = (FalseColorsModel.initDefinedScalarsLegend definedRange)
         }
 
     let parseTexture (index : int)(node : XmlNode) : TextureLayer =
@@ -141,9 +141,43 @@ module SurfaceAttributes =
             | SetScalarMap a ->
                 //let test = model.scalarLayers |> HMap.tryFind("B")
                 match a with
-                    | Some s -> { model with selectedScalar = Some s} 
+                    | Some s -> { model with selectedScalar = Some s;} 
                     | None -> { model with selectedScalar = None }
+            | ScalarsColorLegendMessage msg ->
+                match model.selectedScalar with
+                  | Some s -> 
+                    let sc = { s with colorLegend = (FalseColorLegendApp.update s.colorLegend msg) }                        
+                    let scs = model.scalarLayers |> HMap.alter sc.label (Option.map(fun _ -> sc))
+                    { model with selectedScalar = Some sc; scalarLayers = scs; }
+                  | None -> model
             | _ -> model
+
+    let showColorLegend (model:MAttributeModel) =
+        alist {
+                let! scalar = model.selectedScalar
+                match scalar with
+                    | Some s -> yield FalseColorLegendApp.Draw.createColorLegendScalars s.colorLegend
+                    | None -> yield div[ style "font-style:italic"][ text "no scalar selected" ]
+        }  
+
+    let scalarsColorLegend (m:MAttributeModel) =
+        let attr = 
+            AttributeMap.ofList[ 
+                "display"               => "block"; 
+                "width"                 => "90px"; 
+                "height"                => "75%"; //100%
+                "preserveAspectRatio"   => "xMidYMid meet"; 
+                "style"                 => "position:absolute; right: 5px; top: 25%"
+            ]
+        Incremental.Svg.svg attr (showColorLegend m)  
+        
+    let viewColorLegendTools (scalar:IMod<Option<MScalarLayer>>) =
+        adaptive {
+                      let! scalar = scalar
+                      match scalar with
+                          | Some s -> return FalseColorLegendApp.UI.viewDefinedScalarsLegendTools s.colorLegend |> UI.map ScalarsColorLegendMessage
+                          | None -> return div[ style "font-style:italic"][ text "no scalar in properties selected" ] |> UI.map ScalarsColorLegendMessage 
+        }                    
 
     let view (m:MAttributeModel) =
         require Html.semui (
@@ -151,33 +185,9 @@ module SurfaceAttributes =
               div[style "color:white; margin: 5px 15px 5px 5px"][
                 h3[][text "FalseColors"]
                 p[][div[][text "Scalars: "; UI.dropDown'' (m.scalarLayers |> scalarLayerList)  m.selectedScalar   (fun x -> SetScalarMap (x |> Option.map(fun y -> y.Current |> Mod.force)))   (fun x -> x.label |> Mod.force)]]
+                Incremental.div AttributeMap.empty (AList.ofModSingle(viewColorLegendTools m.selectedScalar)) 
               ]
             ]
           )
 
-//module AttributeShader = 
-
-//  type AttrVertex =
-//        {
-//            [<Position>]                pos     : V4d            
-//            [<WorldPosition>]           wp      : V4d
-//            [<TexCoord>]                tc      : V2d
-//            [<Color>]                   c       : V4d
-//            [<Normal>]                  n       : V3d
-//            [<Semantic("Scalar")>]      scalar  : float
-//            [<Semantic("LightDir")>]    ldir    : V3d
-//        }
-  
-//  let falseColorLegendGray (v : AttrVertex) =
-//      fragment {   
-//          if (uniform?falseColors) 
-//          then
-//             let fcUpperBound     = uniform?upperBound
-//             let fcLowerBound     = uniform?lowerBound
-//             let k = (v.scalar - fcLowerBound) / (fcUpperBound-fcLowerBound) 
-//             let value = clamp 0.0 1.0 k
-//             return V4d(value, value, value, 1.0) 
-//          else
-//              return v.c
-//      }
 
