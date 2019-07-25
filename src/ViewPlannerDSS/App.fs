@@ -70,9 +70,6 @@ module App =
         match msg with
         | Camera m when model.pickingActive = false -> 
             { model with cameraState = FreeFlyController.update model.cameraState m; }
-        
-        //| PickPoint pos -> 
-        //    { model with pickedPoint = pos}
 
         | Action.KeyDown m ->
          match m with
@@ -307,7 +304,7 @@ module App =
          ]) 
          (scene |> Sg.map PickingAction) 
             
- 
+   
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
@@ -327,11 +324,8 @@ module App =
                     //        |None -> "Double-click on plane to pick position"
                     //))]
 
-                p[][div[][text "Pan: "; slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
-                //p[][Incremental.text (m.rover.pan |> Mod.map (fun f -> "Pan value: " + f.ToString()))]
-                p[][div[][text "Tilt: "; slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
-                //p[][Incremental.text (m.rover.tilt |> Mod.map (fun f -> "Tilt value: " + f.ToString()))] 
-
+                p[][div[][Incremental.text (m.rover.pan.current |> Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
+                p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
 
                 h3[][text "NIOBE"]
                 p[][text "Hold Ctrl-Left to add Point"]
