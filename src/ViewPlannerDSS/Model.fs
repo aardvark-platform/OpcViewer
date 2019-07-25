@@ -17,7 +17,6 @@ type Action =
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
   | RoverAction      of RoverAction
-  | PickPoint        of V3d
 
 type CameraStateLean = 
   { 
@@ -55,7 +54,6 @@ type Model =
         threads              : ThreadPool<Action>
         dockConfig           : DockConfig
         pickingModel         : PickingModel
-        pickedPoint          : Option<V3d>
         planePoints          : Option<plist<V3d>>
         pickingActive        : bool
         rover                : RoverModel

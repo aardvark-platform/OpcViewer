@@ -35,7 +35,7 @@ module RoverModel =
     
     let initCamera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
 
-    let initfrustum = Frustum.perspective 35.0 0.1 1000.0 1.0
+    let initfrustum = Frustum.perspective 35.0 0.1 10.0 1.0
     
     let initial = 
         {

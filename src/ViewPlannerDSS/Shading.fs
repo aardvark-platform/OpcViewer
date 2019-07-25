@@ -23,13 +23,19 @@ module Shading =
         
         vertex {
             let mvp : M44d = uniform.FootprintMVP
+            let model = uniform.ModelTrafo
+            let wp = model * v.pos
+
+            let m = uniform.ModelViewProjTrafo
+            let position = m * v.pos
+            let t = mvp * wp
 
             return 
                 { v 
                     
                     with 
-                        tc0 = mvp * v.pos 
-                        pos = uniform.ModelViewProjTrafo * v.pos
+                        tc0 = t
+                        pos = position
                 }
             }
 
@@ -44,7 +50,7 @@ module Shading =
             let upp = clip.W
             let col = 
                 if (clip.X > low && clip.X < upp && clip.Y > low && clip.Y < upp && clip.Z > low && clip.Z < upp) then
-                    V4d(0.0, 0.0, 1.0, 1.0)
+                    v.color * V4d(0.0, 0.0, 1.0, 1.5)
                 else
                     v.color
 

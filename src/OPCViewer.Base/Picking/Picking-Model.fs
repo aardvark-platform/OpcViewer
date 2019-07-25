@@ -37,6 +37,7 @@ type PickingAction =
   | SetAlpha of float
   | SetExtrusionOffset of float
   | SetVolumeGeneration of Option<VolumeGeneration>
+  | PickPointOnPlane of Option<V3d>
 
 type BoxNeighbors = {
   neighbors : List<Box3d> 
@@ -78,6 +79,7 @@ type PickingModel = {
   extrusionOffset      : float
   volumeGeneration     : Option<VolumeGeneration>
   volumeGenerationOptions : hmap<VolumeGeneration, string>
+  pickedPointOnPlane : Option<V3d>
 }  
 
 module PickingModel =
@@ -98,4 +100,5 @@ module PickingModel =
       volumeGeneration   = Some VolumeGeneration.Plane
       volumeGenerationOptions = HMap.ofList [Plane, "Plane"; AxisMidPoint, "AxisMidPoint"; AxisPoints, "AxisPoints"; AxisPointsMidRing, "AxisPointsRing"]
       segments = PList.empty
+      pickedPointOnPlane = None
     }

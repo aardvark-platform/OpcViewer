@@ -93,7 +93,7 @@ module App =
                 { model with cameraState = model.cameraState |>  updateFreeFlyConfig -0.5 }
             | Keys.Space ->    
                 Log.line "[App] saving camstate"
-                model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camerastate" |> ignore
+                model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camerastate" |> ignore 
                 model
 
             | Keys.V ->
@@ -102,7 +102,7 @@ module App =
                 model
 
             | Keys.L -> //if R is pressed then picked point on plane is new rover target
-                let picked = model.pickedPoint
+                let picked = model.pickingModel.pickedPointOnPlane
                 let roverModel = 
                     match picked with
                         | Some p -> 
@@ -113,7 +113,13 @@ module App =
                         | None -> model.rover
                 { model with rover = roverModel}
 
-
+            | Keys.R -> //if R is pressed then picked point on plane is new rover position
+                let picked = model.pickingModel.pickedPointOnPlane
+                let roverModel = 
+                    match picked with
+                        | Some p -> { model.rover with position = p }
+                        | None -> model.rover
+                { model with rover = roverModel}
 
 
 
@@ -136,9 +142,9 @@ module App =
                         let axisNearstFunc = fun p -> p
                         PickingApp.update model.pickingModel (HitSurface (a,b, axisNearstFunc))
 
-
-
-
+                    | PickPointOnPlane p ->
+                       PickingApp.update model.pickingModel (PickPointOnPlane p)
+                       
                     | _ -> PickingApp.update model.pickingModel msg
             { model with pickingModel = pickingModel }
 
@@ -150,13 +156,13 @@ module App =
                   | ChangePosition pos -> 
                         let r = RoverApp.update model.rover (ChangePosition pos)
                         {model with rover = r}
-                //| ChangePan p -> 
-                //    let r = RoverApp.update model.rover (ChangePan p)
-                //    {model with rover = r}
+                  | ChangePan p -> 
+                    let r = RoverApp.update model.rover (ChangePan p)
+                    {model with rover = r}
                     
-                //| ChangeTilt t -> 
-                //    let r = RoverApp.update model.rover (ChangeTilt t)
-                //    {model with rover = r}
+                  | ChangeTilt t -> 
+                    let r = RoverApp.update model.rover (ChangeTilt t)
+                    {model with rover = r}
 
 
         | _ -> model
@@ -171,10 +177,57 @@ module App =
           |> AMap.toASet
           |> ASet.map(fun info -> Sg.createSingleOpcSg (Mod.constant None) m.pickingActive m.cameraState.view info)
           |> Sg.set
-          |> Sg.effect [ 
-            toEffect Shader.stableTrafo
-            toEffect DefaultSurfaces.diffuseTexture       
-            ]
+          //|> Sg.effect [ 
+          //  toEffect Shader.stableTrafo
+          //  toEffect DefaultSurfaces.diffuseTexture       
+          //  ]
+        
+        
+      let rovertrafo = m.rover.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
+      let rov = 
+           Sg.sphere 5 (Mod.constant C4b.Cyan) (Mod.constant 0.2)
+            |> Sg.noEvents
+            |> Sg.effect [ 
+                    toEffect Shader.stableTrafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+            |> Sg.trafo rovertrafo
+
+
+      let targettrafo = m.rover.target |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
+      let target = 
+           Sg.sphere 5 (Mod.constant C4b.DarkMagenta) (Mod.constant 0.2)
+            |> Sg.noEvents
+            |> Sg.effect [ 
+                    toEffect Shader.stableTrafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+            |> Sg.trafo targettrafo
+
+
+      let vp = (RoverModel.getViewProj m.rover.camera m.rover.frustum)    
+      
+      let frustumBox =
+        Sg.wireBox' C4b.White (Box3d(V3d.NNN,V3d.III))
+        |> Sg.noEvents
+        |> Sg.trafo (vp |> Mod.map ( fun vp -> vp.Inverse))
+        |> Sg.shader {
+            do! DefaultSurfaces.stableTrafo
+            do! DefaultSurfaces.vertexColor
+        }
+       
+      //highlights the area of the model which is inside the rover's view frustum
+      let shading = 
+        opcs
+            |> Sg.cullMode (Mod.constant CullMode.Back)
+            |> Sg.depthTest (Mod.constant DepthTestMode.Less)
+            |> Sg.uniform "FootprintMVP" vp
+            |> Sg.shader {
+                do! DefaultSurfaces.diffuseTexture
+                do! Shading.vert
+                do! Shading.frag
+            }
+
 
       let myPlane = 
         m.planePoints
@@ -194,7 +247,7 @@ module App =
                                          let sum = p.Sum()
                                          let c = p |> PList.count
                                          let average = sum / (float c)
-                                         let pos = V3d(average.X, average.Y, average.Z)
+                                         let pos = V3d(average.X, average.Y-0.5, average.Z)
                             
                                          let trafo = scaleT * Trafo3d.RotateInto(V3d.OOI, t.Normal) * Trafo3d.Translation(pos)
                                          box
@@ -202,7 +255,7 @@ module App =
                                             |> Sg.noEvents
                                             |> Sg.withEvents [
                                                 SceneEventKind.DoubleClick, (fun sh -> 
-                                                true, Seq.ofList [(RoverAction.ChangePosition (sh.globalPosition))]
+                                                true, Seq.ofList [(PickingAction.PickPointOnPlane (Some sh.globalPosition))]
                                                                             )
                                                               ]
                                             |> Sg.trafo (Mod.constant(trafo)) 
@@ -216,19 +269,16 @@ module App =
 
 
 
-
-
-
-
-
-
-
+      let drawPlane = myPlane |> Sg.dynamic
 
       let scene = 
         [
-          opcs
           PickingApp.view m.pickingModel
-          //myPlane 
+          drawPlane
+          rov
+          target
+          frustumBox
+          shading
         ] |> Sg.ofList
 
       let textOverlays (cv : IMod<CameraView>) = 
@@ -276,6 +326,11 @@ module App =
                     //        |Some point -> "picked position:" + point.ToString()
                     //        |None -> "Double-click on plane to pick position"
                     //))]
+
+                p[][div[][text "Pan: "; slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
+                //p[][Incremental.text (m.rover.pan |> Mod.map (fun f -> "Pan value: " + f.ToString()))]
+                p[][div[][text "Tilt: "; slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
+                //p[][Incremental.text (m.rover.tilt |> Mod.map (fun f -> "Tilt value: " + f.ToString()))] 
 
 
                 h3[][text "NIOBE"]
@@ -403,7 +458,6 @@ module App =
           pickingActive      = false
           opcInfos           = opcInfos
           pickingModel       = { PickingModel.initial with pickingInfos = opcInfos }
-          pickedPoint        = None
           planePoints        = setPlaneForPicking
           rover              = { RoverModel.initial with up = box.Center.Normalized; camera = roverinitialCamera; position = box.Center}
           dockConfig         = initialDockConfig            
