@@ -45,7 +45,8 @@ type CameraStateLean =
 [<DomainType>]
 type Model =
     {
-        cameraState          : CameraControllerState                       
+        cameraState          : CameraControllerState 
+        //secondCam            : CameraControllerState
         fillMode             : FillMode                                
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>        

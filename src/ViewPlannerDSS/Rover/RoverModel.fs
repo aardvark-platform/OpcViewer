@@ -2,6 +2,7 @@
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open Aardvark.UI.Primitives
 
 [<DomainType>]
 type CameraInput = 
@@ -11,15 +12,15 @@ type CameraInput =
     delta : float
     }
 
-[<DomainType>]
+[<DomainType; ReferenceEquality>]
 type RoverModel =
     {
 
-        position :  V3d             //where the rover is located
-        target   :  V3d             //target the rover is looking at
+        position :  V3d             
+        target   :  V3d            
         tilt     :  CameraInput
         pan      :  CameraInput
-        camera   :  CameraView
+        camera   :  CameraControllerState//CameraView
         up       :  V3d
         frustum  :  Frustum
 
@@ -33,7 +34,10 @@ type RoverAction =
 
 module RoverModel =
     
-    let initCamera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
+    let initCamera = {
+   
+        FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
+         }
 
     let initfrustum = Frustum.perspective 35.0 0.1 10.0 1.0
     
@@ -57,16 +61,16 @@ module RoverModel =
             }
 
         camera = initCamera
-        up     = initCamera.Up
+        up     = initCamera.view.Up
         frustum = initfrustum
         }
 
-    let getViewProj (view : IMod<CameraView>) (frustum:IMod<Frustum>) =
+    let getViewProj (cam : IMod<CameraView>) (frustum:IMod<Frustum>) =
         
         adaptive {
             let! fr = frustum 
             let proj = (Frustum.projTrafo(fr))
-            let! view = view
-            let view = view.ViewTrafo
+            let! cam = cam
+            let view = cam.ViewTrafo
             return (view * proj)
         } 

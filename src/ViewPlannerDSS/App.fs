@@ -105,7 +105,7 @@ module App =
                         | Some p -> 
                             let forward = p-model.rover.position
                             let cam = CameraView.look model.rover.position forward.Normalized model.rover.up
-                            { model.rover with target = p; camera = cam}
+                            { model.rover with target = p; camera = { model.rover.camera with view = cam }}
                         
                         | None -> model.rover
                 { model with rover = roverModel}
@@ -202,7 +202,7 @@ module App =
             |> Sg.trafo targettrafo
 
 
-      let vp = (RoverModel.getViewProj m.rover.camera m.rover.frustum)    
+      let vp = (RoverModel.getViewProj m.rover.camera.view m.rover.frustum)    
       
       let frustumBox =
         Sg.wireBox' C4b.White (Box3d(V3d.NNN,V3d.III))
@@ -268,7 +268,7 @@ module App =
 
       let drawPlane = myPlane |> Sg.dynamic
 
-      let scene = 
+      let fullScene = 
         [
           PickingApp.view m.pickingModel
           drawPlane
@@ -277,6 +277,16 @@ module App =
           frustumBox
           shading
         ] |> Sg.ofList
+    
+      let roverCamScene = 
+       [
+          //PickingApp.view m.pickingModel
+          drawPlane
+          target
+          //frustumBox
+          shading
+        ] |> Sg.ofList
+        
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
@@ -291,6 +301,24 @@ module App =
            ]
         ]
 
+       
+      let roverCamControl = 
+       
+        FreeFlyController.controlledControl  m.rover.camera Camera m.rover.frustum 
+         (AttributeMap.ofList [ 
+           style "width: 100%; height:100%"; 
+           attribute "showFPS" "false";       // optional, default is false
+           //attribute "useMapping" "true"
+           attribute "data-renderalways" "false"
+           attribute "data-samples" "4"
+         ]) 
+            
+         (roverCamScene |> Sg.map PickingAction)
+      
+
+
+
+
       let renderControl =
        FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
          (AttributeMap.ofList [ 
@@ -302,7 +330,7 @@ module App =
            onKeyDown (Action.KeyDown)
            onKeyUp (Action.KeyUp)
          ]) 
-         (scene |> Sg.map PickingAction) 
+         (fullScene |> Sg.map PickingAction) 
             
    
       page (fun request -> 
@@ -311,6 +339,12 @@ module App =
           require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
               div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)]
           )
+        
+        | Some "roverCam" ->
+            require Html.semui (
+              div [clazz "ui"; style "background: #1B1C1E"] [roverCamControl]
+          )
+
         | Some "controls" -> 
           require Html.semui (
             body [style "width: 100%; height:100%; background: transparent";] [
@@ -422,7 +456,10 @@ module App =
             | false -> Some planeState
 
 
-      let roverinitialCamera = CameraView.lookAt box.Max box.Center box.Center.Normalized
+      let roverinitialCamera = {
+      
+        FreeFlyController.initial with view = CameraView.lookAt box.Max box.Center box.Center.Normalized
+      }
 
 
       let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
@@ -431,10 +468,15 @@ module App =
       let initialDockConfig = 
         config {
           content (
-              horizontal 10.0 [
+              vertical 13.0 [
                   element { id "render"; title "Render View"; weight 7.0 }
-                  element { id "controls"; title "Controls"; weight 3.0 }                         
+                  horizontal 6.0 [
+                  element { id "roverCam"; title "Rover view"; weight 3.0 }
+                  element { id "controls"; title "Controls"; weight 3.0 }
+                  ]
+                  
               ]
+
           )
           appName "ViewPlanner"
           useCachedConfig true
@@ -443,6 +485,7 @@ module App =
       let initialModel : Model = 
         { 
           cameraState        = camState
+          //secondCam          = camState
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
           
