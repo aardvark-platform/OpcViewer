@@ -180,11 +180,11 @@ module SurfaceAttributes =
         }                    
 
     let view (m:MAttributeModel) =
-        require Html.semui (
+        require FalseColorLegendApp.UI.semui (
             body [style "width: 100%; height:100%; background: transparent";] [
               div[style "color:white; margin: 5px 15px 5px 5px"][
                 h3[][text "FalseColors"]
-                p[][div[][text "Scalars: "; UI.dropDown'' (m.scalarLayers |> scalarLayerList)  m.selectedScalar   (fun x -> SetScalarMap (x |> Option.map(fun y -> y.Current |> Mod.force)))   (fun x -> x.label |> Mod.force)]]
+                div[][text "Scalars: "; UI.dropDown'' (m.scalarLayers |> scalarLayerList)  m.selectedScalar   (fun x -> SetScalarMap (x |> Option.map(fun y -> y.Current |> Mod.force)))   (fun x -> x.label |> Mod.force)]
                 Incremental.div AttributeMap.empty (AList.ofModSingle(viewColorLegendTools m.selectedScalar)) 
               ]
             ]

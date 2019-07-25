@@ -14,6 +14,7 @@ type FalseColorsModel = {
     invertMapping   : bool
     lowerColor      : ColorInput 
     upperColor      : ColorInput 
+    showColors      : bool
 }
 
 module FalseColorsModel = 
@@ -47,6 +48,7 @@ module FalseColorsModel =
             invertMapping   = false
             lowerColor      = { c = C4b.Blue }
             upperColor      = { c = C4b.Red }
+            showColors      = true
         }
 
    

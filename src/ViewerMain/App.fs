@@ -112,7 +112,7 @@ module App =
       | _ -> model
                     
   let view (m : MModel) =
-                                                 
+                                             
       let box = 
         m.patchHierarchies
           |> List.map(fun x -> x.tree |> QTree.getRoot) 

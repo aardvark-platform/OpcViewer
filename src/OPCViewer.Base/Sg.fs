@@ -128,6 +128,12 @@ module Sg =
                             | None   -> Mod.constant(1.0)
                         )
 
+        let showcolors = selectedScalar |> Mod.bind ( fun x ->
+                            match x with 
+                                | Some s -> s.colorLegend.showColors
+                                | None   -> Mod.constant(false)
+                            )     
+
         let upperC = 
           selectedScalar 
             |> Mod.bind (fun x ->
@@ -162,6 +168,7 @@ module Sg =
             |> Sg.uniform "inverted"       inverted
             |> Sg.uniform "lowerBound"     lowerB
             |> Sg.uniform "upperBound"     upperB
+            |> Sg.uniform "useColors"     showcolors
             
    
   

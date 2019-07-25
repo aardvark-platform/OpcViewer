@@ -21,7 +21,8 @@ module FalseColorLegendApp =
         | SetInterval       of Numeric.Action
         | InvertMapping     
         | SetLowerColor     of ColorPicker.Action //C4b
-        | SetUpperColor     of ColorPicker.Action //C4b  
+        | SetUpperColor     of ColorPicker.Action //C4b 
+        | ShowColors
 
     let bindOption (m : IMod<Option<'a>>) (defaultValue : 'b) (project : 'a -> IMod<'b>)  : IMod<'b> =
         m |> Mod.bind (function | None   -> Mod.constant defaultValue       
@@ -43,12 +44,20 @@ module FalseColorLegendApp =
             | SetLowerColor lc -> 
                     { model with lowerColor = ColorPicker.update model.lowerColor lc }            
             | SetUpperColor uc -> 
-                    { model with upperColor = ColorPicker.update model.upperColor uc }        
+                    { model with upperColor = ColorPicker.update model.upperColor uc } 
+            | ShowColors -> 
+                    { model with showColors = (not model.showColors) }      
             
             
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
     module UI =
+
+        let semui = 
+          [ 
+              { kind = Stylesheet; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css" }
+              { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
+          ]
 
         let iconToggle (dings : IMod<bool>) onIcon offIcon action =
           let toggleIcon = dings |> Mod.map(fun isOn -> if isOn then onIcon else offIcon)
@@ -66,17 +75,18 @@ module FalseColorLegendApp =
           iconToggle dings "check square outline icon" "square icon" action
 
         let viewDefinedScalarsLegendTools (model:MFalseColorsModel)= 
-            //require GuiEx.semui (
+            require semui (
                 Html.table [  
                     Html.row "show legend:"             [iconCheckBox model.useFalseColors UseFalseColors ]
                     Html.row "upper bound:"             [Numeric.view' [InputBox] model.upperBound |> UI.map SetUpperBound ]
                     Html.row "lower bound:"             [Numeric.view' [InputBox] model.lowerBound |> UI.map SetLowerBound ]
                     Html.row "interval:"                [Numeric.view' [InputBox] model.interval |> UI.map SetInterval ]
-                   // Html.row "upper color:"             [ColorPicker.view model.upperColor |> UI.map SetUpperColor ]
-                   // Html.row "lower color:"             [ColorPicker.view model.lowerColor |> UI.map SetLowerColor ]
+                    //Html.row "upper color:"             [ColorPicker.view model.upperColor |> UI.map SetUpperColor ]
+                    //Html.row "lower color:"             [ColorPicker.view model.lowerColor |> UI.map SetLowerColor ]
                     Html.row "invert mapping:"          [iconCheckBox model.invertMapping InvertMapping ]
+                    Html.row "show colors:"             [iconCheckBox model.showColors ShowColors ]
                 ] 
-           // )
+            )
 
     module Draw =
 
@@ -241,7 +251,7 @@ module FalseColorLegendApp =
             Incremental.Svg.svg AttributeMap.empty falseColorSvg
 
     
-    let viewScalarsLegendProperties lifter (model : MFalseColorsModel) = 
-        UI.viewDefinedScalarsLegendTools model |> UI.map lifter
+    //let viewScalarsLegendProperties lifter (model : MFalseColorsModel) = 
+    //    UI.viewDefinedScalarsLegendTools model |> UI.map lifter
 
    
