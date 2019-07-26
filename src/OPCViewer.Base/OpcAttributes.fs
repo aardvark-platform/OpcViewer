@@ -31,14 +31,14 @@ module UI =
                             )) (attribute "selected" "selected")
             ]
 
-        let ortisOnChange  = 
+        let customOnChange  = 
             let cb (i : int) =
                 let currentState = values.Content |> Mod.force
                 change (PList.tryAt (i-1) currentState)
                     
             onEvent "onchange" ["event.target.selectedIndex"] (fun x -> x |> List.head |> Int32.Parse |> cb)
 
-        Incremental.select (AttributeMap.ofList [ortisOnChange; style "color:black"]) 
+        Incremental.select (AttributeMap.ofList [customOnChange; style "color:black"]) 
             (
                 alist {
                     yield Incremental.option (attributes "-None-") (AList.ofList [text "-None-"])

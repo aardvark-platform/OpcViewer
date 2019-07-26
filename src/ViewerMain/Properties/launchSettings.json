@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "opc=\"C:\\Users\\laura\\VRVis\\Data\\Donut_medium_georef_compl\" "
+      "commandLineArgs": "opc=\"I:\\Donut_medium_georef_compl\" "
     }
   }
 }

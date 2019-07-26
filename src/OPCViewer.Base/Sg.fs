@@ -31,17 +31,10 @@ module Patch =
             let x = p.Attributes |> List.tryFind( fun x -> x = (selAttribute + ".aara")) 
             match x with
             | Some name ->
-                let data =
-                    //match name with
-                    //| "Positions2d.aara" ->
-                    //    let a = Path.combine [patch_DirAbsPath; "Patches"; p.Name; name] |> fromFile<V3f> 
-                    //    a.Data |> Array.map (fun k -> k.Z)
-                    //| _ -> 
-                        let a = Path.combine [patch_DirAbsPath; name] |> fromFile<double>
-                        a.Data |> Array.map (fun a -> float32 a)                     
-
-                //let buffer = ArrayBuffer(data) :> IBuffer                  
-                //Mod.constant buffer 
+                let data =                    
+                    let a = Path.combine [patch_DirAbsPath; name] |> fromFile<double>
+                    a.Data |> Array.map (fun a -> float32 a)                     
+                
                 data :> Array
             | None -> [|V4f.OOOO|] :> Array
                 
@@ -295,7 +288,7 @@ module Sg =
             
         let loadedPatches = 
             leaves 
-              |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info attribute,dir, patch.info)) 
+              |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info attribute, dir, patch.info)) 
               |> List.map(fun ((a,_),c,d) -> (a,c,d)) //|> List.skip 2 |> List.take 1
 
         //let globalBB = 
