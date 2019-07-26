@@ -32,6 +32,12 @@
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <None Include="paket.references" />
+    <Content Include="resources\semantic.css" />
+    <Content Include="resources\semui-overrides.css" />
+    <Content Include="resources\spectrum.css" />
+    <None Include="resources\essentialstuff.js" />
+    <None Include="resources\semantic.js" />
+    <None Include="resources\spectrum.js" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OPCViewer.Base\OPCViewer.Base.fsproj" />

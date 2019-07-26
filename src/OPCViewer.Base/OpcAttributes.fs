@@ -180,7 +180,7 @@ module SurfaceAttributes =
         }                    
 
     let view (m:MAttributeModel) =
-        require FalseColorLegendApp.UI.semui (
+        //require FalseColorLegendApp.UI.myCss (
             body [style "width: 100%; height:100%; background: transparent";] [
               div[style "color:white; margin: 5px 15px 5px 5px"][
                 h3[][text "FalseColors"]
@@ -188,6 +188,6 @@ module SurfaceAttributes =
                 Incremental.div AttributeMap.empty (AList.ofModSingle(viewColorLegendTools m.selectedScalar)) 
               ]
             ]
-          )
+          //)
 
 

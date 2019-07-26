@@ -172,6 +172,16 @@ module App =
         
       let cam = Mod.map2 Camera.create m.cameraState.view frustum 
 
+      let semui = 
+          [ 
+                { kind = Stylesheet; name = "semantic.css"; url = "semantic.css" }
+                { kind = Script; name = "semantic.js"; url = "semantic.js" }
+                { kind = Script; name = "essential"; url = "essentialstuff.js" }
+                { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
+                { kind = Script; name = "spectrum.js";  url = "spectrum.js" }
+                { kind = Stylesheet; name = "spectrum.css";  url = "spectrum.css"}
+          ]
+
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
@@ -201,7 +211,9 @@ module App =
             ]
           )
         | Some "falseColors" -> 
-            SurfaceAttributes.view m.opcAttributes |> UI.map AttributeAction
+            require semui (
+                SurfaceAttributes.view m.opcAttributes |> UI.map AttributeAction
+            )
         | Some other -> 
           let msg = sprintf "Unknown page: %A" other
           body [] [
