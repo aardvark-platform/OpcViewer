@@ -357,7 +357,7 @@ module App =
                 p[][text "Press R to place rover at picked point"]
                 p[][text "Press L to select picked point as rover target"]
                 p[][Incremental.text (m.rover.position |> Mod.map (fun f -> f.ToString())) ]
-                p[][div[][Incremental.text (m.rover.pan.current |> Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
+                p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
                 p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
                 button [onClick (fun _ -> RoverAction.MoveToRegion (m.pickingModel.intersectionPoints |> AList.toPList |> PList.last))] [text "Move to region"] |> UI.map RoverAction
 
