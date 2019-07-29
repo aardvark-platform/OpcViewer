@@ -43,14 +43,16 @@ module RoverApp =
     let moveFrustum (m:RoverModel) (interestPoint:V3d) =
         let viewM = m.camera.view.ViewTrafo
 
-        let pointViewSpace = viewM.Forward * (V4d(interestPoint,1.0))
-        let va = -V3d.ZAxis
-        let vb = pointViewSpace.XYZ.Normalized
-        let cross = vb.Cross(va)
-        let d = cross.Dot(V3d.YAxis)
-        let d1 = va.Dot(vb)
-        let signedAngle = atan2 d d1 * Constant.DegreesPerRadian
-        
+        //let pointViewSpace = viewM.Forward * (V4d(interestPoint,1.0))
+        //let va = -V3d.ZAxis
+        //let vb = pointViewSpace.XYZ.Normalized
+        //let cross = vb.Cross(va)
+        //let d = cross.Dot(V3d.YAxis)
+        //let d1 = va.Dot(vb)
+        //let signedAngle = atan2 d d1  * Constant.DegreesPerRadian
+        let iProj = viewM.Forward.TransformPos interestPoint
+        let signedAngle = atan2 iProj.X -iProj.Z * Constant.DegreesPerRadian
+
         panning (setPan m (m.pan.current + signedAngle))
         //in world space
         //let f = m.camera.view.Forward.Normalized
