@@ -112,9 +112,10 @@ module App =
 
             | Keys.R -> //if R is pressed then picked point on plane is new rover position
                 let picked = model.pickingModel.pickedPointOnPlane
+                let n = model.rover.up
                 let roverModel = 
                     match picked with
-                        | Some p -> { model.rover with position = p }
+                        | Some p -> { model.rover with position = (p+n) }
                         | None -> model.rover
                 { model with rover = roverModel}
 
@@ -159,6 +160,10 @@ module App =
                     
                   | ChangeTilt t -> 
                     let r = RoverApp.update model.rover (ChangeTilt t)
+                    {model with rover = r}
+                
+                  | MoveToRegion re ->
+                    let r = RoverApp.update model.rover (MoveToRegion re)
                     {model with rover = r}
 
 
@@ -280,7 +285,7 @@ module App =
     
       let roverCamScene = 
        [
-          //PickingApp.view m.pickingModel
+          PickingApp.view m.pickingModel
           drawPlane
           target
           //frustumBox
@@ -307,8 +312,7 @@ module App =
         FreeFlyController.controlledControl  m.rover.camera Camera m.rover.frustum 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
-           attribute "showFPS" "false";       // optional, default is false
-           //attribute "useMapping" "true"
+           attribute "showFPS" "false";      
            attribute "data-renderalways" "false"
            attribute "data-samples" "4"
          ]) 
@@ -353,13 +357,13 @@ module App =
                 p[][text "Press R to place rover at picked point"]
                 p[][text "Press L to select picked point as rover target"]
                 p[][Incremental.text (m.rover.position |> Mod.map (fun f -> f.ToString())) ]
-                    //    match f with
-                    //        |Some point -> "picked position:" + point.ToString()
-                    //        |None -> "Double-click on plane to pick position"
-                    //))]
-
                 p[][div[][Incremental.text (m.rover.pan.current |> Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
                 p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
+                button [onClick (fun _ -> RoverAction.MoveToRegion (m.pickingModel.intersectionPoints |> AList.toPList |> PList.last))] [text "Move to region"] |> UI.map RoverAction
+
+
+
+
 
                 h3[][text "NIOBE"]
                 p[][text "Hold Ctrl-Left to add Point"]

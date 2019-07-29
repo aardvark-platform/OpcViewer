@@ -30,6 +30,7 @@ type RoverAction =
     | ChangePosition of V3d     //locate the rover at an intersection point
     | ChangePan of float
     | ChangeTilt of float
+    | MoveToRegion of V3d           //move view frustum to a region of interest
 
 
 module RoverModel =

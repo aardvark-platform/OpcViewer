@@ -18,6 +18,7 @@ type Action =
   | PickingAction    of PickingAction
   | RoverAction      of RoverAction
 
+
 type CameraStateLean = 
   { 
      location : V3d
@@ -42,11 +43,16 @@ type CameraStateLean =
     points : plist<V3d>
     }
 
+  
+  type RegionOfInterest = 
+    {
+        regionCoords : plist<V3d>
+    }
+
 [<DomainType>]
 type Model =
     {
         cameraState          : CameraControllerState 
-        //secondCam            : CameraControllerState
         fillMode             : FillMode                                
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>        
@@ -58,6 +64,7 @@ type Model =
         planePoints          : Option<plist<V3d>>
         pickingActive        : bool
         rover                : RoverModel
+        //region               : Option<RegionOfInterest>
     }
 
    
