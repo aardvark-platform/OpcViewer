@@ -8,7 +8,7 @@ module RoverApp =
 
     let panning (m:RoverModel) =
         let forward = m.camera.view.Forward
-        let up = m.camera.view.Up
+        let up = m.up //rotate around global up axis
         let panRotation = Rot3d(up, m.pan.delta.RadiansFromDegrees())
         let targetWithPan = panRotation.TransformDir(forward)
         let newView = CameraView.look m.position targetWithPan.Normalized up
@@ -20,9 +20,9 @@ module RoverApp =
         let forward = m.camera.view.Forward
         let right = m.camera.view.Right
         let tiltRotation = Rot3d(right, m.tilt.delta.RadiansFromDegrees())
-        let targetWithTilt = tiltRotation.TransformDir(forward)
+        let targetWithTilt = tiltRotation.TransformDir(forward).Normalized
 
-        let newView = CameraView.look m.position targetWithTilt.Normalized m.camera.view.Up
+        let newView = CameraView.look m.position targetWithTilt m.camera.view.Up
         {m with camera =  {m.camera with view = newView} }
 
 
@@ -50,10 +50,43 @@ module RoverApp =
         //let d = cross.Dot(V3d.YAxis)
         //let d1 = va.Dot(vb)
         //let signedAngle = atan2 d d1  * Constant.DegreesPerRadian
-        let iProj = viewM.Forward.TransformPos interestPoint
-        let signedAngle = atan2 iProj.X -iProj.Z * Constant.DegreesPerRadian
 
-        panning (setPan m (m.pan.current + signedAngle))
+        ////tilting
+        //let iProj = viewM.Forward.TransformPos interestPoint
+        //let tiltAngle = atan2 -iProj.Y -iProj.Z * Constant.DegreesPerRadian
+        //printfn "%A tilt:" tiltAngle
+        //let roverWithTilt = tilting (setTilt m (m.tilt.current + tiltAngle))
+
+        ////panning
+        //let viewM2 = roverWithTilt.camera.view.ViewTrafo
+        //let iProj2 = viewM2.Forward.TransformPos interestPoint
+        //let panAngle = atan2 iProj2.X -iProj2.Z * Constant.DegreesPerRadian
+        //printfn "%A pan:" panAngle
+        //panning (setPan roverWithTilt (roverWithTilt.pan.current + panAngle))
+
+
+         //tilting
+        let iProj = viewM.Forward.TransformPos interestPoint
+        let tiltAngle = atan2 -iProj.Y -iProj.Z// * Constant.DegreesPerRadian
+        let panAngle = atan2 iProj.X -iProj.Z //* Constant.DegreesPerRadian
+
+        let forward = m.camera.view.Forward
+        let right = m.camera.view.Right
+
+        let rotTrafo = Trafo3d.Rotation(tiltAngle, panAngle, 0.0)
+        let newView = CameraView.ofTrafo (m.camera.view.ViewTrafo * rotTrafo)
+
+       
+        {m with camera =  {m.camera with view = newView} }
+
+       
+        
+     
+       
+        
+  
+      
+
         //in world space
         //let f = m.camera.view.Forward.Normalized
         //let v = (interestPoint - m.camera.view.Location).Normalized
