@@ -44,10 +44,10 @@ type CameraStateLean =
     }
 
   
-  type RegionOfInterest = 
-    {
-        regionCoords : plist<V3d>
-    }
+  //type RegionOfInterest = 
+  //  {
+  //      regionCoords : plist<V3d>
+  //  }
 
 [<DomainType>]
 type Model =
@@ -64,7 +64,7 @@ type Model =
         planePoints          : Option<plist<V3d>>
         pickingActive        : bool
         rover                : RoverModel
-        //region               : Option<RegionOfInterest>
+        region               : plist<V3d>
     }
 
    

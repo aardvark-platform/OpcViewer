@@ -125,7 +125,9 @@ module App =
                 let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
                 let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddBrush pointsOnAxisFunc)
             
-                { model with pickingModel = updatedPicking}
+                { model with pickingModel = updatedPicking; region = model.pickingModel.intersectionPoints}
+
+
             | Keys.T ->
                 let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
                 let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddTestBrushes pointsOnAxisFunc)
@@ -164,6 +166,10 @@ module App =
                 
                   | MoveToRegion re ->
                     let r = RoverApp.update model.rover (MoveToRegion re)
+                    {model with rover = r}
+                
+                  | SwitchCamera c ->
+                    let r = RoverApp.update model.rover (SwitchCamera c)
                     {model with rover = r}
 
 
@@ -288,7 +294,6 @@ module App =
           PickingApp.view m.pickingModel
           drawPlane
           target
-          //frustumBox
           shading
         ] |> Sg.ofList
         
@@ -354,12 +359,14 @@ module App =
             body [style "width: 100%; height:100%; background: transparent";] [
               div[style "color:white; margin: 5px 15px 5px 5px"][
                 h3[][text "ROVER CONTROL"]
-                p[][text "Press R to place rover at picked point"]
-                p[][text "Press L to select picked point as rover target"]
+                //p[][text "Press R to place rover at picked point"]
+                //p[][text "Press L to select picked point as rover target"]
                 p[][Incremental.text (m.rover.position |> Mod.map (fun f -> f.ToString())) ]
-                p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
-                p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
-                button [onClick (fun _ -> RoverAction.MoveToRegion (m.pickingModel.intersectionPoints |> AList.toPList |> PList.last))] [text "Move to region"] |> UI.map RoverAction
+                p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = 0.0; max = 60.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
+                p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 60.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
+                p[][div[][text "Select Camera: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
+                
+                button [onClick (fun _ -> RoverAction.MoveToRegion (m.region |> AList.toPList))] [text "Move to region"] |> UI.map RoverAction
 
 
 
@@ -489,7 +496,6 @@ module App =
       let initialModel : Model = 
         { 
           cameraState        = camState
-          //secondCam          = camState
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
           
@@ -501,7 +507,8 @@ module App =
           pickingModel       = { PickingModel.initial with pickingInfos = opcInfos }
           planePoints        = setPlaneForPicking
           rover              = { RoverModel.initial with up = box.Center.Normalized; camera = roverinitialCamera; position = box.Center}
-          dockConfig         = initialDockConfig            
+          dockConfig         = initialDockConfig        
+          region             = PList.empty
         }
 
       {

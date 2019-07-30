@@ -12,6 +12,20 @@ type CameraInput =
     delta : float
     }
 
+type CameraType =
+    | Camera60   //fov = 60°
+    | Camera30   //fov = 30°
+    | Camera15   //fov = 15°
+    | Stereo    //two cameras
+
+//[<DomainType>]
+//type CameraVariant =
+//    {
+//    cam : CameraControllerState
+//    frustum : Frustum
+//    }
+
+
 [<DomainType; ReferenceEquality>]
 type RoverModel =
     {
@@ -20,9 +34,11 @@ type RoverModel =
         target   :  V3d            
         tilt     :  CameraInput
         pan      :  CameraInput
-        camera   :  CameraControllerState//CameraView
+        camera   :  CameraControllerState
         up       :  V3d
         frustum  :  Frustum
+        currentCamType : Option<CameraType>
+        cameraOptions : hmap<CameraType, string>
 
     }
 
@@ -30,7 +46,8 @@ type RoverAction =
     | ChangePosition of V3d     //locate the rover at an intersection point
     | ChangePan of float
     | ChangeTilt of float
-    | MoveToRegion of V3d           //move view frustum to a region of interest
+    | SwitchCamera of Option<CameraType>
+    | MoveToRegion of plist<V3d>      //move view frustum to a region of interest
 
 
 module RoverModel =
@@ -40,7 +57,7 @@ module RoverModel =
         FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
          }
 
-    let initfrustum = Frustum.perspective 35.0 0.1 10.0 1.0
+    let initfrustum = Frustum.perspective 30.0 0.1 10.0 1.0
     
     let initial = 
         {
@@ -49,21 +66,25 @@ module RoverModel =
 
         pan = 
             {
-                previous = 90.0
-                current = 90.0
+                previous = 0.0
+                current = 0.0
                 delta = 0.0
             }
         
         tilt = 
             {
-                previous = 90.0
-                current = 90.0
+                previous = 0.0
+                current = 0.0
                 delta = 0.0
             }
 
         camera = initCamera
         up     = initCamera.view.Up
         frustum = initfrustum
+
+        currentCamType = Some Camera30
+        cameraOptions = HMap.ofList [Camera60, "Camera60"; Camera30, "Camera30"; Camera15, "Camera15"; Stereo, "Stereo"]
+
         }
 
     let getViewProj (cam : IMod<CameraView>) (frustum:IMod<Frustum>) =

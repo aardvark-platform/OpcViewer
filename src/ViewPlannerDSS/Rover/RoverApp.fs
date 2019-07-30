@@ -40,7 +40,7 @@ module RoverApp =
         {m with tilt = {m.tilt with delta = dt; previous = prev; current = curr}}
     
 
-    let moveFrustum (m:RoverModel) (interestPoint:V3d) =
+    let moveFrustum (m:RoverModel) (region:plist<V3d>)=
         let viewM = m.camera.view.ViewTrafo
 
         //let pointViewSpace = viewM.Forward * (V4d(interestPoint,1.0))
@@ -65,13 +65,20 @@ module RoverApp =
         //panning (setPan roverWithTilt (roverWithTilt.pan.current + panAngle))
 
 
+        //region of interest
+        let bbox = Box3d(region)
+        let interestPoint = bbox.Center
+
+        let point1 = bbox.Min.X
+        let point2 = bbox.Max.X
+        let angleBetweenPoints = atan2 point1 point2 * Constant.DegreesPerRadian
+        printfn "%A angleBetween:" angleBetweenPoints
+
+
          //tilting
         let iProj = viewM.Forward.TransformPos interestPoint
-        let tiltAngle = atan2 -iProj.Y -iProj.Z// * Constant.DegreesPerRadian
-        let panAngle = atan2 iProj.X -iProj.Z //* Constant.DegreesPerRadian
-
-        let forward = m.camera.view.Forward
-        let right = m.camera.view.Right
+        let tiltAngle = atan2 -iProj.Y -iProj.Z
+        let panAngle = atan2 iProj.X -iProj.Z 
 
         let rotTrafo = Trafo3d.Rotation(tiltAngle, panAngle, 0.0)
         let newView = CameraView.ofTrafo (m.camera.view.ViewTrafo * rotTrafo)
@@ -117,6 +124,27 @@ module RoverApp =
         //ro
 
 
+    let changeCam (rover:RoverModel) (camtype:Option<CameraType>)=
+        
+        match camtype with
+            |Some Camera60 -> 
+                let fr = Frustum.perspective 60.0 0.1 10.0 1.0
+                {rover with frustum = fr; currentCamType = Some Camera60}
+            
+            |Some Camera30 ->
+                let fr = Frustum.perspective 30.0 0.1 10.0 1.0
+                {rover with frustum = fr; currentCamType = Some Camera30}
+            
+            |Some Camera15 ->
+                let fr = Frustum.perspective 15.0 0.1 10.0 1.0
+                {rover with frustum = fr; currentCamType = Some Camera15}
+            
+            |Some Stereo -> rover //TODO 
+
+            |None -> rover
+
+
+
 
 
     let update (rover:RoverModel) (action:RoverAction) =
@@ -134,6 +162,9 @@ module RoverApp =
             
             |MoveToRegion p ->
                 moveFrustum rover p
+            
+            |SwitchCamera cam ->
+                changeCam rover  cam
                 
               
     
