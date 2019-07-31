@@ -66,15 +66,15 @@ module RoverModel =
 
         pan = 
             {
-                previous = 0.0
-                current = 0.0
+                previous = 30.0
+                current = 30.0
                 delta = 0.0
             }
         
         tilt = 
             {
-                previous = 0.0
-                current = 0.0
+                previous = 30.0
+                current = 30.0
                 delta = 0.0
             }
 

@@ -40,9 +40,29 @@ module RoverApp =
         {m with tilt = {m.tilt with delta = dt; previous = prev; current = curr}}
     
 
-    let moveFrustum (m:RoverModel) (region:plist<V3d>)=
-        let viewM = m.camera.view.ViewTrafo
+    let checkROIFullyInside (m:RoverModel) (region:plist<V3d>) =
+        
+        //TODO calculate center point of region
+        let sum = region.Sum()
+        let c = region |> PList.count
+        let centerpoint = sum / (float c)
 
+        //calculate new view matrix by tilting and panning to center point
+
+
+        //transform region points to projection space
+        //check if all of the points have values between 0 and 1 
+        //if yes return pan and tilt values; if no return None
+
+
+
+
+
+
+        m
+
+    let moveFrustum (m:RoverModel) (region:plist<V3d>)=
+       
         //let pointViewSpace = viewM.Forward * (V4d(interestPoint,1.0))
         //let va = -V3d.ZAxis
         //let vb = pointViewSpace.XYZ.Normalized
@@ -64,19 +84,25 @@ module RoverApp =
         //printfn "%A pan:" panAngle
         //panning (setPan roverWithTilt (roverWithTilt.pan.current + panAngle))
 
+        let viewM = m.camera.view.ViewTrafo
+        let projM = Frustum.projTrafo(m.frustum)
+        let viewProj = viewM * projM
 
-        //region of interest
-        let bbox = Box3d(region)
-        let interestPoint = bbox.Center
+        //transform points to projection space
+        let transformedpoints = region |> PList.toList |> List.map (fun p -> viewProj.Forward.TransformPosProj p)
 
-        let point1 = bbox.Min.X
-        let point2 = bbox.Max.X
-        let angleBetweenPoints = atan2 point1 point2 * Constant.DegreesPerRadian
-        printfn "%A angleBetween:" angleBetweenPoints
+        //set up bounding box
+        let boxPoints = transformedpoints |> List.map(fun p -> ((V2d(p.X, p.Y) + V2d.One) * 0.5))
+        let bBox =  boxPoints |> Box2d //coords between 0 and 1
+        let size = bBox.Size
+        let leftBottomP = V3d(bBox.Min,1.0)
+      
+        //transform point back to view space
+        let invP = projM.Backward.TransformPos leftBottomP
 
-
-         //tilting
-        let iProj = viewM.Forward.TransformPos interestPoint
+        //Rotating of the camera
+        //let iProj = viewM.Forward.TransformPos bBox.Center
+        let iProj = invP
         let tiltAngle = atan2 -iProj.Y -iProj.Z
         let panAngle = atan2 iProj.X -iProj.Z 
 
@@ -86,6 +112,7 @@ module RoverApp =
        
         {m with camera =  {m.camera with view = newView} }
 
+     
        
         
      
