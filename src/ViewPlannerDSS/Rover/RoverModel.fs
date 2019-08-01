@@ -39,6 +39,9 @@ type RoverModel =
         frustum  :  Frustum
         currentCamType : Option<CameraType>
         cameraOptions : hmap<CameraType, string>
+        panTiltValues : Option<plist<V2d>>
+        boxP1 : Option<V3d>
+        boxP2 : Option<V3d>
 
     }
 
@@ -66,15 +69,15 @@ module RoverModel =
 
         pan = 
             {
-                previous = 30.0
-                current = 30.0
+                previous = 90.0
+                current = 90.0
                 delta = 0.0
             }
         
         tilt = 
             {
-                previous = 30.0
-                current = 30.0
+                previous = 90.0
+                current = 90.0
                 delta = 0.0
             }
 
@@ -84,6 +87,9 @@ module RoverModel =
 
         currentCamType = Some Camera30
         cameraOptions = HMap.ofList [Camera60, "Camera60"; Camera30, "Camera30"; Camera15, "Camera15"; Stereo, "Stereo"]
+        panTiltValues = None
+        boxP1 = None
+        boxP2 = None
 
         }
 

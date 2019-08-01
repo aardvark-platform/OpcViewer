@@ -212,6 +212,36 @@ module App =
                     ]
             |> Sg.trafo targettrafo
 
+      let boxP1 = 
+        m.rover.boxP1 |> Mod.map(fun p -> 
+      
+            match p with
+                | Some p1 -> 
+                    Sg.sphere 5 (Mod.constant C4b.DarkYellow) (Mod.constant 0.2)
+                        |> Sg.noEvents
+                        |> Sg.effect [ 
+                            toEffect Shader.stableTrafo
+                            toEffect DefaultSurfaces.vertexColor
+                                    ]
+                        |> Sg.trafo (Mod.constant(Trafo3d.Translation(p1)))
+                | None -> Sg.empty
+        )
+
+      let boxP2 = 
+        m.rover.boxP2 |> Mod.map(fun p -> 
+      
+            match p with
+                | Some p2 -> 
+                    Sg.sphere 5 (Mod.constant C4b.DarkYellow) (Mod.constant 0.2)
+                        |> Sg.noEvents
+                        |> Sg.effect [ 
+                            toEffect Shader.stableTrafo
+                            toEffect DefaultSurfaces.vertexColor
+                                    ]
+                        |> Sg.trafo (Mod.constant(Trafo3d.Translation(p2)))
+                | None -> Sg.empty
+        )
+     
 
       let vp = (RoverModel.getViewProj m.rover.camera.view m.rover.frustum)    
       
@@ -223,6 +253,19 @@ module App =
             do! DefaultSurfaces.stableTrafo
             do! DefaultSurfaces.vertexColor
         }
+    
+      let bBoxOfROI = 
+        let r = m.region |> AList.toList
+        let b = Box3d(r)
+        let tr = Trafo3d.Translation(b.Center)
+        Sg.wireBox (Mod.constant C4b.Gray) (Mod.constant b)
+        |> Sg.noEvents
+        |> Sg.trafo (Mod.constant tr)
+        |> Sg.shader {
+            do! DefaultSurfaces.stableTrafo
+            do! DefaultSurfaces.vertexColor
+        }
+            
        
       //highlights the area of the model which is inside the rover's view frustum
       let shading = 
@@ -287,6 +330,9 @@ module App =
           target
           frustumBox
           shading
+          boxP1 |> Sg.dynamic
+          boxP2 |> Sg.dynamic
+          bBoxOfROI
         ] |> Sg.ofList
     
       let roverCamScene = 
@@ -362,8 +408,8 @@ module App =
                 //p[][text "Press R to place rover at picked point"]
                 //p[][text "Press L to select picked point as rover target"]
                 p[][Incremental.text (m.rover.position |> Mod.map (fun f -> f.ToString())) ]
-                p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = 0.0; max = 60.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
-                p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 60.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
+                p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
+                p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
                 p[][div[][text "Select Camera: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
                 
                 button [onClick (fun _ -> RoverAction.MoveToRegion (m.region |> AList.toPList))] [text "Move to region"] |> UI.map RoverAction
