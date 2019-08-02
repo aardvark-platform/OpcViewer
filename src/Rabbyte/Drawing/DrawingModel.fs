@@ -25,11 +25,10 @@ type PrimitiveStatus =
     | PolyLine
     | Polygon
 
-// TODO sampling rate?
 type SegmentCreation =
-    | NoSegement        //direct connection -> No segments!
-    | Linear            // shortest path subsampled 
-    | ProjDir of V3d    // create along ProjDir
+    | NoSegement
+    | Linear of float           // SamplingRate -> linear subsampled
+    | ProjDir of float * V3d    // SamplingRate // Projection Dir
     //| ViewPoint   // -> pro3d
     //| Sky         // -> pro3d
     //| Axis        // -> dibit
@@ -40,9 +39,9 @@ type BrushStyle = {
     lineStyle   : LineStyle
     areaStyle   : AreaStyle
     thickness   : NumericInput
+    samplingRate: NumericInput
 }
 
-[<DomainType>]
 type Segment = {
     startPoint : V3d
     endPoint   : V3d 
@@ -67,21 +66,23 @@ type DrawingAction =
     | ChangeColorSecondary  of ColorPicker.Action
     | ChangeColorAuto       of ColorPicker.Action
     | ChangeThickness       of Numeric.Action
+    | ChangeSamplingRate    of Numeric.Action
     | ChangeLineStyle       of LineStyle
     | ChangeAreaStyle       of AreaStyle
-    | AddPoint              of V3d    // TODO...projectionDir for segments...
+    | AddPoint              of V3d * (Option<V3d -> Option<V3d>>)
+    | RecalculateSegments   of (V3d -> Option<V3d>)
     | RemoveLastPoint  
     | Clear
     | Finish 
     | FinishClose
     | Undo
     | Redo
-    //| AddPointAdv         of V3d * (V3d -> Option<V3d>) * string // pro3d
-    //| PointPicked         of V3d * SurfaceSketchMode * (V3d -> option<V3d> * FastRay3d) // dibit8
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module DrawingModel =
-    let defaultThickness : NumericInput = { value = 3.0; min = 1.0; max = 8.0;step = 1.0;format = "{0:0}" }
+    let defaultThickness    : NumericInput = { value = 3.0; min = 1.0; max = 8.0;step = 1.0;format = "{0:0}" }
+    let defaultSamplingRate : NumericInput = { value = 0.2; min = 0.02; max = 10.0;step = 0.02;format = "{0:00}" }
+
     let defaultStyle = 
         {
             primary = { c = C4b.VRVisGreen }
@@ -89,6 +90,7 @@ module DrawingModel =
             lineStyle = Solid
             areaStyle = Filled
             thickness = defaultThickness
+            samplingRate = defaultSamplingRate
         }
 
     let inital = {                 

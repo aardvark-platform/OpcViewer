@@ -16,23 +16,7 @@ open FShade.Primitives
 
 module DrawingApp =
 
-    let drawSegment (m :MDrawingModel) = failwith ""
-
-    let drawLines (m : MDrawingModel) = 
-        let lines = convertLines false m.points
-
-        let color = m.style |> Mod.map (fun x -> x.primary.c)
-        let lineWidth = m.style |> Mod.map (fun x -> x.thickness.value)
-        let trafo = Mod.constant (Trafo3d.Identity)
-        lineISg color lineWidth trafo lines
-
-    let view (model : MDrawingModel) =  
-        let vertices = drawVertices model
-        let edges = drawLines model
-        
-        Sg.group [vertices; edges] |> Sg.noEvents
-
-    let updateFinish model close = 
+    let helperFinishState model close = 
         let status = 
             match model.points |> PList.count, close with
                 | 0, _ -> PrimitiveStatus.Empty
@@ -40,7 +24,7 @@ module DrawingApp =
                 | 2, _ -> PrimitiveStatus.Line
                 | _, false -> PrimitiveStatus.PolyLine
                 | _, true -> PrimitiveStatus.Polygon
-        { model with status = status }
+        { model with status = status}
 
     let createSecondaryColor (c : C4b) : C4b = 
     
@@ -70,28 +54,12 @@ module DrawingApp =
             { model with style = { model.style with primary = primary; secondary = secondary}}
         | ChangeThickness th ->
             { model with style = { model.style with thickness = Numeric.update model.style.thickness th }}
+        | ChangeSamplingRate sr ->
+            { model with style = { model.style with samplingRate = Numeric.update model.style.samplingRate sr }}
         | ChangeLineStyle l ->
             { model with style = { model.style with lineStyle = l }}
         | ChangeAreaStyle a ->
             { model with style = { model.style with areaStyle = a }}
-        | AddPoint p -> 
-            match model.points |> PList.isEmpty with
-                | true -> 
-                    { model with points = model.points |> PList.prepend p; status = InProgress; past = Some model}
-                | false ->
-                    let s = {
-                        startPoint = model.points |> PList.first
-                        endPoint = p
-                        points = PList.empty
-                    }
-                    { model with points = model.points |> PList.prepend p; segments = model.segments |> PList.prepend s; past = Some model}
-        | RemoveLastPoint ->
-            match model.points |> PList.count with
-            | 0 -> model
-            | 1 -> { model with points = model.points |> PList.skip 1; status = PrimitiveStatus.Empty; past = Some model}
-            | _ -> { model with points = model.points |> PList.skip 1; segments = model.segments |> PList.skip 1; past = Some model }
-        | DrawingAction.Clear -> 
-            { model with points = PList.empty; segments = PList.empty; status = PrimitiveStatus.Empty; past = Some model}
         | Undo _ -> 
             match model.past with
                 | None -> model
@@ -100,31 +68,56 @@ module DrawingApp =
             match model.future with
                 | None -> model
                 | Some f -> f
+        // Undo-Able Commands
+        | RecalculateSegments hitF -> failwith "" // TODO?
+        | AddPoint (p, hitF) -> 
+            match model.points |> PList.isEmpty with
+                | true -> 
+                    { model with points = model.points |> PList.prepend p; status = InProgress; past = Some model}
+                | false ->
+                    let startP = model.points |> PList.first
+                    let endP = p
+                    let segPoints = 
+                        match hitF with
+                        | Some f -> 
+                            let vec  = (endP - startP)
+                            let dir  = vec.Normalized
+                            let l    = vec.Length
+        
+                            [ 0.0 .. model.style.samplingRate.value .. l] 
+                                |> List.map(fun x -> startP + x * dir)
+                                |> List.map f
+                                |> List.choose id
+                                |> PList.ofList
+                        | None -> PList.empty
+
+                    let segment = {
+                        startPoint = startP
+                        endPoint = endP
+                        points = segPoints
+                    }
+
+                    { model with points = model.points |> PList.prepend p; segments = model.segments |> PList.prepend segment; status = InProgress; past = Some model}
+        | RemoveLastPoint ->
+            match model.points |> PList.count with
+            | 0 -> model
+            | 1 -> { model with points = model.points |> PList.skip 1; status = PrimitiveStatus.Empty; past = Some model}
+            | _ -> { model with points = model.points |> PList.skip 1; segments = model.segments |> PList.skip 1; past = Some model }
+        | DrawingAction.Clear -> 
+            { model with points = PList.empty; segments = PList.empty; status = PrimitiveStatus.Empty; past = Some model}
         | Finish -> 
-            updateFinish model false
+            helperFinishState model false  // undo-able?
         | FinishClose -> 
-            let m = updateFinish model true
+            let m = helperFinishState model true
             match m.status with
-                | Polygon -> update m (AddPoint (m.points |> PList.last))
+                | Polygon -> 
+                    let newM = update m (AddPoint ((m.points |> PList.last), None))   // TODO close polygon with same hitF as others
+                    { newM with past = Some model }
                 | _ -> m
 
-        //| AddPointAdv (point, hitFunction, name) ->
-        //          //let up    = smallConfig.up.Get(bigConfig)
-        //          //let north = smallConfig.north.Get(bigConfig)
-        //          //let planet = smallConfig.planet.Get(bigConfig)
-
-        //          //let model, newSegment = addPoint up north planet hitFunction point view model name webSocket
-                
-        //          //match newSegment with
-        //          //    | None         -> model
-        //          //    | Some segment -> addNewSegment hitFunction model segment
-        //          failwith ""
-
-    //let app =
-    //    {
-    //        unpersist = Unpersist.instance
-    //        threads = fun _ -> ThreadPool.Empty
-    //        initial = DrawingModel.inital
-    //        update = update
-    //        view = view
-    //    }
+    let view (model : MDrawingModel) =  
+        let vertices = drawVertices model
+        let edges = drawLines model
+        let segments = drawSegment model
+        
+        Sg.group [vertices; edges; segments] |> Sg.noEvents

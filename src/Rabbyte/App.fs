@@ -30,7 +30,8 @@ let rec update (model : SimpleDrawingModel) (act : Action) =
             | Keys.U -> update model (UpdateDrawing DrawingAction.Undo)
             | Keys.Z -> update model (UpdateDrawing DrawingAction.Redo)
             | Keys.Delete -> update model (UpdateDrawing DrawingAction.RemoveLastPoint)
-            | Keys.Enter -> update model (UpdateDrawing DrawingAction.FinishClose)
+            | Keys.Enter -> update model (UpdateDrawing DrawingAction.Finish)
+            | Keys.C -> update model (UpdateDrawing DrawingAction.FinishClose)
             | _ -> model
         | KeyUp Keys.LeftCtrl, _ -> { model with draw = false; hoverPosition = None }
         | Move p, true -> { model with hoverPosition = Some (Trafo3d.Translation p) }
@@ -60,33 +61,27 @@ let mkISg color size trafo =
         |> Sg.trafo(trafo) 
         
 let canvas =  
-    let b = new Box3d( V3d(-2.0,-0.5,-2.0), V3d(2.0,0.5,2.0) )                                               
-    Sg.box (Mod.constant(C4b(241,238,246))) (Mod.constant b)
+    let box1 = new Box3d(V3d(-2.0,-0.5,-2.0), V3d(2.0,0.5,2.0)) 
+    let box2 = new Box3d(V3d(-2.1,-2.0,-0.4), V3d(2.2,2.0,0.6))
+
+    let b1 = Sg.box (Mod.constant(C4b(241,238,246))) (Mod.constant box1)
+    let b2 = Sg.box (Mod.constant(C4b(241,200,200))) (Mod.constant box2)
+    
+    [b1; b2] 
+        |> Sg.ofList  
         |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
             do! DefaultSurfaces.simpleLighting
         }
+
         |> Sg.requirePicking
         |> Sg.noEvents 
             |> Sg.withEvents [
                 Sg.onMouseMove (fun p -> Move p)
-                Sg.onClick(fun p -> UpdateDrawing (DrawingAction.AddPoint p))
+                Sg.onClick(fun p -> UpdateDrawing (DrawingAction.AddPoint (p, None)))   // TODO hitFunction
                 Sg.onLeave (fun _ -> Exit)
             ]    
-
-let edgeLines (close : bool)  (points : IMod<list<V3d>>) =        
-    points 
-    |> Mod.map (fun k -> 
-        match k with
-            | h::_ -> 
-                let start = if close then k @ [h] else k
-                start 
-                |> List.pairwise 
-                |> List.map (fun (a,b) -> new Line3d(a,b)) 
-                |> Array.ofList                                                        
-            | _ -> [||]
-        )
 
 let frustum =
     Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
@@ -94,30 +89,7 @@ let frustum =
 let scene3D (model : MSimpleDrawingModel) =
     let cam =
         model.camera.view 
-
-      //let lines = 
-      //    edgeLines false model.points 
-      //        |> Sg.lines (Mod.constant (C4b(116,169,207)))
-      //        |> Sg.noEvents
-      //        |> Sg.uniform "LineWidth" (Mod.constant 5) 
-      //        |> Sg.effect [
-      //            toEffect DefaultSurfaces.trafo
-      //            toEffect DefaultSurfaces.vertexColor
-      //            toEffect DefaultSurfaces.thickLine
-      //            ]
-      //        |> Sg.pass (RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main)
-      //        |> Sg.depthTest (Mod.constant DepthTestMode.None)                                         
-
-      //let spheres =
-      //    model.points 
-      //        |> Mod.map (fun ps -> 
-      //            ps |> List.map (fun p -> 
-      //                    mkISg (Mod.constant (C4b(43,140,190)))
-      //                          (computeScale model.camera.view p 5.0)
-      //                          (Mod.constant (Trafo3d.Translation(p)))) 
-      //                    |> Sg.ofList)                                
-      //        |> Sg.dynamic                            
-                                              
+                                           
     let trafo = 
         model.hoverPosition 
             |> Mod.map (function o -> match o with 
@@ -128,7 +100,7 @@ let scene3D (model : MSimpleDrawingModel) =
         
     let drawingApp = DrawingApp.view model.drawing
         
-    [canvas; brush; drawingApp] //[canvas; brush; spheres; lines]
+    [canvas; brush; drawingApp]
         |> Sg.ofList
         |> Sg.fillMode (Mod.constant(FillMode.Fill))
         |> Sg.cullMode (Mod.constant(CullMode.None))
@@ -145,6 +117,17 @@ let view (model : MSimpleDrawingModel) =
 
             div [style "width:35%; height: 100%; float:right; background: #1B1C1E;"] [
                     Html.SemUi.accordion "Rendering" "configure" true [
+                        p[][Incremental.text (model.drawing.status |> Mod.map (fun x -> 
+                            let status = 
+                                match x with
+                                | PrimitiveStatus.InProgress -> "InProgress"
+                                | PrimitiveStatus.Empty -> "Empty"
+                                | PrimitiveStatus.Point -> "Point"
+                                | PrimitiveStatus.Line -> "Line"
+                                | PrimitiveStatus.PolyLine -> "PolyLine"
+                                | PrimitiveStatus.Polygon -> "Polygon"
+                            sprintf "Status: %s" status    
+                            ))]
                     ]
                 ]
             ]

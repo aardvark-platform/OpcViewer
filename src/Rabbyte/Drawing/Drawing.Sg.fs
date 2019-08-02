@@ -89,3 +89,21 @@ module DrawingSg =
             Shader.StableTrafo.Effect
             toEffect DefaultSurfaces.vertexColor
         ]
+
+    let drawSegment (m :MDrawingModel) = 
+        // CAREFUL! duplicated vertices!!! most likely additional edges between segments (startNode is also Endnode)
+        let segments = m.segments |> AList.map (fun x -> x.points |> AList.ofPList) |> AList.concat 
+        let lines = convertLines false segments
+        
+        let color = m.style |> Mod.map (fun x -> x.secondary.c)
+        let lineWidth = m.style |> Mod.map (fun x -> x.thickness.value * 0.8)
+        let trafo = Mod.constant (Trafo3d.Identity)
+        lineISg color lineWidth trafo lines
+
+    let drawLines (m : MDrawingModel) = 
+        let lines = convertLines false m.points
+
+        let color = m.style |> Mod.map (fun x -> x.primary.c)
+        let lineWidth = m.style |> Mod.map (fun x -> x.thickness.value)
+        let trafo = Mod.constant (Trafo3d.Identity)
+        lineISg color lineWidth trafo lines
