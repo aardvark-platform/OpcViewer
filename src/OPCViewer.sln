@@ -12,6 +12,8 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ViewPlannerDSS", "ViewPlann
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "OPCViewer.Base", "OPCViewer.Base\OPCViewer.Base.fsproj", "{E5A50336-5AC3-45E3-AA0D-09B74F5E7FB1}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Rabbyte", "Rabbyte\Rabbyte.fsproj", "{4E2275E8-2027-487D-B0E2-280D597B5C68}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +40,10 @@ Global
 		{E5A50336-5AC3-45E3-AA0D-09B74F5E7FB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E5A50336-5AC3-45E3-AA0D-09B74F5E7FB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E5A50336-5AC3-45E3-AA0D-09B74F5E7FB1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4E2275E8-2027-487D-B0E2-280D597B5C68}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E2275E8-2027-487D-B0E2-280D597B5C68}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E2275E8-2027-487D-B0E2-280D597B5C68}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E2275E8-2027-487D-B0E2-280D597B5C68}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
