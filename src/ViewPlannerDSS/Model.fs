@@ -21,8 +21,10 @@ type Action =
   | KeyDown          of key : Keys  
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
-  | RoverAction      of RoverAction  
+  | PickPoint        of V3d
   | SetInteractionMode of InteractionMode
+  | RoverAction      of RoverAction
+
 
 type CameraStateLean = 
   { 
@@ -48,13 +50,18 @@ type PlaneCoordinates =
   points : plist<V3d>
   }
 
-
+  
+  //type RegionOfInterest = 
+  //  {
+  //      regionCoords : plist<V3d>
+  //  }
 
 [<DomainType>]
 type Model =
     {
         cameraState          : CameraControllerState                       
         fillMode             : FillMode                                
+        region               : plist<V3d>
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>        
         boxes                : list<Box3d>        
@@ -62,7 +69,6 @@ type Model =
         threads              : ThreadPool<Action>
         dockConfig           : DockConfig
         pickingModel         : PickingModel
-        pickedPoint          : Option<V3d>
         planePoints          : Option<plist<V3d>>
         pickingActive        : bool
         rover                : RoverModel

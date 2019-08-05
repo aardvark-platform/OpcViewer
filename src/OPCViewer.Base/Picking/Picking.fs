@@ -512,6 +512,7 @@ module PickingApp =
     | SetAlpha a -> { model with alpha = a } 
     | SetExtrusionOffset o -> { model with extrusionOffset = o }
     | SetVolumeGeneration x -> {model with volumeGeneration = x }
+    | PickPointOnPlane point -> {model with pickedPointOnPlane = point}
 
   let view (model : MPickingModel) =
     

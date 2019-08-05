@@ -2,6 +2,7 @@
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open Aardvark.UI.Primitives
 
 [<DomainType>]
 type CameraInput = 
@@ -11,16 +12,37 @@ type CameraInput =
     delta : float
   }
 
-[<DomainType>]
+type CameraType =
+    | Camera60   //fov = 60°
+    | Camera30   //fov = 30°
+    | Camera15   //fov = 15°
+    | Stereo    //two cameras
+
+//[<DomainType>]
+//type CameraVariant =
+//    {
+//    cam : CameraControllerState
+//    frustum : Frustum
+//    }
+
+
+[<DomainType; ReferenceEquality>]
 type RoverModel =
     {
-        position :  V3d             //where the rover is located
-        target   :  V3d             //target the rover is looking at
+        position :  V3d             
+        target   :  V3d            
         tilt     :  CameraInput
         pan      :  CameraInput
-        camera   :  CameraView
+        camera   :  CameraControllerState
         up       :  V3d
         frustum  :  Frustum
+        currentCamType : Option<CameraType>
+        cameraOptions : hmap<CameraType, string>
+        panTiltValues : Option<plist<V2d>>
+        boxP1 : Option<V3d>
+        boxP2 : Option<V3d>
+        corners : Option<plist<V3d>>
+
     }
 
 type RoverAction =
@@ -28,11 +50,16 @@ type RoverAction =
     | ChangeTarget   of V3d
     | ChangePan      of float
     | ChangeTilt     of float
+    | SwitchCamera of Option<CameraType>
+    | MoveToRegion of plist<V3d>      //move view frustum to a region of interest
 
 
 module RoverModel =
     
-    let initCamera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
+    let initCamera = {
+   
+        FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
+         }
 
     let initfrustum = Frustum.perspective 35.0 0.1 50000.0 1.0
     
@@ -56,16 +83,24 @@ module RoverModel =
             }
 
         camera  = initCamera
-        up      = initCamera.Up
+        up     = initCamera.view.Up
         frustum = initfrustum
+
+        currentCamType = Some Camera30
+        cameraOptions = HMap.ofList [Camera60, "Camera60"; Camera30, "Camera30"; Camera15, "Camera15"; Stereo, "Stereo"]
+        panTiltValues = None
+        boxP1 = None
+        boxP2 = None
+        corners = None
+
       }
 
-    let getViewProj (view : IMod<CameraView>) (frustum:IMod<Frustum>) =
+    let getViewProj (cam : IMod<CameraView>) (frustum:IMod<Frustum>) =
         
         adaptive {
             let! fr = frustum 
             let proj = (Frustum.projTrafo(fr))
-            let! view = view
-            let view = view.ViewTrafo
+            let! cam = cam
+            let view = cam.ViewTrafo
             return (view * proj)
         } 
