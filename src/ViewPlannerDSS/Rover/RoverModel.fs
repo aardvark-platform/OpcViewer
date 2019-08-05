@@ -42,6 +42,7 @@ type RoverModel =
         panTiltValues : Option<plist<V2d>>
         boxP1 : Option<V3d>
         boxP2 : Option<V3d>
+        corners : Option<plist<V3d>>
 
     }
 
@@ -90,6 +91,7 @@ module RoverModel =
         panTiltValues = None
         boxP1 = None
         boxP2 = None
+        corners = None
 
         }
 

@@ -39,22 +39,48 @@ module RoverApp =
         let curr = value
         {m with tilt = {m.tilt with delta = dt; previous = prev; current = curr}}
     
+    //points: in world space
     let calcPanTiltValues (m:RoverModel) (points:List<V3d>) (cam:CameraView) =
+        
+        ////transform points to ndc space
+        //let projM = Frustum.projTrafo(m.frustum)
+        //let viewProj = cam.ViewTrafo * projM
+        //let ndcPoints = points |> List.map (fun p -> viewProj.Forward.TransformPosProj p) //points between -1 and 1
+
+        ////find points left and right of center (center approx. 0,0)
+        //let pointsLeft = List.empty
+        //let pointsRight = List.empty
+
+        //for p in ndcPoints do
+        //    if p.X < 0.0 then
+        //        List.append     
+
+
+
         
         let pointsInViewSpace = points  |> List.map (fun p -> cam.ViewTrafo.Forward.TransformPos p) 
 
         let box = pointsInViewSpace |> Box3d
-        let p1 = box.Min.Normalized
-        let p2 = (box.Min + V3d(box.SizeX, 0.0, 0.0)).Normalized
+        let p1 = box.Min
+        let p2 = (box.Min + V3d(box.SizeX, 0.0, 0.0))
 
-        let angleBetween = (acos(p1.Dot(p2))) * Constant.DegreesPerRadian
+        let p1Norm = p1.Normalized
+        let p2Norm = p2.Normalized
+
+        let angleBetween = (acos(p1Norm.Dot(p2Norm))) * Constant.DegreesPerRadian
 
         printfn "%A angle:" angleBetween
 
         let p1ws = p1 |> cam.ViewTrafo.Backward.TransformPos 
         let p2ws = p2 |> cam.ViewTrafo.Backward.TransformPos 
 
-        {m with boxP1 = Some p1ws; boxP2 = Some p2ws}
+        let corners = box.Corners
+        let a = corners.IntoArray()
+        //let l = List.map (fun m -> cam.ViewTrafo.Backward.TransformPos m) corners
+      
+
+        {m with camera =  {m.camera with view = cam}; boxP1 =Some p1ws; boxP2 = Some p2ws }
+
 
 
 
