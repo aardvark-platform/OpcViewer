@@ -12,8 +12,6 @@ module RoverApp =
 
         let newView = CameraView.look m.position targetWithPan.Normalized up
         {m with camera =  newView}
-
-
     
     let tilting (m:RoverModel) =
         let forward = m.camera.Forward
@@ -24,13 +22,11 @@ module RoverApp =
         let newView = CameraView.look m.position targetWithTilt.Normalized m.camera.Up
         {m with camera =  newView}
 
-
     let setPan(m:RoverModel) (value:float) =
         let dt = m.pan.previous - value
         let prev = m.pan.current
         let curr = value
         {m with pan = {m.pan with delta = dt; previous = prev; current = curr}}
-
 
     let setTilt(m:RoverModel) (value:float) =
         let dt = m.tilt.previous - value
@@ -40,18 +36,18 @@ module RoverApp =
 
 
 
-    let update (rover:RoverModel) (action:RoverAction) =
-        
-        match action with
-            |ChangePosition newPos -> {rover with position = newPos} 
-
-            |ChangePan p -> 
-                let rover' = setPan rover p
-                panning rover'
-
-            |ChangeTilt t -> 
-                let rover' = setTilt rover t
-                tilting rover'
+    let update (rover:RoverModel) (action:RoverAction) =        
+      match action with
+        | ChangePosition newPos -> 
+          {rover with position = newPos} 
+        | ChangeTarget newTarget ->
+          {rover with target = newTarget}
+        | ChangePan p -> 
+          let rover' = setPan rover p
+          panning rover'
+        | ChangeTilt t -> 
+          let rover' = setTilt rover t
+          tilting rover'
                 
               
     

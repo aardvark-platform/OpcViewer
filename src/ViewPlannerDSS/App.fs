@@ -27,6 +27,9 @@ open ViewPlanner.Rover
 
 
 module App = 
+    open OpcViewer.Base
+    open OpcViewer.Base
+    open Aardvark.Base
     
     let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
         let s' = cam.freeFlyConfig.moveSensitivity + incr
@@ -70,15 +73,14 @@ module App =
         match msg with
         | Camera m when model.pickingActive = false -> 
             { model with cameraState = FreeFlyController.update model.cameraState m; }
-        
-        //| PickPoint pos -> 
-        //    { model with pickedPoint = pos}
-
+        | SetInteractionMode mode ->
+          Log.line "[Viewplanner] change interaction mode to %A" mode
+          { model with interactionMode = mode }
         | Action.KeyDown m ->
-         match m with
-          | Keys.LeftCtrl -> 
-            { model with pickingActive = true }
-          | _ -> model
+          match m with
+            | Keys.LeftCtrl -> 
+              { model with pickingActive = true }
+            | _ -> model
         | Action.KeyUp m ->
             match m with
             | Keys.LeftCtrl -> 
@@ -112,11 +114,6 @@ module App =
                         
                         | None -> model.rover
                 { model with rover = roverModel}
-
-
-
-
-
             | Keys.Enter ->
                 let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
                 let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddBrush pointsOnAxisFunc)
@@ -129,36 +126,31 @@ module App =
                 { model with pickingModel = updatedPicking; }
             | _ -> model
 
-        | PickingAction msg -> 
-            let pickingModel =
-                match msg with
-                    | HitSurface (a,b,_) -> 
-                        let axisNearstFunc = fun p -> p
-                        PickingApp.update model.pickingModel (HitSurface (a,b, axisNearstFunc))
-
-
-
-
-                    | _ -> PickingApp.update model.pickingModel msg
-            { model with pickingModel = pickingModel }
-
+        | PickingAction msg ->           
+          match model.interactionMode with
+            | InteractionMode.DrawRoi -> 
+              let pickingModel = PickingApp.update model.pickingModel msg
+              { model with pickingModel = pickingModel }
+            | InteractionMode.PickRoverPosition ->
+              let pickingModel = PickingApp.update model.pickingModel msg
+              match pickingModel.intersectionPoints |> PList.tryFirst with
+              | Some pos -> 
+                let r = RoverApp.update model.rover (ChangePosition pos)
+                {model with rover = r}                  
+              | None -> model                
+            | InteractionMode.PickRoverTarget ->
+              let pickingModel = PickingApp.update model.pickingModel msg
+              match pickingModel.intersectionPoints |> PList.tryFirst with
+              | Some tar -> 
+                let r = RoverApp.update model.rover (ChangeTarget tar)
+                {model with rover = r}
+              | None -> model      
+            | _ -> failwith "unknown interaction mode"       
         | UpdateDockConfig cfg ->
             { model with dockConfig = cfg }
-
-        | RoverAction msg -> 
-            match msg with
-                  | ChangePosition pos -> 
-                        let r = RoverApp.update model.rover (ChangePosition pos)
-                        {model with rover = r}
-                //| ChangePan p -> 
-                //    let r = RoverApp.update model.rover (ChangePan p)
-                //    {model with rover = r}
-                    
-                //| ChangeTilt t -> 
-                //    let r = RoverApp.update model.rover (ChangeTilt t)
-                //    {model with rover = r}
-
-
+        | RoverAction msg ->            
+            let r = RoverApp.update model.rover msg
+            {model with rover = r}            
         | _ -> model
     
     //---
@@ -214,16 +206,6 @@ module App =
                             |> Sg.dynamic
                       )
 
-
-
-
-
-
-
-
-
-
-
       let scene = 
         [
           opcs
@@ -268,6 +250,9 @@ module App =
           require Html.semui (
             body [style "width: 100%; height:100%; background: transparent";] [
               div[style "color:white; margin: 5px 15px 5px 5px"][
+                div[][
+                  text "Mode: "; Html.SemUi.dropDown m.interactionMode SetInteractionMode ]
+
                 h3[][text "ROVER CONTROL"]
                 p[][text "Press R to place rover at picked point"]
                 p[][text "Press L to select picked point as rover target"]
@@ -395,7 +380,9 @@ module App =
         { 
           cameraState        = camState
           fillMode           = FillMode.Fill                    
-          patchHierarchies   = patchHierarchies          
+          patchHierarchies   = patchHierarchies
+
+          interactionMode    = InteractionMode.DrawRoi
           
           threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
           boxes              = List.empty 

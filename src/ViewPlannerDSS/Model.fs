@@ -10,14 +10,19 @@ open Aardvark.Application
 open OpcViewer.Base.Picking
 open ViewPlanner.Rover
 
+type InteractionMode = 
+  | PickRoverPosition = 0
+  | PickRoverTarget = 1
+  | DrawRoi = 2
+
 type Action =
   | Camera           of FreeFlyController.Message
   | KeyUp            of key : Keys
   | KeyDown          of key : Keys  
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
-  | RoverAction      of RoverAction
-  | PickPoint        of V3d
+  | RoverAction      of RoverAction  
+  | SetInteractionMode of InteractionMode
 
 type CameraStateLean = 
   { 
@@ -26,22 +31,24 @@ type CameraStateLean =
      sky      : V3d
   }
 
-  type Stationing = {
-      sh : double
-      sv : double
+type Stationing = {
+    sh : double
+    sv : double
+}
+
+type OrientedPoint = {
+    direction             : V3d
+    offsetToMainAxisPoint : V3d
+    position              : V3d
+    stationing            : Stationing
+}
+
+type PlaneCoordinates =
+  {
+  points : plist<V3d>
   }
 
-  type OrientedPoint = {
-      direction             : V3d
-      offsetToMainAxisPoint : V3d
-      position              : V3d
-      stationing            : Stationing
-  }
 
-  type PlaneCoordinates =
-    {
-    points : plist<V3d>
-    }
 
 [<DomainType>]
 type Model =
@@ -59,6 +66,8 @@ type Model =
         planePoints          : Option<plist<V3d>>
         pickingActive        : bool
         rover                : RoverModel
+
+        interactionMode      : InteractionMode
     }
 
    
