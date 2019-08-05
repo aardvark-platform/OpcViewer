@@ -184,11 +184,11 @@ module App =
         
       let rovertrafo = m.rover.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
       let rov = 
-           Sg.sphere 5 (Mod.constant C4b.Cyan) (Mod.constant 0.2)
+        Sg.sphere 5 (Mod.constant C4b.Cyan) (Mod.constant 0.2)
             |> Sg.noEvents
-          |> Sg.effect [ 
-            toEffect Shader.stableTrafo
-                    toEffect DefaultSurfaces.vertexColor
+            |> Sg.effect [ 
+              toEffect Shader.stableTrafo
+              toEffect DefaultSurfaces.vertexColor
             ]
             |> Sg.trafo rovertrafo
 
