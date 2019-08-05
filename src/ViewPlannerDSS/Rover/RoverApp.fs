@@ -75,46 +75,49 @@ module RoverApp =
         let p2ws = p2 |> cam.ViewTrafo.Backward.TransformPos 
 
         let corners = box.Corners
-        let a = corners.IntoArray()
         //let l = List.map (fun m -> cam.ViewTrafo.Backward.TransformPos m) corners
       
 
-        {m with camera =  {m.camera with view = cam}; boxP1 =Some p1ws; boxP2 = Some p2ws }
+        {m with camera =  {m.camera with view = cam}; boxP1 = Some p1ws; boxP2 = Some p2ws }
 
 
 
 
 
-    let checkROIFullyInside (m:RoverModel) (region:plist<V3d>) =
+    let checkROIFullyInside (m:RoverModel) (region:Option<plist<V3d>>) =
         
         //calculate center point of region
-        let sum = region.Sum()
-        let c = region |> PList.count
-        let centerpoint = sum / (float c)
+        match region with 
+            | None -> m
+            | Some region -> 
+
+                let sum = region.Sum()
+                let c = region |> PList.count
+                let centerpoint = sum / (float c)
 
         //calculate new view matrix by tilting and panning to center point
-        let viewM = m.camera.view.ViewTrafo
-        let iProj = viewM.Forward.TransformPos centerpoint
-        let tiltAngle = atan2 -iProj.Y -iProj.Z
-        let panAngle = atan2 iProj.X -iProj.Z
-        let rotTrafo = Trafo3d.Rotation(tiltAngle, panAngle, 0.0)
-        let viewM2 = CameraView.ofTrafo (m.camera.view.ViewTrafo * rotTrafo)
+                let viewM = m.camera.view.ViewTrafo
+                let iProj = viewM.Forward.TransformPos centerpoint
+                let tiltAngle = atan2 -iProj.Y -iProj.Z
+                let panAngle = atan2 iProj.X -iProj.Z
+                let rotTrafo = Trafo3d.Rotation(tiltAngle, panAngle, 0.0)
+                let viewM2 = CameraView.ofTrafo (m.camera.view.ViewTrafo * rotTrafo)
 
         //transform region points to projection space
-        let projM = Frustum.projTrafo(m.frustum)
-        let viewProj = viewM2.ViewTrafo * projM
-        let transformedpoints = region |> PList.toList |> List.map (fun p -> viewProj.Forward.TransformPosProj p) 
+                let projM = Frustum.projTrafo(m.frustum)
+                let viewProj = viewM2.ViewTrafo * projM
+                let transformedpoints = region |> PList.toList |> List.map (fun p -> viewProj.Forward.TransformPosProj p) 
         //let normPoints = transformedpoints |> List.map(fun p -> ((V2d(p.X, p.Y) + V2d.One) * 0.5))
         
         //check if all of the points have values between 0 and 1 
         //let allInside = List.forall (fun (point:V2d) -> (( point.X > 0.0 && point.X < 1.0) && ( point.Y > 0.0 && point.Y < 1.0)) ) normPoints
-        let allInside = List.forall (fun (point:V3d) -> (( point.X > -1.0 && point.X  < 1.0) && ( point.Y > -1.0 && point.Y < 1.0)) ) transformedpoints
+                let allInside = List.forall (fun (point:V3d) -> (( point.X > -1.0 && point.X  < 1.0) && ( point.Y > -1.0 && point.Y < 1.0)) ) transformedpoints
 
-        let points = region |> PList.toList
+                let points = region |> PList.toList
        //if true then ROI fits in frustum
-        match allInside with
-            | true -> {m with camera =  {m.camera with view = viewM2} }
-            | false -> calcPanTiltValues m points viewM2
+                match allInside with
+                    | true -> {m with camera =  {m.camera with view = viewM2} }
+                    | false -> calcPanTiltValues m points viewM2
             
     
 
@@ -122,9 +125,9 @@ module RoverApp =
 
 
 
-    let moveFrustum (m:RoverModel) (region:plist<V3d>)=
+    let moveFrustum (m:RoverModel) = //(region:plist<V3d>)=
        
-        let v = checkROIFullyInside m region
+        let v = checkROIFullyInside m m.reg
         v
        
                 
@@ -207,8 +210,8 @@ module RoverApp =
                 let rover' = setTilt rover t
                 tilting rover'
             
-            |MoveToRegion p ->
-                moveFrustum rover p
+            |MoveToRegion  ->
+                moveFrustum rover 
             
             |SwitchCamera cam ->
                 changeCam rover  cam

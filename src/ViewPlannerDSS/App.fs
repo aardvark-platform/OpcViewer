@@ -27,6 +27,8 @@ open ViewPlanner.Rover
 
 
 module App = 
+    open Aardvark.Base
+    open Aardvark.Base.MultimethodTest
     
     let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
         let s' = cam.freeFlyConfig.moveSensitivity + incr
@@ -124,8 +126,9 @@ module App =
             | Keys.Enter ->
                 let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
                 let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddBrush pointsOnAxisFunc)
+                let points = model.pickingModel.intersectionPoints
             
-                { model with pickingModel = updatedPicking; region = model.pickingModel.intersectionPoints}
+                { model with pickingModel = updatedPicking; region = Some points; rover = {model.rover with reg = Some points}}
 
 
             | Keys.T ->
@@ -164,8 +167,8 @@ module App =
                     let r = RoverApp.update model.rover (ChangeTilt t)
                     {model with rover = r}
                 
-                  | MoveToRegion re ->
-                    let r = RoverApp.update model.rover (MoveToRegion re)
+                  | MoveToRegion ->
+                    let r = RoverApp.update model.rover (MoveToRegion)
                     {model with rover = r}
                 
                   | SwitchCamera c ->
@@ -255,25 +258,65 @@ module App =
         }
     
      
+      
+      //let ROIbox = 
+      // m.rover.reg |> 
+      //  Mod.map (fun p ->
+      //      match p with
+      //          | None -> Sg.empty
+      //          | Some points -> 
+      //              points 
+      //                  |> AList.toMod
+      //                  |> Mod.map (fun f -> 
+      //                      let centerP = 
+      //                          let sum = f.Sum()
+      //                          let count = f.Count
+      //                          (sum / (float count))
+      //                      let box = Box3d(f)
+      //                      let tr = Trafo3d.Translation(centerP)
+      //                      Sg.box (Mod.constant C4b.Black) (Mod.constant box)
+      //                          |> Sg.noEvents
+      //                          |> Sg.trafo (Mod.constant tr)
+      //                          |> Sg.effect [
+      //                                      toEffect DefaultSurfaces.stableTrafo
+      //                                      toEffect DefaultSurfaces.vertexColor
+      //                                           ]
+                 
+                          
+      //                             )
+      //           |> Sg.dynamic
+                       
+      //          )
 
       let ROIbox = 
-        let r = m.region |> AList.toList
-        match r.Length with
-            | 0 -> Sg.empty
-            | _ -> 
-                let centerP = 
-                    let sum = r.Sum()
-                    let count = r.Length
-                    (sum / (float count))
-                let box = Box3d(r)
-                let tr = Trafo3d.Translation(centerP)
-                Sg.wireBox' C4b.Black box
-                |> Sg.noEvents
-                |> Sg.trafo (Mod.constant tr)
-                |> Sg.shader {
-                    do! DefaultSurfaces.stableTrafo
-                    do! DefaultSurfaces.vertexColor
-                }
+       m.rover.reg |> 
+        Mod.map (fun p ->
+            match p with
+                | None -> Sg.empty
+                | Some points -> 
+                     
+                        let lis = points |> AList.toPList
+                        let centerP = 
+                                let sum = lis.Sum()
+                                let count = lis.Count
+                                (sum / (float count))
+                        let box = Box3d(lis)
+                        let tr = Trafo3d.Translation(centerP)
+                        Sg.box (Mod.constant C4b.Black) (Mod.constant box)
+                                |> Sg.noEvents
+                                |> Sg.trafo (Mod.constant tr)
+                                |> Sg.effect [
+                                            toEffect DefaultSurfaces.stableTrafo
+                                            toEffect DefaultSurfaces.vertexColor
+                                                 ]
+                 
+                          
+                                   )
+                 |> Sg.dynamic
+                       
+                
+         
+     
 
       let camPos = m.rover.position
       let p1Pos = m.rover.boxP1
@@ -462,7 +505,12 @@ module App =
            ]
         ]
 
-       
+      
+      //let asp = Mod.map(fun aspect -> aspect |> Frustum.withAspect) m.rover.frustum
+
+
+      
+
       let roverCamControl = 
        
         FreeFlyController.controlledControl  m.rover.camera Camera m.rover.frustum 
@@ -517,7 +565,8 @@ module App =
                 p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
                 p[][div[][text "Select Camera: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
                 
-                button [onClick (fun _ -> RoverAction.MoveToRegion (m.region |> AList.toPList))] [text "Move to region"] |> UI.map RoverAction
+                //button [onClick (fun _ -> RoverAction.MoveToRegion (m.region |> AList.toPList))] [text "Move to region"] |> UI.map RoverAction
+                button [onClick (fun _ -> RoverAction.MoveToRegion)]  [text "Move to region"] |> UI.map RoverAction
 
 
 
@@ -659,7 +708,7 @@ module App =
           planePoints        = setPlaneForPicking
           rover              = { RoverModel.initial with up = box.Center.Normalized; camera = roverinitialCamera; position = box.Center}
           dockConfig         = initialDockConfig        
-          region             = PList.empty
+          region             = None
         }
 
       {

@@ -43,6 +43,7 @@ type RoverModel =
         boxP1 : Option<V3d>
         boxP2 : Option<V3d>
         corners : Option<plist<V3d>>
+        reg :   Option<plist<V3d>>
 
     }
 
@@ -51,7 +52,7 @@ type RoverAction =
     | ChangePan of float
     | ChangeTilt of float
     | SwitchCamera of Option<CameraType>
-    | MoveToRegion of plist<V3d>      //move view frustum to a region of interest
+    | MoveToRegion //of plist<V3d>      //move view frustum to a region of interest
 
 
 module RoverModel =
@@ -61,7 +62,7 @@ module RoverModel =
         FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
          }
 
-    let initfrustum = Frustum.perspective 30.0 0.1 10.0 1.0
+    let initfrustum = Frustum.perspective 30.0 0.1 20.0 1.0
     
     let initial = 
         {
@@ -92,6 +93,7 @@ module RoverModel =
         boxP1 = None
         boxP2 = None
         corners = None
+        reg = None
 
         }
 

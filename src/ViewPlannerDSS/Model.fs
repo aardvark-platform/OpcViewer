@@ -54,7 +54,7 @@ type Model =
     {
         cameraState          : CameraControllerState 
         fillMode             : FillMode     
-        region               : plist<V3d>
+        
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>        
         boxes                : list<Box3d>        
@@ -65,6 +65,7 @@ type Model =
         planePoints          : Option<plist<V3d>>
         pickingActive        : bool
         rover                : RoverModel
+        region               : Option<plist<V3d>>
        
     }
 
