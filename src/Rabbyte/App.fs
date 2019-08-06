@@ -56,20 +56,7 @@ let testScene =
 
     let p1 = KdIntersectionTree(box1).ToConcreteKdIntersectionTree()
     let p2 = KdIntersectionTree(box2).ToConcreteKdIntersectionTree()
-    let kdTree = KdIntersectionTree(KdTreeSet([p1; p2]))
-
-    let intersectSingle ray (kdTree:KdIntersectionTree) = 
-       let mutable hit = ObjectRayHit.MaxRange
-       let objFilter _ _ = true              
-       try           
-           if kdTree.Intersect(ray, Func<_,_,_>(objFilter), null, 0.0, Double.MaxValue, &hit) then              
-               Some (hit.RayHit.T)
-           else            
-               None
-       with 
-         | _ -> 
-           Log.error "null ref exception in kdtree intersection" 
-           None  
+    let kdTree = KdIntersectionTree(KdTreeSet([p1; p2])).ToConcreteKdIntersectionTree()
 
     let hitFunc p = 
         let ray = FastRay3d(p + V3d.OOI * 20.0, -V3d.OOI)
@@ -77,10 +64,9 @@ let testScene =
             box1
             box2
         ]
-            //|> List.filter(fun bb -> ray.Intersects (bb, ref 0.0, ref Double.MaxValue)) // for larger scene
-            |> List.choose(fun v -> intersectSingle ray kdTree)
+            |> List.choose (fun v -> OpcViewer.Base.Picking.Intersect.single ray kdTree)
             |> List.sort 
-            |> List.map(ray.Ray.GetPointOnRay)|> List.tryHead
+            |> List.map (ray.Ray.GetPointOnRay)|> List.tryHead
 
     [
         box1.GetIndexedGeometry().Sg |> Sg.noEvents

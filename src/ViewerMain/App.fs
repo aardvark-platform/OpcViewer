@@ -66,13 +66,11 @@ module App =
           | Keys.LeftCtrl -> 
             { model with pickingActive = false }
           | Keys.Delete -> 
-            let updatedPicking = PickingApp.update model.picking (PickingAction.ClearPoints)
             let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.Clear)
-            { model with picking = updatedPicking; drawing = updatedDrawing }
+            { model with drawing = updatedDrawing }
           | Keys.Back ->
-            let updatedPicking = PickingApp.update model.picking (PickingAction.RemoveLastPoint)
             let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.RemoveLastPoint)
-            { model with picking = updatedPicking; drawing = updatedDrawing }
+            { model with drawing = updatedDrawing }
           | Keys.PageUp ->             
             { model with cameraState = model.cameraState |>  updateFreeFlyConfig +0.5 }
           | Keys.PageDown ->             
@@ -83,16 +81,15 @@ module App =
             model
           | Keys.Enter ->
             let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
-            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pointsOnAxisFunc)
             let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) // TODO...add hitFunc
             let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
-            { model with picking = updatedPicking; axis = axis; drawing = updatedDrawing }
+            { model with axis = axis; drawing = updatedDrawing }
           | Keys.T ->
             let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
-            let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
-            let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.Finish)
+            //let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
+            let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.Finish) // TEST
             let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
-            { model with picking = updatedPicking; axis = axis; drawing = updatedDrawing }
+            { model with axis = axis; drawing = updatedDrawing }
           | _ -> model
       | PickingAction msg -> 
         let pickingModel =
@@ -103,7 +100,6 @@ module App =
               let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
               PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
             | None -> PickingApp.update model.picking msg
-          | _ -> PickingApp.update model.picking msg
         { model with picking = pickingModel }
 
         ////IntersectionController.intersect model sceneHit box
@@ -143,7 +139,6 @@ module App =
         [
           opcs
           axis
-          PickingApp.view m.picking
           DrawingApp.view m.drawing
         ] |> Sg.ofList
 
@@ -207,13 +202,13 @@ module App =
                 h3[][text "NIOBE"]
                 p[][text "Hold Ctrl-Left to add Point"]
                 p[][text "Press Enter to close Polygon"]
-                p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.picking.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.picking.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useGrouping PickingAction.UseGrouping "Use Grouping"] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showOutline PickingAction.ShowOutline "Show Outline"] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showDetailOutline PickingAction.ShowOutlineDetail "Show Outline Detail"] |> UI.map PickingAction
-                p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
-                p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
+                //p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.picking.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.picking.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
+                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
+                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useGrouping PickingAction.UseGrouping "Use Grouping"] |> UI.map PickingAction
+                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showOutline PickingAction.ShowOutline "Show Outline"] |> UI.map PickingAction
+                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showDetailOutline PickingAction.ShowOutlineDetail "Show Outline Detail"] |> UI.map PickingAction
+                //p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
+                //p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
               ]
               div[style "color:white; margin: 5px 15px 5px 5px"][
                 DrawingApp.view2 m.drawing |> UI.map DrawingAction

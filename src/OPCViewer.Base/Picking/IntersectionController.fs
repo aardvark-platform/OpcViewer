@@ -70,8 +70,6 @@ open OpcViewer.Base.Picking
 
 module IntersectionController =   
 
- 
-
   let loadTrianglesFromFileWithIndices (aaraFile : string) (matrix : M44d) =
     let positions = aaraFile |> fromFile<V3f>
     
@@ -168,64 +166,35 @@ module IntersectionController =
     image.SaveAsImage (@".\testcoordSelect.png")
 
     exactUV
-        
-  let calculateSegment (startP:V3d) (endP:V3d) (hitF : V3d -> V3d option * FastRay3d) =
-
-    let interval = 0.02
-    let vec  = (endP - startP)
-    let dir  = vec.Normalized
-    let l    = vec.Length
-        
-    let casts = 
-      [ 0.0 .. interval .. l] 
-        |> List.map(fun x -> startP + x * dir)
-        |> List.map hitF
-
-    //let rays = casts |> List.map snd //debug showing rays
-    let hits = casts |> List.choose fst    
-    {
-      startPoint = startP
-      endPoint = endP
-      points = hits
-    }
-
-  let addProjectedSegment point hitF (brush : Brush) =
-    let previous = brush.points |> PList.toList |> List.head
-    let segment  = calculateSegment previous point hitF
-    
-    { brush with 
-        points   = brush.points |> PList.prepend point
-        segments = brush.segments |> PList.append segment  
-    }
 
 module Intersect =
 
   let mutable private cache = HMap.empty
 
-  let private  single ray (kdTree:ConcreteKdIntersectionTree) =
+  let single ray (kdTree:ConcreteKdIntersectionTree) =
     let kdi = kdTree.KdIntersectionTree 
     let mutable hit = ObjectRayHit.MaxRange
     let objFilter _ _ = true              
     try           
       if kdi.Intersect(ray, Func<_,_,_>(objFilter), null, 0.0, Double.MaxValue, &hit) then              
-          Some (hit.RayHit.T)
+        Some (hit.RayHit.T)
       else            
-          None
+        None
     with 
       | _ -> 
         Log.error "null ref exception in kdtree intersection" 
         None 
 
-  let private  getInvalidIndices3f (positions : V3f[]) =
+  let private getInvalidIndices3f (positions : V3f[]) =
     positions 
       |> List.ofArray 
       |> List.mapi (fun i x -> if x.AnyNaN then Some i else None) 
       |> List.choose id
   
-  let private  triangleIsNan (t:Triangle3d) = 
+  let private triangleIsNan (t:Triangle3d) = 
     t.P0.AnyNaN || t.P1.AnyNaN || t.P2.AnyNaN
 
-  let private  getTriangleSet (indices : int[]) (vertices:V3d[]) = 
+  let private getTriangleSet (indices : int[]) (vertices:V3d[]) = 
     indices 
       |> Seq.map(fun x -> vertices.[x])
       |> Seq.chunkBySize 3
@@ -233,7 +202,7 @@ module Intersect =
       |> Seq.filter(fun x -> (triangleIsNan x |> not)) |> Seq.toArray
       |> TriangleSet
 
-  let private  loadTriangles (kd : LazyKdTree) =
+  let private loadTriangles (kd : LazyKdTree) =
     
     let positions = kd.objectSetPath |> Aara.fromFile<V3f>
             
@@ -245,7 +214,7 @@ module Intersect =
       |> Array.map (fun x ->  x.ToV3d() |> kd.affine.Forward.TransformPos) 
       |> getTriangleSet indices
 
-  let private  loadObjectSet (cache : hmap<string, ConcreteKdIntersectionTree>) (lvl0Tree : Level0KdTree) =             
+  let private loadObjectSet (cache : hmap<string, ConcreteKdIntersectionTree>) (lvl0Tree : Level0KdTree) =             
     match lvl0Tree with
       | InCoreKdTree kd -> 
         kd.kdTree, cache
@@ -269,12 +238,12 @@ module Intersect =
               tree, (HMap.add key tree cache)
         kdTree, cache
 
-  let private  intersectKdTrees bb (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
+  let private intersectKdTrees bb (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
       let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
       let hit = single ray kdtree
       hit,c
 
-  let private  hitBoxes (kd : hmap<Box3d, Level0KdTree>) (r : FastRay3d) (trafo : Trafo3d) =
+  let private hitBoxes (kd : hmap<Box3d, Level0KdTree>) (r : FastRay3d) (trafo : Trafo3d) =
     kd
       |> HMap.toList 
       |> List.map fst
@@ -329,36 +298,10 @@ module Intersect =
             | Some t -> Some (ray.Ray.GetPointOnRay t)
             | None -> None
 
-          let calculateSegment (startP:V3d) (endP:V3d) (hitF : V3d -> V3d option) : Segment =
-            
-            let interval = 0.02
-            
-            let vec  = (endP - startP)
-            let dir  = vec.Normalized
-
-            let hits = 
-              [ 0.0 .. interval .. vec.Length] 
-                |> List.map(fun x -> startP + x * dir)
-                |> List.map hitF
-                |> List.choose (fun x -> x)
-
-            {
-              startPoint = startP
-              endPoint = endP
-              points = hits
-            }
-
-          if m.intersectionPoints |> PList.isEmpty then
-            { m with
-                intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint
-                hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo
-            }
-          else
-            { m with
-                intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint
-                hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo
-                segments = m.segments |> PList.append (calculateSegment (m.intersectionPoints |> PList.first) hitpoint intersectFunc)
-            }    
+          { m with
+             intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint
+             hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo
+          }   
 
         | None ->       
           Log.error "[Intersection] didn't hit"
@@ -366,5 +309,3 @@ module Intersect =
     | None -> 
       Log.error "[Intersection] box not found in picking infos"
       m
-      
-  
