@@ -22,6 +22,7 @@ open ``F# Sg``
 open OpcViewer.Base
 open OpcViewer.Base.Picking
 open OpcViewer.Base.Attributes
+open Rabbyte.Drawing
 
 module App =   
   open Aardvark.Application
@@ -64,10 +65,14 @@ module App =
         match m with
           | Keys.LeftCtrl -> 
             { model with pickingActive = false }
-          | Keys.Delete ->            
-            { model with picking = PickingApp.update model.picking (PickingAction.ClearPoints) }
+          | Keys.Delete -> 
+            let updatedPicking = PickingApp.update model.picking (PickingAction.ClearPoints)
+            let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.Clear)
+            { model with picking = updatedPicking; drawing = updatedDrawing }
           | Keys.Back ->
-            { model with picking = PickingApp.update model.picking (PickingAction.RemoveLastPoint) }
+            let updatedPicking = PickingApp.update model.picking (PickingAction.RemoveLastPoint)
+            let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.RemoveLastPoint)
+            { model with picking = updatedPicking; drawing = updatedDrawing }
           | Keys.PageUp ->             
             { model with cameraState = model.cameraState |>  updateFreeFlyConfig +0.5 }
           | Keys.PageDown ->             
@@ -79,15 +84,15 @@ module App =
           | Keys.Enter ->
             let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
             let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pointsOnAxisFunc)
-            
+            let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) // TODO...add hitFunc
             let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
-            { model with picking = updatedPicking; axis = axis }
+            { model with picking = updatedPicking; axis = axis; drawing = updatedDrawing }
           | Keys.T ->
             let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
             let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
-            
+            let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.Finish)
             let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
-            { model with picking = updatedPicking; axis = axis }
+            { model with picking = updatedPicking; axis = axis; drawing = updatedDrawing }
           | _ -> model
       | PickingAction msg -> 
         let pickingModel =
@@ -107,17 +112,18 @@ module App =
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | AttributeAction msg ->
-            let opcAttributes = SurfaceAttributes.update model.opcAttributes msg
-            {model with opcAttributes = opcAttributes }
+            {model with opcAttributes = SurfaceAttributes.update model.opcAttributes msg }
+      | DrawingAction msg -> 
+            { model with drawing = DrawingApp.update model.drawing msg }
       | _ -> model
                     
   let view (m : MModel) =
                                              
-      let box = 
-        m.patchHierarchies
-          |> List.map(fun x -> x.tree |> QTree.getRoot) 
-          |> List.map(fun x -> x.info.LocalBoundingBox)
-          |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
+      //let box = 
+      //  m.patchHierarchies
+      //    |> List.map(fun x -> x.tree |> QTree.getRoot) 
+      //    |> List.map(fun x -> x.info.LocalBoundingBox)
+      //    |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
       
       let opcs = 
         m.opcInfos
@@ -138,6 +144,7 @@ module App =
           opcs
           axis
           PickingApp.view m.picking
+          DrawingApp.view m.drawing
         ] |> Sg.ofList
 
       let textOverlays (cv : IMod<CameraView>) = 
@@ -207,6 +214,9 @@ module App =
                 p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showDetailOutline PickingAction.ShowOutlineDetail "Show Outline Detail"] |> UI.map PickingAction
                 p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
                 p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
+              ]
+              div[style "color:white; margin: 5px 15px 5px 5px"][
+                DrawingApp.view2 m.drawing |> UI.map DrawingAction
               ]
             ]
           )
@@ -309,6 +319,7 @@ module App =
           dockConfig         = initialDockConfig       
           
           opcAttributes      = SurfaceAttributes.initModel dir
+          drawing            = DrawingModel.inital
         }
 
       {
