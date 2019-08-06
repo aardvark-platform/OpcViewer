@@ -60,12 +60,48 @@ module RoverApp =
         
         let pointsInViewSpace = points  |> List.map (fun p -> cam.ViewTrafo.Forward.TransformPos p) 
 
+        //get corners of box
         let box = pointsInViewSpace |> Box3d
-        let p1 = box.Min
-        let p2 = (box.Min + V3d(box.SizeX, 0.0, 0.0))
 
-        let p1Norm = p1.Normalized
-        let p2Norm = p2.Normalized
+        let xMin = box.Min.X
+        let xMax = box.Max.X
+        let yMin = box.Min.Y
+        let yMax = box.Max.Y
+        let zMin = box.Min.Z
+        let zMax = box.Max.Z
+        
+        //8 corner points
+        let leftBottomFront = V3d(xMin, yMin, zMin)
+        let rightBottomFront = V3d(xMax, yMin, zMin)
+        let leftTopFront = V3d(xMin, yMax, zMin)
+        let rightTopFront = V3d(xMax, yMax, zMin)
+        let leftBottomBack = V3d(xMin, yMin, zMax)
+        let rightBottomBack = V3d(xMax, yMin, zMax)
+        let leftTopBack = V3d(xMin, yMax, zMax)
+        let rightTopBack = V3d(xMax, yMax, zMax)
+
+        //store them in list and transform every point back to world space
+        let cornerList = [leftBottomFront; rightBottomFront; leftTopFront; rightTopFront; leftBottomBack;rightBottomBack; leftTopBack; rightTopBack]
+        let cornersInWorldSpace = cornerList |> List.map(fun corner -> cam.ViewTrafo.Backward.TransformPos corner)
+        let cornersPList = cornersInWorldSpace |> PList.ofList
+
+        let LBF = cornersInWorldSpace.Item(0)
+        let RBF = cornersInWorldSpace.Item(1)
+        let LTF = cornersInWorldSpace.Item(2) //p1
+        let RTF = cornersInWorldSpace.Item(3) //p2
+        let LBB = cornersInWorldSpace.Item(4)
+        let RBB = cornersInWorldSpace.Item(5)
+        let LTB = cornersInWorldSpace.Item(6)
+        let RTB = cornersInWorldSpace.Item(7)
+
+        let p1 = leftTopFront
+        let p2 = rightTopFront
+
+        let camPos = m.camera.view.Location
+        let dir1 = LTB - camPos
+        let dir2 = RTB - camPos
+        let p1Norm = dir1.Normalized
+        let p2Norm = dir2.Normalized
 
         let angleBetween = (acos(p1Norm.Dot(p2Norm))) * Constant.DegreesPerRadian
 
@@ -74,11 +110,14 @@ module RoverApp =
         let p1ws = p1 |> cam.ViewTrafo.Backward.TransformPos 
         let p2ws = p2 |> cam.ViewTrafo.Backward.TransformPos 
 
-        let corners = box.Corners
         //let l = List.map (fun m -> cam.ViewTrafo.Backward.TransformPos m) corners
       
 
-        {m with camera =  {m.camera with view = cam}; boxP1 = Some p1ws; boxP2 = Some p2ws }
+        {m with camera =  {m.camera with view = cam}; cornerLBF = Some LBF; cornerLTF = Some LTF; 
+            cornerRBF = Some RBF; cornerRTF = Some RTF; 
+            cornerLBB = Some LBB; cornerRBB = Some RBB;
+            cornerLTB = Some LTB; cornerRTB = Some RTB;
+            corners = Some cornersPList }
 
 
 
@@ -100,7 +139,8 @@ module RoverApp =
                 let iProj = viewM.Forward.TransformPos centerpoint
                 let tiltAngle = atan2 -iProj.Y -iProj.Z
                 let panAngle = atan2 iProj.X -iProj.Z
-                let rotTrafo = Trafo3d.Rotation(tiltAngle, panAngle, 0.0)
+                //let rotTrafo = Trafo3d.Rotation(tiltAngle, panAngle, 0.0)
+                let rotTrafo = Trafo3d.Rotation(0.0, panAngle, 0.0)
                 let viewM2 = CameraView.ofTrafo (m.camera.view.ViewTrafo * rotTrafo)
 
         //transform region points to projection space

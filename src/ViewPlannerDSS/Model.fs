@@ -66,6 +66,7 @@ type Model =
         pickingActive        : bool
         rover                : RoverModel
         region               : Option<plist<V3d>>
+        roiBboxFull          : bool
        
     }
 

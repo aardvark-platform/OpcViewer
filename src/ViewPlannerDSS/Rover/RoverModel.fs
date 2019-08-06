@@ -40,9 +40,18 @@ type RoverModel =
         currentCamType : Option<CameraType>
         cameraOptions : hmap<CameraType, string>
         panTiltValues : Option<plist<V2d>>
-        boxP1 : Option<V3d>
-        boxP2 : Option<V3d>
-        corners : Option<plist<V3d>>
+        cornerLBF : Option<V3d> //left bottom front
+        cornerLTF : Option<V3d>
+        cornerRBF : Option<V3d>
+        cornerRTF : Option<V3d>
+        cornerLBB : Option<V3d> //left bottom back
+        cornerLTB : Option<V3d>
+        cornerRBB : Option<V3d>
+        cornerRTB : Option<V3d>
+
+
+
+        corners : Option<plist<V3d>> //in world space
         reg :   Option<plist<V3d>>
 
     }
@@ -90,8 +99,14 @@ module RoverModel =
         currentCamType = Some Camera30
         cameraOptions = HMap.ofList [Camera60, "Camera60"; Camera30, "Camera30"; Camera15, "Camera15"; Stereo, "Stereo"]
         panTiltValues = None
-        boxP1 = None
-        boxP2 = None
+        cornerLBF = None
+        cornerLTF = None
+        cornerRBF = None
+        cornerRTF = None
+        cornerLBB = None
+        cornerLTB = None
+        cornerRBB = None
+        cornerRTB = None
         corners = None
         reg = None
 
