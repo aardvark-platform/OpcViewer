@@ -48,7 +48,7 @@ module AxisSg =
           |> Sg.uniform "Size" (Mod.constant(size))
           |> Sg.effect [
             Shader.StableTrafo.Effect
-            Shader.ThickLineNew.Effect  // toEffect DefaultSurfaces.vertexColor
+            toEffect DefaultSurfaces.vertexColor
           ]
 
     let createAxisSg (positions : List<V3d>) =
