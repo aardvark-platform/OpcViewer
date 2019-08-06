@@ -16,14 +16,14 @@ type InteractionMode =
   | DrawRoi = 2
 
 type Action =
-  | Camera           of FreeFlyController.Message
-  | KeyUp            of key : Keys
-  | KeyDown          of key : Keys  
-  | UpdateDockConfig of DockConfig    
-  | PickingAction    of PickingAction
-  | PickPoint        of V3d
+  | Camera             of FreeFlyController.Message
+  | KeyUp              of key : Keys
+  | KeyDown            of key : Keys  
+  | UpdateDockConfig   of DockConfig    
+  | PickingAction      of PickingAction
+  | PickPoint          of V3d
   | SetInteractionMode of InteractionMode
-  | RoverAction      of RoverAction
+  | RoverAction        of RoverAction  
 
 
 type CameraStateLean = 

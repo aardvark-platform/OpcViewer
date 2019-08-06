@@ -5,9 +5,7 @@ open System.IO
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
-
 open Aardvark.Rendering.Text
-
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Opc
 open FShade
@@ -21,9 +19,6 @@ open OpcViewer.Base
 open OpcViewer.Base.Picking
 
 open ViewPlanner.Rover
-
-
-
 
 
 module App = 
@@ -97,12 +92,10 @@ module App =
                 Log.line "[App] saving camstate"
                 model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camerastate" |> ignore 
                 model
-
             | Keys.V ->
                 Log.line "[App] saving plane points"
                 model.pickingModel.intersectionPoints |> toPlaneCoords |> OpcSelectionViewer.Serialization.save ".\planestate" |> ignore
                 model
-
             | Keys.L -> //if R is pressed then picked point on plane is new rover target
                 //let picked = model.pickingModel.pickedPointOnPlane
                 //let roverModel = 
@@ -163,7 +156,7 @@ module App =
             { model with dockConfig = cfg }
         | RoverAction msg ->            
             let r = RoverApp.update model.rover msg
-            {model with rover = r}            
+            {model with rover = r}                              
         | _ -> model
     
     //---

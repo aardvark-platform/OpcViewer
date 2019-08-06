@@ -196,6 +196,8 @@ module Sg =
               //|> Sg.andAlso(Sg.wireBox (Mod.constant C4b.VRVisGreen) (Mod.constant info.GlobalBoundingBox) |> Sg.noEvents)
           )
         |> Sg.ofList   
+        |> Sg.cullMode(Mod.constant CullMode.None)
+        
     
     let pickable = 
       adaptive {
