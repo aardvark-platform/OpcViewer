@@ -12,7 +12,6 @@
   <ItemGroup>
     <Compile Include="KdTrees.fs" />
     <Compile Include="Shaders.fs" />
-    <Compile Include="Picking\Picking-Utils.fs" />
     <Compile Include="Picking\Picking-Model.fs" />
     <Compile Include="Picking\IntersectionController.fs" />
     <Compile Include="Picking\Picking.fs" />

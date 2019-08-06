@@ -9,7 +9,8 @@ open Aardvark.Application
 open Aardvark.UI  
 open Aardvark.Geometry
 open Aardvark.SceneGraph.Opc
-open Aardvark.VRVis.Opc.KdTrees  
+open Aardvark.VRVis.Opc
+open Aardvark.VRVis.Opc.KdTrees 
 open OpcViewer.Base.Picking
 
 //module legacy =
