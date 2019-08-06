@@ -62,6 +62,13 @@ type DrawingModel = {
     status          : PrimitiveStatus
     areaStyleNames  : hmap<AreaStyle, string>
     lineStyleNames  : hmap<LineStyle, string>
+    
+    // from picking-app (polygon-fill)
+    //debugShadowVolume    : bool 
+    //showOutline          : bool 
+    //showDetailOutline    : bool 
+    //alpha                : float
+    //extrusionOffset      : float
 }
 
 type DrawingAction =
