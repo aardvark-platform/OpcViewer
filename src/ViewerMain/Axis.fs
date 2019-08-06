@@ -1,18 +1,12 @@
 ﻿namespace OpcSelectionViewer
 
-open Aardvark.Base
-open Aardvark.UI
-open Aardvark.UI.Trafos 
-open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
-open System.IO
 open System
-
+open System.IO
+open Aardvark.Base
 open OpcViewer.Base.Picking
 
 module AxisFunctions = 
   
-
   type AxisPoint = {
     index           : int
     point           : OrientedPoint
@@ -62,49 +56,49 @@ module AxisFunctions =
     else
       None
 
-  let toColoredEdges (offset:V3d) (color : C4b) (points : array<V3d>) =
-    points
-      |> Array.map (fun x -> x-offset)
-      |> Array.pairwise
-      |> Array.map (fun (a,b) -> (new Line3d(a,b), color))
+  //let toColoredEdges (offset:V3d) (color : C4b) (points : array<V3d>) =
+  //  points
+  //    |> Array.map (fun x -> x-offset)
+  //    |> Array.pairwise
+  //    |> Array.map (fun (a,b) -> (new Line3d(a,b), color))
     
-  let drawColoredEdges width edges = 
-    edges
-      |> IndexedGeometryPrimitives.lines
-      |> Sg.ofIndexedGeometry
-      |> Sg.effect [
-        toEffect Shader.stableTrafo
-        toEffect DefaultSurfaces.vertexColor
-        toEffect DefaultSurfaces.thickLine
+  //let drawColoredEdges width edges = 
+  //  edges
+  //    |> IndexedGeometryPrimitives.lines
+  //    |> Sg.ofIndexedGeometry
+  //    |> Sg.effect [
+  //      toEffect Shader.stableTrafo
+  //      toEffect DefaultSurfaces.vertexColor
+  //      toEffect DefaultSurfaces.thickLine
         
-      ]
-      |> Sg.uniform "LineWidth" (Mod.constant width)
-      |> Sg.uniform "depthOffset" (Mod.constant 0.1)
+  //    ]
+  //    |> Sg.uniform "LineWidth" (Mod.constant width)
+  //    |> Sg.uniform "depthOffset" (Mod.constant 0.1)
   
-  let lines (color : C4b) (width : double)  (points : V3d[]) =
-    let offset =
-      match points |> Array.tryHead with
-      | Some h -> h
-      | None -> V3d.Zero
+  //let lines (color : C4b) (width : double)  (points : V3d[]) =
+  //  let offset =
+  //    match points |> Array.tryHead with
+  //    | Some h -> h
+  //    | None -> V3d.Zero
 
-    points 
-      |> toColoredEdges offset color
-      |> drawColoredEdges width
-      |> Sg.trafo (offset |> Trafo3d.Translation |> Mod.constant)
+  //  points 
+  //    |> toColoredEdges offset color
+  //    |> drawColoredEdges width
+  //    |> Sg.trafo (offset |> Trafo3d.Translation |> Mod.constant)
   
-  let sphere color size pos =
-    let trafo = 
-      pos |> Mod.map(fun x -> Trafo3d.Translation x)
+  //let sphere color size pos =
+  //  let trafo = 
+  //    pos |> Mod.map(fun x -> Trafo3d.Translation x)
 
-    Sg.sphere 3 (Mod.constant color) (Mod.constant size)
-      |> Sg.noEvents
-      |> Sg.trafo trafo
-      |> Sg.uniform "WorldPos" (trafo |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
-      |> Sg.uniform "Size" (Mod.constant(size))
-      |> Sg.effect [
-        toEffect <| Shader.stableTrafo
-        toEffect <| DefaultSurfaces.vertexColor
-      ]
+  //  Sg.sphere 3 (Mod.constant color) (Mod.constant size)
+  //    |> Sg.noEvents
+  //    |> Sg.trafo trafo
+  //    |> Sg.uniform "WorldPos" (trafo |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
+  //    |> Sg.uniform "Size" (Mod.constant(size))
+  //    |> Sg.effect [
+  //      toEffect <| Shader.stableTrafo
+  //      toEffect <| DefaultSurfaces.vertexColor
+  //    ]
     
   let orientedPointtoAxisPoint (index : int) (queryPoint : V3d) (t : double) (op : OrientedPoint) = 
     let plane = new Plane3d(op.direction, op.position)
