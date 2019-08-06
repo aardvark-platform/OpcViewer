@@ -76,10 +76,10 @@ module DrawingSg =
     let drawVertices (m : MDrawingModel) = 
         alist {
             for p in m.points do
-                yield sphereISg (m.style |> Mod.map (fun x -> x.primary.c)) (Mod.constant 1.0) p
+                yield sphereISg (m.style.primary.c) (Mod.constant 1.0) p
             for s in m.segments do
                 for p in s.points do
-                    yield sphereISg (m.style |> Mod.map (fun x -> x.secondary.c)) (Mod.constant 3.0) p
+                    yield sphereISg (m.style.secondary.c) (Mod.constant 0.5) p
         }
         |> ASet.ofAList 
         |> Sg.set
@@ -95,15 +95,15 @@ module DrawingSg =
         let segments = m.segments |> AList.map (fun x -> x.points |> AList.ofPList) |> AList.concat 
         let lines = convertLines false segments
         
-        let color = m.style |> Mod.map (fun x -> x.secondary.c)
-        let lineWidth = m.style |> Mod.map (fun x -> x.thickness.value * 0.8)
+        let color = m.style.secondary.c
+        let lineWidth = m.style.thickness |> Mod.map (fun x -> x * 0.8)
         let trafo = Mod.constant (Trafo3d.Identity)
         lineISg color lineWidth trafo lines
 
     let drawLines (m : MDrawingModel) = 
         let lines = convertLines false m.points
 
-        let color = m.style |> Mod.map (fun x -> x.primary.c)
-        let lineWidth = m.style |> Mod.map (fun x -> x.thickness.value)
+        let color = m.style.primary.c
+        let lineWidth = m.style.thickness
         let trafo = Mod.constant (Trafo3d.Identity)
         lineISg color lineWidth trafo lines

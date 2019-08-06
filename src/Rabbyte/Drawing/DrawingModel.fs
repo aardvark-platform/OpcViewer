@@ -27,19 +27,20 @@ type PrimitiveStatus =
 
 type SegmentCreation =
     | NoSegement
-    | Linear of float           // SamplingRate -> linear subsampled
+    //| Linear of float           // SamplingRate -> linear subsampled
     | ProjDir of float * V3d    // SamplingRate // Projection Dir
     //| ViewPoint   // -> pro3d
     //| Sky         // -> pro3d
     //| Axis        // -> dibit
 
+[<DomainType>]
 type BrushStyle = {
     primary     : ColorInput // use for lines and planes
     secondary   : ColorInput // use for vertices
-    lineStyle   : LineStyle
-    areaStyle   : AreaStyle
-    thickness   : NumericInput
-    samplingRate: NumericInput
+    lineStyle   : Option<LineStyle>
+    areaStyle   : Option<AreaStyle>
+    thickness   : float
+    samplingRate: float 
 }
 
 type Segment = {
@@ -59,38 +60,38 @@ type DrawingModel = {
     [<TreatAsValue>]
     future          : Option<DrawingModel>
     status          : PrimitiveStatus
+    areaStyleNames  : hmap<AreaStyle, string>
+    lineStyleNames  : hmap<LineStyle, string>
 }
 
 type DrawingAction =
     | ChangeColorPrimary    of ColorPicker.Action
     | ChangeColorSecondary  of ColorPicker.Action
     | ChangeColorAuto       of ColorPicker.Action
-    | ChangeThickness       of Numeric.Action
-    | ChangeSamplingRate    of Numeric.Action
-    | ChangeLineStyle       of LineStyle
-    | ChangeAreaStyle       of AreaStyle
+    | ChangeThickness       of float
+    | ChangeSamplingRate    of float
+    | ChangeLineStyle       of Option<LineStyle>
+    | ChangeAreaStyle       of Option<AreaStyle>
     | AddPoint              of V3d * (Option<V3d -> Option<V3d>>)
     | RecalculateSegments   of (V3d -> Option<V3d>)
     | RemoveLastPoint  
     | Clear
     | Finish 
-    | FinishClose
+    | FinishClose           of (Option<V3d -> Option<V3d>>)
     | Undo
     | Redo
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module DrawingModel =
-    let defaultThickness    : NumericInput = { value = 3.0; min = 1.0; max = 8.0;step = 1.0;format = "{0:0}" }
-    let defaultSamplingRate : NumericInput = { value = 0.2; min = 0.02; max = 10.0;step = 0.02;format = "{0:00}" }
 
     let defaultStyle = 
         {
             primary = { c = C4b.VRVisGreen }
             secondary = { c = C4b.Yellow }
-            lineStyle = Solid
-            areaStyle = Filled
-            thickness = defaultThickness
-            samplingRate = defaultSamplingRate
+            lineStyle = Some Solid
+            areaStyle = Some Filled
+            thickness = 3.0
+            samplingRate = 0.2
         }
 
     let inital = {                 
@@ -101,4 +102,6 @@ module DrawingModel =
         past            = None
         future          = None
         status          = PrimitiveStatus.Empty
+        areaStyleNames = HMap.ofList [Pattern, "Pattern"; Filled, "Filled"; AreaStyle.Empty, "Empty";]
+        lineStyleNames = HMap.ofList [Solid, "Solid"; Dashed, "Dashed"]
     }
