@@ -16,7 +16,7 @@ open FShade.Primitives
 
 module DrawingApp =
 
-    let helperFinishState model close = 
+    let private helperFinishState model close = 
         let status = 
             match model.points |> PList.count, close with
                 | 0, _ -> PrimitiveStatus.Empty
@@ -27,7 +27,7 @@ module DrawingApp =
 
         { model with status = status}
 
-    let createSecondaryColor (c : C4b) : C4b = 
+    let private createSecondaryColor (c : C4b) : C4b = 
     
         let primary = c.ToC3f().ToHSVf()
            
@@ -123,7 +123,7 @@ module DrawingApp =
         
         Sg.group [vertices; edges; segments] |> Sg.noEvents
 
-    let view2 (model : MDrawingModel) = 
+    let viewGui (model : MDrawingModel) = 
         
         let style' = "color: white; font-family:Consolas;"
 

@@ -26,7 +26,7 @@ open Rabbyte.Drawing
 
 module App =   
   open Aardvark.Application
-  open Aardvark.Base.DynamicLinkerTypes  
+  open Aardvark.VRVis.Opc
   
   let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
     let s' = cam.freeFlyConfig.moveSensitivity + incr
@@ -52,7 +52,7 @@ module App =
   let fromCameraStateLean (c : CameraStateLean) : CameraView = 
     CameraView.lookAt c.location (c.location + c.forward) c.sky    
 
-  let update (model : Model) (msg : Message) =   
+  let rec update (model : Model) (msg : Message) =   
     match msg with
       | Camera m when model.pickingActive = false -> 
         { model with cameraState = FreeFlyController.update model.cameraState m; }
@@ -92,19 +92,24 @@ module App =
             { model with axis = axis; drawing = updatedDrawing }
           | _ -> model
       | PickingAction msg -> 
-        let pickingModel =
+        // TODO...refactor this!
+        let pickingModel, drawingModel =
           match msg with
-          | HitSurface (a,b,_) -> 
-            match model.axis with
-            | Some axis -> 
-              let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
-              PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
-            | None -> PickingApp.update model.picking msg
-        { model with picking = pickingModel }
-
-        ////IntersectionController.intersect model sceneHit box
-        //failwith "panike"
-        //model 
+          | HitSurface (a,b) -> //,_) -> 
+            //match model.axis with
+            //| Some axis -> 
+            //  let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
+            //  PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
+            //| None -> PickingApp.update model.picking msg
+            let updatePickM = PickingApp.update model.picking (HitSurface (a,b))
+            let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
+            let updatedDrawM =
+                match lastPick with
+                | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
+                | None -> model.drawing
+            updatePickM, updatedDrawM
+          | _ -> PickingApp.update model.picking msg, model.drawing
+        { model with picking = pickingModel; drawing = drawingModel }
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | AttributeAction msg ->
@@ -211,7 +216,7 @@ module App =
                 //p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
               ]
               div[style "color:white; margin: 5px 15px 5px 5px"][
-                DrawingApp.view2 m.drawing |> UI.map DrawingAction
+                DrawingApp.viewGui m.drawing |> UI.map DrawingAction
               ]
             ]
           )

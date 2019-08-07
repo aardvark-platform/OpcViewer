@@ -128,7 +128,7 @@ let view (model : MSimpleDrawingModel) =
 
             div [style "width:35%; height: 100%; float:right; background: #1B1C1E;"] [
                 Html.SemUi.accordion "Rendering" "configure" true [
-                    DrawingApp.view2 model.drawing |> UI.map UpdateDrawing
+                    DrawingApp.viewGui model.drawing |> UI.map UpdateDrawing
                 ]
             ]
         ]

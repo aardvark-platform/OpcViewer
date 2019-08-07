@@ -21,7 +21,7 @@ type AxisPointInfo = {
 }
 
 type PickingAction = 
-  | HitSurface of Box3d*SceneHit*(V3d -> V3d)
+  | HitSurface of Box3d*SceneHit //*(V3d -> V3d)
   | RemoveLastPoint
   | ClearPoints
   //| AddBrush of (plist<V3d> -> Option<AxisPointInfo>)
@@ -37,15 +37,6 @@ type PickingAction =
 type BoxNeighbors = {
   neighbors : List<Box3d> 
 }
-
-//[<DomainType>]
-//type Brush =
-//  {
-//    points : plist<V3d>
-//    segments : plist<Segment>
-//    pointsOnAxis : Option<AxisPointInfo>
-//    color  : C4b    
-//  }
 
 [<DomainType>]
 type OpcData = {

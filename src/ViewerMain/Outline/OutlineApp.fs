@@ -42,6 +42,7 @@ module GuiEx =
 module OutlineApp =   
   open Aardvark.Application
   open Aardvark.Base.DynamicLinkerTypes  
+  open Aardvark.VRVis.Opc
   
   let update (model : OutlineModel) (msg : OutlineMessage) =   
     match msg with

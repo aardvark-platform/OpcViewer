@@ -11,8 +11,8 @@ module PickingApp =
 
   let update (model : PickingModel) (msg : PickingAction) = 
     match msg with
-    | HitSurface (box, sceneHit, axisPoint) -> 
-      Intersect.perform model sceneHit box axisPoint
+    | HitSurface (box, sceneHit) -> //, axisPoint) -> 
+      Intersect.perform model sceneHit box // axisPoint
     | RemoveLastPoint ->
       let points, infos = 
         match model.intersectionPoints.AsList with
