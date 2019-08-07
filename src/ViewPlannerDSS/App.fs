@@ -117,7 +117,7 @@ module App =
                 let n = model.rover.up
                 let roverModel = 
                     match picked with
-                        | Some p -> { model.rover with position = (p+n) }
+                        | Some p -> { model.rover with position = (p+n); projsphere = {model.rover.projsphere with position = (p+n)}}
                         | None -> model.rover
                 { model with rover = roverModel}
 
@@ -199,14 +199,54 @@ module App =
         
       let rovertrafo = m.rover.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
       let rov = 
-           Sg.sphere 5 (Mod.constant C4b.Cyan) (Mod.constant 0.2)
+           Sg.sphere 5 (Mod.constant C4b.Cyan) (Mod.constant 1.0)
             |> Sg.noEvents
             |> Sg.effect [ 
                     toEffect Shader.stableTrafo
                     toEffect DefaultSurfaces.vertexColor
                     ]
             |> Sg.trafo rovertrafo
+      
+      
+      let projTrafo1 = m.rover.projPoint1 |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
+      let projection1 = 
+          Sg.sphere 5 (Mod.constant C4b.Yellow) (Mod.constant 0.1)
+            |> Sg.noEvents
+            |> Sg.effect [ 
+                    toEffect Shader.stableTrafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+            |> Sg.trafo projTrafo1
+      
+      let projTrafo2 = m.rover.projPoint2 |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
+      let projection2 = 
+          Sg.sphere 5 (Mod.constant C4b.Yellow) (Mod.constant 0.1)
+            |> Sg.noEvents
+            |> Sg.effect [ 
+                    toEffect Shader.stableTrafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+            |> Sg.trafo projTrafo2
 
+       
+      //point on sphere where theta = phi = 0
+      let xCartesian = 1
+      let yCartesian = 0
+      let zCartesian = 0
+      let ref = V3d(xCartesian, yCartesian, zCartesian) 
+      let s = m.rover.position
+      let refTr = s|> Mod.map(fun s -> ref + s) 
+      let refTrafo = refTr|> Mod.map(fun a -> Trafo3d.Translation(a))
+
+      let refSphere = 
+           Sg.sphere 5 (Mod.constant C4b.DarkMagenta) (Mod.constant 0.1)
+            |> Sg.noEvents
+            |> Sg.effect [ 
+                    toEffect Shader.stableTrafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+            |> Sg.trafo refTrafo
+      
 
       let targettrafo = m.rover.target |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
       let target = 
@@ -217,6 +257,9 @@ module App =
                     toEffect DefaultSurfaces.vertexColor
                     ]
             |> Sg.trafo targettrafo
+      
+      
+        
 
       //let boxP1 = 
       //  m.rover.boxP1 |> Mod.map(fun p -> 
@@ -697,6 +740,10 @@ module App =
           LTB|> Sg.dynamic
           RTB|> Sg.dynamic
           line
+
+          projection1
+          projection2
+          refSphere
         ] |> Sg.ofList
     
       let roverCamScene = 
@@ -791,8 +838,8 @@ module App =
                 //p[][text "Press R to place rover at picked point"]
                 //p[][text "Press L to select picked point as rover target"]
                 p[][Incremental.text (m.rover.position |> Mod.map (fun f -> f.ToString())) ]
-                p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
-                p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
+                p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
+                p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = -90.0; max = 90.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
                 p[][div[][text "Select Camera: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
                 
                 //button [onClick (fun _ -> RoverAction.MoveToRegion (m.region |> AList.toPList))] [text "Move to region"] |> UI.map RoverAction

@@ -39,87 +39,123 @@ module RoverApp =
         let curr = value
         {m with tilt = {m.tilt with delta = dt; previous = prev; current = curr}}
     
+    let calcThetaPhi (position:V3d) =
+        
+        let x = position.X
+        let y = position.Y
+        let z = position.Z
+        let theta = atan2 y x
+        let phi = atan2  z (sqrt((pown x 2)+(pown y 2)))
+        //let theta = atan(y/x)
+        //let phi = atan(z / (sqrt((pown x 2)+(pown y 2))))
+
+        V2d(theta,phi)
+
+
+
     //points: in world space
     let calcPanTiltValues (m:RoverModel) (points:List<V3d>) (cam:CameraView) =
         
-        ////transform points to ndc space
-        //let projM = Frustum.projTrafo(m.frustum)
-        //let viewProj = cam.ViewTrafo * projM
-        //let ndcPoints = points |> List.map (fun p -> viewProj.Forward.TransformPosProj p) //points between -1 and 1
+        //project points onto projection sphere
+        let spherePos = m.projsphere.position// |> cam.ViewTrafo.Forward.TransformPos //spherepos in view space
+        //let pointsVS = points  |> List.map (fun p -> cam.ViewTrafo.Forward.TransformPos p) //points in view space
+        let shiftedPoints = points  |> List.map (fun p -> (p - spherePos).Normalized)
 
-        ////find points left and right of center (center approx. 0,0)
-        //let pointsLeft = List.empty
-        //let pointsRight = List.empty
+        //calculate theta and phi for coordinates
+        //test for the first point in the list
 
-        //for p in ndcPoints do
-        //    if p.X < 0.0 then
-        //        List.append     
+        let listOfAngles = shiftedPoints |> List.map(fun pos -> calcThetaPhi pos)
+        //debuging
+        for p in listOfAngles do
+            printfn "theta phi %A %A"  (p.X* Constant.DegreesPerRadian) (p.Y* Constant.DegreesPerRadian) 
+        
+        let index = shiftedPoints.Length - 1 
+        let first = shiftedPoints.Item (0)
+        let second = shiftedPoints.Item(1)
+        let projectionPoint1 = first + spherePos
+        let projectionPoint2 = second + spherePos
+        let x = first.X
+        let y = first.Y
+        let z = first.Z
+        let theta = atan2 y x
+        let phi = atan2  z (sqrt((pown x 2)+(pown y 2))) //atan(z / (sqrt((pown x 2)+(pown y 2))))
 
+        printfn "theta: %A" (theta * Constant.DegreesPerRadian)
+        printfn "phi: %A" (phi * Constant.DegreesPerRadian)
 
+        let panned = setPan m (theta* Constant.DegreesPerRadian)
+        //let pannedRover = panning panned
+        let r = panning panned
+
+        {r with projPoint1 = projectionPoint1; projPoint2 = projectionPoint2 }
+        //let tilted = setTilt pannedRover (phi* Constant.DegreesPerRadian)
+        //tilting tilted
+        //let rotTrafo = Trafo3d.Rotation(theta, phi, 0.0)
+        //let viewM2 = CameraView.ofTrafo (m.camera.view.ViewTrafo * rotTrafo)
 
         
-        let pointsInViewSpace = points  |> List.map (fun p -> cam.ViewTrafo.Forward.TransformPos p) 
 
-        //get corners of box
-        let box = pointsInViewSpace |> Box3d
+        //ATTEMPT:calculate bounding box
+        //let pointsInViewSpace = points  |> List.map (fun p -> cam.ViewTrafo.Forward.TransformPos p) 
 
-        let xMin = box.Min.X
-        let xMax = box.Max.X
-        let yMin = box.Min.Y
-        let yMax = box.Max.Y
-        let zMin = box.Min.Z
-        let zMax = box.Max.Z
+        ////get corners of box
+        //let box = pointsInViewSpace |> Box3d
+
+        //let xMin = box.Min.X
+        //let xMax = box.Max.X
+        //let yMin = box.Min.Y
+        //let yMax = box.Max.Y
+        //let zMin = box.Min.Z
+        //let zMax = box.Max.Z
         
-        //8 corner points
-        let leftBottomFront = V3d(xMin, yMin, zMin)
-        let rightBottomFront = V3d(xMax, yMin, zMin)
-        let leftTopFront = V3d(xMin, yMax, zMin)
-        let rightTopFront = V3d(xMax, yMax, zMin)
-        let leftBottomBack = V3d(xMin, yMin, zMax)
-        let rightBottomBack = V3d(xMax, yMin, zMax)
-        let leftTopBack = V3d(xMin, yMax, zMax)
-        let rightTopBack = V3d(xMax, yMax, zMax)
+        ////8 corner points
+        //let leftBottomFront = V3d(xMin, yMin, zMin)
+        //let rightBottomFront = V3d(xMax, yMin, zMin)
+        //let leftTopFront = V3d(xMin, yMax, zMin)
+        //let rightTopFront = V3d(xMax, yMax, zMin)
+        //let leftBottomBack = V3d(xMin, yMin, zMax)
+        //let rightBottomBack = V3d(xMax, yMin, zMax)
+        //let leftTopBack = V3d(xMin, yMax, zMax)
+        //let rightTopBack = V3d(xMax, yMax, zMax)
 
-        //store them in list and transform every point back to world space
-        let cornerList = [leftBottomFront; rightBottomFront; leftTopFront; rightTopFront; leftBottomBack;rightBottomBack; leftTopBack; rightTopBack]
-        let cornersInWorldSpace = cornerList |> List.map(fun corner -> cam.ViewTrafo.Backward.TransformPos corner)
-        let cornersPList = cornersInWorldSpace |> PList.ofList
+        ////store them in list and transform every point back to world space
+        //let cornerList = [leftBottomFront; rightBottomFront; leftTopFront; rightTopFront; leftBottomBack;rightBottomBack; leftTopBack; rightTopBack]
+        //let cornersInWorldSpace = cornerList |> List.map(fun corner -> cam.ViewTrafo.Backward.TransformPos corner)
+        //let cornersPList = cornersInWorldSpace |> PList.ofList
 
-        let LBF = cornersInWorldSpace.Item(0)
-        let RBF = cornersInWorldSpace.Item(1)
-        let LTF = cornersInWorldSpace.Item(2) //p1
-        let RTF = cornersInWorldSpace.Item(3) //p2
-        let LBB = cornersInWorldSpace.Item(4)
-        let RBB = cornersInWorldSpace.Item(5)
-        let LTB = cornersInWorldSpace.Item(6)
-        let RTB = cornersInWorldSpace.Item(7)
+        //let LBF = cornersInWorldSpace.Item(0)
+        //let RBF = cornersInWorldSpace.Item(1)
+        //let LTF = cornersInWorldSpace.Item(2) //p1
+        //let RTF = cornersInWorldSpace.Item(3) //p2
+        //let LBB = cornersInWorldSpace.Item(4)
+        //let RBB = cornersInWorldSpace.Item(5)
+        //let LTB = cornersInWorldSpace.Item(6)
+        //let RTB = cornersInWorldSpace.Item(7)
 
-        let p1 = leftTopFront
-        let p2 = rightTopFront
+        //let p1 = leftTopFront
+        //let p2 = rightTopFront
 
-        let camPos = m.camera.view.Location
-        let dir1 = LTB - camPos
-        let dir2 = RTB - camPos
-        let p1Norm = dir1.Normalized
-        let p2Norm = dir2.Normalized
+        //let camPos = m.camera.view.Location
+        //let dir1 = LTB - camPos
+        //let dir2 = RTB - camPos
+        //let p1Norm = dir1.Normalized
+        //let p2Norm = dir2.Normalized
 
-        let angleBetween = (acos(p1Norm.Dot(p2Norm))) * Constant.DegreesPerRadian
+        //let angleBetween = (acos(p1Norm.Dot(p2Norm))) * Constant.DegreesPerRadian
 
-        printfn "%A angle:" angleBetween
+        //printfn "%A angle:" angleBetween
 
-        let p1ws = p1 |> cam.ViewTrafo.Backward.TransformPos 
-        let p2ws = p2 |> cam.ViewTrafo.Backward.TransformPos 
+        //let p1ws = p1 |> cam.ViewTrafo.Backward.TransformPos 
+        //let p2ws = p2 |> cam.ViewTrafo.Backward.TransformPos 
 
-        //let l = List.map (fun m -> cam.ViewTrafo.Backward.TransformPos m) corners
-      
+     
+        //{m with camera =  {m.camera with view = cam}; cornerLBF = Some LBF; cornerLTF = Some LTF; 
+        //    cornerRBF = Some RBF; cornerRTF = Some RTF; 
+        //    cornerLBB = Some LBB; cornerRBB = Some RBB;
+        //    cornerLTB = Some LTB; cornerRTB = Some RTB;
+        //    corners = Some cornersPList }
 
-        {m with camera =  {m.camera with view = cam}; cornerLBF = Some LBF; cornerLTF = Some LTF; 
-            cornerRBF = Some RBF; cornerRTF = Some RTF; 
-            cornerLBB = Some LBB; cornerRBB = Some RBB;
-            cornerLTB = Some LTB; cornerRTB = Some RTB;
-            corners = Some cornersPList }
-
-
+        //{m with camera =  {m.camera with view = viewM2} }
 
 
 

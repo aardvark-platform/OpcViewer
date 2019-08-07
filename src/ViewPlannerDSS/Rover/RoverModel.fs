@@ -18,6 +18,12 @@ type CameraType =
     | Camera15   //fov = 15°
     | Stereo    //two cameras
 
+type ProjectionSphere = 
+    {
+    radius : float
+    position : V3d
+    }
+
 //[<DomainType>]
 //type CameraVariant =
 //    {
@@ -48,11 +54,12 @@ type RoverModel =
         cornerLTB : Option<V3d>
         cornerRBB : Option<V3d>
         cornerRTB : Option<V3d>
-
-
-
         corners : Option<plist<V3d>> //in world space
         reg :   Option<plist<V3d>>
+
+        projsphere : ProjectionSphere
+        projPoint1 : V3d
+        projPoint2 : V3d
 
     }
 
@@ -80,15 +87,15 @@ module RoverModel =
 
         pan = 
             {
-                previous = 90.0
-                current = 90.0
+                previous = 0.0
+                current = 0.0
                 delta = 0.0
             }
         
         tilt = 
             {
-                previous = 90.0
-                current = 90.0
+                previous = 0.0
+                current = 0.0
                 delta = 0.0
             }
 
@@ -110,6 +117,14 @@ module RoverModel =
         corners = None
         reg = None
 
+        projsphere =
+            {
+            radius = 1.0
+            position = V3d.III
+            }
+
+        projPoint1 = V3d.OOO
+        projPoint2 = V3d.OOO
         }
 
     let getViewProj (cam : IMod<CameraView>) (frustum:IMod<Frustum>) =
