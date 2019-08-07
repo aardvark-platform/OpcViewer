@@ -2,7 +2,7 @@
   "profiles": {
     "ViewPlannerDSS": {
       "commandName": "Project",
-      "commandLineArgs": "opc=\"I:\\_PRo3DData\\Mars_Victoria_Crater\\20190717_VictoriaCrater\\HiRISE_VictoriaCrater_SuperResolution\" -rotate"
+      "commandLineArgs": "opc=\"i:\\_PRo3DData\\Kimberley\\Surface\\MSL_Mastcam_Sol_565_id_47750\" -rotate"
     }
   }
 }

@@ -26,12 +26,7 @@ type Action =
   | RoverAction        of RoverAction  
 
 
-type CameraStateLean = 
-  { 
-     location : V3d
-     forward  : V3d
-     sky      : V3d
-  }
+
 
 type Stationing = {
     sh : double

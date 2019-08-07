@@ -27,6 +27,7 @@ module App =
     open Aardvark.Base
     open Aardvark.Base
     open Aardvark.Base.MultimethodTest
+    open Aardvark.Service
     
     let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
         let s' = cam.freeFlyConfig.moveSensitivity + incr
@@ -43,15 +44,7 @@ module App =
         { cam with freeFlyConfig = config }
     
     //---saving and restoring camera state
-    let toCameraStateLean (view : CameraView) : CameraStateLean = 
-        {
-        location = view.Location
-        forward  = view.Forward
-        sky      = view.Sky
-        }
-
-    let fromCameraStateLean (c : CameraStateLean) : CameraView = 
-        CameraView.lookAt c.location (c.location + c.forward) c.sky    
+      
     //---
 
 
@@ -92,7 +85,8 @@ module App =
                 { model with cameraState = model.cameraState |>  updateFreeFlyConfig -0.5 }
             | Keys.Space ->    
                 Log.line "[App] saving camstate"
-                model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camerastate" |> ignore 
+                model.cameraState.view |> CameraStateLean.fromView |> OpcSelectionViewer.Serialization.save @".\camerastate" |> ignore 
+                model.rover |> OpcSelectionViewer.Serialization.save @".\roverstate" |> ignore
                 model
             | Keys.V ->
                 Log.line "[App] saving plane points"
@@ -233,7 +227,7 @@ module App =
       //  )
      
 
-      let vp = (RoverModel.getViewProj m.rover.camera.view m.rover.frustum)    
+      let vp = (RoverModel.getViewProj (m.rover.camera |> Mod.map CameraStateLean.toView) m.rover.frustum)    
       
       let frustumBox =
         Sg.wireBox' C4b.White (Box3d(V3d.NNN,V3d.III))
@@ -332,7 +326,7 @@ module App =
             match p with
                 | Some lbb -> 
                     Sg.sphere 5 (Mod.constant C4b.DarkGreen) (Mod.constant 0.1)
-        |> Sg.noEvents
+                        |> Sg.noEvents
                         |> Sg.effect [ 
                             toEffect Shader.stableTrafo
                             toEffect DefaultSurfaces.vertexColor
@@ -363,7 +357,7 @@ module App =
             match p with
                 | Some ltb -> 
                     Sg.sphere 5 (Mod.constant C4b.White) (Mod.constant 0.1)
-                |> Sg.noEvents
+                        |> Sg.noEvents
                         |> Sg.effect [ 
                             toEffect Shader.stableTrafo
                             toEffect DefaultSurfaces.vertexColor
@@ -500,16 +494,10 @@ module App =
                         Sg.wireBox' C4b.Cyan box
                              |> Sg.noEvents
                              |> Sg.trafo (Mod.constant translation)//trafo//(Mod.constant trafo)
-        |> Sg.effect [
-            toEffect DefaultSurfaces.stableTrafo
-                                              toEffect DefaultSurfaces.vertexColor
-            ]
-                                            //)
-                  
-                                   
-            
-                   )    
-                   |> Sg.dynamic
+                             |> Sg.effect [
+                                 toEffect DefaultSurfaces.stableTrafo
+                                 toEffect DefaultSurfaces.vertexColor
+                                 ]) |> Sg.dynamic
               
          
      
@@ -609,7 +597,7 @@ module App =
         opcs
             |> Sg.cullMode (Mod.constant CullMode.Back)
             |> Sg.depthTest (Mod.constant DepthTestMode.Less)
-            |> Sg.uniform "FootprintMVP" vp
+            |> Sg.uniform "FootprintVP" vp
             |> Sg.shader {
                 do! DefaultSurfaces.diffuseTexture
                 do! Shading.vert
@@ -654,8 +642,6 @@ module App =
                                            )
                             |> Sg.dynamic
                       )
-
-
 
       let drawPlane = myPlane |> Sg.dynamic
 
@@ -721,21 +707,28 @@ module App =
 
        
       //let asp = Mod.map(fun aspect -> aspect |> Frustum.withAspect) m.rover.frustum
+     
+      let attributes = 
+        AttributeMap.ofList [ 
+          style "width: 100%; height:100%"; 
+          attribute "showFPS" "false";      
+          attribute "data-renderalways" "false"
+          attribute "data-samples" "4"
+        ]
 
-
-      
-
+      let cam = Mod.map2 Camera.create (m.rover.camera |> Mod.map CameraStateLean.toView) m.rover.frustum 
       let roverCamControl = 
+        Incremental.renderControlWithClientValues' cam attributes RenderControlConfig.standard (constF roverCamScene)
        
-        FreeFlyController.controlledControl  m.rover.camera Camera m.rover.frustum 
-         (AttributeMap.ofList [ 
-           style "width: 100%; height:100%"; 
-           attribute "showFPS" "false";      
-           attribute "data-renderalways" "false"
-           attribute "data-samples" "4"
-         ]) 
+        //FreeFlyController.controlledControl  m.rover.camera Camera m.rover.frustum 
+        // (AttributeMap.ofList [ 
+        //   style "width: 100%; height:100%"; 
+        //   attribute "showFPS" "false";      
+        //   attribute "data-renderalways" "false"
+        //   attribute "data-samples" "4"
+        // ]) 
             
-         (roverCamScene |> Sg.map PickingAction)
+        // (roverCamScene |> Sg.map PickingAction)
       
 
 
@@ -764,7 +757,7 @@ module App =
         
         | Some "roverCam" ->
             require Html.semui (
-              div [clazz "ui"; style "background: #1B1C1E"] [roverCamControl]
+              div [clazz "ui"; style "background: #1B1C1E"] [roverCamControl |> UI.map PickingAction]
           )
 
         | Some "controls" -> 
@@ -862,11 +855,20 @@ module App =
         if File.Exists ".\camerastate" then          
           Log.line "[App] restoring camstate"
           let csLight : CameraStateLean = OpcSelectionViewer.Serialization.loadAs ".\camerastate"
-          { FreeFlyController.initial with view = csLight |> fromCameraStateLean }
+          { FreeFlyController.initial with view = csLight |> CameraStateLean.toView }
         else 
           { FreeFlyController.initial with view = CameraView.lookAt (box.Max) box.Center up; }                    
 
       let camState = restoreCamState
+
+      let roverinitialCamera = CameraView.lookAt box.Max box.Center box.Center.Normalized
+
+      let (rover : RoverModel) = 
+        if File.Exists @".\roverstate" then    
+          Log.line "[App] restoring roverstate"
+          OpcSelectionViewer.Serialization.loadAs @".\roverstate"
+        else
+          { RoverModel.initial with up = box.Center.Normalized; camera = roverinitialCamera |> CameraStateLean.fromView; position = box.Center}
 
       let restorePlane =
         if File.Exists ".\planestate" then
@@ -884,10 +886,7 @@ module App =
             | false -> Some planeState
 
 
-      let roverinitialCamera = {
       
-        FreeFlyController.initial with view = CameraView.lookAt box.Max box.Center box.Center.Normalized
-      }
 
 
       let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
@@ -925,7 +924,7 @@ module App =
           opcInfos           = opcInfos
           pickingModel       = { PickingModel.initial with pickingInfos = opcInfos }
           planePoints        = setPlaneForPicking
-          rover              = { RoverModel.initial with up = box.Center.Normalized; camera = roverinitialCamera; position = box.Center}
+          rover              = rover
           dockConfig         = initialDockConfig            
           region             = None
           roiBboxFull        = false

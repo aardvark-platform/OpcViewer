@@ -17,18 +17,18 @@ module Shading =
         }
     
      type UniformScope with
-        member x.FootprintMVP = uniform?FootprintMVP
+        member x.FootprintVP = uniform?FootprintVP
 
      let vert (v:Vertex) =
         
         vertex {
-            let mvp : M44d = uniform.FootprintMVP
+            let vp : M44d = uniform.FootprintVP
             let model = uniform.ModelTrafo
-            let wp = model * v.pos
+           // let wp = model * v.pos
 
-            let m = uniform.ModelViewProjTrafo
-            let position = m * v.pos
-            let t = mvp * wp
+            let mvp = uniform.ModelViewProjTrafo
+            let position = mvp * v.pos
+            let t = vp * model * v.pos
 
             return 
                 { v 

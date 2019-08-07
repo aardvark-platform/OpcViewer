@@ -4,6 +4,27 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.UI.Primitives
 
+type CameraStateLean = 
+  { 
+     location : V3d
+     forward  : V3d
+     right    : V3d
+     sky      : V3d
+  }
+
+module CameraStateLean =
+
+  let fromView (view : CameraView) : CameraStateLean = 
+    {
+        location = view.Location
+        forward  = view.Forward
+        sky      = view.Sky
+        right    = view.Right
+    }
+
+  let toView (c : CameraStateLean) : CameraView = 
+        CameraView.lookAt c.location (c.location + c.forward) c.sky  
+
 [<DomainType>]
 type CameraInput = 
   {
@@ -33,7 +54,7 @@ type RoverModel =
         target   :  V3d            
         tilt     :  CameraInput
         pan      :  CameraInput
-        camera   :  CameraControllerState
+        camera   :  CameraStateLean
         up       :  V3d
         frustum  :  Frustum
         currentCamType : Option<CameraType>
@@ -66,10 +87,7 @@ type RoverAction =
 
 module RoverModel =
     
-    let initCamera = {
-   
-        FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
-         }
+    let initCamera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI           
 
     let initfrustum = Frustum.perspective 35.0 0.1 50000.0 1.0
     
@@ -92,8 +110,8 @@ module RoverModel =
                 delta = 0.0
             }
 
-        camera  = initCamera
-        up     = initCamera.view.Up
+        camera  = initCamera |> CameraStateLean.fromView
+        up     = initCamera.Up
         frustum = initfrustum
 
         currentCamType = Some Camera30
