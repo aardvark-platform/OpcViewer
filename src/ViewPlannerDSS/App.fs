@@ -22,9 +22,8 @@ open OpcViewer.Base.Picking
 
 open ViewPlanner.Rover
 
-
-
-
+open Rabbyte.Drawing
+open Aardvark.VRVis.Opc
 
 module App = 
     
@@ -118,29 +117,25 @@ module App =
 
 
             | Keys.Enter ->
-                let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
-                let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddBrush pointsOnAxisFunc)
-            
-                { model with pickingModel = updatedPicking}
-            | Keys.T ->
-                let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
-                let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddTestBrushes pointsOnAxisFunc)
-            
-                { model with pickingModel = updatedPicking; }
+                //let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
+                //let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddBrush pointsOnAxisFunc)
+                let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) // TODO...add hitFunc
+                { model with drawing = updatedDrawing }
             | _ -> model
 
         | PickingAction msg -> 
-            let pickingModel =
+            let pickingModel, drawingModel =
                 match msg with
-                    | HitSurface (a,b,_) -> 
-                        let axisNearstFunc = fun p -> p
-                        PickingApp.update model.pickingModel (HitSurface (a,b, axisNearstFunc))
-
-
-
-
-                    | _ -> PickingApp.update model.pickingModel msg
-            { model with pickingModel = pickingModel }
+                    | HitSurface (a,b) -> //,_) -> 
+                        let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
+                        let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
+                        let updatedDrawM =
+                            match lastPick with
+                            | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
+                            | None -> model.drawing
+                        updatePickM, updatedDrawM
+                    | _ -> PickingApp.update model.pickingModel msg, model.drawing
+            { model with pickingModel = pickingModel; drawing = drawingModel }
 
         | UpdateDockConfig cfg ->
             { model with dockConfig = cfg }
@@ -187,7 +182,7 @@ module App =
                             |> Mod.map (fun p ->
                                 p
                                     |> PList.toSeq
-                                    |> Sg.planeFit
+                                    |> PlaneFitting.planeFit
                                     |> fun t ->
                                          let box = Aardvark.SceneGraph.SgPrimitives.Sg.box' C4b.Cyan (Box3d(V3d.NNN, V3d.III))
                                          let scaleT = Trafo3d.Scale(10.0, 20.0, 0.2)
@@ -227,7 +222,8 @@ module App =
       let scene = 
         [
           opcs
-          PickingApp.view m.pickingModel
+          // PickingApp.view m.pickingModel // TODO...restore after refactoring...
+          DrawingApp.view m.drawing
           //myPlane 
         ] |> Sg.ofList
 
@@ -403,6 +399,7 @@ module App =
           pickingActive      = false
           opcInfos           = opcInfos
           pickingModel       = { PickingModel.initial with pickingInfos = opcInfos }
+          drawing            = DrawingModel.inital
           pickedPoint        = None
           planePoints        = setPlaneForPicking
           rover              = { RoverModel.initial with up = box.Center.Normalized; camera = roverinitialCamera; position = box.Center}
