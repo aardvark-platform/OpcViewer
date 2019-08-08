@@ -19,6 +19,8 @@ module AnnotationApp =
 
     let update (model : AnnotationModel) (act : AnnotationAction) =
         match act with
+        | ChangeExtrusionOffset offset -> { model with extrusionOffset = offset }
+        | ShowDebugVis -> { model with showDebug = not model.showDebug }
         | AddAnnotation drawingModel -> 
             let annotation = AnnotationModel.convertDrawingToAnnotation drawingModel
             let updatedAnnotation = model.annotations |> PList.prepend annotation
@@ -50,5 +52,16 @@ module AnnotationApp =
             model |> AnnotationSg.drawAnnotationsOutline
         ] |> Sg.ofList
 
-    let viewGUI (model : MAnnotationModel) =
-        failwith "TODO"
+    let viewGui (model : MAnnotationModel) =
+        let style' = "color: white; font-family:Consolas;"
+
+        table [clazz "item"] [
+            tr [] [ 
+                checkbox [clazz "ui inverted toggle checkbox"] model.showDebug ShowDebugVis "Show Debug Vis:"
+            ]
+                    
+            tr[][
+                td[style style'][text "Offset:"]
+                td[style style'][numeric { min = 0.1; max = 20.0; smallStep = 0.1; largeStep= 1.0 } [clazz "ui inverted input"] model.extrusionOffset ChangeExtrusionOffset]
+            ]
+        ]

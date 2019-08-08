@@ -139,7 +139,12 @@ let view (model : MSimpleDrawingModel) =
 
             div [style "width:35%; height: 100%; float:right; background: #1B1C1E;"] [
                 Html.SemUi.accordion "Rendering" "configure" true [
-                    DrawingApp.viewGui model.drawing |> UI.map UpdateDrawing
+                    div [clazz "ui inverted segment"; style "width: 100%; height: 100%"] [
+                        div [ clazz "ui vertical inverted menu" ] [
+                            DrawingApp.viewGui model.drawing |> UI.map UpdateDrawing
+                            AnnotationApp.viewGui model.annotations |> UI.map UpdateAnnotation
+                        ]
+                    ]
                 ]
             ]
         ]

@@ -40,6 +40,7 @@ let main argv =
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart' runtime false instance
+        Aardvark.UI.Primitives.Resources.WebPart
         Suave.Files.browseHome
     ] |> ignore
     

@@ -7,6 +7,11 @@ open Aardvark.UI
 
 open Rabbyte.Drawing
 
+type ClippingVolumeType = 
+    | Direction of V3d
+    | Point of V3d
+    | Points of plist<V3d>
+
 [<DomainType>]
 type Annotation = {
     version     : int
@@ -24,7 +29,7 @@ type Annotation = {
     segments        : plist<Segment>
     style           : BrushStyle
     primitiveType   : PrimitiveType // similar to Geometry of Pro3D
-
+    clippingVolume  : ClippingVolumeType
     //color       : ColorInput       // use Style...
     //thickness   : NumericInput     // use Style...
 
@@ -47,12 +52,16 @@ type Annotation = {
 
 [<DomainType>]
 type AnnotationModel = {
-    annotations : plist<Annotation>
-    annotationsGrouped : hmap<C4b, plist<Annotation>>
+    annotations         : plist<Annotation>
+    annotationsGrouped  : hmap<C4b, plist<Annotation>>
+    showDebug           : bool
+    extrusionOffset     : float
 }
 
 type AnnotationAction = 
     | AddAnnotation of DrawingModel
+    | ChangeExtrusionOffset of float
+    | ShowDebugVis
     //| RemoveDrawing of DrawingModel
     //| EditDrawing of DrawingModel
 
@@ -70,6 +79,7 @@ module AnnotationModel =
             points      = plist.Empty
             segments    = plist.Empty //[]
             style       = DrawingModel.defaultStyle
+            clippingVolume = Direction V3d.ZAxis //Points ([V3d.IOO; V3d.OIO; -V3d.OIO; -V3d.IOO] |> PList.ofList)//Point V3d.Zero// Direction (V3d.ZAxis)
             //color       = color
             //thickness   = thickness
             //results     = None
@@ -108,4 +118,6 @@ module AnnotationModel =
         {
             annotations = plist.Empty
             annotationsGrouped = hmap.Empty
+            showDebug   = false
+            extrusionOffset = 1.5
         }

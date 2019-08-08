@@ -126,131 +126,97 @@ module ClippingVolume =
   
         sg |> Mod.toASet |> Sg.set
 
-    let axisRingClippingVolume (colorAlpha:IMod<V4f>) (offset:IMod<float>) (points:alist<V3d>) (pointsOnAxis:alist<V3d>) =
-    
-        pointsOnAxis 
+    let clippingVolume (colorAlpha:IMod<V4f>) (extrusionOffset:IMod<float>) (creation:IMod<ClippingVolumeType>) (points:alist<V3d>) = 
+        
+        let offsetAndCreation = Mod.map2 (fun o c -> o,c) extrusionOffset creation
+        
+        points 
             |> AList.toMod
-            |> Mod.bind (fun axisInfo -> 
-                offset |> Mod.map(fun o -> 
+            |> Mod.bind (fun pxs -> 
+                offsetAndCreation |> Mod.map(fun (extOff, creation) -> 
           
                     // increase Precision
-                    let shiftVec p = 
-                        p |> AList.toMod 
-                            |> Mod.map(fun x -> (PList.tryAt 0 x) |> Option.defaultValue V3d.Zero)
+                    let shift = 
+                        pxs |> PList.tryAt 0 |> Option.defaultValue V3d.Zero
 
-                    let shiftPoints p shiftVec =
-                        let asdf = p |> AList.toMod
-                        Mod.map2(fun x (s:V3d) -> 
-                            x |> PList.toSeq 
-                            |> Seq.map(fun (y:V3d) -> V3f(y-s)) 
-                            |> Seq.toArray) asdf shiftVec
+                    let shiftsPoints p =
+                        p |> PList.map (fun (x:V3d) -> V3f(x-shift)) |> PList.toArray
 
-                    let shift = shiftVec points 
-                    let pointsF = (shiftPoints points shift) |> Mod.map(fun x -> x |> Array.skip 1) // undo closing polygon (duplicates not needed) // TODO CHECK THIS!
+                    let pointsF = shiftsPoints pxs |> Array.skip 1 // undo closing polygon (duplicates not needed) // TODO CHECK THIS!
 
                     let vertices = 
-                    //match volumeGeneration with
-                    //| AxisMidPoint -> 
-                    //  let axisMidPointF = Mod.map2(fun (m:V3d) (s:V3d) -> V3f(m-s)) api.midPoint shift
-                    //  Mod.map2(fun ps (midPoint:V3f) -> 
-                    //    let dir = ps |> Array.map(fun (p:V3f) -> ((midPoint-p).Normalized))
-                    //    let offsetP = dir |> Array.map(fun (p:V3f) -> p * (float32 o))
-                    //    let inner = Array.create ps.Length midPoint // use center point....
-                    //    //let inner = Array.map2(+) ps offsetP  // shift from lasso points
-                    //    let outer = Array.map2(-) ps offsetP
-                    //    inner |> Array.append outer
-                    //  ) pointsF axisMidPointF
-                    //| AxisPoints -> 
-                    //  let axisPsF = shiftPoints api.pointsOnAxis shift
-                    //  Mod.map2(fun ps aps ->
-                    //    let dir = Array.map2(fun (p:V3f) (a:V3f) -> ((a-p).Normalized)) ps aps 
-                    //    let offsetP = dir |> Array.map(fun (p:V3f) -> p * (float32 o))
-                    //    let inner = Array.map2 (-) aps dir // use axisPoints and shift 1m to points
-                    //    //let inner = Array.map2(+) ps offsetP  // shift from lasso points
-                    //    let outer = Array.map2(-) ps offsetP
-                    //    inner |> Array.append outer) pointsF axisPsF
-                    //| AxisPointsMidRing -> 
-                        let axisPsF = shiftPoints pointsOnAxis shift
-              
-                        Mod.map2(fun ps aps ->
-                        let dir = Array.map2(fun (p:V3f) (a:V3f) -> ((a-p).Normalized)) ps aps 
-                        let offsetP = dir |> Array.map(fun (p:V3f) -> p * (float32 o))
+                        let o = float32 extOff
+                        
+                        let (inner, outer) =
+                            match creation with
+                            | Point p -> 
+                                let shiftedCenter = V3f(p - shift)
+                                let dir = pointsF |> Array.map (fun x -> (x-shiftedCenter).Normalized)
 
-                        let inner = Array.map2 (-) aps dir // use axisPoints and shift 1m to points
-                        //let inner = Array.map2(+) ps offsetP
-                        let outer = Array.map2(-) ps offsetP
-                        ps |> Array.append inner |> Array.append outer ) pointsF axisPsF
+                                let inner = dir |> Array.map (fun d -> shiftedCenter + d)   // innerRing is created at 1 unit from center to actual points
+                                let outer = Array.map2 (fun x d  -> x + d * o) pointsF dir  // outerRing is created outside by offset
+                                inner, outer
+                            | Points aps ->
+                                // NOTE: EACH POINT MUST HAVE IT'S COUNTERPART! (care about duplicated start/end point)
+                                let axisPsF = shiftsPoints aps
+                                let dir = Array.map2(fun (p:V3f) (a:V3f) -> ((p-a).Normalized)) pointsF axisPsF 
+
+                                let inner = Array.map2 (+) axisPsF dir                      // innerRing is created at 1 unit from axis to actual points
+                                let outer = Array.map2 (fun x d -> x + d * o) pointsF dir   // outerRing is created outside by offset
+                                inner, outer
+                            | Direction dir ->
+                                let d = V3f dir
+
+                                let inner = pointsF |> Array.map (fun x -> x - d * o)   // innerRing is created by negative offset
+                                let outer = pointsF |> Array.map (fun x -> x + d * o)   // outerRing is created by offset
+                                inner, outer
+
+                        pointsF |> Array.append inner |> Array.append outer
 
                     let indexArray = 
-                        //match volumeGeneration with 
-                        //| Plane -> failwith ""
-                        //| AxisPoints  // same as MidPoint
-                        //| AxisMidPoint -> 
-                        //  pointsF |> Mod.map(fun x -> 
-                        //    let l = x.Length
-                        //    let indices = List<int>()
-                        //    // TOP
-                        //    for i in 0 .. (l - 3) do 
-                        //      indices.Add(0)      
-                        //      indices.Add(i + 1)  
-                        //      indices.Add(i + 2)  
-                        //    // BOTTOM
-                        //    for i in 0 .. ( l - 3 ) do
-                        //      indices.Add(l)
-                        //      indices.Add(2*l - i - 1)
-                        //      indices.Add(2*l - i - 2)
-                        //    // SIDE
-                        //    for i in 0 .. l - 1 do
-                        //      indices.Add(i)          
-                        //      indices.Add(l + i)      
-                        //      indices.Add((i + 1) % l)
-                        //      indices.Add(l + i)            
-                        //      indices.Add(l + ((i + 1) % l))
-                        //      indices.Add((i + 1) % l)      
-                        //    indices.ToArray())
-                        //| AxisPointsMidRing -> 
-                        pointsF |> Mod.map(fun x -> 
+                        let l = pointsF.Length
+                        let indices = System.Collections.Generic.List<int>()
+                        // TOP
+                        for i in 0 .. (l - 3) do 
+                            indices.Add(0)      
+                            indices.Add(i + 1)  
+                            indices.Add(i + 2)  
               
-                            let l = x.Length
-                            let indices = System.Collections.Generic.List<int>()
-                            // TOP
-                            for i in 0 .. (l - 3) do 
-                                indices.Add(0)      
-                                indices.Add(i + 1)  
-                                indices.Add(i + 2)  
+                        // BOTTOM
+                        for i in 0 .. ( l - 3 ) do
+                            indices.Add(l)
+                            indices.Add(2*l - i - 1)
+                            indices.Add(2*l - i - 2)
               
-                            // BOTTOM
-                            for i in 0 .. ( l - 3 ) do
-                                indices.Add(l)
-                                indices.Add(2*l - i - 1)
-                                indices.Add(2*l - i - 2)
-              
-                            // SIDE
-                            for i in 0 .. l - 1 do
-                                indices.Add(i)         // 0  
-                                indices.Add(2*l + i) // 6
-                                indices.Add((i + 1) % l) // 1
+                        // SIDE (subdevided by actual points ring)
+                        for i in 0 .. l - 1 do
+                            indices.Add(i)                      // 0  
+                            indices.Add(2*l + i)                // 6
+                            indices.Add((i + 1) % l)            // 1
                   
-                                indices.Add(2*l + i) // 6
-                                indices.Add(l + i)     // 3 
-                                indices.Add(2*l + ((i + 1) % l)) // 7
+                            indices.Add(2*l + i)                // 6
+                            indices.Add(l + i)                  // 3 
+                            indices.Add(2*l + ((i + 1) % l))    // 7
 
-                                indices.Add(l + i)           //3 
-                                indices.Add(l + ((i + 1) % l)) // 4
-                                indices.Add(2*l + ((i + 1) % l)) // 7
+                            indices.Add(l + i)                  // 3 
+                            indices.Add(l + ((i + 1) % l))      // 4
+                            indices.Add(2*l + ((i + 1) % l))    // 7
                   
-                                indices.Add(2*l + i) // 6
-                                indices.Add(2*l + ((i + 1) % l)) // 7
-                                indices.Add((i + 1) % l)  // 1
+                            indices.Add(2*l + i)                // 6
+                            indices.Add(2*l + ((i + 1) % l))    // 7
+                            indices.Add((i + 1) % l)            // 1
 
-                            indices.ToArray())
+                        indices.ToArray()
 
                     Sg.draw IndexedGeometryMode.TriangleList
-                        |> Sg.vertexAttribute DefaultSemantic.Positions vertices 
+                        |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant(vertices)) 
                         |> Sg.vertexBufferValue DefaultSemantic.Colors colorAlpha
-                        |> Sg.index indexArray
-                        |> Sg.translate' shift)
-                ) |> Mod.toASet |> Sg.set
+                        |> Sg.index (Mod.constant(indexArray))
+                        |> Sg.translate' (Mod.constant(shift))
+                )
+            ) 
+            |> Mod.toASet 
+            |> Sg.set
 
     let drawClippingVolumeDebug clippingVolume : ISg<'a> = 
     
@@ -335,7 +301,6 @@ module AnnotationSg =
             |> AList.toASet
             |> Sg.set
 
-    // currently only planeFitted -> TODO combine both methods...
     // grouped...fast -> alpha broken
     let drawAnnotationsFilledGrouped  (model: MAnnotationModel) =
     
@@ -347,8 +312,7 @@ module AnnotationSg =
                 let colorAlpha = colorAlpha (Mod.constant(groupColor)) (Mod.constant(0.5))
                 let groupedSg = 
                     annotations
-                        |> AList.map (fun x -> 
-                            planeFittedClippingVolume colorAlpha (Mod.constant(1.5)) x.points)
+                        |> AList.map (fun x -> clippingVolume colorAlpha model.extrusionOffset x.clippingVolume x.points)
                         |> AList.toASet
                         |> Sg.set
                         |> Sg.effect [
@@ -364,7 +328,7 @@ module AnnotationSg =
                 
                 [
                     coloredPolygon
-                    //groupedSg |> drawClippingVolumeDebug
+                    model.showDebug |> Mod.map (fun show -> if show then groupedSg |> drawClippingVolumeDebug else Sg.empty) |> Sg.dynamic
                 ] |> Sg.ofList)
             |> AMap.toASet
             |> ASet.map snd
@@ -380,7 +344,7 @@ module AnnotationSg =
             |> AList.map (fun x -> 
                 let colorAlpha = colorAlpha x.style.primary.c (Mod.constant(0.5))
                 let sg = 
-                    planeFittedClippingVolume colorAlpha (Mod.constant(1.5)) x.points
+                    clippingVolume colorAlpha model.extrusionOffset x.clippingVolume x.points
                         |> Sg.effect [
                             Shader.StableTrafo.Effect
                             toEffect DefaultSurfaces.vertexColor
@@ -393,7 +357,7 @@ module AnnotationSg =
                 
                 [
                     coloredPolygon
-                    sg |> drawClippingVolumeDebug
+                    model.showDebug |> Mod.map (fun show -> if show then sg |> drawClippingVolumeDebug else Sg.empty) |> Sg.dynamic
                 ] |> Sg.ofList)
             |> AList.toASet
             |> Sg.set

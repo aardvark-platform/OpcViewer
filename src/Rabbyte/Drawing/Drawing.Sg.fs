@@ -4,7 +4,6 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
-open Aardvark.UI
 
 open OpcViewer.Base
 
@@ -28,7 +27,6 @@ module DrawingSg =
 
     let discISg color size height trafo =
         Sg.cylinder 30 color size height              
-            |> Sg.noEvents
             |> Sg.uniform "WorldPos" (trafo |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
             |> Sg.uniform "Size" size
             |> Sg.effect [
@@ -40,7 +38,6 @@ module DrawingSg =
 
     let coneISg color radius height trafo =  
         Sg.cone 30 color radius height
-            |> Sg.noEvents
             |> Sg.effect [
                 Shader.StableTrafo.Effect
                 toEffect DefaultSurfaces.vertexColor
@@ -50,7 +47,6 @@ module DrawingSg =
 
     let lineISg color lineWidth trafo segments = 
         Sg.lines color segments
-            |> Sg.noEvents
             |> Sg.uniform "LineWidth" lineWidth 
             |> Sg.uniform "depthOffset" (Mod.constant 1.0)
             |> Sg.effect [
@@ -63,7 +59,6 @@ module DrawingSg =
     let sphereISg color radius position =
         let trafo = Mod.constant (Trafo3d.Translation position)
         Sg.sphere 3 color radius 
-            |> Sg.noEvents
             |> Sg.trafo trafo
             |> Sg.uniform "WorldPos" (trafo |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
             //|> Sg.uniform "Size" radius // 5.0
