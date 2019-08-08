@@ -206,7 +206,7 @@ module Sg =
               let intersect = picking |> Mod.force
               if intersect then              
                 Log.line "hit an opc? %A" bb
-                true, Seq.ofList[(HitSurface (bb,sceneHit, fun a -> a))]
+                true, Seq.ofList[(HitSurface (bb,sceneHit))] //, fun a -> a))]
               else 
                 false, Seq.ofList[]
           )      

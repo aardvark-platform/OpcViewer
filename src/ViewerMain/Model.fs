@@ -12,8 +12,8 @@ open Aardvark.Application
 
 open OpcViewer.Base.Picking
 open OpcViewer.Base.Attributes
-
-
+open Rabbyte.Drawing
+open Rabbyte.Annotation
 
 type Message =
   | Camera           of FreeFlyController.Message
@@ -22,7 +22,8 @@ type Message =
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
   | AttributeAction  of AttributeAction
-
+  | DrawingAction    of DrawingAction
+  | AnnotationAction of AnnotationAction
 
 type CameraStateLean = 
   { 
@@ -68,6 +69,6 @@ type Model =
         pickingActive        : bool
 
         opcAttributes        : AttributeModel
-    }
-
-   
+        drawing              : DrawingModel
+        annotations          : AnnotationModel
+    }  
