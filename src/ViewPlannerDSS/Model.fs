@@ -10,6 +10,7 @@ open Aardvark.Application
 open OpcViewer.Base.Picking
 open ViewPlanner.Rover
 open Rabbyte.Drawing
+open Rabbyte.Annotation
 
 type Action =
   | Camera           of FreeFlyController.Message
@@ -57,6 +58,7 @@ type Model =
         dockConfig           : DockConfig
         pickingModel         : PickingModel
         drawing              : DrawingModel
+        annotations          : AnnotationModel
         pickedPoint          : Option<V3d>
         planePoints          : Option<plist<V3d>>
         pickingActive        : bool

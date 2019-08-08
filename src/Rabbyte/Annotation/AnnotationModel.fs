@@ -59,7 +59,7 @@ type AnnotationModel = {
 }
 
 type AnnotationAction = 
-    | AddAnnotation of DrawingModel
+    | AddAnnotation of DrawingModel*Option<ClippingVolumeType>
     | ChangeExtrusionOffset of float
     | ShowDebugVis
     //| RemoveDrawing of DrawingModel
@@ -96,14 +96,19 @@ module AnnotationModel =
             //view = FreeFlyController.initial.view
         }
 
-    let convertDrawingToAnnotation (drawingModel:DrawingModel) = 
-        { 
-            initAnnotation with 
-                points = drawingModel.points
-                segments = drawingModel.segments
-                style = drawingModel.style
-                primitiveType = drawingModel.primitiveType
-        }
+    let convertDrawingToAnnotation (drawingModel:DrawingModel) (clippingVolumeType:Option<ClippingVolumeType>) = 
+        let defaultClippingVolume = 
+            { 
+                initAnnotation with 
+                    points = drawingModel.points
+                    segments = drawingModel.segments
+                    style = drawingModel.style
+                    primitiveType = drawingModel.primitiveType
+            }
+
+        match clippingVolumeType with
+        | Some t -> { defaultClippingVolume with clippingVolume = t }
+        | None -> defaultClippingVolume
 
     let convertAnnotationToDrawing (annotation:Annotation) =
         { 
@@ -119,5 +124,5 @@ module AnnotationModel =
             annotations = plist.Empty
             annotationsGrouped = hmap.Empty
             showDebug   = false
-            extrusionOffset = 1.5
+            extrusionOffset = 10.0
         }

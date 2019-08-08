@@ -87,7 +87,7 @@ module App =
             //{ model with axis = axis; drawing = updatedDrawing }
 
             let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
-            let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation finished.drawing)
+            let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
             { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
           //| Keys.T ->
           //  let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis

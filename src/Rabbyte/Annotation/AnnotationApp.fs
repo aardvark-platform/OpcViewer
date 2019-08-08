@@ -21,8 +21,8 @@ module AnnotationApp =
         match act with
         | ChangeExtrusionOffset offset -> { model with extrusionOffset = offset }
         | ShowDebugVis -> { model with showDebug = not model.showDebug }
-        | AddAnnotation drawingModel -> 
-            let annotation = AnnotationModel.convertDrawingToAnnotation drawingModel
+        | AddAnnotation (drawingModel, clippinVolumType) -> 
+            let annotation = AnnotationModel.convertDrawingToAnnotation drawingModel clippinVolumType
             let updatedAnnotation = model.annotations |> PList.prepend annotation
             
             let updatedAnnotationsFilledPolygon = 

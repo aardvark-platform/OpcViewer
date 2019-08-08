@@ -43,11 +43,11 @@ let update (model : SimpleDrawingModel) (act : Action) =
             | Keys.Delete -> drawingUpdate model DrawingAction.Clear
             | Keys.F -> 
                 let finished = drawingUpdate model (DrawingAction.FinishClose None) // TODO add dummy-hitF
-                let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation finished.drawing)
+                let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some (ClippingVolumeType.Direction V3d.ZAxis)))
                 { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
             | Keys.Enter -> 
                 let finished = drawingUpdate model DrawingAction.Finish
-                let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation finished.drawing)
+                let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
                 { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
             | _ -> model
         | Move p, true -> { model with hoverPosition = Some (Trafo3d.Translation p) }
