@@ -20,14 +20,13 @@ nuget Aardvark.Application.Slim.Vulkan      ~> 4.11.0
 nuget Aardvark.Geometry.Intersection        ~> 4.9.10
 nuget Aardvark.Geometry.PolyMesh            ~> 4.9.10
                                             
-nuget Aardvark.Service                      ~> 4.5.15
-nuget Aardvark.UI                           ~> 4.5.15
-nuget Aardvark.UI.Primitives                ~> 4.5.15
+nuget Aardvark.Service                      ~> 4.6.0
+nuget Aardvark.UI                           ~> 4.6.0
+nuget Aardvark.UI.Primitives                ~> 4.6.0
 
 nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 4.3.0
 
 nuget Aardium                               ~> 1.0.21
-nuget Suave                                 ~> 2.2.1
 nuget Uncodium.Eigensystems                 ~> 1.0.1
 
 nuget FsPickler                             ~> 5.2.2
