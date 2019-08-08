@@ -7,6 +7,7 @@ open Aardium
 
 open Suave
 open Suave.WebPart
+open OpcViewer.Base
 
 type EmbeddedRessource = EmbeddedRessource
 
@@ -15,6 +16,15 @@ let main argv =
     Ag.initialize()
     Aardvark.Init()
     Aardium.init()
+
+    //cootrafo testing
+    CooTransformation.initCooTrafo ()
+    
+    let pos = V3d(10000,1000,10000)
+    let sc = CooTransformation.getLatLonAlt pos Planet.Mars
+    Log.line "altitude: %f" sc.altitude
+
+    CooTransformation.deInitCooTrafo()
 
     use app = new OpenGlApplication()
     //let opcDir = "C:\Users\laura\VRVis\Data\CapeDesire\Surface\Cape_Desire_RGB"
