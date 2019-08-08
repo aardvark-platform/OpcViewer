@@ -2,12 +2,30 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
     <RootNamespace>_2D3DLinking</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Products\Serialization.fs" />
+    <Compile Include="Products\Model.fs" />
+    <Compile Include="Products\Utilities.fs" />
+    <Compile Include="Model.fs" />
+    <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="paket.references" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Data" Version="3.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OPCViewer.Base\OPCViewer.Base.fsproj" />
+    <ProjectReference Include="..\ViewerMain\ViewerMain.fsproj" />
   </ItemGroup>
 
 </Project>
