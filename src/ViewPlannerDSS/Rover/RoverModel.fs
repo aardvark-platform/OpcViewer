@@ -61,6 +61,8 @@ type RoverModel =
         projPoint1 : V3d
         projPoint2 : V3d
 
+        projPoints : plist<V3d>
+
     }
 
 type RoverAction =
@@ -125,6 +127,7 @@ module RoverModel =
 
         projPoint1 = V3d.OOO
         projPoint2 = V3d.OOO
+        projPoints = PList.empty
         }
 
     let getViewProj (cam : IMod<CameraView>) (frustum:IMod<Frustum>) =

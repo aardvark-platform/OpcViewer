@@ -195,22 +195,152 @@ module App =
           //  toEffect Shader.stableTrafo
           //  toEffect DefaultSurfaces.diffuseTexture       
           //  ]
+       
+
+       //projection points on sphere
+      
+      let i =
+        m.rover.projPoints
+            |> AList.toMod
+            |> Mod.map(fun li -> 
+                
+                let list = li |> PList.toList
+                let shift = 
+                    match list.IsEmpty with
+                        | true -> V3d.OOO
+                        | false -> list.Head
+                
+                let shifted = list |> List.map(fun p -> p - shift)
+                let arr = shifted |> List.toArray |> Mod.constant
+                let shiftV = Trafo3d.Translation(shift)
+            
+                Sg.draw IndexedGeometryMode.PointList 
+                    |> Sg.vertexAttribute DefaultSemantic.Positions arr
+                    |> Sg.trafo (Mod.constant shiftV)
+                    |> Sg.effect [
+                        toEffect DefaultSurfaces.stableTrafo
+                        toEffect (DefaultSurfaces.constantColor C4f.White)
+                        Shader.PointSprite.Effect
+                        ]
+            
+                    |> Sg.uniform "PointSize" (Mod.constant 10.0)
+
+
+            )
+      
+      let points = i|> Mod.map(fun cast -> (cast:ISg<PickingAction>)) 
+
+
+      //let po = m.rover.projPoints
+      //let li = po |> AList.toList
+      
+      
+      
+      //let shifted = li |> List.map(fun p -> p - shift)
+      //let arr = shifted |> List.toArray |> Mod.constant
+      //let shiftV = Trafo3d.Translation(shift)
+      //let points = 
+      //  Sg.draw IndexedGeometryMode.PointList 
+      //   |> Sg.vertexAttribute DefaultSemantic.Positions arr
+      //   |> Sg.trafo (Mod.constant shiftV)
+      //   |> Sg.effect [
+      //      toEffect DefaultSurfaces.stableTrafo
+      //      toEffect (DefaultSurfaces.constantColor C4f.White)
+      //      //Shader.PointSprite.Effect
+      //      ]
+            
+      //      |> Sg.uniform "PointSize" (Mod.constant 10.0)
+
+
+
+        //|> Sg.translate' (Mod.constant shift)
+        //|> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant arr) 
+        //|> Sg.uniform "Color" (Mod.constant C4b.Yellow)
+        //|> Sg.uniform "PointSize" (Mod.constant 2.0)
+        //|> Sg.effect [
+        //    toEffect DefaultSurfaces.stableTrafo
+        //    toEffect DefaultSurfaces.sgColor
+        //    ]
         
         
-      let rovertrafo = m.rover.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
-      let rov = 
-           Sg.sphere 5 (Mod.constant C4b.Cyan) (Mod.constant 1.0)
+
+
+        
+      //point on sphere where theta = 90 phi = 0
+      let forw = Mod.map2(fun (p:V3d) (t:V3d) -> ((t - p).Normalized))m.rover.position m.rover.target
+      let rot = m.rover.up |> Mod.map(fun u -> Trafo3d.RotateInto(V3d.OOI, u))
+      let xCartesian = cos(90.0)
+      let yCartesian = sin(90.0)
+      let zCartesian = 0.0
+      let ref = V3d(xCartesian, yCartesian, zCartesian) 
+      let s = m.rover.position
+      //let rotatedS = Mod.map2(fun (r:Trafo3d) (s:V3d) -> r.Forward.TransformPos s)rot s
+      let rotatedRef = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos ref)rot
+      let shifted = Mod.map2(fun s rp -> rp + s)  s rotatedRef
+      let translation = Mod.map(fun a -> Trafo3d.Translation(a)) shifted
+      //let refTrafo = Mod.map2(fun t r -> r*t) translation rot
+
+      let refSphere = 
+           Sg.sphere 5 (Mod.constant C4b.Green) (Mod.constant 0.05)
             |> Sg.noEvents
             |> Sg.effect [ 
                     toEffect Shader.stableTrafo
                     toEffect DefaultSurfaces.vertexColor
                     ]
-            |> Sg.trafo rovertrafo
+            |> Sg.trafo translation
+      
+      //
+     
+     //point on sphere where theta = 0 phi = 90
+      let xPole = cos(90.0)
+      let yPOle = 0.0
+      let zPole = sin(90.0)
+      let pole = V3d(xPole, yPOle, zPole) 
+      let poleRef = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos pole)rot
+      let poleshifted = Mod.map2(fun s rp -> rp + s)  s poleRef
+      let poletranslation = Mod.map(fun a -> Trafo3d.Translation(a)) poleshifted
+
+      let poleSphere = 
+           Sg.sphere 5 (Mod.constant C4b.Blue) (Mod.constant 0.05)
+            |> Sg.noEvents
+            |> Sg.effect [ 
+                    toEffect Shader.stableTrafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+            |> Sg.trafo poletranslation
+
+      //let v = Mod.map(fun (vec:V3d) -> vec.Normalized) refTr
+    
+
+      let sphere = Sphere3d(V3d.OOO, 1.0)
+      let transl = m.rover.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
+      let rot = m.rover.up |> Mod.map(fun u -> Trafo3d.RotateInto(V3d.OIO, u))
+      let rot2 = forw |> Mod.map(fun r -> Trafo3d.RotateInto(V3d.OOI, r))
+      let trafo1 = Mod.map2 (fun r1 r2 -> r1*r2)  rot rot2
+      let rovertrafo = Mod.map2(fun t r -> r * t) transl trafo1
+      let geom = IndexedGeometryPrimitives.Sphere.wireframePhiThetaSphere sphere 5 C4b.Cyan
+      let rov = 
+           geom
+            |> Sg.ofIndexedGeometry
+            |> Sg.trafo transl
+            |> Sg.uniform "Color" (Mod.constant C4b.Cyan)
+            |> Sg.effect [
+                toEffect DefaultSurfaces.stableTrafo
+                toEffect DefaultSurfaces.sgColor
+            ]
+          
+           //Sg.unitSphere 5 (Mod.constant C4b.Cyan)//Sg.sphere 5 (Mod.constant C4b.Cyan) (Mod.constant 1.0)
+            //|> Sg.noEvents
+            //|> Sg.effect [ 
+            //        toEffect Shader.stableTrafo
+            //        toEffect DefaultSurfaces.vertexColor
+            //        ]
+            //|> Sg.trafo rovertrafo
       
       
       let projTrafo1 = m.rover.projPoint1 |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
       let projection1 = 
-          Sg.sphere 5 (Mod.constant C4b.Yellow) (Mod.constant 0.1)
+          Sg.sphere 5 (Mod.constant C4b.Yellow) (Mod.constant 0.05)
             |> Sg.noEvents
             |> Sg.effect [ 
                     toEffect Shader.stableTrafo
@@ -220,7 +350,7 @@ module App =
       
       let projTrafo2 = m.rover.projPoint2 |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
       let projection2 = 
-          Sg.sphere 5 (Mod.constant C4b.Yellow) (Mod.constant 0.1)
+          Sg.sphere 5 (Mod.constant C4b.Yellow) (Mod.constant 0.05)
             |> Sg.noEvents
             |> Sg.effect [ 
                     toEffect Shader.stableTrafo
@@ -228,24 +358,7 @@ module App =
                     ]
             |> Sg.trafo projTrafo2
 
-       
-      //point on sphere where theta = phi = 0
-      let xCartesian = 1
-      let yCartesian = 0
-      let zCartesian = 0
-      let ref = V3d(xCartesian, yCartesian, zCartesian) 
-      let s = m.rover.position
-      let refTr = s|> Mod.map(fun s -> ref + s) 
-      let refTrafo = refTr|> Mod.map(fun a -> Trafo3d.Translation(a))
-
-      let refSphere = 
-           Sg.sphere 5 (Mod.constant C4b.DarkMagenta) (Mod.constant 0.1)
-            |> Sg.noEvents
-            |> Sg.effect [ 
-                    toEffect Shader.stableTrafo
-                    toEffect DefaultSurfaces.vertexColor
-                    ]
-            |> Sg.trafo refTrafo
+      
       
 
       let targettrafo = m.rover.target |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
@@ -731,19 +844,21 @@ module App =
           //line1
           //line2
           //ROIbox
-          LBF|> Sg.dynamic
-          RBF|> Sg.dynamic
-          LTF|> Sg.dynamic
-          RTF|> Sg.dynamic
-          LBB|> Sg.dynamic
-          RBB|> Sg.dynamic
-          LTB|> Sg.dynamic
-          RTB|> Sg.dynamic
-          line
+          //LBF|> Sg.dynamic
+          //RBF|> Sg.dynamic
+          //LTF|> Sg.dynamic
+          //RTF|> Sg.dynamic
+          //LBB|> Sg.dynamic
+          //RBB|> Sg.dynamic
+          //LTB|> Sg.dynamic
+          //RTB|> Sg.dynamic
+          //line
 
-          projection1
-          projection2
+          //projection1
+          //projection2
           refSphere
+          poleSphere
+          points |> Sg.dynamic
         ] |> Sg.ofList
     
       let roverCamScene = 

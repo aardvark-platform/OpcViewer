@@ -44,10 +44,12 @@ module RoverApp =
         let x = position.X
         let y = position.Y
         let z = position.Z
-        let theta = atan2 y x
-        let phi = atan2  z (sqrt((pown x 2)+(pown y 2)))
-        //let theta = atan(y/x)
-        //let phi = atan(z / (sqrt((pown x 2)+(pown y 2))))
+   
+
+        let theta = atan(y/x)
+        let phi = atan2 z (sqrt((pown x 2)+(pown y 2)))
+
+
 
         V2d(theta,phi)
 
@@ -56,38 +58,53 @@ module RoverApp =
     //points: in world space
     let calcPanTiltValues (m:RoverModel) (points:List<V3d>) (cam:CameraView) =
         
+        let forward = m.camera.view.Forward
+        let rotTrafo = Trafo3d.RotateInto(V3d.OOI, m.up)
+        //let rotTrafo = Trafo3d.RotateInto( m.up, V3d.OOI)
         //project points onto projection sphere
-        let spherePos = m.projsphere.position// |> cam.ViewTrafo.Forward.TransformPos //spherepos in view space
-        //let pointsVS = points  |> List.map (fun p -> cam.ViewTrafo.Forward.TransformPos p) //points in view space
+        let spherePos = m.projsphere.position
+    
+        //rotated points
+        //let rotatedSpherePos = rotTrafo.Forward.TransformPos spherePos
+        //let rotatedPoints = points  |> List.map (fun p -> rotTrafo.Forward.TransformPos p)
+        //let shiftedPoints = rotatedPoints  |> List.map (fun p -> (p - rotatedSpherePos).Normalized)
+        
+        //normal points
         let shiftedPoints = points  |> List.map (fun p -> (p - spherePos).Normalized)
+        let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotTrafo.Forward.TransformPos p)
 
         //calculate theta and phi for coordinates
         //test for the first point in the list
 
-        let listOfAngles = shiftedPoints |> List.map(fun pos -> calcThetaPhi pos)
+        let listOfAngles = rotatedPoints |> List.map(fun pos -> calcThetaPhi pos)
         //debuging
         for p in listOfAngles do
             printfn "theta phi %A %A"  (p.X* Constant.DegreesPerRadian) (p.Y* Constant.DegreesPerRadian) 
         
-        let index = shiftedPoints.Length - 1 
-        let first = shiftedPoints.Item (0)
-        let second = shiftedPoints.Item(1)
+        //let index = shiftedPoints.Length - 1 
+        let first = rotatedPoints.Item (0)
+        let second = rotatedPoints.Item(1)
         let projectionPoint1 = first + spherePos
         let projectionPoint2 = second + spherePos
         let x = first.X
         let y = first.Y
         let z = first.Z
-        let theta = atan2 y x
-        let phi = atan2  z (sqrt((pown x 2)+(pown y 2))) //atan(z / (sqrt((pown x 2)+(pown y 2))))
+        let theta = atan(y/x)
+        let phi = atan2 z (sqrt((pown x 2)+(pown y 2))) //acos(z/(first.Length))
+
 
         printfn "theta: %A" (theta * Constant.DegreesPerRadian)
         printfn "phi: %A" (phi * Constant.DegreesPerRadian)
+
+
+
 
         let panned = setPan m (theta* Constant.DegreesPerRadian)
         //let pannedRover = panning panned
         let r = panning panned
 
-        {r with projPoint1 = projectionPoint1; projPoint2 = projectionPoint2 }
+        let projectionPoints = shiftedPoints |> List.map (fun p -> p + spherePos) |> PList.ofList
+        {r with projPoint1 = projectionPoint1; projPoint2 = projectionPoint2; projPoints = projectionPoints }
         //let tilted = setTilt pannedRover (phi* Constant.DegreesPerRadian)
         //tilting tilted
         //let rotTrafo = Trafo3d.Rotation(theta, phi, 0.0)
