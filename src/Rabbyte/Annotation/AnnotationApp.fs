@@ -19,9 +19,36 @@ module AnnotationApp =
 
     let update (model : AnnotationModel) (act : AnnotationAction) =
         match act with
-        | AddDrawing brush -> 
-            { model with finishedDrawings = (model.finishedDrawings |> PList.prepend brush)}
-        | _ -> model
+        | AddAnnotation drawingModel -> 
+            let annotation = AnnotationModel.convertDrawingToAnnotation drawingModel
+            let updatedAnnotation = model.annotations |> PList.prepend annotation
+            
+            let updatedAnnotationsFilledPolygon = 
+                match drawingModel.primitiveType with
+                    | Polygon -> 
+                        model.annotationsGrouped 
+                            |> HMap.alter annotation.style.primary.c (fun x -> 
+                                match x with 
+                                    | Some y -> Some (y |> PList.prepend annotation)
+                                    | None -> Some (PList.single annotation))    
+                    | _ -> model.annotationsGrouped
 
-    let view (model : MAnnotationModel) = 
-        model.finishedDrawings |> AList.map (fun x -> DrawingApp.view x) |> AList.toASet |> Sg.set
+            { model with annotations = updatedAnnotation; annotationsGrouped = updatedAnnotationsFilledPolygon }
+
+    let viewOutline (model: MAnnotationModel) = 
+        model |> AnnotationSg.drawAnnotationsOutline
+
+    let viewGrouped (model : MAnnotationModel) = 
+        [
+            model |> AnnotationSg.drawAnnotationsFilledGrouped
+            model |> AnnotationSg.drawAnnotationsOutline
+        ] |> Sg.ofList
+
+    let viewSeq (model : MAnnotationModel) =
+        [
+            model |> AnnotationSg.drawAnnotationsFilledSeq
+            model |> AnnotationSg.drawAnnotationsOutline
+        ] |> Sg.ofList
+
+    let viewGUI (model : MAnnotationModel) =
+        failwith "TODO"

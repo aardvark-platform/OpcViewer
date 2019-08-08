@@ -399,7 +399,7 @@ module App =
           pickingActive      = false
           opcInfos           = opcInfos
           pickingModel       = { PickingModel.initial with pickingInfos = opcInfos }
-          drawing            = DrawingModel.inital
+          drawing            = DrawingModel.initial
           pickedPoint        = None
           planePoints        = setPlaneForPicking
           rover              = { RoverModel.initial with up = box.Center.Normalized; camera = roverinitialCamera; position = box.Center}

@@ -16,16 +16,19 @@ open FShade.Primitives
 
 module DrawingApp =
 
-    let private helperFinishState model close = 
-        let status = 
+    let private finalPrimitiveType close model  = 
+        let primitiveType = 
             match model.points |> PList.count, close with
-                | 0, _ -> PrimitiveStatus.Empty
-                | 1, _ -> PrimitiveStatus.Point
-                | 2, _ -> PrimitiveStatus.Line
-                | _, false -> PrimitiveStatus.PolyLine
-                | _, true -> PrimitiveStatus.Polygon
+                | 0, _ -> PrimitiveType.Empty
+                | 1, _ -> PrimitiveType.Point
+                | 2, _ -> PrimitiveType.Line
+                | _, false -> PrimitiveType.PolyLine
+                | _, true -> PrimitiveType.Polygon
 
-        { model with status = status}
+        { model with primitiveType = primitiveType}
+
+    let private syncPrimType model =
+        finalPrimitiveType false model
 
     let private createSecondaryColor (c : C4b) : C4b = 
     
@@ -74,7 +77,7 @@ module DrawingApp =
         | AddPoint (p, hitF) -> 
             match model.points |> PList.isEmpty with
                 | true -> 
-                    { model with points = model.points |> PList.prepend p; status = InProgress; past = Some model}
+                    syncPrimType { model with points = model.points |> PList.prepend p; past = Some model}
                 | false ->
                     let startP = p
                     let endP = model.points |> PList.first 
@@ -97,24 +100,26 @@ module DrawingApp =
                         endPoint = endP
                         points = segPoints
                     }
-                    { model with points = model.points |> PList.prepend p; segments = model.segments |> PList.prepend segment; status = InProgress; past = Some model}
+                    syncPrimType { model with points = model.points |> PList.prepend p; segments = model.segments |> PList.prepend segment; past = Some model}
         | RemoveLastPoint ->
             match model.points |> PList.count with
             | 0 -> model
-            | 1 -> { model with points = model.points |> PList.skip 1; status = PrimitiveStatus.Empty; past = Some model}
-            | _ -> { model with points = model.points |> PList.skip 1; segments = model.segments |> PList.skip 1; past = Some model }
+            | 1 -> syncPrimType { model with points = model.points |> PList.skip 1; past = Some model}
+            | _ -> syncPrimType { model with points = model.points |> PList.skip 1; segments = model.segments |> PList.skip 1; past = Some model }
         | DrawingAction.Clear -> 
-            { model with points = PList.empty; segments = PList.empty; status = PrimitiveStatus.Empty; past = Some model}
+            syncPrimType { model with points = PList.empty; segments = PList.empty; past = Some model}
         | Finish -> 
-            let m = helperFinishState model false
+            let m = finalPrimitiveType false model 
             { m with past = Some model}
         | FinishClose hitF -> 
-            let m = helperFinishState model true
-            match m.status with
-                | Polygon -> 
-                    let newM = update m (AddPoint ((model.points |> PList.last), hitF))
-                    { newM with past = Some model}
-                | _ -> { model with past = Some model}
+            //let m = finalPrimitiveType true model 
+            match model.primitiveType with
+                | PolyLine -> 
+                    let newM = update model (AddPoint ((model.points |> PList.last), hitF))
+                    let updateType = finalPrimitiveType true newM
+                    // TODO -> FIX WINDING ORDER FOR GROUPED ANNOTATIONS!
+                    { updateType with past = Some model }
+                | _ -> { model with past = Some model }
 
     let view (model : MDrawingModel) =  
         let vertices = drawVertices model
@@ -134,16 +139,15 @@ module DrawingApp =
                 //]
                 table [clazz "item"] [
                     tr[][
-                        td[style style'][text "Status:"]
+                        td[style style'][text "Type:"]
                         td[style style'][
-                            Incremental.text (model.status |> Mod.map (fun x -> 
+                            Incremental.text (model.primitiveType |> Mod.map (fun x -> 
                                 match x with
-                                    | PrimitiveStatus.InProgress -> "InProgress"
-                                    | PrimitiveStatus.Empty -> "Empty"
-                                    | PrimitiveStatus.Point -> "Point"
-                                    | PrimitiveStatus.Line -> "Line"
-                                    | PrimitiveStatus.PolyLine -> "PolyLine"
-                                    | PrimitiveStatus.Polygon -> "Polygon"    
+                                    | PrimitiveType.Empty -> "Empty"
+                                    | PrimitiveType.Point -> "Point"
+                                    | PrimitiveType.Line -> "Line"
+                                    | PrimitiveType.PolyLine -> "PolyLine"
+                                    | PrimitiveType.Polygon -> "Polygon"    
                                 ))]
                     ]
                     tr[][

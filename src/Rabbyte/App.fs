@@ -9,10 +9,11 @@ open Aardvark.SceneGraph
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
+open Aardvark.Geometry
 
 open SimpleDrawingModel
 open Rabbyte.Drawing
-open Aardvark.Geometry
+open Rabbyte.Annotation
 
 type Action =
     | CameraMessage of ArcBallController.Message
@@ -21,32 +22,41 @@ type Action =
     | KeyUp         of key : Keys
     | Exit  
     | UpdateDrawing of DrawingAction
+    | UpdateAnnotation of AnnotationAction
 
 let update (model : SimpleDrawingModel) (act : Action) =
 
     let drawingUpdate (model : SimpleDrawingModel) (act : DrawingAction) = 
        { model with drawing = DrawingApp.update model.drawing act }
 
-    match act, model.draw with
+    match act, model.drawingEnabled with
         | CameraMessage m, false -> 
             { model with camera = ArcBallController.update model.camera m }
         | KeyUp Keys.LeftCtrl, _ -> 
-            { model with draw = false; hoverPosition = None }
+            { model with drawingEnabled = false; hoverPosition = None }
         | KeyDown k, _ -> 
             match k with 
-            | Keys.LeftCtrl -> { model with draw = true }
+            | Keys.LeftCtrl -> { model with drawingEnabled = true }
             | Keys.Z -> drawingUpdate model DrawingAction.Undo
             | Keys.Y -> drawingUpdate model DrawingAction.Redo
             | Keys.Back -> drawingUpdate model DrawingAction.RemoveLastPoint
             | Keys.Delete -> drawingUpdate model DrawingAction.Clear
-            | Keys.F -> drawingUpdate model (DrawingAction.FinishClose None) // TODO add dummy-hitF
-            | Keys.Enter -> drawingUpdate model DrawingAction.Finish
+            | Keys.F -> 
+                let finished = drawingUpdate model (DrawingAction.FinishClose None) // TODO add dummy-hitF
+                let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation finished.drawing)
+                { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+            | Keys.Enter -> 
+                let finished = drawingUpdate model DrawingAction.Finish
+                let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation finished.drawing)
+                { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
             | _ -> model
         | Move p, true -> { model with hoverPosition = Some (Trafo3d.Translation p) }
         | UpdateDrawing a, _ -> 
             match a with
-            | DrawingAction.AddPoint _ -> if model.draw then drawingUpdate model a else model
+            | DrawingAction.AddPoint _ -> if model.drawingEnabled then drawingUpdate model a else model
             | _ -> drawingUpdate model a
+        | UpdateAnnotation a, _ ->
+            { model with annotations = AnnotationApp.update model.annotations a }
         | Exit, _ -> { model with hoverPosition = None }
         | _ -> model
   
@@ -110,8 +120,9 @@ let scene3D (model : MSimpleDrawingModel) =
     let cursor = cursorSg C4b.Red 0.05 cursorTrafo
         
     let drawingApp = DrawingApp.view model.drawing
+    let annotationApp = AnnotationApp.viewGrouped model.annotations
         
-    [testScene; cursor; drawingApp]
+    [testScene; cursor; drawingApp; annotationApp]
         |> Sg.ofList
         |> Sg.fillMode (Mod.constant(FillMode.Fill))
         |> Sg.cullMode (Mod.constant(CullMode.None))
@@ -138,8 +149,9 @@ let initial =
     {
         camera        = { ArcBallController.initial with view = CameraView.lookAt (6.0 * V3d.OIO) V3d.Zero V3d.OOI}
         hoverPosition = None
-        draw = false
-        drawing = DrawingModel.inital
+        drawingEnabled = false
+        drawing = DrawingModel.initial
+        annotations = AnnotationModel.initial
     }
 
 let app =

@@ -15,6 +15,7 @@
     <Compile Include="Drawing\Drawing.Sg.fs" />
     <Compile Include="Drawing\DrawingApp.fs" />
     <Compile Include="Annotation\AnnotationModel.fs" />
+    <Compile Include="Annotation\AnnotationSg.fs" />
     <Compile Include="Annotation\AnnotationApp.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />

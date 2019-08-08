@@ -20,9 +20,10 @@ type Annotation = {
     //projection  : Projection // Pro3D
     //semantic    : Semantic   // Pro3D
 
-    points      : plist<V3d>
-    segments    : plist<Segment>
-    style       : BrushStyle
+    points          : plist<V3d>
+    segments        : plist<Segment>
+    style           : BrushStyle
+    primitiveType   : PrimitiveType // similar to Geometry of Pro3D
 
     //color       : ColorInput       // use Style...
     //thickness   : NumericInput     // use Style...
@@ -46,13 +47,14 @@ type Annotation = {
 
 [<DomainType>]
 type AnnotationModel = {
-    finishedDrawings : plist<DrawingModel>
+    annotations : plist<Annotation>
+    annotationsGrouped : hmap<C4b, plist<Annotation>>
 }
 
 type AnnotationAction = 
-    | AddDrawing of DrawingModel
-    | RemoveDrawing of DrawingModel
-    | EditDrawing of DrawingModel
+    | AddAnnotation of DrawingModel
+    //| RemoveDrawing of DrawingModel
+    //| EditDrawing of DrawingModel
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module AnnotationModel = 
@@ -62,6 +64,7 @@ module AnnotationModel =
             version     = Annotation.current
             key         = Guid.NewGuid()
             modelTrafo  = Trafo3d.Identity
+            primitiveType = PrimitiveType.Empty
             //geometry    = geometry
             //semantic    = Semantic.None
             points      = plist.Empty
@@ -89,17 +92,20 @@ module AnnotationModel =
                 points = drawingModel.points
                 segments = drawingModel.segments
                 style = drawingModel.style
+                primitiveType = drawingModel.primitiveType
         }
 
     let convertAnnotationToDrawing (annotation:Annotation) =
         { 
-            DrawingModel.inital with
+            DrawingModel.initial with
                 style = annotation.style
                 points = annotation.points
                 segments = annotation.segments
+                primitiveType = annotation.primitiveType
         }        
 
     let initial =  
         {
-            finishedDrawings = plist.Empty
+            annotations = plist.Empty
+            annotationsGrouped = hmap.Empty
         }

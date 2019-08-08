@@ -17,9 +17,8 @@ type AreaStyle =
     | Filled
     | Empty
 
-type PrimitiveStatus = 
+type PrimitiveType = 
     | Empty
-    | InProgress
     | Point
     | Line
     | PolyLine
@@ -59,7 +58,7 @@ type DrawingModel = {
     past            : Option<DrawingModel>
     [<TreatAsValue>]
     future          : Option<DrawingModel>
-    status          : PrimitiveStatus
+    primitiveType          : PrimitiveType
     areaStyleNames  : hmap<AreaStyle, string>
     lineStyleNames  : hmap<LineStyle, string>
     
@@ -101,14 +100,14 @@ module DrawingModel =
             samplingRate = 0.2
         }
 
-    let inital = {                 
+    let initial = {                 
         style           = defaultStyle
         points          = plist.Empty
         segments        = plist.Empty
         segmentCreation = NoSegement
         past            = None
         future          = None
-        status          = PrimitiveStatus.Empty
+        primitiveType   = PrimitiveType.Empty
         areaStyleNames = HMap.ofList [Pattern, "Pattern"; Filled, "Filled"; AreaStyle.Empty, "Empty";]
         lineStyleNames = HMap.ofList [Solid, "Solid"; Dashed, "Dashed"]
     }

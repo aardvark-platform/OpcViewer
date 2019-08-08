@@ -10,6 +10,7 @@
     <OutputPath>..\..\bin\Debug</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="PlaneFitting.fs" />
     <Compile Include="KdTrees.fs" />
     <Compile Include="Shaders.fs" />
     <Compile Include="Picking\Picking-Model.fs" />

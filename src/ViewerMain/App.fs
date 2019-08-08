@@ -23,6 +23,7 @@ open OpcViewer.Base
 open OpcViewer.Base.Picking
 open OpcViewer.Base.Attributes
 open Rabbyte.Drawing
+open Rabbyte.Annotation
 
 module App =   
   open Aardvark.Application
@@ -80,16 +81,20 @@ module App =
             model.cameraState.view |> toCameraStateLean |> Serialization.save ".\camstate" |> ignore
             model
           | Keys.Enter ->
-            let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
-            let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) // TODO...add hitFunc
-            let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
-            { model with axis = axis; drawing = updatedDrawing }
-          | Keys.T ->
-            let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
-            //let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
-            let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.Finish) // TEST
-            let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
-            { model with axis = axis; drawing = updatedDrawing }
+            //let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
+            //let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) // TODO...add hitFunc
+            //let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
+            //{ model with axis = axis; drawing = updatedDrawing }
+
+            let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
+            let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation finished.drawing)
+            { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+          //| Keys.T ->
+          //  let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
+          //  //let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
+          //  let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.Finish) // TEST
+          //  let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
+          //  { model with axis = axis; drawing = updatedDrawing }
           | _ -> model
       | PickingAction msg -> 
         // TODO...refactor this!
@@ -116,6 +121,8 @@ module App =
             {model with opcAttributes = SurfaceAttributes.update model.opcAttributes msg }
       | DrawingAction msg -> 
             { model with drawing = DrawingApp.update model.drawing msg }
+      | AnnotationAction msg -> 
+            { model with annotations = AnnotationApp.update model.annotations msg }
       | _ -> model
                     
   let view (m : MModel) =
@@ -145,6 +152,7 @@ module App =
           opcs
           axis
           DrawingApp.view m.drawing
+          AnnotationApp.viewGrouped m.annotations
         ] |> Sg.ofList
 
       let textOverlays (cv : IMod<CameraView>) = 
@@ -319,7 +327,8 @@ module App =
           dockConfig         = initialDockConfig       
           
           opcAttributes      = SurfaceAttributes.initModel dir
-          drawing            = DrawingModel.inital
+          drawing            = DrawingModel.initial
+          annotations        = AnnotationModel.initial
         }
 
       {
