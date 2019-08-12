@@ -263,22 +263,62 @@ module App =
         //    ]
         
         
+      
+      let rotateIntoCoordinateSystem (vector:V3d) = 
+        
+        let pos = m.rover.position
+        let target = m.rover.target
+        let up = m.rover.up
 
+        let forward = Mod.map2(fun (p:V3d) (t:V3d) -> ((t - p).Normalized)) pos target
+        let right = Mod.map2(fun (f:V3d) (u:V3d) -> ((f.Cross(u)).Normalized)) forward up
+        let rotZ = up |> Mod.map(fun u -> Trafo3d.RotateInto(V3d.OOI,u))
+        let rotY = Mod.map(fun (r:V3d) -> Trafo3d.RotateInto(V3d.OIO,r))right
+        let rotX = Mod.map(fun (f:V3d) -> Trafo3d.RotateInto(V3d.IOO,f))forward
+
+        //order z y x
+        let rotatedByZ = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos vector)rotZ
+        let rotatedByY = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotY rotatedByZ
+        let rotatedFinal = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotX rotatedByY
+
+        //order z x y
+        //let rotatedByZ = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos vector)rotZ
+        //let rotatedByX = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotX rotatedByZ
+        //let rotatedFinal = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotY rotatedByX
+
+        //order x y z
+        //let rotatedByX = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos vector)rotX
+        //let rotatedByY = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotY rotatedByX
+        //let rotatedFinal = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotZ rotatedByY
+
+        //order x z y
+        //let rotatedByX = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos vector)rotX
+        //let rotatedByZ = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotZ rotatedByX
+        //let rotatedFinal = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotY rotatedByZ
+
+        ////order y x z
+        //let rotatedByY = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos vector)rotY
+        //let rotatedByX = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotX rotatedByY
+        //let rotatedFinal = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotZ rotatedByX
+
+        //order y z x
+        //let rotatedByY = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos vector)rotY
+        //let rotatedByZ = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotZ rotatedByY
+        //let rotatedFinal = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotX rotatedByZ
+
+        rotatedFinal
 
         
-      //point on sphere where theta = 90 phi = 0
-      let forw = Mod.map2(fun (p:V3d) (t:V3d) -> ((t - p).Normalized))m.rover.position m.rover.target
-      let rot = m.rover.up |> Mod.map(fun u -> Trafo3d.RotateInto(V3d.OOI, u))
-      let xCartesian = cos(90.0)
-      let yCartesian = sin(90.0)
-      let zCartesian = 0.0
+      //point on sphere where theta = 90 phi = 90
+      let xCartesian = cos(90.0)*sin(90.0)
+      let yCartesian = sin(90.0)*sin(90.0)
+      let zCartesian = cos(90.0)
       let ref = V3d(xCartesian, yCartesian, zCartesian) 
       let s = m.rover.position
-      //let rotatedS = Mod.map2(fun (r:Trafo3d) (s:V3d) -> r.Forward.TransformPos s)rot s
-      let rotatedRef = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos ref)rot
-      let shifted = Mod.map2(fun s rp -> rp + s)  s rotatedRef
+
+      ///let rotated = rotateIntoCoordinateSystem ref
+      let shifted = Mod.map(fun s  -> ref + s) s 
       let translation = Mod.map(fun a -> Trafo3d.Translation(a)) shifted
-      //let refTrafo = Mod.map2(fun t r -> r*t) translation rot
 
       let refSphere = 
            Sg.sphere 5 (Mod.constant C4b.Green) (Mod.constant 0.05)
@@ -291,13 +331,13 @@ module App =
       
       //
      
-     //point on sphere where theta = 0 phi = 90
-      let xPole = cos(90.0)
-      let yPOle = 0.0
-      let zPole = sin(90.0)
-      let pole = V3d(xPole, yPOle, zPole) 
-      let poleRef = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos pole)rot
-      let poleshifted = Mod.map2(fun s rp -> rp + s)  s poleRef
+     //point on sphere where theta = 90 phi = 180
+      let xPole = cos(90.0)*sin(180.0)
+      let yPole = sin(90.0)*sin(180.0)
+      let zPole = cos(180.0)
+      let pole = V3d(xPole, yPole, zPole) 
+      //let poleRef = rotateIntoCoordinateSystem pole
+      let poleshifted = Mod.map(fun s  -> pole + s)  s 
       let poletranslation = Mod.map(fun a -> Trafo3d.Translation(a)) poleshifted
 
       let poleSphere = 
@@ -308,36 +348,196 @@ module App =
                     toEffect DefaultSurfaces.vertexColor
                     ]
             |> Sg.trafo poletranslation
-
-      //let v = Mod.map(fun (vec:V3d) -> vec.Normalized) refTr
     
+      
+      //point on sphere where theta 0 = phi = 90
+      let xF = sin(90.0)
+      let yF = 0.0
+      let zF = cos(90.0)
+      let pointZero = V3d(xF, yF, zF)
+      //let pZRef = rotateIntoCoordinateSystem pointZero
+      let pZShifted = Mod.map(fun s -> pointZero + s)  s 
+      let pZTranslation = Mod.map(fun a -> Trafo3d.Translation(a)) pZShifted
 
-      let sphere = Sphere3d(V3d.OOO, 1.0)
+      let pointZeroSphere = 
+           Sg.sphere 5 (Mod.constant C4b.Magenta) (Mod.constant 0.05)
+            |> Sg.noEvents
+            |> Sg.effect [ 
+                    toEffect Shader.stableTrafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+            |> Sg.trafo pZTranslation
+      
+
+
+
+      //let sphere = Sphere3d(V3d.OOO, 1.0)
       let transl = m.rover.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
-      let rot = m.rover.up |> Mod.map(fun u -> Trafo3d.RotateInto(V3d.OIO, u))
-      let rot2 = forw |> Mod.map(fun r -> Trafo3d.RotateInto(V3d.OOI, r))
-      let trafo1 = Mod.map2 (fun r1 r2 -> r1*r2)  rot rot2
-      let rovertrafo = Mod.map2(fun t r -> r * t) transl trafo1
-      let geom = IndexedGeometryPrimitives.Sphere.wireframePhiThetaSphere sphere 5 C4b.Cyan
+      //let rot = m.rover.up |> Mod.map(fun u -> Trafo3d.RotateInto(V3d.OIO, u))
+      //let rot2 = forw |> Mod.map(fun r -> Trafo3d.RotateInto(V3d.OOI, r))
+      //let trafo1 = Mod.map2 (fun r1 r2 -> r1*r2)  rot rot2
+      //let rovertrafo = Mod.map2(fun t r -> r * t) transl trafo1
+      //let geom = IndexedGeometryPrimitives.Sphere.wireframePhiThetaSphere sphere 5 C4b.Cyan
+      //let rov = 
+      //     geom
+      //      |> Sg.ofIndexedGeometry
+      //      |> Sg.trafo transl
+      //      |> Sg.uniform "Color" (Mod.constant C4b.Cyan)
+      //      |> Sg.effect [
+      //          toEffect DefaultSurfaces.stableTrafo
+      //          toEffect DefaultSurfaces.sgColor
+      //      ]
       let rov = 
-           geom
-            |> Sg.ofIndexedGeometry
+           Sg.sphere 5 (Mod.constant C4b.Yellow) (Mod.constant 0.1)
+            |> Sg.noEvents
+            |> Sg.effect [ 
+                    toEffect Shader.stableTrafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
             |> Sg.trafo transl
-            |> Sg.uniform "Color" (Mod.constant C4b.Cyan)
-            |> Sg.effect [
-                toEffect DefaultSurfaces.stableTrafo
-                toEffect DefaultSurfaces.sgColor
-            ]
           
-           //Sg.unitSphere 5 (Mod.constant C4b.Cyan)//Sg.sphere 5 (Mod.constant C4b.Cyan) (Mod.constant 1.0)
-            //|> Sg.noEvents
-            //|> Sg.effect [ 
-            //        toEffect Shader.stableTrafo
-            //        toEffect DefaultSurfaces.vertexColor
-            //        ]
-            //|> Sg.trafo rovertrafo
       
+      //draw all axis
+      let shiftVec = Mod.map(fun p -> Trafo3d.Translation(p)) m.rover.position
+
+      //up axis
+      let upAxis = 
+        alist {
+            let! p = m.rover.position
+            let! up = m.rover.up
+            let upP = p+(up * 2.0)
+
+
+            //shift the points
+            let shiftedPos = p - p
+            let shiftedUp = upP - p
+            yield shiftedPos
+            yield shiftedUp
+        }
+    
+      let upAxisLine = 
+        upAxis
+            |> AList.toMod
+            |> Mod.map (fun m -> 
+                let upArr = m |> PList.toArray
+                        
+                Sg.draw IndexedGeometryMode.LineList
+                |> Sg.trafo shiftVec
+                |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant upArr) 
+                |> Sg.uniform "Color" (Mod.constant C4b.Blue)
+                |> Sg.uniform "LineWidth" (Mod.constant 2.0)
+                |> Sg.effect [
+                    toEffect DefaultSurfaces.stableTrafo
+                    toEffect DefaultSurfaces.thickLine
+                    toEffect DefaultSurfaces.sgColor
+                        ]
+            )
+       
+      let up = upAxisLine|> Mod.map(fun cast -> (cast:ISg<PickingAction>))
+    
+      let forwardAxis = 
+         alist {
+            let! p = m.rover.position
+            let! t = m.rover.target
+            let tp = t
+            //shift points
+            let shiftedPos = p - p
+            let shiftedF = tp - p
+            yield shiftedPos
+            yield shiftedF
+        }
       
+      let forwardAxisLine = 
+        forwardAxis
+            |> AList.toMod
+            |> Mod.map (fun m -> 
+                let fArr = m |> PList.toArray
+                        
+                Sg.draw IndexedGeometryMode.LineList
+                |> Sg.trafo shiftVec
+                |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant fArr) 
+                |> Sg.uniform "Color" (Mod.constant C4b.Green)
+                |> Sg.uniform "LineWidth" (Mod.constant 2.0)
+                |> Sg.effect [
+                    toEffect DefaultSurfaces.stableTrafo
+                    toEffect DefaultSurfaces.thickLine
+                    toEffect DefaultSurfaces.sgColor
+                        ]
+            )
+      
+      let forward = forwardAxisLine|> Mod.map(fun cast -> (cast:ISg<PickingAction>))
+    
+      let rightAxis =
+       alist {
+            let! p = m.rover.position
+            let! up = m.rover.up
+            let! target = m.rover.target
+
+            let forw = (target-p).Normalized
+            let r = forw.Cross(up)
+            let rp = p+r
+            //shift
+            let shiftedPos = p-p
+            let shiftedR = rp - p
+            yield shiftedPos
+            yield shiftedR
+        }
+      
+      let rightAxisLine = 
+        rightAxis
+            |> AList.toMod
+            |> Mod.map (fun m -> 
+                let rArr = m |> PList.toArray
+                        
+                Sg.draw IndexedGeometryMode.LineList
+                |> Sg.trafo shiftVec
+                |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant rArr) 
+                |> Sg.uniform "Color" (Mod.constant C4b.White)
+                |> Sg.uniform "LineWidth" (Mod.constant 2.0)
+                |> Sg.effect [
+                    toEffect DefaultSurfaces.stableTrafo
+                    toEffect DefaultSurfaces.thickLine
+                    toEffect DefaultSurfaces.sgColor
+                        ]
+            )
+      
+      let right = rightAxisLine|> Mod.map(fun cast -> (cast:ISg<PickingAction>))
+      
+      //camera forward axis
+      let camForward = 
+         alist {
+            let! p = m.rover.position
+            let! view = m.rover.camera.view
+            let f = (view.Forward*2.0)
+            //shift points
+            let shiftedPos = p - p
+            let shiftedF = f - p
+            yield shiftedPos
+            yield (p+shiftedF)
+        }
+      
+      let camForwardLine = 
+        camForward
+            |> AList.toMod
+            |> Mod.map (fun m -> 
+                let fArr = m |> PList.toArray
+                        
+                Sg.draw IndexedGeometryMode.LineList
+                |> Sg.trafo shiftVec
+                |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant fArr) 
+                |> Sg.uniform "Color" (Mod.constant C4b.DarkGreen)
+                |> Sg.uniform "LineWidth" (Mod.constant 2.0)
+                |> Sg.effect [
+                    toEffect DefaultSurfaces.stableTrafo
+                    toEffect DefaultSurfaces.thickLine
+                    toEffect DefaultSurfaces.sgColor
+                        ]
+            )
+      
+      let camForw = camForwardLine|> Mod.map(fun cast -> (cast:ISg<PickingAction>))
+
+
+
       let projTrafo1 = m.rover.projPoint1 |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
       let projection1 = 
           Sg.sphere 5 (Mod.constant C4b.Yellow) (Mod.constant 0.05)
@@ -374,35 +574,7 @@ module App =
       
         
 
-      //let boxP1 = 
-      //  m.rover.boxP1 |> Mod.map(fun p -> 
-      
-      //      match p with
-      //          | Some p1 -> 
-      //              Sg.sphere 5 (Mod.constant C4b.DarkYellow) (Mod.constant 0.2)
-      //                  |> Sg.noEvents
-      //                  |> Sg.effect [ 
-      //                      toEffect Shader.stableTrafo
-      //                      toEffect DefaultSurfaces.vertexColor
-      //                              ]
-      //                  |> Sg.trafo (Mod.constant(Trafo3d.Translation(p1)))
-      //          | None -> Sg.empty
-      //  )
-
-      //let boxP2 = 
-      //  m.rover.boxP2 |> Mod.map(fun p -> 
-      
-      //      match p with
-      //          | Some p2 -> 
-      //              Sg.sphere 5 (Mod.constant C4b.DarkGreen) (Mod.constant 0.2)
-      //                  |> Sg.noEvents
-      //                  |> Sg.effect [ 
-      //                      toEffect Shader.stableTrafo
-      //                      toEffect DefaultSurfaces.vertexColor
-      //                              ]
-      //                  |> Sg.trafo (Mod.constant(Trafo3d.Translation(p2)))
-      //          | None -> Sg.empty
-      //  )
+     
      
 
       let vp = (RoverModel.getViewProj m.rover.camera.view m.rover.frustum)    
@@ -839,25 +1011,13 @@ module App =
           target
           frustumBox
           shading
-          //boxP1 |> Sg.dynamic
-          //boxP2 |> Sg.dynamic
-          //line1
-          //line2
-          //ROIbox
-          //LBF|> Sg.dynamic
-          //RBF|> Sg.dynamic
-          //LTF|> Sg.dynamic
-          //RTF|> Sg.dynamic
-          //LBB|> Sg.dynamic
-          //RBB|> Sg.dynamic
-          //LTB|> Sg.dynamic
-          //RTB|> Sg.dynamic
-          //line
-
-          //projection1
-          //projection2
-          refSphere
-          poleSphere
+          up |> Sg.dynamic
+          forward |> Sg.dynamic
+          right |> Sg.dynamic
+          camForw |> Sg.dynamic
+          //refSphere
+          //poleSphere
+          //pointZeroSphere
           points |> Sg.dynamic
         ] |> Sg.ofList
     
@@ -953,8 +1113,8 @@ module App =
                 //p[][text "Press R to place rover at picked point"]
                 //p[][text "Press L to select picked point as rover target"]
                 p[][Incremental.text (m.rover.position |> Mod.map (fun f -> f.ToString())) ]
-                p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
-                p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = -90.0; max = 90.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
+                p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = 0.0; max = 360.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
+                p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
                 p[][div[][text "Select Camera: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
                 
                 //button [onClick (fun _ -> RoverAction.MoveToRegion (m.region |> AList.toPList))] [text "Move to region"] |> UI.map RoverAction

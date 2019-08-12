@@ -25,6 +25,12 @@ module RoverApp =
         let newView = CameraView.look m.position targetWithTilt m.camera.view.Up
         {m with camera =  {m.camera with view = newView} }
 
+   
+    let initializeTilt (m:RoverModel) (value:float) = 
+        {m with tilt = {m.tilt with previous = value; current = value}}
+    
+    let initializePan (m:RoverModel) (value:float) = 
+        {m with pan = {m.pan with previous = value; current = value}}
 
     let setPan(m:RoverModel) (value:float) =
         let dt = m.pan.previous - value
@@ -39,17 +45,59 @@ module RoverApp =
         let curr = value
         {m with tilt = {m.tilt with delta = dt; previous = prev; current = curr}}
     
+
+    let calcTheta (x:float) (y:float) =
+       
+       
+        let v = Math.Atan(y/x)
+        
+        let absV = Math.Abs(v)
+        let absVinDegree = absV * Constant.DegreesPerRadian
+        let signX = Math.Sign(x)
+        let signY = Math.Sign(y)
+
+        match signX,signY with
+            | 1,1 -> v
+            | -1,1 -> (180.0 - absVinDegree)
+            | -1, -1 -> (absVinDegree + 180.0)
+            | 1,-1 -> (360.0 - absVinDegree)
+            | _ -> v
+
+       
+
+
+    
+    let rotateIntoCoordinateSystem (m:RoverModel) (vector:V3d) = 
+        
+        let pos = m.position
+        let target = m.target
+        let up = m.up
+
+        let forward = (target - pos).Normalized
+        let right = (forward.Cross(up)).Normalized
+        let rotZ = Trafo3d.RotateInto(V3d.OOI,up)
+        let rotY = Trafo3d.RotateInto(V3d.OIO,right)
+        let rotX = Trafo3d.RotateInto(V3d.IOO,forward)
+
+        //order z y x
+        let rotatedByZ = rotZ.Forward.TransformPos vector
+        let rotatedByY = rotY.Forward.TransformPos rotatedByZ
+        let rotatedFinal = rotX.Forward.TransformPos rotatedByY
+
+        rotatedFinal
+
+
     let calcThetaPhi (position:V3d) =
         
         let x = position.X
         let y = position.Y
         let z = position.Z
    
+        //quadrant
+        let theta = calcTheta x y 
 
-        let theta = atan(y/x)
-        let phi = atan2 z (sqrt((pown x 2)+(pown y 2)))
-
-
+        //let theta = atan2 y x//atan(y/x)
+        let phi = acos(z)//atan2 z (sqrt((pown x 2)+(pown y 2)))
 
         V2d(theta,phi)
 
@@ -58,11 +106,11 @@ module RoverApp =
     //points: in world space
     let calcPanTiltValues (m:RoverModel) (points:List<V3d>) (cam:CameraView) =
         
-        let forward = m.camera.view.Forward
         let rotTrafo = Trafo3d.RotateInto(V3d.OOI, m.up)
         //let rotTrafo = Trafo3d.RotateInto( m.up, V3d.OOI)
         //project points onto projection sphere
         let spherePos = m.projsphere.position
+
     
         //rotated points
         //let rotatedSpherePos = rotTrafo.Forward.TransformPos spherePos
@@ -70,8 +118,20 @@ module RoverApp =
         //let shiftedPoints = rotatedPoints  |> List.map (fun p -> (p - rotatedSpherePos).Normalized)
         
         //normal points
-        let shiftedPoints = points  |> List.map (fun p -> (p - spherePos).Normalized)
-        let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotTrafo.Forward.TransformPos p)
+        let testPoint = m.target
+
+       
+        //add target point for testing
+        let l2 = [testPoint]
+        let testList = List.append points l2
+        let shiftedPoints = testList  |> List.map (fun p -> (p - spherePos).Normalized)
+        //let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotTrafo.Forward.TransformPos p)
+        let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotateIntoCoordinateSystem m p)
+
+        let r = rotatedPoints.Item(rotatedPoints.Length - 1)
+        let thetaOfPointonForwardVec = calcTheta r.X r.Y
+        let setR = initializePan m thetaOfPointonForwardVec
+        let setR2 = initializeTilt setR ((acos(r.Z))*Constant.DegreesPerRadian)
 
         //calculate theta and phi for coordinates
         //test for the first point in the list
@@ -79,7 +139,7 @@ module RoverApp =
         let listOfAngles = rotatedPoints |> List.map(fun pos -> calcThetaPhi pos)
         //debuging
         for p in listOfAngles do
-            printfn "theta phi %A %A"  (p.X* Constant.DegreesPerRadian) (p.Y* Constant.DegreesPerRadian) 
+            printfn "theta phi %A %A"  (p.X) (p.Y* Constant.DegreesPerRadian) 
         
         //let index = shiftedPoints.Length - 1 
         let first = rotatedPoints.Item (0)
@@ -89,22 +149,23 @@ module RoverApp =
         let x = first.X
         let y = first.Y
         let z = first.Z
-        let theta = atan(y/x)
-        let phi = atan2 z (sqrt((pown x 2)+(pown y 2))) //acos(z/(first.Length))
+        let theta = calcTheta x y
+        let phi = acos(z) //atan2 z (sqrt((pown x 2)+(pown y 2))) 
 
 
-        printfn "theta: %A" (theta * Constant.DegreesPerRadian)
+        printfn "theta: %A" theta
         printfn "phi: %A" (phi * Constant.DegreesPerRadian)
 
 
 
 
-        let panned = setPan m (theta* Constant.DegreesPerRadian)
-        //let pannedRover = panning panned
-        let r = panning panned
+        let panned = setPan setR2 (theta)
+        let pannedRover = panning panned
+        let tilted = setTilt pannedRover (phi* Constant.DegreesPerRadian)
+        let newR = tilting tilted
 
         let projectionPoints = shiftedPoints |> List.map (fun p -> p + spherePos) |> PList.ofList
-        {r with projPoint1 = projectionPoint1; projPoint2 = projectionPoint2; projPoints = projectionPoints }
+        {newR with projPoint1 = projectionPoint1; projPoint2 = projectionPoint2; projPoints = projectionPoints }
         //let tilted = setTilt pannedRover (phi* Constant.DegreesPerRadian)
         //tilting tilted
         //let rotTrafo = Trafo3d.Rotation(theta, phi, 0.0)
