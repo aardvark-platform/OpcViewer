@@ -13,6 +13,7 @@
     <Compile Include="PlaneFitting.fs" />
     <Compile Include="KdTrees.fs" />
     <Compile Include="Shaders.fs" />
+    <Compile Include="SgUtilities.fs" />
     <Compile Include="Picking\Picking-Model.fs" />
     <Compile Include="Picking\IntersectionController.fs" />
     <Compile Include="Picking\Picking.fs" />

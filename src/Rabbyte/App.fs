@@ -124,8 +124,8 @@ let scene3D (model : MSimpleDrawingModel) =
         
     [testScene; cursor; drawingApp; annotationApp]
     |> Sg.ofList
-    |> Sg.fillMode (Mod.constant(FillMode.Fill))
-    |> Sg.cullMode (Mod.constant(CullMode.None))
+    |> Sg.fillMode (Mod.constant FillMode.Fill)
+    |> Sg.cullMode (Mod.constant CullMode.None)
 
 let view (model : MSimpleDrawingModel) =            
     require (Html.semui) (

@@ -6,8 +6,6 @@ open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.UI
 
-open OpcViewer.Base
-
 module StencilAreaMasking =
 
     let private writeZFail =
@@ -48,16 +46,16 @@ module StencilAreaMasking =
         |> Sg.blendMode (Mod.constant BlendMode.Blend)
         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
 
-    let stencilArea (pass1:RenderPass) (pass2:RenderPass) (sg1:ISg<'a>) (sg2:ISg<'a>) : ISg<'a>=
+    let stencilArea (pass1:RenderPass) (pass2:RenderPass) sg1 sg2 =
         [
           maskSG pass1 sg1   // one pass by using EXT_stencil_two_side :)
           fillSG pass2 sg2
         ] |> Sg.ofList
 
-    let stencilArea' (pass1:RenderPass) (pass2:RenderPass) (sg:ISg<'a>) : ISg<'a>=
+    let stencilArea' (pass1:RenderPass) (pass2:RenderPass) sg=
         stencilArea pass1 pass2 sg sg
 
-    let stencilAreaGrouped (pass1:RenderPass) (pass2:RenderPass) (color:IMod<V4f>) (sg:ISg<'a>) : ISg<'a> =
+    let stencilAreaGrouped (pass1:RenderPass) (pass2:RenderPass) (color:IMod<V4f>) sg =
 
         let fullscreenSg =     
           Aardvark.SceneGraph.SgPrimitives.Sg.fullScreenQuad
@@ -68,6 +66,8 @@ module StencilAreaMasking =
         stencilArea pass1 pass2 sg fullscreenSg
 
 module ClippingVolume =
+    
+    open OpcViewer.Base
 
     let private createPlaneFittedExtrusionVolume (points:plist<V3d>) extrusionOffset = 
         let plane = PlaneFitting.planeFit points
@@ -218,7 +218,7 @@ module ClippingVolume =
         |> Mod.toASet 
         |> Sg.set
 
-    let drawClippingVolumeDebug clippingVolume : ISg<'a> = 
+    let drawClippingVolumeDebug clippingVolume = 
     
         let debugVolume =
             clippingVolume
@@ -242,64 +242,10 @@ module ClippingVolume =
         [ debugShadowVolume; debugShadowVolumeLines] |> Sg.ofList
 
 module AnnotationSg =
-    
+    open OpcViewer.Base
     open StencilAreaMasking
     open ClippingVolume
     open AnnotationModel
-
-    // TODO...move this helper func to OPCViewer.Base ?
-    let private colorAlpha (color:IMod<C4b>) (alpha:IMod<float>) = 
-        Mod.map2 (fun (c:C4b) a -> c.ToC4f() |> fun x -> C4f(x.R, x.G, x.B, float32 a).ToV4f()) color alpha
-
-    let private drawIndexedOutline (colorLine : IMod<C4b>) (colorPoint : IMod<C4b>) (pointSize : IMod<float>) (offset:IMod<float>) (width : IMod<float>) (points:alist<V3d>) =           
-        // Increase Precision
-        let shift = 
-            points
-            |> AList.toMod 
-            |> Mod.map (fun x -> x |> PList.tryAt 0 |> Option.defaultValue V3d.Zero)
-
-        let pointsF =
-            points 
-            |> AList.toMod 
-            |> Mod.map (fun x ->
-                let shift = x |> PList.tryAt 0 |> Option.defaultValue V3d.Zero
-                x |> PList.toSeq |> Seq.map (fun y -> V3f (y-shift)) |> Seq.toArray)
-
-        let indexArray = 
-            pointsF |> Mod.map (fun x -> ( Array.init (max 0 (x.Length * 2 - 1)) (fun a -> (a + 1)/ 2)))
-
-        let lines = 
-            Sg.draw IndexedGeometryMode.LineList
-            |> Sg.vertexAttribute DefaultSemantic.Positions pointsF 
-            |> Sg.index indexArray
-            |> Sg.uniform "Color" colorLine
-            |> Sg.uniform "LineWidth" width
-            |> Sg.uniform "depthOffset" offset    // WORKING? TODO...check
-            |> Sg.effect [
-                Shader.StableTrafo.Effect
-                Shader.ThickLineNew.Effect
-                toEffect DefaultSurfaces.sgColor
-            ]
-
-        let points = 
-            Sg.draw IndexedGeometryMode.PointList
-            |> Sg.vertexAttribute DefaultSemantic.Positions pointsF 
-            |> Sg.uniform "Color" colorPoint
-            |> Sg.uniform "PointSize" pointSize
-            |> Sg.uniform "depthOffset" offset // WORKING? TODO...check
-            |> Sg.effect [
-                Shader.StableTrafo.Effect
-                Shader.PointSprite.Effect
-                toEffect DefaultSurfaces.sgColor
-            ]
-
-        [ lines; points] |> Sg.ofSeq |> Sg.translate' shift
-
-    let drawAnnotationsOutline (model: MAnnotationModel) =
-        model.annotations 
-        |> AList.map (fun x -> drawIndexedOutline x.style.primary.c x.style.primary.c (Mod.constant(1.0)) (Mod.constant(0.001)) x.style.thickness x.points)
-        |> AList.toASet
-        |> Sg.set
 
     // grouped...fast -> alpha broken
     let drawAnnotationsFilledGrouped  (model: MAnnotationModel) =
@@ -309,7 +255,7 @@ module AnnotationSg =
 
         model.annotationsGrouped 
         |> AMap.map (fun groupColor annotations -> 
-            let colorAlpha = colorAlpha (Mod.constant groupColor) (Mod.constant 0.5)
+            let colorAlpha = SgUtilities.colorAlpha (Mod.constant groupColor) (Mod.constant 0.5)
             let groupedSg = 
                 annotations
                 |> AList.map (fun x -> clippingVolume colorAlpha model.extrusionOffset x.clippingVolume x.points)
@@ -342,7 +288,7 @@ module AnnotationSg =
 
         model.annotations 
         |> AList.map (fun x -> 
-            let colorAlpha = colorAlpha x.style.primary.c (Mod.constant 0.5)
+            let colorAlpha = SgUtilities.colorAlpha x.style.primary.c (Mod.constant 0.5)
             let sg = 
                 clippingVolume colorAlpha model.extrusionOffset x.clippingVolume x.points
                 |> Sg.effect [
