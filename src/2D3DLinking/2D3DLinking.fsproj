@@ -15,6 +15,5 @@
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
   </ItemGroup>
-  <ItemGroup />
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -25,7 +25,11 @@ open OpcViewer.Base
 open OpcViewer.Base.Picking
 open OpcViewer.Base.Attributes
 
+open Aardvark.VRVis.Opc
+
 module App = 
+  open Rabbyte.Drawing
+  open Rabbyte.Annotation
 
   let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
     let s' = cam.freeFlyConfig.moveSensitivity + incr
@@ -187,15 +191,19 @@ module App =
             model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camstate" |> ignore
             model
           | Keys.Enter ->
-            let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
-            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pointsOnAxisFunc)
+            let finished = { model with drawing = DrawingApp.update model.drawing DrawingAction.Finish } // TODO add dummy-hitF
+            let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
+            { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+          //| Keys.Enter ->
+          //  let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
+          //  let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pointsOnAxisFunc)
             
-            { model with picking = updatedPicking }
-          | Keys.T ->
-            let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
-            let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
+          //  { model with picking = updatedPicking }
+          //| Keys.T ->
+          //  let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
+          //  let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
             
-            { model with picking = updatedPicking }
+          //  { model with picking = updatedPicking }
           | Keys.B ->
             update model Message.AnimateCameraComplete
           | Keys.N ->
@@ -306,22 +314,51 @@ module App =
             orthographicPerspectiveAnimation model t
         else 
             model
+      
       | PickingAction msg -> 
-        let pickingModel =
+        // TODO...refactor this!
+        let pickingModel, drawingModel =
           match msg with
-          | HitSurface (a,b,_) -> 
-            
-              let axisNearstFunc = fun p -> p
-              PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
-              
-          | _ -> PickingApp.update model.picking msg
-        
+          | HitSurface (a,b) -> //,_) -> 
+            //match model.axis with
+            //| Some axis -> 
+            //  let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
+            //  PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
+            //| None -> PickingApp.update model.picking msg
+            let updatePickM = PickingApp.update model.picking (HitSurface (a,b))
+            let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
+            let updatedDrawM =
+                match lastPick with
+                | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
+                | None -> model.drawing
+            updatePickM, updatedDrawM
+          | _ -> PickingApp.update model.picking msg, model.drawing
+
         if model.jumpSelectionActive && not model.camViewAnimRunning then
             update { model with selectedJumpPosition = pickingModel.intersectionPoints.Item(0); jumpSelectionActive = false; inJumpedPosition = true } Message.AnimateCameraJump            
         else
-            { model with picking = pickingModel }
+            //{ model with picking = pickingModel }
+            { model with picking = pickingModel; drawing = drawingModel }
 
+      
+      //| PickingAction msg -> 
+      //  let pickingModel =
+      //    match msg with
+      //    | HitSurface (a,b) -> 
+            
+      //        let axisNearstFunc = fun p -> p
+      //        PickingApp.update model.picking (HitSurface (a,b))
+              
+      //    | _ -> PickingApp.update model.picking msg
         
+      //  if model.jumpSelectionActive && not model.camViewAnimRunning then
+      //      update { model with selectedJumpPosition = pickingModel.intersectionPoints.Item(0); jumpSelectionActive = false; inJumpedPosition = true } Message.AnimateCameraJump            
+      //  else
+      //      { model with picking = pickingModel }
+
+      | DrawingAction msg -> { model with drawing = DrawingApp.update model.drawing msg }
+      | AnnotationAction msg -> { model with annotations = AnnotationApp.update model.annotations msg}
+      
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | SetT t -> 
@@ -377,7 +414,9 @@ module App =
       let scene = 
         [
           opcs
-          PickingApp.view m.picking
+          //PickingApp.view m.picking
+          DrawingApp.view m.drawing
+          AnnotationApp.viewGrouped m.annotations
         ] |> Sg.ofList
           |> Sg.projTrafo projTrafo
         
@@ -429,13 +468,13 @@ module App =
                 h3[][text "NIOBE"]
                 p[][text "Hold Ctrl-Left to add Point"]
                 p[][text "Press Enter to close Polygon"]
-                p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.picking.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.picking.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useGrouping PickingAction.UseGrouping "Use Grouping"] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showOutline PickingAction.ShowOutline "Show Outline"] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showDetailOutline PickingAction.ShowOutlineDetail "Show Outline Detail"] |> UI.map PickingAction
-                p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
-                p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
+                //p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.picking.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.picking.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
+                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
+                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useGrouping PickingAction.UseGrouping "Use Grouping"] |> UI.map PickingAction
+                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showOutline PickingAction.ShowOutline "Show Outline"] |> UI.map PickingAction
+                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showDetailOutline PickingAction.ShowOutlineDetail "Show Outline Detail"] |> UI.map PickingAction
+                //p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
+                //p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
               ]
             ]
           )
@@ -536,6 +575,8 @@ module App =
           pickingActive        = false
           opcInfos             = opcInfos
           picking              = { PickingModel.initial with pickingInfos = opcInfos }
+          drawing              = DrawingModel.initial
+          annotations          = AnnotationModel.initial
           dockConfig           = initialDockConfig  
           mouseDragStart       = V2i.Zero
           zoom                 = false

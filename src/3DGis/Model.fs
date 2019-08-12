@@ -8,6 +8,9 @@ open Aardvark.UI.Primitives
 open Aardvark.Application
 
 open OpcViewer.Base.Picking
+open Rabbyte.Drawing
+open Rabbyte.Annotation
+
 
 type Time = float
 
@@ -17,6 +20,8 @@ type Message =
   | KeyDown                 of key : Keys  
   | UpdateDockConfig        of DockConfig    
   | PickingAction           of PickingAction
+  | DrawingAction           of DrawingAction
+  | AnnotationAction        of AnnotationAction
   | Down                    of button : MouseButtons * pos : V2i
   | Up                      of button : MouseButtons
   | Zoom                    of V2i
@@ -71,6 +76,8 @@ type Model =
         threads              : ThreadPool<Message>
         dockConfig           : DockConfig
         picking              : PickingModel
+        drawing              : DrawingModel
+        annotations          : AnnotationModel
         pickingActive        : bool
         
         opcCenterPosition    : V3d
