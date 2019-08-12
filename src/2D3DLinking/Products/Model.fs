@@ -128,7 +128,7 @@ type QueryAction =
   //| UseQueriesForDataFile
 
 type MinervaAction =
-  | LoadProducts
+  | LoadProducts of string * string
   | ApplyFilters
   | PerformQueries  
   | Reset
@@ -199,23 +199,18 @@ type QueryModel = {
     checkChemRmi         : bool        
 }
 
-//[<DomainType>]
-//type SelectionModel = {
-//    selectedProducts     : hset<string> 
-//    singleSelectProduct  : option<string>
-//    [<NonIncremental>]
-//    kdTree               : PointKdTreeD<V3d[],V3d>
-//    [<NonIncremental>]
-//    flatPos              : array<V3d>
-//    [<NonIncremental>]
-//    flatID               : array<string>
-//    selectionMinDist     : float
-//}
-
-//type Selection = {
-//    selectedProducts        : hset<string> 
-//    singleSelectProduct     : option<string>
-//}
+[<DomainType>]
+type SelectionModel = {
+    selectedProducts     : hset<string> 
+    singleSelectProduct  : option<string>
+    [<NonIncremental>]
+    kdTree               : PointKdTreeD<V3d[],V3d>
+    [<NonIncremental>]
+    flatPos              : array<V3d>
+    [<NonIncremental>]
+    flatID               : array<string>
+    selectionMinDist     : float
+}
 
 type MessagingMailbox = MailboxProcessor<MailboxAction>
 
@@ -245,19 +240,18 @@ type MinervaModel =
     //[<NonIncremental>]
     //comm     : option<Communicator.Communicator>
 
-    //vplMessages : ThreadPool<MinervaAction>
+    vplMessages : ThreadPool<MinervaAction>
 
     //minervaMessagingMailbox : MessagingMailbox
     //minervaMailboxState     : MailboxState
     featureProperties       : FeatureProperties
-    //selection               : SelectionModel
+    selection               : SelectionModel
     kdTreeBounds         : Box3d
     hoveredProduct       : Option<V3d>
     solLabels            : hmap<string,V3d>
     sgFeatures           : SgFeatures
     selectedSgFeatures   : SgFeatures
     picking              : bool
-    //selection               : Selection
   }
 
 [<StructuredFormatDisplay("{AsString}"); Struct>]
@@ -288,7 +282,7 @@ type Len(meter : float) =
       elif meter > 0.0 then sprintf "%.0f" x.Angstrom
       else "0"
 
-module Model = 
+module MinervaModel = 
   let toInstrument (id : string) =
  //   let instr = id.ToCharArray() |> Array.takeWhile(fun x -> x <> '_')
    // let instr = new string(instr)
@@ -425,15 +419,15 @@ module Initial =
         checkChemRmi          = true              
     }
 
-  //let selectionM =
-  //  {
-  //      selectedProducts     = hset.Empty
-  //      singleSelectProduct  = None
-  //      kdTree = Unchecked.defaultof<_>
-  //      flatPos = Array.empty
-  //      flatID = Array.empty
-  //      selectionMinDist = 0.05
-  //  }
+  let selectionM =
+    {
+        selectedProducts     = hset.Empty
+        singleSelectProduct  = None
+        kdTree = Unchecked.defaultof<_>
+        flatPos = Array.empty
+        flatID = Array.empty
+        selectionMinDist = 0.05
+   }
           
   let sites = [
     //@"https://minerva.eox.at/opensearch/collections/MAHLI/json/"
@@ -450,13 +444,13 @@ module Initial =
       data    = data
       queries = sites
       //comm    = None
-      //vplMessages = ThreadPool.Empty
+      vplMessages = ThreadPool.Empty
 
       //minervaMailboxState = MailboxState.empty
       //minervaMessagingMailbox = mailbox
       queryFilter = queryFilter
       featureProperties = fProps
-      //selection = selectionM
+      selection = selectionM
       filteredFeatures = data.features
       kdTreeBounds = Box3d.Invalid
       hoveredProduct = None

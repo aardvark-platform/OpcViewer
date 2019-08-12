@@ -9,6 +9,8 @@ open Aardvark.Application
 
 open OpcViewer.Base.Picking
 open PRo3D.Minerva
+open Rabbyte.Annotation
+open Rabbyte.Drawing
 
 type Action =
   | Camera           of FreeFlyController.Message
@@ -16,6 +18,8 @@ type Action =
   | KeyDown          of key : Keys  
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
+  | DrawingAction    of DrawingAction
+  | AnnotationAction of AnnotationAction
   | MinervaAction    of MinervaAction
   | PickPoint        of V3d
 
@@ -55,6 +59,8 @@ type Model =
         threads              : ThreadPool<Action>
         dockConfig           : DockConfig
         pickingModel         : PickingModel
+        annotations          : AnnotationModel
+        drawing              : DrawingModel
         pickedPoint          : Option<V3d>
         planePoints          : Option<plist<V3d>>
         pickingActive        : bool

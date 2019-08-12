@@ -44,12 +44,12 @@ let main argv =
         | Some file -> file
         | None -> failwith "need cache file ... cache=\"[cachefilepath]\" "
 
-    let dumpData = Files.loadDataFile dumpFile cacheFile
-    //Log.line "%A" dumpData
+    ////let dumpData = Files.loadDataFile dumpFile cacheFile
+    ////Log.line "%A" dumpData
 
     let rotate = argsList.Contains("-rotate")
     
-    let instance =  Linking.App.app opcDir rotate |> App.start 
+    let instance =  Linking.App.app opcDir rotate dumpFile cacheFile |> App.start 
 
     WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance

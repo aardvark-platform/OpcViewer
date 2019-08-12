@@ -64,7 +64,7 @@ module Files =
          | "" -> None
          | _-> 
             let inst = row.GetColumn "{Category}Instrument_id"
-            let instrument = inst |> Model.toInstrument
+            let instrument = inst |> MinervaModel.toInstrument
             let sol' = (row.GetColumn "{Value}{Sol}Planet_day_number").AsInteger()
 
             let omega = (row.GetColumn "{Angle}Omega").AsFloat()
@@ -335,6 +335,6 @@ module Drawing =
         Sg.text (Font.create "Consolas" FontStyle.Regular) C4b.White text
             |> Sg.noEvents
             |> Aardvark.UI.FShadeSceneGraph.Sg.shader {
-            do! OpcViewer.Base.Shader.StableTrafo.stableTrafo
+            do! DefaultSurfaces.stableTrafo
             }                  
             |> Sg.trafo billboardTrafo  

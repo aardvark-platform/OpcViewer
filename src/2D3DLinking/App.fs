@@ -20,6 +20,9 @@ open Aardvark.UI.Trafos
 open OpcViewer.Base
 open OpcViewer.Base.Picking
 open PRo3D.Minerva
+open Aardvark.VRVis.Opc
+open Rabbyte.Annotation
+open Rabbyte.Drawing
 
 
 
@@ -94,29 +97,42 @@ module App =
                 model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camerastate" |> ignore
                 model
             | Keys.Enter ->
-                let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
-                let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddBrush pointsOnAxisFunc)
-            
-                { model with pickingModel = updatedPicking}
-            | Keys.T ->
-                let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
-                let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddTestBrushes pointsOnAxisFunc)
-            
-                { model with pickingModel = updatedPicking; }
+                let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
+                let dir = Direction (model.drawing.points |> PList.toSeq |> fun x -> PlaneFitting.planeFit x).Normal
+                let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some dir))
+                { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+                
             | _ -> model
 
+
         | PickingAction msg -> 
-            let pickingModel =
-                match msg with
-                    | HitSurface (a,b,_) -> 
-                        let axisNearstFunc = fun p -> p
-                        PickingApp.update model.pickingModel (HitSurface (a,b, axisNearstFunc))
+            // TODO...refactor this!
+            let pickingModel, drawingModel =
+              match msg with
+              | HitSurface (a,b) -> //,_) -> 
+                //match model.axis with
+                //| Some axis -> 
+                //  let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
+                //  PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
+                //| None -> PickingApp.update model.picking msg
+                let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
+                let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
+                let updatedDrawM =
+                    match lastPick with
+                    | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
+                    | None -> model.drawing
+                updatePickM, updatedDrawM
+              | _ -> PickingApp.update model.pickingModel msg, model.drawing
+            { model with pickingModel = pickingModel; drawing = drawingModel }
+        
+        | DrawingAction msg ->
+            { model with drawing = DrawingApp.update model.drawing msg }
 
+        | AnnotationAction msg ->
+            { model with annotations = AnnotationApp.update model.annotations msg }
 
-
-
-                    | _ -> PickingApp.update model.pickingModel msg
-            { model with pickingModel = pickingModel }
+        | MinervaAction msg ->
+            { model with minervaModel = MinervaApp.update model.cameraState.view model.minervaModel msg }
 
         | UpdateDockConfig cfg ->
             { model with dockConfig = cfg }
@@ -125,107 +141,178 @@ module App =
     //---
 
     //---VIEW
-    let viewFeaturesSg (model : MMinervaModel) =
-      let pointSize = Mod.constant 10.0 //model.featureProperties.pointSize.value
+    //let viewFeaturesSg (model : MMinervaModel) =
+    //    let pointSize = Mod.constant 10.0 //model.featureProperties.pointSize.value
 
-      Sg.ofList [
-       // Drawing.featureMousePick model.kdTreeBounds
-        Drawing.drawFeaturePoints model.sgFeatures pointSize
-        Drawing.drawSelectedFeaturePoints model.selectedSgFeatures pointSize
-        Drawing.drawHoveredFeaturePoint model.hoveredProduct pointSize model.sgFeatures.trafo
-      ]
+    //    Sg.ofList [
+    //        // Drawing.featureMousePick model.kdTreeBounds
+    //        Drawing.drawFeaturePoints model.sgFeatures pointSize
+    //        Drawing.drawSelectedFeaturePoints model.selectedSgFeatures pointSize
+    //        Drawing.drawHoveredFeaturePoint model.hoveredProduct pointSize model.sgFeatures.trafo
+    //    ]
 
     let view (m : MModel) =
                                                  
-      let opcs = 
-        m.opcInfos
-          |> AMap.toASet
-          |> ASet.map(fun info -> Sg.createSingleOpcSg (Mod.constant None) m.pickingActive m.cameraState.view info)
-          |> Sg.set
-          |> Sg.effect [ 
-            toEffect Shader.stableTrafo
-            toEffect DefaultSurfaces.diffuseTexture       
+        let opcs = 
+            m.opcInfos
+                |> AMap.toASet
+                |> ASet.map(fun info -> Sg.createSingleOpcSg (Mod.constant None) m.pickingActive m.cameraState.view info)
+                |> Sg.set
+                |> Sg.effect [ 
+                    toEffect Shader.stableTrafo
+                    toEffect DefaultSurfaces.diffuseTexture       
+                ]
+
+        //let debugLines =
+        //  Sg.lines (Mod.constant C4b.Yellow)
+        //      Line3d (V3d.OOO) (m.cameraState.view |> Mod.map(fun x -> x.Location))
+        //  ])
+
+        //let t = m.minervaModel.sgFeatures.positions |> Mod.map(fun x -> x.Map(fun y -> Line3d [y;V3d.OOO]))
+        //let debugLines = Sg.lines (Mod.constant C4b.Yellow) t
+        let camPos = m.cameraState.view |> Mod.map (fun x -> x.Location)
+        let points = 
+            Mod.map (fun (x:V3d[]) ->
+                [|
+                    yield V3d [|-2486734.85;2289118.76;-276192.39|]
+                    yield V3d [|-2486744.85;2289128.76;-276182.39|]
+                    //yield camPos
+                    //yield camPos + (V3d.III * 15.0)
+                    //yield camPos + (V3d.OIO * 13.0)
+                    //yield camPos + (V3d.IOO * 14.0)
+                    for i in x do
+                        yield i
+        
+                |]) m.minervaModel.sgFeatures.positions
+            //Mod.map2 (fun (x:V3d[]) camPos ->
+            //    [|
+            //        yield V3d [|-2486734.85;2289118.76;-276192.39|]
+            //        yield V3d [|-2486744.85;2289128.76;-276182.39|]
+            //        //yield camPos
+            //        //yield camPos + (V3d.III * 15.0)
+            //        //yield camPos + (V3d.OIO * 13.0)
+            //        //yield camPos + (V3d.IOO * 14.0)
+            //        for i in x do
+            //            yield i
+            //            yield camPos
+        
+            //    |]) m.minervaModel.sgFeatures.positions camPos
+        Log.line "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+        Log.line "%A" points
+
+        let pos = V3d [|-2486735.62;2289118.43;-276194.91|]
+        let trafo = Mod.constant (Trafo3d.Translation pos)
+        let radius = Mod.constant 0.1
+        let debug = 
+            Sg.sphere 4 (Mod.constant C4b.Cyan) radius
+            |> Sg.trafo trafo
+            |> Sg.uniform "WorldPos" (trafo |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
+            //|> Sg.uniform "Size" radius // 5.0
+            |> Sg.effect [
+                //Shader.ScreenSpaceScale.Effect
+                Shader.StableTrafo.Effect
+                toEffect DefaultSurfaces.vertexColor
             ]
 
-      //let debugLines =
-      //  Sg.lines (Mod.constant C4b.Yellow)
-      //      Line3d (V3d.OOO) (m.cameraState.view |> Mod.map(fun x -> x.Location))
-      //  ])
+        let debugSpheres = 
+            points 
+                |> Mod.map (fun x -> 
+                    x |> Array.map (fun e ->
+                        Sg.sphere 4 (Mod.constant C4b.Cyan) radius
+                            |> Sg.trafo (Mod.constant (Trafo3d.Translation e)))
+                    |> Sg.ofArray)
+                |> Sg.dynamic
+                |> Sg.effect [
+                    Shader.StableTrafo.Effect
+                    toEffect DefaultSurfaces.vertexColor
+                ]
+        //let debugSpheres =
+        //    Sg.ofList [
+        //        for i in trafos
+        //            let trafo = Trafo3d.Translation e
+        //            Sg.sphere 3 (Mod.constant C3b.Yellow) radius
+        //            |> Sg.trafo trafo
+        //            |> Sg.uniform "WorldPos" (trafo |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
+        //            //|> Sg.uniform "Size" radius // 5.0
+        //            |> Sg.effect [
+        //                //Shader.ScreenSpaceScale.Effect
+        //                Shader.StableTrafo.Effect
+        //                toEffect DefaultSurfaces.vertexColor
+        //            ]
+        //        )
+        //    ]
 
-      //let t = m.minervaModel.sgFeatures.positions |> Mod.map(fun x -> x.Map(fun y -> Line3d [y;V3d.OOO]))
-      //let debugLines = Sg.lines (Mod.constant C4b.Yellow) t
-      let camPos = m.cameraState.view |> Mod.map (fun x -> x.Location)
-      let points = 
-        Mod.map2 (fun (x:V3d[]) camPos ->
-            [|
-                for i in x do
-                    yield i
-                    yield camPos
-            |]) m.minervaModel.sgFeatures.positions camPos
-
-      let debugLines =
-        Sg.draw IndexedGeometryMode.LineList
-        //|> Sg.trafo shiftTrafo
-        |> Sg.vertexAttribute DefaultSemantic.Positions points
-        |> Sg.uniform "Color" (Mod.constant C4b.Cyan)
-        |> Sg.uniform "LineWidth" (Mod.constant 2.0)
-        |> Sg.effect [
-            toEffect DefaultSurfaces.stableTrafo
-            toEffect DefaultSurfaces.thickLine
-            toEffect DefaultSurfaces.sgColor
-        ]
+        let debugLines =
+            Sg.draw IndexedGeometryMode.TriangleStrip
+            //|> Sg.trafo shiftTrafo
+            |> Sg.vertexAttribute DefaultSemantic.Positions points
+            |> Sg.uniform "Color" (Mod.constant C4b.Cyan)
+            |> Sg.uniform "LineWidth" (Mod.constant 2.0)
+            |> Sg.effect [
+                //toEffect DefaultSurfaces.stableTrafo
+                toEffect DefaultSurfaces.thickLine
+                toEffect DefaultSurfaces.sgColor
+            ]
       
-      //let debuglines =
-      //    m.minervaModel.sgFeatures.positions
-      //      |> Mod.map(fun x -> Line3d x (m.cameraState.view |> Mod.map(fun x -> x.Location))
+        //let debuglines =
+        //    m.minervaModel.sgFeatures.positions
+        //      |> Mod.map(fun x -> Line3d x (m.cameraState.view |> Mod.map(fun x -> x.Location))
         
 
-      let scene = 
-        [
-          opcs |> Sg.map PickingAction
-          viewFeaturesSg m.minervaModel |> Sg.map MinervaAction
-          debugLines |> Sg.noEvents
-          PickingApp.view m.pickingModel |> Sg.map PickingAction
-        ] |> Sg.ofList
+        let scene = 
+            [
+                opcs |> Sg.map PickingAction
+                MinervaApp.viewFeaturesSg m.minervaModel |> Sg.map MinervaAction
+                //debugSpheres |> Sg.noEvents
+                debug |> Sg.noEvents
+                DrawingApp.view m.drawing |> Sg.map DrawingAction
+                AnnotationApp.viewGrouped m.annotations |> Sg.map AnnotationAction
+            ] |> Sg.ofList
 
-      let textOverlays (cv : IMod<CameraView>) = 
-        div [js "oncontextmenu" "event.preventDefault();"] [ 
-           let style' = "color: white; font-family:Consolas;"
+        let textOverlays (cv : IMod<CameraView>) = 
+            div [js "oncontextmenu" "event.preventDefault();"] [ 
+                let style' = "color: white; font-family:Consolas;"
     
-           yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left" ] [          
-              yield table [] [
-                tr[][
-                    td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
+                yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left" ] [          
+                    yield table [] [
+                    tr[][
+                        td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
+                    ]
+                    tr[][ 
+                        td[style style'][Incremental.text(points |> Mod.map(fun y -> string(y.Length)))]
+                    ]
+                    //tr[][ 
+                    //    td[style style'][Incremental.text(points |> Mod.map(fun x -> x |> Array.map (fun e -> e.ToString("0.00")) |> String.concat ", "))]
+                    //]
+                    ]
                 ]
-              ]
-           ]
-        ]
+            ]
 
-      let renderControl =
-       FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
-         (AttributeMap.ofList [ 
-           style "width: 100%; height:100%"; 
-           attribute "showFPS" "true";       // optional, default is false
-           attribute "useMapping" "true"
-           attribute "data-renderalways" "false"
-           attribute "data-samples" "4"
-           onKeyDown (Action.KeyDown)
-           onKeyUp (Action.KeyUp)
-         ]) 
-         (scene) 
-         //(scene |> Sg.map PickingAction) 
+        let renderControl =
+            FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+                (AttributeMap.ofList [ 
+                    style "width: 100%; height:100%"; 
+                    attribute "showFPS" "true";       // optional, default is false
+                    attribute "useMapping" "true"
+                    attribute "data-renderalways" "false"
+                    attribute "data-samples" "4"
+                    onKeyDown (Action.KeyDown)
+                    onKeyUp (Action.KeyUp)
+                ]) 
+                (scene) 
+            //(scene |> Sg.map PickingAction) 
             
  
-      page (fun request -> 
+        page (fun request -> 
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
-          require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
-              div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)]
-          )
+            require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
+                div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)]
+            )
         | Some "controls" -> 
-          require Html.semui (
+            require Html.semui (
             body [style "width: 100%; height:100%; background: transparent";] [
-              div[style "color:white; margin: 5px 15px 5px 5px"][
+                div[style "color:white; margin: 5px 15px 5px 5px"][
                 h3[][text "2D/3D Linking"]
                 p[][text "Hold Ctrl-Left to add Point"]
                 p[][text "Press Enter to close Polygon"]
@@ -236,26 +323,26 @@ module App =
                 //p[][checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.showDetailOutline PickingAction.ShowOutlineDetail "Show Outline Detail"] |> UI.map PickingAction
                 //p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.pickingModel.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
                 //p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.pickingModel.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
-              ]
+                ]
             ]
-          )
+            )
         | Some other -> 
-          let msg = sprintf "Unknown page: %A" other
-          body [] [
-              div [style "color: white; font-size: large; background-color: red; width: 100%; height: 100%"] [text msg]
-          ]  
+            let msg = sprintf "Unknown page: %A" other
+            body [] [
+                div [style "color: white; font-size: large; background-color: red; width: 100%; height: 100%"] [text msg]
+            ]  
         | None -> 
-          m.dockConfig
+            m.dockConfig
             |> docking [
-              style "width:100%; height:100%; background:#F00"
-              onLayoutChanged UpdateDockConfig ]
+                style "width:100%; height:100%; background:#F00"
+                onLayoutChanged UpdateDockConfig ]
         )
 
 
     //---
 
 
-    let app dir (rotate : bool) =
+    let app dir (rotate : bool) dumpFile cacheFile =
       OpcSelectionViewer.Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
@@ -351,11 +438,15 @@ module App =
           pickingActive      = false
           opcInfos           = opcInfos
           pickingModel       = { PickingModel.initial with pickingInfos = opcInfos }
+          annotations        = AnnotationModel.initial
+          drawing            = DrawingModel.initial
           pickedPoint        = None
           planePoints        = setPlaneForPicking
           dockConfig         = initialDockConfig     
-          minervaModel       = Initial.model
+          minervaModel       = MinervaApp.update camState.view Initial.model (LoadProducts (dumpFile, cacheFile))
         }
+
+      
 
       {
           initial = initialModel             
