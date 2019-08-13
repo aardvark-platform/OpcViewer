@@ -31,14 +31,14 @@ module UI =
                             )) (attribute "selected" "selected")
             ]
 
-        let ortisOnChange  = 
+        let customOnChange  = 
             let cb (i : int) =
                 let currentState = values.Content |> Mod.force
                 change (PList.tryAt (i-1) currentState)
                     
             onEvent "onchange" ["event.target.selectedIndex"] (fun x -> x |> List.head |> Int32.Parse |> cb)
 
-        Incremental.select (AttributeMap.ofList [ortisOnChange; style "color:black"]) 
+        Incremental.select (AttributeMap.ofList [customOnChange; style "color:black"]) 
             (
                 alist {
                     yield Incremental.option (attributes "-None-") (AList.ofList [text "-None-"])
@@ -180,7 +180,7 @@ module SurfaceAttributes =
         }                    
 
     let view (m:MAttributeModel) =
-        require FalseColorLegendApp.UI.semui (
+        //require FalseColorLegendApp.UI.myCss (
             body [style "width: 100%; height:100%; background: transparent";] [
               div[style "color:white; margin: 5px 15px 5px 5px"][
                 h3[][text "FalseColors"]
@@ -188,6 +188,6 @@ module SurfaceAttributes =
                 Incremental.div AttributeMap.empty (AList.ofModSingle(viewColorLegendTools m.selectedScalar)) 
               ]
             ]
-          )
+          //)
 
 

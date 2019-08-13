@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "OpcViewer": {
+    "3DGis": {
       "commandName": "Project",
       "commandLineArgs": "opc=\"C:\\Users\\othman\\Desktop\\OPC\\Stimson_HiRISE_DTM_correct\" -rotate"
     }

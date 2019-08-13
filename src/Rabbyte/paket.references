@@ -12,6 +12,7 @@ Aardvark.SceneGraph.IO
 Aardvark.SceneGraph.Opc
 Aardvark.Compiler.DomainTypes.MSBuild
 Aardvark.Geometry.Intersection
+Aardvark.Geometry.PolyMesh
 
 FsPickler
 FsPickler.Json

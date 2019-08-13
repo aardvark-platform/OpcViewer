@@ -22,9 +22,9 @@ open OpcViewer.Base.Picking
 
 open ViewPlanner.Rover
 
-
-
-
+open Aardvark.VRVis.Opc
+open Rabbyte.Drawing
+open Rabbyte.Annotation
 
 module App = 
     open Aardvark.Base
@@ -151,29 +151,33 @@ module App =
 
 
             | Keys.Enter ->
-                let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
-                let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddBrush pointsOnAxisFunc)
-                let points = model.pickingModel.intersectionPoints
-            
-                { model with pickingModel = updatedPicking; region = Some points; rover = {model.rover with reg = Some points}}
-
-
-            | Keys.T ->
-                let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
-                let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddTestBrushes pointsOnAxisFunc)
-            
-                { model with pickingModel = updatedPicking; }
+                let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
+                let dir = Direction (model.drawing.points |> PList.toSeq |> fun x -> PlaneFitting.planeFit x).Normal
+                let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some dir))
+                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
+                
+                //let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
+                //let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddBrush pointsOnAxisFunc)
+                //let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) // TODO...add hitFunc
+                //{ model with drawing = updatedDrawing }
 
             | Keys.F1 -> {model with roiBboxFull = not model.roiBboxFull}
 
             | _ -> model
 
         | PickingAction msg -> 
-            let pickingModel =
+            let pickingModel, drawingModel =
                 match msg with
-                    | HitSurface (a,b,_) -> 
-                        let axisNearstFunc = fun p -> p
-                        PickingApp.update model.pickingModel (HitSurface (a,b, axisNearstFunc))
+                    | HitSurface (a,b) -> //,_) -> 
+                        let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
+                        let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
+                        let updatedDrawM =
+                            match lastPick with
+                            | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
+                            | None -> model.drawing
+                        updatePickM, updatedDrawM
+                    | _ -> PickingApp.update model.pickingModel msg, model.drawing
+            { model with pickingModel = pickingModel; drawing = drawingModel }
 
                     | PickPointOnPlane p ->
                        PickingApp.update model.pickingModel (PickPointOnPlane p)
@@ -1007,7 +1011,7 @@ module App =
                             |> Mod.map (fun p ->
                                 p
                                     |> PList.toSeq
-                                    |> Sg.planeFit
+                                    |> PlaneFitting.planeFit
                                     |> fun t ->
                                          let box = Aardvark.SceneGraph.SgPrimitives.Sg.box' C4b.Cyan (Box3d(V3d.NNN, V3d.III))
                                          let scaleT = Trafo3d.Scale(10.0, 20.0, 0.2)
@@ -1039,9 +1043,14 @@ module App =
       let drawPlane = myPlane |> Sg.dynamic
 
       let fullScene = 
+
+
+
+
+      let afterSg = 
         [
-          PickingApp.view m.pickingModel
-          //drawPlane
+          m.drawing |> DrawingApp.view
+          // myPlane
           rov
           target
           frustumBox
@@ -1078,6 +1087,9 @@ module App =
           line
         ] |> Sg.ofList
         
+
+      let scene = 
+        m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main afterSg
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
@@ -1294,6 +1306,9 @@ module App =
           pickingActive      = false
           opcInfos           = opcInfos
           pickingModel       = { PickingModel.initial with pickingInfos = opcInfos }
+          drawing            = DrawingModel.initial
+          annotations        = AnnotationModel.initial
+          pickedPoint        = None
           planePoints        = setPlaneForPicking
           rover              = { RoverModel.initial with up = box.Center.Normalized; camera = roverinitialCamera; position = box.Center}
           dockConfig         = initialDockConfig        

@@ -1,29 +1,39 @@
-﻿namespace OpcSelectionViewer
+﻿namespace  ElevationProfileViewer
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
-open Aardvark.Base.Geometry
 open Aardvark.SceneGraph.Opc
-open Aardvark.Geometry
-open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.Application
 
 open OpcViewer.Base.Picking
-open OpcViewer.Base.Attributes
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 
+
+type Time = float
+
 type Message =
-  | Camera           of FreeFlyController.Message
-  | KeyUp            of key : Keys
-  | KeyDown          of key : Keys  
-  | UpdateDockConfig of DockConfig    
-  | PickingAction    of PickingAction
-  | AttributeAction  of AttributeAction
-  | DrawingAction    of DrawingAction
-  | AnnotationAction of AnnotationAction
+  | Camera                  of FreeFlyController.Message
+  | KeyUp                   of key : Keys
+  | KeyDown                 of key : Keys  
+  | UpdateDockConfig        of DockConfig    
+  | PickingAction           of PickingAction
+  | DrawingAction           of DrawingAction
+  | AnnotationAction        of AnnotationAction
+  | Down                    of button : MouseButtons * pos : V2i
+  | Up                      of button : MouseButtons
+  | Zoom                    of V2i
+  | Pan                     of V2i
+  | SetT                    of float
+  | AnimateCameraViewSwitch          
+  | AnimateCameraJump 
+  | AnimateCameraComplete
+  | AnimateCameraReturn
+  | Tick                    of Time
+
+
 
 type CameraStateLean = 
   { 
@@ -66,9 +76,34 @@ type Model =
         threads              : ThreadPool<Message>
         dockConfig           : DockConfig
         picking              : PickingModel
-        pickingActive        : bool
-
-        opcAttributes        : AttributeModel
         drawing              : DrawingModel
         annotations          : AnnotationModel
-    }  
+        pickingActive        : bool
+        
+        opcCenterPosition    : V3d
+        jumpSelectionActive  : bool
+        inJumpedPosition     : bool
+        selectedJumpPosition : V3d
+
+        targetPosition       : V3d
+        originalCamPos       : V3d
+
+        mouseDragStart       : V2i
+
+        zoom                 : bool      
+        pan                  : bool
+
+        perspectiveView      : bool
+        persToOrthoValue     : float
+
+        camViewAnimRunning   : bool
+        camJumpAnimRunning   : bool
+        camCompAnimRunning   : bool
+        camRetAnimRunning    : bool
+
+        cameraAnimEndTime    : float
+
+
+    }
+
+   

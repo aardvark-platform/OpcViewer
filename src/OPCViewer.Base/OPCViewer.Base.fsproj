@@ -10,12 +10,14 @@
     <OutputPath>..\..\bin\Debug</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="PlaneFitting.fs" />
     <Compile Include="KdTrees.fs" />
     <Compile Include="Shaders.fs" />
-    <Compile Include="Picking\Picking-Utils.fs" />
+    <Compile Include="SgUtilities.fs" />
     <Compile Include="Picking\Picking-Model.fs" />
     <Compile Include="Picking\IntersectionController.fs" />
     <Compile Include="Picking\Picking.fs" />
+    <Compile Include="CooTrafo\CooTrafo.fs" />
     <Compile Include="FalseColorLegend-Model.fs" />
     <Compile Include="FalseColorLegendApp.fs" />
     <Compile Include="OPCAttributes-Model.fs" />

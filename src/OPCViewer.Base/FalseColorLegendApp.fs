@@ -49,15 +49,30 @@ module FalseColorLegendApp =
                     { model with showColors = (not model.showColors) }      
             
             
-    let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
-
+    
     module UI =
 
-        let semui = 
-          [ 
-              { kind = Stylesheet; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css" }
-              { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
-          ]
+        let myCss = [
+                { kind = Stylesheet;  name = "semui";           url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css" }
+                { kind = Stylesheet;  name = "semui-overrides"; url = "semui-overrides.css" }
+                { kind = Script;      name = "semui";           url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
+                { kind = Script; name = "spectrum.js";  url = "spectrum.js" }
+                { kind = Stylesheet; name = "semantic.css"; url = "./rendering/semantic.css" }
+                { kind = Script; name = "semantic.js"; url = "./rendering/semantic.js" }
+                { kind = Script; name = "spectrum.js";  url = "spectrum.js" }
+                { kind = Stylesheet; name = "spectrum.css";  url = "spectrum.css"}
+        ]
+
+
+        //let semui = 
+        //  [ 
+        //        { kind = Stylesheet; name = "semantic.css"; url = "./rendering/semantic.css" }
+        //        { kind = Script; name = "semantic.js"; url = "./rendering/semantic.js" }
+        //        { kind = Script; name = "essential"; url = "./rendering/essentialstuff.js" }
+        //        { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
+        //        { kind = Script; name = "spectrum.js";  url = "spectrum.js" }
+        //        { kind = Stylesheet; name = "spectrum.css";  url = "spectrum.css"}
+        //  ]
 
         let iconToggle (dings : IMod<bool>) onIcon offIcon action =
           let toggleIcon = dings |> Mod.map(fun isOn -> if isOn then onIcon else offIcon)
@@ -75,14 +90,14 @@ module FalseColorLegendApp =
           iconToggle dings "check square outline icon" "square icon" action
 
         let viewDefinedScalarsLegendTools (model:MFalseColorsModel)= 
-            require semui (
+            require Html.semui (
                 Html.table [  
                     Html.row "show legend:"             [iconCheckBox model.useFalseColors UseFalseColors ]
                     Html.row "upper bound:"             [Numeric.view' [InputBox] model.upperBound |> UI.map SetUpperBound ]
                     Html.row "lower bound:"             [Numeric.view' [InputBox] model.lowerBound |> UI.map SetLowerBound ]
                     Html.row "interval:"                [Numeric.view' [InputBox] model.interval |> UI.map SetInterval ]
-                    //Html.row "upper color:"             [ColorPicker.view model.upperColor |> UI.map SetUpperColor ]
-                    //Html.row "lower color:"             [ColorPicker.view model.lowerColor |> UI.map SetLowerColor ]
+                    Html.row "upper color:"             [ColorPicker.view model.upperColor |> UI.map SetUpperColor ]
+                    Html.row "lower color:"             [ColorPicker.view model.lowerColor |> UI.map SetLowerColor ]
                     Html.row "invert mapping:"          [iconCheckBox model.invertMapping InvertMapping ]
                     Html.row "show colors:"             [iconCheckBox model.showColors ShowColors ]
                 ] 

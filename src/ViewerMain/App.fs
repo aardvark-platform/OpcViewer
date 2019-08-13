@@ -22,10 +22,12 @@ open ``F# Sg``
 open OpcViewer.Base
 open OpcViewer.Base.Picking
 open OpcViewer.Base.Attributes
+open Rabbyte.Drawing
+open Rabbyte.Annotation
 
 module App =   
   open Aardvark.Application
-  open Aardvark.Base.DynamicLinkerTypes  
+  open Aardvark.VRVis.Opc
   
   let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
     let s' = cam.freeFlyConfig.moveSensitivity + incr
@@ -51,7 +53,7 @@ module App =
   let fromCameraStateLean (c : CameraStateLean) : CameraView = 
     CameraView.lookAt c.location (c.location + c.forward) c.sky    
 
-  let update (model : Model) (msg : Message) =   
+  let rec update (model : Model) (msg : Message) =   
     match msg with
       | Camera m when model.pickingActive = false -> 
         { model with cameraState = FreeFlyController.update model.cameraState m; }
@@ -64,10 +66,12 @@ module App =
         match m with
           | Keys.LeftCtrl -> 
             { model with pickingActive = false }
-          | Keys.Delete ->            
-            { model with picking = PickingApp.update model.picking (PickingAction.ClearPoints) }
+          | Keys.Delete -> 
+            let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.Clear)
+            { model with drawing = updatedDrawing }
           | Keys.Back ->
-            { model with picking = PickingApp.update model.picking (PickingAction.RemoveLastPoint) }
+            let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.RemoveLastPoint)
+            { model with drawing = updatedDrawing }
           | Keys.PageUp ->             
             { model with cameraState = model.cameraState |>  updateFreeFlyConfig +0.5 }
           | Keys.PageDown ->             
@@ -77,47 +81,57 @@ module App =
             model.cameraState.view |> toCameraStateLean |> Serialization.save ".\camstate" |> ignore
             model
           | Keys.Enter ->
-            let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
-            let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pointsOnAxisFunc)
-            
-            let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
-            { model with picking = updatedPicking; axis = axis }
-          | Keys.T ->
-            let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
-            let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
-            
-            let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
-            { model with picking = updatedPicking; axis = axis }
+            //let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
+            //let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) // TODO...add hitFunc
+            //let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
+            //{ model with axis = axis; drawing = updatedDrawing }
+
+            let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
+            let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
+            { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
+          //| Keys.T ->
+          //  let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
+          //  //let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
+          //  let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.Finish) // TEST
+          //  let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
+          //  { model with axis = axis; drawing = updatedDrawing }
           | _ -> model
       | PickingAction msg -> 
-        let pickingModel =
+        // TODO...refactor this!
+        let pickingModel, drawingModel =
           match msg with
-          | HitSurface (a,b,_) -> 
-            match model.axis with
-            | Some axis -> 
-              let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
-              PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
-            | None -> PickingApp.update model.picking msg
-          | _ -> PickingApp.update model.picking msg
-        { model with picking = pickingModel }
-
-        ////IntersectionController.intersect model sceneHit box
-        //failwith "panike"
-        //model 
+          | HitSurface (a,b) -> //,_) -> 
+            //match model.axis with
+            //| Some axis -> 
+            //  let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
+            //  PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
+            //| None -> PickingApp.update model.picking msg
+            let updatePickM = PickingApp.update model.picking (HitSurface (a,b))
+            let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
+            let updatedDrawM =
+                match lastPick with
+                | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
+                | None -> model.drawing
+            updatePickM, updatedDrawM
+          | _ -> PickingApp.update model.picking msg, model.drawing
+        { model with picking = pickingModel; drawing = drawingModel }
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | AttributeAction msg ->
-            let opcAttributes = SurfaceAttributes.update model.opcAttributes msg
-            {model with opcAttributes = opcAttributes }
+            {model with opcAttributes = SurfaceAttributes.update model.opcAttributes msg }
+      | DrawingAction msg -> 
+            { model with drawing = DrawingApp.update model.drawing msg }
+      | AnnotationAction msg -> 
+            { model with annotations = AnnotationApp.update model.annotations msg }
       | _ -> model
                     
   let view (m : MModel) =
                                              
-      let box = 
-        m.patchHierarchies
-          |> List.map(fun x -> x.tree |> QTree.getRoot) 
-          |> List.map(fun x -> x.info.LocalBoundingBox)
-          |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
+      //let box = 
+      //  m.patchHierarchies
+      //    |> List.map(fun x -> x.tree |> QTree.getRoot) 
+      //    |> List.map(fun x -> x.info.LocalBoundingBox)
+      //    |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
       
       let opcs = 
         m.opcInfos
@@ -133,12 +147,14 @@ module App =
       let axis = 
         m |> AxisSg.axisSgs
 
-      let scene = 
+      let afterSg = 
         [
-          opcs
+          m.drawing |> DrawingApp.view
           axis
-          PickingApp.view m.picking
         ] |> Sg.ofList
+
+      let scene = 
+        m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main afterSg
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
@@ -172,6 +188,16 @@ module App =
         
       let cam = Mod.map2 Camera.create m.cameraState.view frustum 
 
+      let semui = 
+          [ 
+                { kind = Stylesheet; name = "semantic.css"; url = "semantic.css" }
+                { kind = Script; name = "semantic.js"; url = "semantic.js" }
+                { kind = Script; name = "essential"; url = "essentialstuff.js" }
+                { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
+                { kind = Script; name = "spectrum.js";  url = "spectrum.js" }
+                { kind = Stylesheet; name = "spectrum.css";  url = "spectrum.css"}
+          ]
+
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
@@ -190,18 +216,23 @@ module App =
                 h3[][text "NIOBE"]
                 p[][text "Hold Ctrl-Left to add Point"]
                 p[][text "Press Enter to close Polygon"]
-                p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.picking.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.picking.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useGrouping PickingAction.UseGrouping "Use Grouping"] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showOutline PickingAction.ShowOutline "Show Outline"] |> UI.map PickingAction
-                p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showDetailOutline PickingAction.ShowOutlineDetail "Show Outline Detail"] |> UI.map PickingAction
-                p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
-                p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
+                //p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.picking.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.picking.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
+                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
+                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useGrouping PickingAction.UseGrouping "Use Grouping"] |> UI.map PickingAction
+                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showOutline PickingAction.ShowOutline "Show Outline"] |> UI.map PickingAction
+                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showDetailOutline PickingAction.ShowOutlineDetail "Show Outline Detail"] |> UI.map PickingAction
+                //p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
+                //p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
+              ]
+              div[style "color:white; margin: 5px 15px 5px 5px"][
+                DrawingApp.viewGui m.drawing |> UI.map DrawingAction
               ]
             ]
           )
         | Some "falseColors" -> 
-            SurfaceAttributes.view m.opcAttributes |> UI.map AttributeAction
+            require semui (
+                SurfaceAttributes.view m.opcAttributes |> UI.map AttributeAction
+            )
         | Some other -> 
           let msg = sprintf "Unknown page: %A" other
           body [] [
@@ -297,6 +328,8 @@ module App =
           dockConfig         = initialDockConfig       
           
           opcAttributes      = SurfaceAttributes.initModel dir
+          drawing            = DrawingModel.initial
+          annotations        = AnnotationModel.initial
         }
 
       {
