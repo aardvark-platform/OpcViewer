@@ -62,6 +62,8 @@ type RoverModel =
         projPoint2 : V3d
 
         projPoints : plist<V3d>
+        thetaPhiValues : plist<V2d>
+        currIdx : int
 
     }
 
@@ -70,7 +72,9 @@ type RoverAction =
     | ChangePan of float
     | ChangeTilt of float
     | SwitchCamera of Option<CameraType>
-    | MoveToRegion //of plist<V3d>      //move view frustum to a region of interest
+    | MoveToRegion 
+    | CalculateAngles
+    | RotateToPoint
 
 
 module RoverModel =
@@ -128,6 +132,8 @@ module RoverModel =
         projPoint1 = V3d.OOO
         projPoint2 = V3d.OOO
         projPoints = PList.empty
+        thetaPhiValues = PList.empty
+        currIdx = 0
         }
 
     let getViewProj (cam : IMod<CameraView>) (frustum:IMod<Frustum>) =

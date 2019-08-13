@@ -34,14 +34,16 @@ module RoverApp =
 
     let setPan(m:RoverModel) (value:float) =
         let dt = m.pan.previous - value
-        let prev = m.pan.current
+        let prev = value
+        //let prev = m.pan.current
         let curr = value
         {m with pan = {m.pan with delta = dt; previous = prev; current = curr}}
 
 
     let setTilt(m:RoverModel) (value:float) =
         let dt = m.tilt.previous - value
-        let prev = m.tilt.current
+        let prev = value
+        //let prev = m.tilt.current
         let curr = value
         {m with tilt = {m.tilt with delta = dt; previous = prev; current = curr}}
     
@@ -75,17 +77,24 @@ module RoverApp =
 
         let forward = (target - pos).Normalized
         let right = (forward.Cross(up)).Normalized
-        let rotZ = Trafo3d.RotateInto(V3d.OOI,up)
-        let rotY = Trafo3d.RotateInto(V3d.OIO,right)
-        let rotX = Trafo3d.RotateInto(V3d.IOO,forward)
+        let rotZ = Trafo3d.RotateInto(up,V3d.OOI)
+        let rotY = Trafo3d.RotateInto(right,V3d.OIO)
+        let rotX = Trafo3d.RotateInto(forward,V3d.IOO)
+        
+        
+        //just z
+        //let rotatedbyz = rotZ.Forward.TransformPos vector
+        //rotatedbyz
 
-        //order z y x
-        let rotatedByZ = rotZ.Forward.TransformPos vector
-        let rotatedByY = rotY.Forward.TransformPos rotatedByZ
-        let rotatedFinal = rotX.Forward.TransformPos rotatedByY
-
-        rotatedFinal
-
+        //order x y z
+        let final = 
+            //let r1 = rotX.Forward.TransformDir vector
+            //rotY.Forward.TransformDir r1
+            let rotatedbyZ = rotZ.Forward.TransformDir vector//rotatedbyY
+            rotatedbyZ
+        
+        final
+        
 
     let calcThetaPhi (position:V3d) =
         
@@ -119,10 +128,15 @@ module RoverApp =
         
         //normal points
         let testPoint = m.target
+        let upPoint = m.position + (m.up*1.5)
+        let rightPoint = 
+            let forw = (testPoint - m.position).Normalized
+            let r = forw.Cross(m.up)
+            m.position + r
 
        
         //add target point for testing
-        let l2 = [testPoint]
+        let l2 = [rightPoint;upPoint;testPoint]
         let testList = List.append points l2
         let shiftedPoints = testList  |> List.map (fun p -> (p - spherePos).Normalized)
         //let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotTrafo.Forward.TransformPos p)
@@ -141,14 +155,14 @@ module RoverApp =
         for p in listOfAngles do
             printfn "theta phi %A %A"  (p.X) (p.Y* Constant.DegreesPerRadian) 
         
-        //let index = shiftedPoints.Length - 1 
-        let first = rotatedPoints.Item (0)
+        let index = shiftedPoints.Length - 1 
+        let point = rotatedPoints.Item (0)
         let second = rotatedPoints.Item(1)
-        let projectionPoint1 = first + spherePos
+        let projectionPoint1 = point + spherePos
         let projectionPoint2 = second + spherePos
-        let x = first.X
-        let y = first.Y
-        let z = first.Z
+        let x = point.X
+        let y = point.Y
+        let z = point.Z
         let theta = calcTheta x y
         let phi = acos(z) //atan2 z (sqrt((pown x 2)+(pown y 2))) 
 
@@ -279,7 +293,7 @@ module RoverApp =
 
 
 
-    let moveFrustum (m:RoverModel) = //(region:plist<V3d>)=
+    let moveFrustum (m:RoverModel) = 
        
         let v = checkROIFullyInside m m.reg
         v
@@ -314,10 +328,66 @@ module RoverApp =
        
         //{m with camera =  {m.camera with view = newView} }
 
-     
-       
+    
+    let rotateToPoint (rover:RoverModel) =
         
-     
+        let values = rover.thetaPhiValues
+        let li = values |> PList.toList
+        let idx = rover.currIdx
+        let pair = values.Item(idx) //pair.X = theta; pair.Y = phi
+
+        //values currently rotated to
+        printfn "thetaCurrent %A phiCurrent %A"  (pair.X) (pair.Y* Constant.DegreesPerRadian) 
+
+        let panned = setPan rover pair.X
+        let pannedRover = panning panned
+        let tilted = setTilt pannedRover (pair.Y* Constant.DegreesPerRadian)
+        let newR = tilting tilted
+
+        //set index
+        let lastIdx = li.Length - 1
+        let newIdx = 
+            if idx = lastIdx then 0 else (idx+1)
+
+        {newR with currIdx = newIdx}
+
+       
+    let calculateValues (rover:RoverModel) =
+        
+        let region = rover.reg
+        let newRover = 
+         match region with
+            | None -> rover
+            | Some reg -> 
+                let spherePos = rover.projsphere.position
+                let l = reg |> PList.toList
+                let shiftedPoints = l  |> List.map (fun p -> (p - spherePos).Normalized)
+                let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotateIntoCoordinateSystem rover p)
+
+                let projectionPoints = shiftedPoints |> List.map (fun p -> p + spherePos) |> PList.ofList
+
+                let thetaPhiValues = rotatedPoints |> List.map(fun p -> calcThetaPhi p)
+
+                //debugging
+                for p in thetaPhiValues do
+                    printfn "theta %A phi %A"  (p.X) (p.Y* Constant.DegreesPerRadian) 
+
+
+                let plist = thetaPhiValues |> PList.ofList
+
+                //point on forward vector
+                let initPoint = rover.target
+                let shifted = (initPoint-spherePos).Normalized
+                let r = rotateIntoCoordinateSystem rover shifted
+                let thetaOfPointonForwardVec = calcTheta r.X r.Y
+                printfn "thetaOnForward %A"  thetaOfPointonForwardVec
+                let setR = initializePan rover thetaOfPointonForwardVec
+                let setR2 = initializeTilt setR ((acos(r.Z))*Constant.DegreesPerRadian)
+
+                {setR2 with thetaPhiValues = plist; projPoints = projectionPoints}
+    
+        newRover
+        
        
         
   
@@ -368,7 +438,14 @@ module RoverApp =
                 moveFrustum rover 
             
             |SwitchCamera cam ->
-                changeCam rover  cam
+                changeCam rover cam
+            
+            |CalculateAngles ->
+                calculateValues rover
+            
+            | RotateToPoint ->
+                rotateToPoint rover
+                
                 
               
     

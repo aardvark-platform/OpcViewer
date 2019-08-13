@@ -100,26 +100,53 @@ module App =
                 model.pickingModel.intersectionPoints |> toPlaneCoords |> OpcSelectionViewer.Serialization.save ".\planestate" |> ignore
                 model
 
-            | Keys.L -> //if R is pressed then picked point on plane is new rover target
-                let picked = model.pickingModel.pickedPointOnPlane
-                let roverModel = 
-                    match picked with
-                        | Some p -> 
-                            let forward = p-model.rover.position
-                            let cam = CameraView.look model.rover.position forward.Normalized model.rover.up
-                            { model.rover with target = p; camera = { model.rover.camera with view = cam }}
-                        
-                        | None -> model.rover
-                { model with rover = roverModel}
+            | Keys.L -> 
+                let intersect = model.pickingModel.intersectionPoints
+                let l = intersect |> PList.toList
+                let t = 
+                    match l.IsEmpty with
+                        | true -> V3d.OOO
+                        | false -> l.Head
+                let p = PickingApp.update model.pickingModel (PickingAction.RemoveLastPoint)
+                let forward = t-model.rover.position
+                let cam = CameraView.look model.rover.position forward.Normalized model.rover.up
+                let r = { model.rover with target = t; camera = { model.rover.camera with view = cam }} 
+                { model with rover = r; pickingModel = p}
 
-            | Keys.R -> //if R is pressed then picked point on plane is new rover position
-                let picked = model.pickingModel.pickedPointOnPlane
+                //let picked = model.pickingModel.pickedPointOnPlane
+                //let roverModel = 
+                //    match picked with
+                //        | Some p -> 
+                //            let forward = p-model.rover.position
+                //            let cam = CameraView.look model.rover.position forward.Normalized model.rover.up
+                //            { model.rover with target = p; camera = { model.rover.camera with view = cam }}
+                        
+                //        | None -> model.rover
+                //{ model with rover = roverModel}
+
+            | Keys.R -> 
+                let intersect = model.pickingModel.intersectionPoints
                 let n = model.rover.up
-                let roverModel = 
-                    match picked with
-                        | Some p -> { model.rover with position = (p+n); projsphere = {model.rover.projsphere with position = (p+n)}}
-                        | None -> model.rover
-                { model with rover = roverModel}
+                let l = intersect |> PList.toList
+                let m = 
+                    match l.IsEmpty with
+                        | true -> V3d.OOO
+                        | false -> l.Head
+                let p = PickingApp.update model.pickingModel (PickingAction.RemoveLastPoint)
+                let r = { model.rover with position = (m+n); projsphere = {model.rover.projsphere with position = (m+n)}} 
+                { model with rover = r; pickingModel = p}
+                        
+                       
+                        
+                //point on plane
+                //let picked = model.pickingModel.pickedPointOnPlane
+                //let n = model.rover.up
+                //let roverModel = 
+                //    match picked with
+                //        | Some p -> { model.rover with position = (p+n); projsphere = {model.rover.projsphere with position = (p+n)}}
+                //        | None -> model.rover
+                //{ model with rover = roverModel}
+
 
 
 
@@ -176,6 +203,14 @@ module App =
                 
                   | SwitchCamera c ->
                     let r = RoverApp.update model.rover (SwitchCamera c)
+                    {model with rover = r}
+                
+                  | CalculateAngles -> 
+                    let r = RoverApp.update model.rover (CalculateAngles)
+                    {model with rover = r}
+                   
+                  | RotateToPoint ->
+                    let r = RoverApp.update model.rover (RotateToPoint)
                     {model with rover = r}
 
 
@@ -1006,7 +1041,7 @@ module App =
       let fullScene = 
         [
           PickingApp.view m.pickingModel
-          drawPlane
+          //drawPlane
           rov
           target
           frustumBox
@@ -1119,6 +1154,8 @@ module App =
                 
                 //button [onClick (fun _ -> RoverAction.MoveToRegion (m.region |> AList.toPList))] [text "Move to region"] |> UI.map RoverAction
                 button [onClick (fun _ -> RoverAction.MoveToRegion)]  [text "Move to region"] |> UI.map RoverAction
+                button [onClick (fun _ -> RoverAction.CalculateAngles)]  [text "calculate values"] |> UI.map RoverAction
+                button [onClick (fun _ -> RoverAction.RotateToPoint)]  [text "rotate to points"] |> UI.map RoverAction
 
 
 
