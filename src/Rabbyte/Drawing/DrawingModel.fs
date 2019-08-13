@@ -111,3 +111,12 @@ module DrawingModel =
             areaStyleNames = HMap.ofList [Pattern, "Pattern"; Filled, "Filled"; AreaStyle.Empty, "Empty";]
             lineStyleNames = HMap.ofList [Solid, "Solid"; Dashed, "Dashed"]
         }
+
+    let reset m =
+        { m with
+            points          = plist.Empty
+            segments        = plist.Empty
+            past            = None
+            future          = None
+            primitiveType   = PrimitiveType.Empty
+        }

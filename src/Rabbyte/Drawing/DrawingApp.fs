@@ -100,6 +100,57 @@ module DrawingApp =
                     points = segPoints
                 }
                 syncPrimType { model with points = model.points |> PList.prepend p; segments = model.segments |> PList.prepend segment; past = Some model}
+        //| AddTestBrushes pointsOnAxisFunc ->
+        //  if model.intersectionPoints.Count > 0 then
+        //    let rand = RandomSystem()
+        //    let colors =
+        //      [|
+        //        for _ in 1 .. 20 do
+        //          yield rand.UniformC3f().ToC4b()
+        //      |]
+        //    let testBrushes = 
+        //      Seq.initInfinite (fun _ ->
+        //        let mutable dir = rand.UniformV3dDirection()
+        //        if dir.Z < 0.0 then dir.Z <- -dir.Z
+        //        let p0 = (model.intersectionPoints.[rand.UniformInt(model.intersectionPoints.Count)])
+        //        match pointsOnAxisFunc (PList.single p0) with
+        //        | Some center ->
+        //          let center = center.midPoint
+        //          let dir = p0 - center |> Vec.normalize
+        //          let t = Trafo3d.FromNormalFrame(p0, dir)
+        //          let o = rand.UniformV2dDirection() * rand.UniformDouble()
+        //          let p1 = o + rand.UniformV2dDirection() * 0.5 * rand.UniformDouble()
+        //          let p2 = o + rand.UniformV2dDirection() * 0.5 * rand.UniformDouble()
+        //          let p0 = t.Forward.TransformPos(V3d(o, 0.0))
+        //          let p1 = t.Forward.TransformPos(V3d(p1, 0.0))
+        //          let p2 = t.Forward.TransformPos(V3d(p2, 0.0))
+        //          let pts = PList.ofList [ p0; p1; p2; p0]
+        //          match pointsOnAxisFunc (pts |> PList.skip 1) with
+        //          | Some aps ->
+        //            Some { 
+        //              // 1m shift for scene with axis outside of tunnel....REMOVE
+        //              pointsOnAxis = Some aps
+        //              points = pts
+        //              segments = PList.empty
+        //              color = colors.[rand.UniformInt colors.Length]
+        //            }
+        //          | None ->
+        //            None
+        //        | _ ->
+        //          None)
+        //      |> Seq.choose id
+        //      |> Seq.take 200
+        //      |> PList.ofSeq
+        //    let newGrouped =
+        //      testBrushes |> Seq.fold (fun groupedBrushes newBrush -> 
+        //        groupedBrushes|> HMap.alter newBrush.color (fun x -> 
+        //          match x with 
+        //          | Some y -> Some (y |> PList.append newBrush)
+        //          | None -> Some (PList.single newBrush))
+        //       ) model.groupedBrushes
+        //    { model with brush = model.brush |> PList.concat2 testBrushes; intersectionPoints = PList.empty; segments = PList.empty; groupedBrushes = newGrouped }
+        //  else 
+        //    model
         | RemoveLastPoint ->
             match model.points |> PList.count with
             | 0 -> model
@@ -116,6 +167,32 @@ module DrawingApp =
                 let newM = update model (AddPoint ((model.points |> PList.last), hitF))
                 let updateType = finalPrimitiveType true newM
                 // TODO -> FIX WINDING ORDER FOR GROUPED ANNOTATIONS!
+                //    let p, pa = 
+                //      // Fix winding order (if axis is available!)
+                //      match pa with
+                //      | None -> (p,pa)
+                //      | Some paa -> 
+                //        // for higher Precision shift by AxisPoint
+                //        let axisPoint = paa.pointsOnAxis |> PList.skip 1 |> PList.first
+                //        let p0 = p |> PList.first                  |> fun x -> x - axisPoint
+                //        let p1 = p |> PList.skip 1 |> PList.first  |> fun x -> x - axisPoint
+                //        let p2 = p |> PList.skip 2 |> PList.first  |> fun x -> x - axisPoint
+
+                //        let dir1 = p1.Normalized  // already shifted by axisPoint
+                //        let x1 = (p0-p1).Normalized
+                //        let x2 = (p2-p1).Normalized
+                //        let dir2 = (x1.Cross(x2)).Normalized
+
+                //        if dir1.Dot(dir2) |> sign < 0 then
+                //          let pRev = p |> PList.toList |> List.rev |> PList.ofList
+                //          let aRev = { paa with pointsOnAxis = paa.pointsOnAxis |> PList.toList |> List.rev |> PList.ofList }
+                //          printfn "\n\n\nFixed winding order \n\n\n"
+                //          (pRev, Some aRev)
+                //        else 
+                //          (p,pa)
+
+
+
                 { updateType with past = Some model }
             | _ -> { model with past = Some model }
 

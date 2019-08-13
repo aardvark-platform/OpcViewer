@@ -88,7 +88,7 @@ module App =
 
             let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
             let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
-            { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+            { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
           //| Keys.T ->
           //  let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
           //  //let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)

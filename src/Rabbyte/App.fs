@@ -44,11 +44,11 @@ let update (model: SimpleDrawingModel) (act: Action) =
             | Keys.F -> 
                 let finished = drawingUpdate model (DrawingAction.FinishClose None) // TODO add dummy-hitF
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some (ClippingVolumeType.Direction V3d.ZAxis)))
-                { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
             | Keys.Enter -> 
                 let finished = drawingUpdate model DrawingAction.Finish
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
-                { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
             | _ -> model
         | Move p, true -> { model with hoverPosition = Some (Trafo3d.Translation p) }
         | UpdateDrawing a, _ -> 
