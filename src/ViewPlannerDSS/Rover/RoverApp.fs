@@ -51,7 +51,7 @@ module RoverApp =
     let calcTheta (x:float) (y:float) =
        
        
-        let v = Math.Atan(y/x)
+        let v = Math.Atan(x/y)
         
         let absV = Math.Abs(v)
         let absVinDegree = absV * Constant.DegreesPerRadian
@@ -59,7 +59,7 @@ module RoverApp =
         let signY = Math.Sign(y)
 
         match signX,signY with
-            | 1,1 -> v
+            | 1,1 -> v * Constant.DegreesPerRadian
             | -1,1 -> (180.0 - absVinDegree)
             | -1, -1 -> (absVinDegree + 180.0)
             | 1,-1 -> (360.0 - absVinDegree)
@@ -80,19 +80,21 @@ module RoverApp =
         let rotZ = Trafo3d.RotateInto(up,V3d.OOI)
         let rotY = Trafo3d.RotateInto(right,V3d.OIO)
         let rotX = Trafo3d.RotateInto(forward,V3d.IOO)
-        
-        
-        //just z
-        //let rotatedbyz = rotZ.Forward.TransformPos vector
-        //rotatedbyz
 
-        //order x y z
-        let final = 
-            //let r1 = rotX.Forward.TransformDir vector
-            //rotY.Forward.TransformDir r1
-            let rotatedbyZ = rotZ.Forward.TransformDir vector//rotatedbyY
-            rotatedbyZ
+       
+        //let final = 
+
+        //    let rotatedbyZ = rotZ.Forward.TransformDir vector
+        //    rotatedbyZ
         
+        let final = 
+
+            //rotate x y
+            let rX = rotX.Forward.TransformDir vector
+            let rY = rotY.Forward.TransformDir rX
+            let rZ = rotZ.Forward.TransformDir rY
+            rZ
+
         final
         
 
@@ -368,6 +370,7 @@ module RoverApp =
 
                 let thetaPhiValues = rotatedPoints |> List.map(fun p -> calcThetaPhi p)
 
+
                 //debugging
                 for p in thetaPhiValues do
                     printfn "theta %A phi %A"  (p.X) (p.Y* Constant.DegreesPerRadian) 
@@ -376,8 +379,8 @@ module RoverApp =
                 let plist = thetaPhiValues |> PList.ofList
 
                 //point on forward vector
-                let initPoint = rover.target
-                let shifted = (initPoint-spherePos).Normalized
+                let referencePoint = rover.target
+                let shifted = (referencePoint-spherePos).Normalized
                 let r = rotateIntoCoordinateSystem rover shifted
                 let thetaOfPointonForwardVec = calcTheta r.X r.Y
                 printfn "thetaOnForward %A"  thetaOfPointonForwardVec
