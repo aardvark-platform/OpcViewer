@@ -108,7 +108,8 @@ module MinervaApp =
     let array = features |> PList.toArray
     
     let names     = array |> Array.map(fun f -> f.id)            
-    let positions = array |> Array.map(fun f -> f.geometry.positions.Head)            
+    let positions = array |> Array.map(fun f -> f.geometry.positions.Head)
+    let coordinates = array |> Array.map(fun f -> f.geometry.coordinates.Head)    
     let colors    = array |> Array.map(fun f -> f.instrument |> MinervaModel.instrumentColor )
     
     let trafo =
@@ -119,6 +120,7 @@ module MinervaApp =
     {
         names = names
         positions = positions
+        coordinates = coordinates
         colors = colors
         trafo = trafo
     }
@@ -163,160 +165,160 @@ module MinervaApp =
 
   let update (view:CameraView) (model : MinervaModel) (msg : MinervaAction) : MinervaModel =
       match msg with     
-      | SendScreenSpaceCoordinates -> 
-        //let viewProj = view.ViewTrafo * Frustum.projTrafo frustum
-        //let coords = 
-        //  model.filteredFeatures
-        //    |> PList.toList 
-        //    |> List.map(fun feat -> (feat.id, feat.geometry.positions.Head))
-        //    |> List.map(fun (id,p) ->  
-        //      let coord = (viewProj.Forward.TransformPosProj p)
-        //      let coord = (V2d(coord.X, coord.Y) + V2d.One) * 0.5
-        //      (id, coord))
+        | SendScreenSpaceCoordinates -> 
+            //let viewProj = view.ViewTrafo * Frustum.projTrafo frustum
+            //let coords = 
+            //  model.filteredFeatures
+            //    |> PList.toList 
+            //    |> List.map(fun feat -> (feat.id, feat.geometry.positions.Head))
+            //    |> List.map(fun (id,p) ->  
+            //      let coord = (viewProj.Forward.TransformPosProj p)
+            //      let coord = (V2d(coord.X, coord.Y) + V2d.One) * 0.5
+            //      (id, coord))
         
-        //let width = 1920
-        //let height = ((float)width / (frustum |> Frustum.aspect)) |> int
+            //let width = 1920
+            //let height = ((float)width / (frustum |> Frustum.aspect)) |> int
 
-        //let docPath = System.Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
-        //let imagePathTmp = @"visplore\Minerva"
-        //let imagePath = Path.combine[docPath; imagePathTmp]
-        //let filename = "overview.jpg"
+            //let docPath = System.Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+            //let imagePathTmp = @"visplore\Minerva"
+            //let imagePath = Path.combine[docPath; imagePathTmp]
+            //let filename = "overview.jpg"
 
-        //Log.startTimed "[Minerva taking] Screenshot %A" (V2i(width, height))
-        //PRo3D.Base.Utilities.takeScreenshot "http://localhost:54321" width height filename imagePath
-        //Log.stop()
+            //Log.startTimed "[Minerva taking] Screenshot %A" (V2i(width, height))
+            //PRo3D.Base.Utilities.takeScreenshot "http://localhost:54321" width height filename imagePath
+            //Log.stop()
       
-        model
-      | PerformQueries -> failwith "[Minerva] not implemented"
-        //try
-        //  //let data = model.queries |> MinervaGeoJSON.loadMultiple        
-        //  Log.startTimed "[Minerva] Fetching full dataset from Server"
-        //  let data = idTestList |> (getIdQuerySite model.queryFilter) |> fun (a,b) -> MinervaGeoJSON.loadPaged a b
-        //  //let features = data.features |> PList.sortBy(fun x -> x.sol)    
-        //  Log.stop()
+            model
+          | PerformQueries -> failwith "[Minerva] not implemented"
+            //try
+            //  //let data = model.queries |> MinervaGeoJSON.loadMultiple        
+            //  Log.startTimed "[Minerva] Fetching full dataset from Server"
+            //  let data = idTestList |> (getIdQuerySite model.queryFilter) |> fun (a,b) -> MinervaGeoJSON.loadPaged a b
+            //  //let features = data.features |> PList.sortBy(fun x -> x.sol)    
+            //  Log.stop()
 
-        //  let queryM = QueryApp.updateFeaturesForRendering model.queryFilter data.features
-        //  { model with data = data; queryFilter = queryM }
+            //  let queryM = QueryApp.updateFeaturesForRendering model.queryFilter data.features
+            //  { model with data = data; queryFilter = queryM }
 
-        //with e ->
-        //  Log.error "%A" e.Message
-        //  model
-      | UpdateSelection selectionIds ->
-        let selection = selectionIds |> HSet.ofList
-        let selectedSgs = updateSelectedSgFeature model.filteredFeatures selection
-        { model with selection = { model.selection with selectedProducts = selection}; selectedSgFeatures = selectedSgs} 
-      | UpdateFiltering idList -> //failwith "[Minerva] not implemented"
-        //Log.startTimed "fetching %d entries by ids" idList.Length
-        //let data = idList |> (getIdQuerySite model.queryFilter) |> fun (a,b) -> MinervaGeoJSON.loadPaged a b
-        //Log.stop()
+            //with e ->
+            //  Log.error "%A" e.Message
+            //  model
+          | UpdateSelection selectionIds ->
+            let selection = selectionIds |> HSet.ofList
+            let selectedSgs = updateSelectedSgFeature model.filteredFeatures selection
+            { model with selection = { model.selection with selectedProducts = selection}; selectedSgFeatures = selectedSgs} 
+          | UpdateFiltering idList -> //failwith "[Minerva] not implemented"
+            //Log.startTimed "fetching %d entries by ids" idList.Length
+            //let data = idList |> (getIdQuerySite model.queryFilter) |> fun (a,b) -> MinervaGeoJSON.loadPaged a b
+            //Log.stop()
 
         
-        Log.line "[Minerva] filtering data to set of %d" idList.Length
+            Log.line "[Minerva] filtering data to set of %d" idList.Length
 
-        let filterSet = idList |> HSet.ofList
-        let filtered = model.data.features |> PList.filter(fun x -> x.id |> filterSet.Contains)
+            let filterSet = idList |> HSet.ofList
+            let filtered = model.data.features |> PList.filter(fun x -> x.id |> filterSet.Contains)
         
-        let blarg = filtered |> PList.toList |> List.map (fun x -> sprintf "%A %A %A %A" x.id x.instrument x.sol x.geometry.positions.[0])
+            let blarg = filtered |> PList.toList |> List.map (fun x -> sprintf "%A %A %A %A" x.id x.instrument x.sol x.geometry.positions.[0])
 
-        System.IO.File.WriteAllLines(@".\minervaIds",blarg)
+            System.IO.File.WriteAllLines(@".\minervaIds",blarg)
 
-        { model with filteredFeatures = filtered } |> updateFeaturesForRendering view.Location
+            { model with filteredFeatures = filtered } |> updateFeaturesForRendering view.Location
 
-      | FlyToProduct _ -> model //handled in higher level app
-      | OpenTif id -> Files.loadTif id model     
-      | Reset ->
-        { model with filteredFeatures = model.data.features; queryFilter = Initial.queryFilter }   
-      | LoadProducts (dumpFile, cacheFile) ->                            
-        Log.startTimed "[Minerva] Fetching full dataset from data file"
+          | FlyToProduct _ -> model //handled in higher level app
+          | OpenTif id -> Files.loadTif id model     
+          | Reset ->
+            { model with filteredFeatures = model.data.features; queryFilter = Initial.queryFilter }   
+          | LoadProducts (dumpFile, cacheFile) ->                            
+            Log.startTimed "[Minerva] Fetching full dataset from data file"
 
 
-        let data = Files.loadDataFile dumpFile cacheFile
-        Log.stop()        
+            let data = Files.loadDataFile dumpFile cacheFile
+            Log.stop()        
 
-        Log.line "[Minerva] found %d entries" data.features.Count   
-        let flatList = 
-          data.features 
-            |> PList.map(fun x -> x.geometry.positions |> List.head, x.id) 
-            |> PList.toArray
+            Log.line "[Minerva] found %d entries" data.features.Count   
+            let flatList = 
+              data.features 
+                |> PList.map(fun x -> x.geometry.positions |> List.head, x.id) 
+                |> PList.toArray
 
-        let input = flatList |> Array.map fst
-        let flatId = flatList |> Array.map snd
-        let kdTree = PointKdTreeExtensions.CreateKdTree(input, Metric.Euclidean, 1e-5)
-        let kdTreeBounds = Box3d(input)
-        { 
-          model with
-            data = data
-            filteredFeatures = data.features
-            kdTreeBounds = kdTreeBounds
-            selection = 
-              { model.selection with
-                  kdTree = kdTree
-                  flatPos = input
-                  flatID = flatId
-              }
-        } |> updateFeaturesForRendering view.Location
-      | SetPointSize s ->
-        let size = Numeric.update model.featureProperties.pointSize s
-        { model with featureProperties = { model.featureProperties with pointSize = size }}
-      | SetTextSize s ->
-        let size = Numeric.update model.featureProperties.textSize s
-        { model with featureProperties = { model.featureProperties with textSize = size }}   
-      | SingleSelectProduct name ->
-        { model with selection = { model.selection with singleSelectProduct = Some name }}
-      | ClearSelection ->
-        { model with selection = { model.selection with singleSelectProduct = None; selectedProducts = HSet.empty}; selectedSgFeatures = updateSgFeatures PList.empty}
-      | AddProductToSelection name ->
-        updateSelectionToggle [name] model
-      | PickProducts hit -> 
-          let closestPoints = queryClosestPoint model hit
-          match closestPoints with
-          | emptySeq when Seq.isEmpty emptySeq -> model
-          | seq -> 
-            let index = seq |> Seq.map (fun (depth, pos, index) -> index) |> Seq.head
-            let closestID = model.selection.flatID.[index]
-            updateSelectionToggle [closestID] model
+            let input = flatList |> Array.map fst
+            let flatId = flatList |> Array.map snd
+            let kdTree = PointKdTreeExtensions.CreateKdTree(input, Metric.Euclidean, 1e-5)
+            let kdTreeBounds = Box3d(input)
+            { 
+              model with
+                data = data
+                filteredFeatures = data.features
+                kdTreeBounds = kdTreeBounds
+                selection = 
+                  { model.selection with
+                      kdTree = kdTree
+                      flatPos = input
+                      flatID = flatId
+                  }
+            } |> updateFeaturesForRendering view.Location
+          | SetPointSize s ->
+            let size = Numeric.update model.featureProperties.pointSize s
+            { model with featureProperties = { model.featureProperties with pointSize = size }}
+          | SetTextSize s ->
+            let size = Numeric.update model.featureProperties.textSize s
+            { model with featureProperties = { model.featureProperties with textSize = size }}   
+          | SingleSelectProduct name ->
+            { model with selection = { model.selection with singleSelectProduct = Some name }}
+          | ClearSelection ->
+            { model with selection = { model.selection with singleSelectProduct = None; selectedProducts = HSet.empty}; selectedSgFeatures = updateSgFeatures PList.empty}
+          | AddProductToSelection name ->
+            updateSelectionToggle [name] model
+          | PickProducts hit -> 
+              let closestPoints = queryClosestPoint model hit
+              match closestPoints with
+              | emptySeq when Seq.isEmpty emptySeq -> model
+              | seq -> 
+                let index = seq |> Seq.map (fun (depth, pos, index) -> index) |> Seq.head
+                let closestID = model.selection.flatID.[index]
+                updateSelectionToggle [closestID] model
             
-          //Report.BeginTimed("bruteforce") |> ignore
-          //let updateModel = 
-          //  let ray = hit.globalRay.Ray.Ray
-          //  let minDist = model.selection.selectionMinDist
-          //  Array.zip model.selection.flatPos model.selection.flatID
-          //    |> Seq.choose(fun (pos, id) -> 
-          //      let dist = ray.GetMinimalDistanceTo pos
-          //      if dist < minDist then
-          //        Some (dist, id)
-          //      else 
-          //        None)
-          //    |> fun withinRange -> 
-          //      if withinRange.IsEmpty() then
-          //        model
-          //      else
-          //        let closestID = 
-          //          withinRange
-          //            |> Seq.sortBy fst
-          //            |> Seq.map snd
-          //            |> Seq.head
-          //        updateSelectionToggle [closestID] model
-          //Report.EndTimed() |> ignore
-          //updateModel
+              //Report.BeginTimed("bruteforce") |> ignore
+              //let updateModel = 
+              //  let ray = hit.globalRay.Ray.Ray
+              //  let minDist = model.selection.selectionMinDist
+              //  Array.zip model.selection.flatPos model.selection.flatID
+              //    |> Seq.choose(fun (pos, id) -> 
+              //      let dist = ray.GetMinimalDistanceTo pos
+              //      if dist < minDist then
+              //        Some (dist, id)
+              //      else 
+              //        None)
+              //    |> fun withinRange -> 
+              //      if withinRange.IsEmpty() then
+              //        model
+              //      else
+              //        let closestID = 
+              //          withinRange
+              //            |> Seq.sortBy fst
+              //            |> Seq.map snd
+              //            |> Seq.head
+              //        updateSelectionToggle [closestID] model
+              //Report.EndTimed() |> ignore
+              //updateModel
 
-      | HoverProducts hit ->
-          //Report.BeginTimed("hover-update") |> ignore
+          | HoverProducts hit ->
+              //Report.BeginTimed("hover-update") |> ignore
           
-          let closestPoints = queryClosestPoint model hit
+              let closestPoints = queryClosestPoint model hit
 
-          let updateModel = 
-            match closestPoints with
-            | emptySeq when Seq.isEmpty emptySeq -> 
-              match model.hoveredProduct with
-              | None -> model
-              | Some _ -> { model with hoveredProduct = None}
-            | seq -> 
-              let depth, pos, index = seq |> Seq.head
-              { model with hoveredProduct = Some pos }
-         // Report.EndTimed() |> ignore
+              let updateModel = 
+                match closestPoints with
+                | emptySeq when Seq.isEmpty emptySeq -> 
+                  match model.hoveredProduct with
+                  | None -> model
+                  | Some _ -> { model with hoveredProduct = None}
+                | seq -> 
+                  let depth, pos, index = seq |> Seq.head
+                  { model with hoveredProduct = Some pos }
+             // Report.EndTimed() |> ignore
 
-          updateModel
+              updateModel
 
   let viewFeaturesGui (model: MMinervaModel) =
      
@@ -472,6 +474,7 @@ module MinervaApp =
     Sg.ofList [
       Drawing.featureMousePick model.kdTreeBounds
       Drawing.drawFeaturePoints model.sgFeatures pointSize
+      Drawing.drawFeatureDirections model.sgFeatures
       Drawing.drawSelectedFeaturePoints model.selectedSgFeatures pointSize
       Drawing.drawHoveredFeaturePoint model.hoveredProduct pointSize model.sgFeatures.trafo
     ]

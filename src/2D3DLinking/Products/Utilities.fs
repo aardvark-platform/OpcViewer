@@ -244,6 +244,66 @@ module Drawing =
         let pointsF = stablePoints sgfeatures
         drawSingleColorPoints pointsF (color.ToV4d()) pointSize |> Sg.trafo sgfeatures.trafo
 
+
+    ////// DOMINIK
+    let drawFeatureDirections (sgfeatures: MSgFeatures) =
+        let origin = stablePoints sgfeatures
+
+        //Rot
+        let angleToRad = V3d(Math.PI / 180.0) * V3d(1.0,1.0,2.0)
+
+        let direction = (Mod.map2 (fun (a0: V3f[]) (a1: V3d[]) ->
+                Array.map2 (fun (p0: V3f) (p1: V3d) ->
+                    p0 + (Rot3f.FromAngleAxis(V3f(p1 * angleToRad.XYZ))).TransformDir(V3f(0.0, 0.0, -30.0))
+                ) a0 a1
+        ) origin sgfeatures.coordinates)
+
+        //let direction =
+        //    origin |> Mod.map (fun a ->
+        //        a |> Array.map (fun e ->
+        //            e + V3f.IOO
+        //        )
+        //    )
+
+        let directionLines = (Mod.map2 (fun (a0: V3f[]) (a1: V3f[]) ->
+            Array.map2 (fun (p0: V3f) (p1: V3f) ->
+                Line3d [V3d(p0);V3d(p1)]
+            ) a0 a1
+        ) origin direction)
+
+
+        // 34 FOV: 16.370
+        // 100 FOV: 5.67
+        let cam34Frustum = Frustum.perspective 16.370 0.01 100.0 1.0
+        let cam100Frustum = Frustum.perspective 5.67 0.01 100.0 1.0
+        
+        let pos = V3d(-2486735.62,2289118.43,-276194.91)
+        let posTrafo = Trafo3d.Translation pos
+
+        let frustumBox =
+            Sg.wireBox' C4b.White (Box3d(V3d.NNN,V3d.III))
+            |> Sg.noEvents
+            //|> Sg.trafo (Mod.constant(Frustum.projTrafo(cam34Frustum) * posTrafo))
+            |> Sg.trafo (Mod.constant(Frustum.projTrafo(cam34Frustum).Inverse * posTrafo))
+            |> Sg.shader {
+                do! DefaultSurfaces.stableTrafo
+                do! DefaultSurfaces.vertexColor
+            }
+
+        let directionLines =
+            Sg.lines (Mod.constant (C4b(C4f(1.0, 1.0, 0.5, 0.5)))) directionLines 
+            |> Sg.noEvents
+            |> Sg.effect [
+                Shader.StableTrafo.Effect
+                toEffect DefaultSurfaces.vertexColor
+            ]
+            |> Sg.trafo sgfeatures.trafo
+
+        frustumBox
+
+
+
+
     let drawFeaturePoints (sgfeatures : MSgFeatures) (pointSize:IMod<float>) = 
         let pointsF = stablePoints sgfeatures
         drawColoredPoints pointsF sgfeatures.colors pointSize |> Sg.trafo sgfeatures.trafo

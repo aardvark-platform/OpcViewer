@@ -153,6 +153,7 @@ type MinervaAction =
 type SgFeatures = {
     names       : string[]
     positions   : V3d[]
+    coordinates : V3d[]
     colors      : C4b[]
     trafo       : Trafo3d
 }
@@ -385,18 +386,20 @@ module Initial =
 
   let sgfeatures =
     {
-        names     = Array.empty
-        positions = Array.empty
-        colors    = Array.empty
-        trafo     = Trafo3d.Identity
+        names       = Array.empty
+        positions   = Array.empty
+        coordinates = Array.empty
+        colors      = Array.empty
+        trafo       = Trafo3d.Identity
     }
 
   let sgSelfeatures =
     {
-        names     = Array.empty
-        positions = Array.empty
-        colors    = Array.empty
-        trafo     = Trafo3d.Identity
+        names       = Array.empty
+        positions   = Array.empty
+        coordinates = Array.empty
+        colors      = Array.empty
+        trafo       = Trafo3d.Identity
     }
 
   let queryFilter = 
