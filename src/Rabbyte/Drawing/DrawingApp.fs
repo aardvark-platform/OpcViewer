@@ -29,7 +29,7 @@ module DrawingApp =
     let private syncPrimType model =
         finalPrimitiveType false model
 
-    let private createSecondaryColor (c : C4b) : C4b = 
+    let private createSecondaryColor (c: C4b) : C4b = 
     
         let primary = c.ToC3f().ToHSVf()
            
@@ -44,7 +44,7 @@ module DrawingApp =
                                    
         secondary
 
-    let rec update (model : DrawingModel) (act : DrawingAction) =
+    let rec update (model: DrawingModel) (act: DrawingAction) =
         match act with
         | ChangeColorPrimary c1 -> 
             { model with style = { model.style with primary = ColorPicker.update model.style.primary c1 }}
@@ -119,7 +119,7 @@ module DrawingApp =
                 { updateType with past = Some model }
             | _ -> { model with past = Some model }
 
-    let view (model : MDrawingModel) =  
+    let view (model: MDrawingModel) =  
         
         let sPoints = 
             model.segments 
@@ -141,7 +141,7 @@ module DrawingApp =
         
         [points; segPoints; segments; edges] |> Sg.group |> Sg.noEvents
 
-    let viewGui (model : MDrawingModel) = 
+    let viewGui (model: MDrawingModel) = 
         
         let style' = "color: white; font-family:Consolas;"
 

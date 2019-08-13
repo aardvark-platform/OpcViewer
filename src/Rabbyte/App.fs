@@ -24,9 +24,9 @@ type Action =
     | UpdateDrawing of DrawingAction
     | UpdateAnnotation of AnnotationAction
 
-let update (model : SimpleDrawingModel) (act : Action) =
+let update (model: SimpleDrawingModel) (act: Action) =
 
-    let drawingUpdate (model : SimpleDrawingModel) (act : DrawingAction) = 
+    let drawingUpdate (model: SimpleDrawingModel) (act: DrawingAction) = 
        { model with drawing = DrawingApp.update model.drawing act }
 
     match act, model.drawingEnabled with
@@ -101,7 +101,7 @@ let testScene =
 let frustum =
     Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
 
-let scene3D (model : MSimpleDrawingModel) =
+let scene3D (model: MSimpleDrawingModel) =
                                  
     let cursorTrafo = 
         model.hoverPosition 
@@ -127,7 +127,7 @@ let scene3D (model : MSimpleDrawingModel) =
     |> Sg.fillMode (Mod.constant FillMode.Fill)
     |> Sg.cullMode (Mod.constant CullMode.None)
 
-let view (model : MSimpleDrawingModel) =            
+let view (model: MSimpleDrawingModel) =            
     require (Html.semui) (
         div [clazz "ui"; style "background: #1B1C1E"] [
             ArcBallController.controlledControl model.camera CameraMessage frustum

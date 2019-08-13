@@ -46,16 +46,16 @@ module StencilAreaMasking =
         |> Sg.blendMode (Mod.constant BlendMode.Blend)
         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
 
-    let stencilArea (pass1:RenderPass) (pass2:RenderPass) sg1 sg2 =
+    let stencilArea (pass1: RenderPass) (pass2: RenderPass) sg1 sg2 =
         [
           maskSG pass1 sg1   // one pass by using EXT_stencil_two_side :)
           fillSG pass2 sg2
         ] |> Sg.ofList
 
-    let stencilArea' (pass1:RenderPass) (pass2:RenderPass) sg=
+    let stencilArea' (pass1: RenderPass) (pass2: RenderPass) sg=
         stencilArea pass1 pass2 sg sg
 
-    let stencilAreaGrouped (pass1:RenderPass) (pass2:RenderPass) (color:IMod<V4f>) sg =
+    let stencilAreaGrouped (pass1: RenderPass) (pass2: RenderPass) (color: IMod<V4f>) sg =
 
         let fullscreenSg =     
           Aardvark.SceneGraph.SgPrimitives.Sg.fullScreenQuad
@@ -69,7 +69,7 @@ module ClippingVolume =
     
     open OpcViewer.Base
 
-    let private createPlaneFittedExtrusionVolume (points:plist<V3d>) extrusionOffset = 
+    let private createPlaneFittedExtrusionVolume (points: plist<V3d>) extrusionOffset = 
         let plane = PlaneFitting.planeFit points
         let extrudeNormal = plane.Normal
         let projPointsOnPlane = points |> PList.map(plane.Project) |> PList.toList
@@ -102,7 +102,7 @@ module ClippingVolume =
                 ]
             ) |> List.concat
 
-    let planeFittedClippingVolume (colorAlpha:IMod<V4f>) (extrusionOffset:IMod<float>) (points:alist<V3d>) =
+    let planeFittedClippingVolume (colorAlpha: IMod<V4f>) (extrusionOffset: IMod<float>) (points: alist<V3d>) =
 
         let generatePolygonTriangles (extrusionOffset : float) (points:alist<V3d>) =
             let shiftAndPosAndCol =
@@ -126,7 +126,7 @@ module ClippingVolume =
   
         sg |> Mod.toASet |> Sg.set
 
-    let clippingVolume (colorAlpha:IMod<V4f>) (extrusionOffset:IMod<float>) (creation:IMod<ClippingVolumeType>) (points:alist<V3d>) = 
+    let clippingVolume (colorAlpha: IMod<V4f>) (extrusionOffset: IMod<float>) (creation: IMod<ClippingVolumeType>) (points: alist<V3d>) = 
         
         let offsetAndCreation = Mod.map2 (fun o c -> o,c) extrusionOffset creation
         
