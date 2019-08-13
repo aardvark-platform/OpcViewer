@@ -126,18 +126,18 @@ module DrawingApp =
             |> AList.map (fun x -> x.points |> AList.ofPList) 
             |> AList.concat
         
-        let points = SgUtilities.drawPointList model.points model.style.primary.c (Mod.constant 10.0) (Mod.constant 0.5)
-        let segPoints = SgUtilities.drawPointList sPoints model.style.secondary.c (Mod.constant 5.0) (Mod.constant 0.8)
+        let points = model.points |> SgUtilities.drawPointList  model.style.primary.c (Mod.constant 10.0) (Mod.constant 0.5)
+        let segPoints = sPoints |> SgUtilities.drawPointList  model.style.secondary.c (Mod.constant 5.0) (Mod.constant 0.8)
 
         let segments = 
             // CAREFUL! duplicated vertices!!! most likely additional edges between segments (startNode is also Endnode)
             let lineWidth = model.style.thickness |> Mod.map (fun x -> x * 0.8)
             let offset = Mod.constant 0.2
-            SgUtilities.lines' sPoints offset model.style.secondary.c lineWidth
+            sPoints |> SgUtilities.lines' offset model.style.secondary.c lineWidth
 
         let edges = 
             let offset = Mod.constant 0.1
-            SgUtilities.lines' model.points offset model.style.primary.c model.style.thickness 
+            model.points |> SgUtilities.lines' offset model.style.primary.c model.style.thickness 
         
         [points; segPoints; segments; edges] |> Sg.group |> Sg.noEvents
 

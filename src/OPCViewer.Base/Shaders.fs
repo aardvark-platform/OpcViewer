@@ -538,32 +538,20 @@ module Shader =
         let Effect =
             toEffect falseColor
 
-//Pro3d shaders...
+//Pro3d shaders...(simplified)
     module PointSize = 
 
         type UniformScope with
             member x.PointSize : float = uniform?PointSize
-            member x.SingleColor : V4d = uniform?SingleColor
-
-        let constantColor (v : PointVertex) =
-            vertex {
-                let ps : float = uniform.PointSize
-                let col : V4d = uniform.SingleColor
-                return { v with c = col; p = ps }
-            }
-
-        let differentColor (v : PointVertex) =
-            vertex {
-                let ps : float = uniform.PointSize
-                return { v with c = v.c; p = ps }
-            }
 
         let pointTrafo (v : PointVertex) =
             vertex {
+                let ps : float = uniform.PointSize
                 let vp = uniform.ModelViewTrafo * v.pos
                 return { 
                     v with 
                         pos = uniform.ProjTrafo * vp
+                        p = ps
                 }
             }
 
@@ -592,12 +580,6 @@ module Shader =
                 yield t.P0
                 restartStrip()
             }
-
-        let EffectConstColor =
-            toEffect constantColor
-
-        let EffectDifferentColor =
-            toEffect differentColor
 
         let EffectPointTrafo =
             toEffect pointTrafo
