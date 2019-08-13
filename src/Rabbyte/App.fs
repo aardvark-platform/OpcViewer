@@ -74,29 +74,29 @@ let testScene =
             box1
             box2
         ]
-            |> List.choose (fun v -> OpcViewer.Base.Picking.Intersect.single ray kdTree)
-            |> List.sort 
-            |> List.map (ray.Ray.GetPointOnRay)|> List.tryHead
+        |> List.choose (fun v -> OpcViewer.Base.Picking.Intersect.single ray kdTree)
+        |> List.sort 
+        |> List.map (ray.Ray.GetPointOnRay)|> List.tryHead
 
     [
         box1.GetIndexedGeometry().Sg |> Sg.noEvents
         box2.GetIndexedGeometry().Sg |> Sg.noEvents
     ]
-        |> Sg.ofList  
-        |> Sg.shader {
-            do! DefaultSurfaces.trafo
-            do! DefaultSurfaces.vertexColor
-            do! DefaultSurfaces.simpleLighting
-        }
-        |> Sg.requirePicking
-        |> Sg.noEvents 
-            |> Sg.withEvents [
-                Sg.onMouseMove (fun p -> Move p)
-                Sg.onClick(fun p -> 
-                    let hitF = Some hitFunc
-                    UpdateDrawing (DrawingAction.AddPoint (p, hitF)))
-                Sg.onLeave (fun _ -> Exit)
-            ]    
+    |> Sg.ofList  
+    |> Sg.shader {
+        do! DefaultSurfaces.trafo
+        do! DefaultSurfaces.vertexColor
+        do! DefaultSurfaces.simpleLighting
+    }
+    |> Sg.requirePicking
+    |> Sg.noEvents 
+    |> Sg.withEvents [
+        Sg.onMouseMove (fun p -> Move p)
+        Sg.onClick(fun p -> 
+            let hitF = Some hitFunc
+            UpdateDrawing (DrawingAction.AddPoint (p, hitF)))
+        Sg.onLeave (fun _ -> Exit)
+    ]    
 
 let frustum =
     Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
@@ -105,17 +105,17 @@ let scene3D (model : MSimpleDrawingModel) =
                                  
     let cursorTrafo = 
         model.hoverPosition 
-            |> Mod.map (Option.defaultValue(Trafo3d.Scale(V3d.Zero)))
+        |> Mod.map (Option.defaultValue(Trafo3d.Scale(V3d.Zero)))
 
     let cursorSg color size trafo =         
         Sg.sphere 5 (Mod.constant color) (Mod.constant size)
-            |> Sg.shader {
-                do! DefaultSurfaces.trafo
-                do! DefaultSurfaces.vertexColor
-                do! DefaultSurfaces.simpleLighting
-            }
-            |> Sg.noEvents
-            |> Sg.trafo (trafo)
+        |> Sg.shader {
+            do! DefaultSurfaces.trafo
+            do! DefaultSurfaces.vertexColor
+            do! DefaultSurfaces.simpleLighting
+        }
+        |> Sg.noEvents
+        |> Sg.trafo trafo
 
     let cursor = cursorSg C4b.Red 0.05 cursorTrafo
         
@@ -123,9 +123,9 @@ let scene3D (model : MSimpleDrawingModel) =
     let annotationApp = AnnotationApp.viewGrouped model.annotations
         
     [testScene; cursor; drawingApp; annotationApp]
-        |> Sg.ofList
-        |> Sg.fillMode (Mod.constant(FillMode.Fill))
-        |> Sg.cullMode (Mod.constant(CullMode.None))
+    |> Sg.ofList
+    |> Sg.fillMode (Mod.constant FillMode.Fill)
+    |> Sg.cullMode (Mod.constant CullMode.None)
 
 let view (model : MSimpleDrawingModel) =            
     require (Html.semui) (

@@ -37,19 +37,29 @@ module AnnotationApp =
 
             { model with annotations = updatedAnnotation; annotationsGrouped = updatedAnnotationsFilledPolygon }
 
+    let drawOutline (model: MAnnotationModel) = 
+        model.annotations 
+        |> AList.map (fun x -> 
+            let pointsSg = SgUtilities.drawPointList x.points x.style.primary.c (Mod.constant 10.0) (Mod.constant 0.5)
+            let linesSg = SgUtilities.lines' x.points (Mod.constant 0.5) x.style.secondary.c x.style.thickness 
+
+            [ pointsSg; linesSg ] |> Sg.group |> Sg.noEvents)
+        |> AList.toASet
+        |> Sg.set
+
     let viewOutline (model: MAnnotationModel) = 
-        model |> AnnotationSg.drawAnnotationsOutline
+        model |> drawOutline
 
     let viewGrouped (model : MAnnotationModel) = 
         [
             model |> AnnotationSg.drawAnnotationsFilledGrouped
-            model |> AnnotationSg.drawAnnotationsOutline
+            model |> drawOutline
         ] |> Sg.ofList
 
     let viewSeq (model : MAnnotationModel) =
         [
             model |> AnnotationSg.drawAnnotationsFilledSeq
-            model |> AnnotationSg.drawAnnotationsOutline
+            model |> drawOutline
         ] |> Sg.ofList
 
     let viewGui (model : MAnnotationModel) =

@@ -24,7 +24,7 @@ module AxisSg =
                 Shader.ThickLineNew.Effect //toEffect DefaultSurfaces.thickLine
             ]
             |> Sg.uniform "LineWidth" (Mod.constant width)
-            |> Sg.uniform "depthOffset" (Mod.constant 0.1)
+            |> Sg.uniform "DepthOffset" (Mod.constant 0.1)  // TODO refactor this whole file....using the OPCViewer.Base.SgUtilities
 
     let lines (color : C4b) (width : double)  (points : V3d[]) =
         let offset =

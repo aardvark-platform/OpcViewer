@@ -10,7 +10,6 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open DrawingModel
-open DrawingSg
 open OpcViewer.Base
 open FShade.Primitives
 
@@ -19,11 +18,11 @@ module DrawingApp =
     let private finalPrimitiveType close model  = 
         let primitiveType = 
             match model.points |> PList.count, close with
-                | 0, _ -> PrimitiveType.Empty
-                | 1, _ -> PrimitiveType.Point
-                | 2, _ -> PrimitiveType.Line
-                | _, false -> PrimitiveType.PolyLine
-                | _, true -> PrimitiveType.Polygon
+            | 0, _ -> PrimitiveType.Empty
+            | 1, _ -> PrimitiveType.Point
+            | 2, _ -> PrimitiveType.Line
+            | _, false -> PrimitiveType.PolyLine
+            | _, true -> PrimitiveType.Polygon
 
         { model with primitiveType = primitiveType}
 
@@ -66,41 +65,41 @@ module DrawingApp =
             { model with style = { model.style with areaStyle = a }}
         | Undo _ -> 
             match model.past with
-                | None -> model
-                | Some p -> { p with future = Some model }
+            | None -> model
+            | Some p -> { p with future = Some model }
         | Redo _ -> 
             match model.future with
-                | None -> model
-                | Some f -> f
+            | None -> model
+            | Some f -> f
         // Undo-Able Commands
         | RecalculateSegments hitF -> failwith "" // TODO?
         | AddPoint (p, hitF) -> 
             match model.points |> PList.isEmpty with
-                | true -> 
-                    syncPrimType { model with points = model.points |> PList.prepend p; past = Some model}
-                | false ->
-                    let startP = p
-                    let endP = model.points |> PList.first 
-                    let segPoints = 
-                        match hitF with
-                        | Some f -> 
-                            let vec  = (endP - startP)
-                            let dir  = vec.Normalized
-                            let l    = vec.Length
+            | true -> 
+                syncPrimType { model with points = model.points |> PList.prepend p; past = Some model}
+            | false ->
+                let startP = p
+                let endP = model.points |> PList.first 
+                let segPoints = 
+                    match hitF with
+                    | Some f -> 
+                        let vec  = (endP - startP)
+                        let dir  = vec.Normalized
+                        let l    = vec.Length
         
-                            [ 0.0 .. model.style.samplingRate .. l] 
-                                |> List.map(fun x -> startP + x * dir)
-                                |> List.map f
-                                |> List.choose id
-                                |> PList.ofList
-                        | None -> PList.empty
+                        [ 0.0 .. model.style.samplingRate .. l] 
+                        |> List.map(fun x -> startP + x * dir)
+                        |> List.map f
+                        |> List.choose id
+                        |> PList.ofList
+                    | None -> PList.empty
 
-                    let segment = {
-                        startPoint = startP
-                        endPoint = endP
-                        points = segPoints
-                    }
-                    syncPrimType { model with points = model.points |> PList.prepend p; segments = model.segments |> PList.prepend segment; past = Some model}
+                let segment = {
+                    startPoint = startP
+                    endPoint = endP
+                    points = segPoints
+                }
+                syncPrimType { model with points = model.points |> PList.prepend p; segments = model.segments |> PList.prepend segment; past = Some model}
         | RemoveLastPoint ->
             match model.points |> PList.count with
             | 0 -> model
@@ -113,19 +112,34 @@ module DrawingApp =
             { m with past = Some model}
         | FinishClose hitF -> 
             match model.primitiveType with
-                | PolyLine -> 
-                    let newM = update model (AddPoint ((model.points |> PList.last), hitF))
-                    let updateType = finalPrimitiveType true newM
-                    // TODO -> FIX WINDING ORDER FOR GROUPED ANNOTATIONS!
-                    { updateType with past = Some model }
-                | _ -> { model with past = Some model }
+            | PolyLine -> 
+                let newM = update model (AddPoint ((model.points |> PList.last), hitF))
+                let updateType = finalPrimitiveType true newM
+                // TODO -> FIX WINDING ORDER FOR GROUPED ANNOTATIONS!
+                { updateType with past = Some model }
+            | _ -> { model with past = Some model }
 
     let view (model : MDrawingModel) =  
-        let vertices = drawVertices model
-        let edges = drawLines model
-        let segments = drawSegment model
         
-        Sg.group [vertices; edges; segments] |> Sg.noEvents
+        let sPoints = 
+            model.segments 
+            |> AList.map (fun x -> x.points |> AList.ofPList) 
+            |> AList.concat
+        
+        let points = SgUtilities.drawPointList model.points model.style.primary.c (Mod.constant 10.0) (Mod.constant 0.5)
+        let segPoints = SgUtilities.drawPointList sPoints model.style.secondary.c (Mod.constant 5.0) (Mod.constant 0.8)
+
+        let segments = 
+            // CAREFUL! duplicated vertices!!! most likely additional edges between segments (startNode is also Endnode)
+            let lineWidth = model.style.thickness |> Mod.map (fun x -> x * 0.8)
+            let offset = Mod.constant 0.2
+            SgUtilities.lines' sPoints offset model.style.secondary.c lineWidth
+
+        let edges = 
+            let offset = Mod.constant 0.1
+            SgUtilities.lines' model.points offset model.style.primary.c model.style.thickness 
+        
+        [points; segPoints; segments; edges] |> Sg.group |> Sg.noEvents
 
     let viewGui (model : MDrawingModel) = 
         
@@ -137,11 +151,11 @@ module DrawingApp =
                 td[style style'][
                     Incremental.text (model.primitiveType |> Mod.map (fun x -> 
                         match x with
-                            | PrimitiveType.Empty -> "Empty"
-                            | PrimitiveType.Point -> "Point"
-                            | PrimitiveType.Line -> "Line"
-                            | PrimitiveType.PolyLine -> "PolyLine"
-                            | PrimitiveType.Polygon -> "Polygon"    
+                        | PrimitiveType.Empty -> "Empty"
+                        | PrimitiveType.Point -> "Point"
+                        | PrimitiveType.Line -> "Line"
+                        | PrimitiveType.PolyLine -> "PolyLine"
+                        | PrimitiveType.Polygon -> "Polygon"    
                         ))]
             ]
             tr[][
