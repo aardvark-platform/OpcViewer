@@ -29,21 +29,6 @@ module DrawingApp =
     let private syncPrimType model =
         finalPrimitiveType false model
 
-    let private createSecondaryColor (c: C4b) : C4b = 
-    
-        let primary = c.ToC3f().ToHSVf()
-           
-        let v = 
-          if (primary.V > 0.5f) then 
-            primary.V - 0.25f * primary.V
-          else 
-            primary.V + 0.25f * primary.V
-        
-        let secondary = HSVf(primary.H, primary.S, v).ToC3f().ToC3b()
-        let secondary = C4b(secondary, c.A)
-                                   
-        secondary
-
     let rec update (model: DrawingModel) (act: DrawingAction) =
         match act with
         | ChangeColorPrimary c1 -> 
@@ -52,7 +37,7 @@ module DrawingApp =
             { model with style = { model.style with secondary = ColorPicker.update model.style.secondary c2 }}
         | ChangeColorAuto c -> 
             let primary = ColorPicker.update model.style.primary c
-            let secCol = (createSecondaryColor primary.c)
+            let secCol = (SgUtilities.createSecondaryColor primary.c)
             let secondary = ColorPicker.update model.style.secondary (ColorPicker.Action.SetColor { c = secCol })
             { model with style = { model.style with primary = primary; secondary = secondary}}
         | ChangeThickness th ->
@@ -80,14 +65,14 @@ module DrawingApp =
             | false ->
                 let startP = p
                 let endP = model.points |> PList.first 
-                let segPoints = 
+                let innerSegPoints = 
                     match hitF with
                     | Some f -> 
                         let vec  = (endP - startP)
                         let dir  = vec.Normalized
                         let l    = vec.Length
         
-                        [ 0.0 .. model.style.samplingRate .. l] 
+                        [ model.style.samplingRate .. model.style.samplingRate .. l-model.style.samplingRate] 
                         |> List.map(fun x -> startP + x * dir)
                         |> List.map f
                         |> List.choose id
@@ -97,7 +82,7 @@ module DrawingApp =
                 let segment = {
                     startPoint = startP
                     endPoint = endP
-                    points = segPoints
+                    innerPoints = innerSegPoints
                 }
                 syncPrimType { model with points = model.points |> PList.prepend p; segments = model.segments |> PList.prepend segment; past = Some model}
         //| AddTestBrushes pointsOnAxisFunc ->
@@ -191,32 +176,58 @@ module DrawingApp =
                 //        else 
                 //          (p,pa)
 
-
-
                 { updateType with past = Some model }
             | _ -> { model with past = Some model }
 
-    let view (model: MDrawingModel) =  
-        
-        let sPoints = 
-            model.segments 
-            |> AList.map (fun x -> x.points |> AList.ofPList) 
+    let allSegmentPoints (segments: alist<Segment>) : alist<V3d> = 
+        let lastPoint = 
+            segments 
+            |> AList.toMod
+            |> Mod.map (fun x -> 
+                x 
+                |> PList.tryLast 
+                |> Option.map (fun x -> x.endPoint |> PList.single)
+                |> Option.defaultValue PList.empty)
+            |> AList.ofMod
+
+        let allButLast = 
+            segments 
+            |> AList.map (fun x -> x.innerPoints |> PList.prepend x.startPoint |> AList.ofPList) 
             |> AList.concat
-        
-        let points = model.points |> SgUtilities.drawPointList  model.style.primary.c (Mod.constant 10.0) (Mod.constant 0.5)
-        let segPoints = sPoints |> SgUtilities.drawPointList  model.style.secondary.c (Mod.constant 5.0) (Mod.constant 0.8)
 
-        let segments = 
-            // CAREFUL! duplicated vertices!!! most likely additional edges between segments (startNode is also Endnode)
-            let lineWidth = model.style.thickness |> Mod.map (fun x -> x * 0.8)
-            let offset = Mod.constant 0.2
-            sPoints |> SgUtilities.lines' offset model.style.secondary.c lineWidth
+        AList.append allButLast lastPoint
 
-        let edges = 
-            let offset = Mod.constant 0.1
-            model.points |> SgUtilities.lines' offset model.style.primary.c model.style.thickness 
+    let drawCountour (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) =  
+
+        let pointsSg = 
+            points 
+            |> SgUtilities.drawPointList  style.primary.c (Mod.constant 10.0) (Mod.constant 0.1)
+
+        let pointsInnerSg = 
+            segments
+            |> AList.map (fun x -> x.innerPoints |> AList.ofPList) 
+            |> AList.concat 
+            |> SgUtilities.drawPointList (style.primary.c |> Mod.map (fun c -> SgUtilities.createSecondaryColor c)) (Mod.constant 8.0) (Mod.constant 0.1)
+
+        let edgesSg = 
+            let lineWidth = style.thickness |> Mod.map (fun x -> x * 1.1)
+            let sPoints = allSegmentPoints segments
+            sPoints
+            |> SgUtilities.lines' (Mod.constant 0.06) style.secondary.c lineWidth
+
+        let edgesDirectSg = 
+            points 
+            |> SgUtilities.lines' (Mod.constant 0.05) style.primary.c style.thickness 
         
-        [points; segPoints; segments; edges] |> Sg.group |> Sg.noEvents
+        // drawing order does not fix overlappings (offset in worldspace could fix this...)
+        //let edgesSg = [edges; edgesDirect] |> Sg.group |> Sg.noEvents |> Sg.pass RenderPass.main
+        //let pointsSg = [points; pointsInner] |> Sg.group |> Sg.noEvents |> Sg.pass (RenderPass.after "points" RenderPassOrder.Arbitrary RenderPass.main)
+        //[pointsSg; edgesSg] |> Sg.ofList
+        
+        [edgesSg; edgesDirectSg; pointsSg; pointsInnerSg] |> Sg.group
+
+    let view (model: MDrawingModel) = 
+        drawCountour model.points model.segments model.style |> Sg.noEvents
 
     let viewGui (model: MDrawingModel) = 
         

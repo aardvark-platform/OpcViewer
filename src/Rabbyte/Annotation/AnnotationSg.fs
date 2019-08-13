@@ -248,37 +248,42 @@ module AnnotationSg =
     open AnnotationModel
 
     // grouped...fast -> alpha broken
-    let drawAnnotationsFilledGrouped  (model: MAnnotationModel) =
+    let drawAnnotationsFilledGrouped (firstRenderPass: RenderPass) (model: MAnnotationModel) =
     
-        let mutable maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
+        let mutable maskPass = firstRenderPass // RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
         let mutable areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
 
-        model.annotationsGrouped 
-        |> AMap.map (fun groupColor annotations -> 
-            let colorAlpha = SgUtilities.colorAlpha (Mod.constant groupColor) (Mod.constant 0.5)
-            let groupedSg = 
-                annotations
-                |> AList.map (fun x -> clippingVolume colorAlpha model.extrusionOffset x.clippingVolume x.points)
-                |> AList.toASet
-                |> Sg.set
-                |> Sg.effect [
-                    Shader.StableTrafo.Effect
-                    toEffect DefaultSurfaces.vertexColor
-                ]
-            let coloredPolygon =
-                groupedSg
-                |> StencilAreaMasking.stencilAreaGrouped maskPass areaPass colorAlpha   
+        let sg = 
+            model.annotationsGrouped 
+            |> AMap.map (fun groupColor annotations -> 
+                let colorAlpha = SgUtilities.colorAlpha (Mod.constant groupColor) (Mod.constant 0.5)
+                let groupedSg = 
+                    annotations
+                    |> AList.map (fun x -> clippingVolume colorAlpha model.extrusionOffset x.clippingVolume x.points)
+                    |> AList.toASet
+                    |> Sg.set
+                    |> Sg.effect [
+                        Shader.StableTrafo.Effect
+                        toEffect DefaultSurfaces.vertexColor
+                    ]
+                let coloredPolygon =
+                    groupedSg
+                    |> StencilAreaMasking.stencilAreaGrouped maskPass areaPass colorAlpha   
 
-            maskPass <- RenderPass.after "mask" RenderPassOrder.Arbitrary areaPass
-            areaPass <- RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
+                maskPass <- RenderPass.after "mask" RenderPassOrder.Arbitrary areaPass
+                areaPass <- RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
                 
-            [
-                coloredPolygon
-                model.showDebug |> Mod.map (fun show -> if show then groupedSg |> drawClippingVolumeDebug else Sg.empty) |> Sg.dynamic
-            ] |> Sg.ofList)
-        |> AMap.toASet
-        |> ASet.map snd
-        |> Sg.set
+                [
+                    coloredPolygon
+                    model.showDebug |> Mod.map (fun show -> if show then groupedSg |> drawClippingVolumeDebug else Sg.empty) |> Sg.dynamic
+                ] |> Sg.ofList)
+            |> AMap.toASet
+            |> ASet.map snd
+            |> Sg.set
+
+
+        let lastRenderPass = areaPass
+        (sg, lastRenderPass)
 
     // sequentiel...correct Alphablending
     let drawAnnotationsFilledSeq (model: MAnnotationModel) =

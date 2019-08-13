@@ -147,13 +147,14 @@ module App =
       let axis = 
         m |> AxisSg.axisSgs
 
-      let scene = 
+      let afterSg = 
         [
-          opcs
+          m.drawing |> DrawingApp.view
           axis
-          DrawingApp.view m.drawing
-          AnnotationApp.viewGrouped m.annotations
         ] |> Sg.ofList
+
+      let scene = 
+        m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main afterSg
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 

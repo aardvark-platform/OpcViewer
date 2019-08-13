@@ -117,13 +117,18 @@ let scene3D (model: MSimpleDrawingModel) =
         |> Sg.noEvents
         |> Sg.trafo trafo
 
-    let cursor = cursorSg C4b.Red 0.05 cursorTrafo
-        
-    let drawingApp = DrawingApp.view model.drawing
-    let annotationApp = AnnotationApp.viewGrouped model.annotations
-        
-    [testScene; cursor; drawingApp; annotationApp]
-    |> Sg.ofList
+    let afterAnnotationSg =
+        [
+            model.drawing |> DrawingApp.view  
+            cursorSg C4b.Red 0.05 cursorTrafo 
+        ]
+        |> Sg.ofList
+
+    let finalComposed = 
+        model.annotations 
+        |> AnnotationApp.viewGrouped testScene RenderPass.main afterAnnotationSg
+
+    finalComposed
     |> Sg.fillMode (Mod.constant FillMode.Fill)
     |> Sg.cullMode (Mod.constant CullMode.None)
 

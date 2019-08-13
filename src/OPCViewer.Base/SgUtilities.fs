@@ -11,6 +11,20 @@ module SgUtilities =
     let colorAlpha (color:IMod<C4b>) (alpha:IMod<float>) : IMod<V4f> = 
         Mod.map2 (fun (c:C4b) a -> c.ToC4f() |> fun x -> C4f(x.R, x.G, x.B, float32 a).ToV4f()) color alpha
 
+    let createSecondaryColor (c: C4b) : C4b = 
+        let primary = c.ToC3f().ToHSVf()
+           
+        let v = 
+          if (primary.V > 0.5f) then 
+            primary.V - 0.25f * primary.V
+          else 
+            primary.V + 0.25f * primary.V
+        
+        let secondary = HSVf(primary.H, primary.S, v).ToC3f().ToC3b()
+        let secondary = C4b(secondary, c.A)
+                                   
+        secondary
+
     // Improve numerical stabilty
     let stablePoints (trafo: IMod<Trafo3d>) (positions: IMod<V3d[]>) : IMod<V3f[]> =
         positions 

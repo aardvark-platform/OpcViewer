@@ -37,29 +37,39 @@ module AnnotationApp =
 
             { model with annotations = updatedAnnotation; annotationsGrouped = updatedAnnotationsFilledPolygon }
 
-    let drawOutline (model: MAnnotationModel) = 
+    let drawOutlines (model: MAnnotationModel) = 
         model.annotations 
-        |> AList.map (fun x -> 
-            let pointsSg = x.points |> SgUtilities.drawPointList  x.style.primary.c (Mod.constant 10.0) (Mod.constant 0.5)
-            let linesSg = x.points |> SgUtilities.lines' (Mod.constant 0.5) x.style.secondary.c x.style.thickness 
-
-            [ pointsSg; linesSg ] |> Sg.group |> Sg.noEvents)
+        |> AList.map (fun x -> DrawingApp.drawCountour x.points x.segments x.style |> Sg.noEvents)
         |> AList.toASet
         |> Sg.set
 
-    let viewOutline (model: MAnnotationModel) = 
-        model |> drawOutline
+    let viewOutlines (model: MAnnotationModel) = 
+        model |> drawOutlines
 
-    let viewGrouped (model: MAnnotationModel) = 
-        [
-            model |> AnnotationSg.drawAnnotationsFilledGrouped
-            model |> drawOutline
-        ] |> Sg.ofList
+    let viewGrouped (beforeSg: ISg<'a>) (beforeRenderPass: RenderPass) (afterSg: ISg<'a>) (annotations: MAnnotationModel)  = 
+        let sg1 = 
+            beforeSg 
+            |> Sg.pass beforeRenderPass
+
+        let sg2, nextRenderPass = 
+            annotations |> AnnotationSg.drawAnnotationsFilledGrouped (RenderPass.after "init" RenderPassOrder.Arbitrary beforeRenderPass)
+
+        let sg3 = 
+            [
+                afterSg 
+                annotations |> drawOutlines
+            ]
+            |> Sg.ofList
+            |> Sg.pass nextRenderPass
+
+        [ sg1; sg2; sg3 ] 
+        |> Sg.ofList
 
     let viewSeq (model: MAnnotationModel) =
+        // TODO...renderpass same as for grouping 
         [
             model |> AnnotationSg.drawAnnotationsFilledSeq
-            model |> drawOutline
+            model |> drawOutlines
         ] |> Sg.ofList
 
     let viewGui (model: MAnnotationModel) =

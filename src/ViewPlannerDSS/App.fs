@@ -218,17 +218,14 @@ module App =
 
 
 
-
-
+      let afterSg = 
+        [
+          m.drawing |> DrawingApp.view
+          // myPlane
+        ] |> Sg.ofList
 
       let scene = 
-        [
-          opcs
-          // PickingApp.view m.pickingModel // TODO...restore after refactoring...
-          DrawingApp.view m.drawing
-          AnnotationApp.viewGrouped m.annotations
-          //myPlane 
-        ] |> Sg.ofList
+        m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main afterSg
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
