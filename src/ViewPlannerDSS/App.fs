@@ -147,14 +147,13 @@ module App =
                 //        | None -> model.rover
                 //{ model with rover = roverModel}
 
-
-
-
             | Keys.Enter ->
+                let points = model.pickingModel.intersectionPoints
+                let rover = { model.rover with reg = Some model.pickingModel.intersectionPoints }
                 let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
                 let dir = Direction (model.drawing.points |> PList.toSeq |> fun x -> PlaneFitting.planeFit x).Normal
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some dir))
-                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
+                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing; region = Some points; rover = rover} // reset drawingApp, but keep brush-style
                 
                 //let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
                 //let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddBrush pointsOnAxisFunc)
@@ -176,15 +175,10 @@ module App =
                             | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
                             | None -> model.drawing
                         updatePickM, updatedDrawM
+                    | PickPointOnPlane p ->
+                        PickingApp.update model.pickingModel (PickPointOnPlane p), model.drawing
                     | _ -> PickingApp.update model.pickingModel msg, model.drawing
             { model with pickingModel = pickingModel; drawing = drawingModel }
-
-                    | PickPointOnPlane p ->
-                       PickingApp.update model.pickingModel (PickPointOnPlane p)
-                       
-                    | _ -> PickingApp.update model.pickingModel msg
-            { model with pickingModel = pickingModel }
-
         | UpdateDockConfig cfg ->
             { model with dockConfig = cfg }
 
@@ -1038,15 +1032,6 @@ module App =
                             |> Sg.dynamic
                       )
 
-
-
-      let drawPlane = myPlane |> Sg.dynamic
-
-      let fullScene = 
-
-
-
-
       let afterSg = 
         [
           m.drawing |> DrawingApp.view
@@ -1054,7 +1039,6 @@ module App =
           rov
           target
           frustumBox
-          shading
           up |> Sg.dynamic
           forward |> Sg.dynamic
           right |> Sg.dynamic
@@ -1067,7 +1051,7 @@ module App =
     
       let roverCamScene = 
        [
-          PickingApp.view m.pickingModel
+          // PickingApp.view m.pickingModel
           //drawPlane
           //target
           //shading
@@ -1088,8 +1072,8 @@ module App =
         ] |> Sg.ofList
         
 
-      let scene = 
-        m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main afterSg
+      let fullScene = 
+        m.annotations |> AnnotationApp.viewGrouped shading RenderPass.main afterSg
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
