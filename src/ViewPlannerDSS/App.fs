@@ -184,7 +184,7 @@ module App =
         | UpdateDockConfig cfg ->
             { model with dockConfig = cfg }
 
-        | RoverAction msg -> 
+        | RoverAction msg -> //REVIEW
             match msg with
                   | ChangePosition pos -> 
                         let r = RoverApp.update model.rover (ChangePosition pos)
@@ -235,12 +235,12 @@ module App =
        //projection points on sphere
       
       let i =
-        m.rover.projPoints
+        m.rover.projPoints  //REVIEW
             |> AList.toMod
             |> Mod.map(fun li -> 
                 
                 let list = li |> PList.toList
-                let shift = 
+                let shift = //REVIEW
                     match list.IsEmpty with
                         | true -> V3d.OOO
                         | false -> list.Head
@@ -453,7 +453,7 @@ module App =
       let upAxisLine = 
         upAxis
             |> AList.toMod
-            |> Mod.map (fun m -> 
+            |> Mod.map (fun m -> //REVIEW
                 let upArr = m |> PList.toArray
                         
                 Sg.draw IndexedGeometryMode.LineList
@@ -488,7 +488,7 @@ module App =
             |> Mod.map (fun m -> 
                 let fArr = m |> PList.toArray
                         
-                Sg.draw IndexedGeometryMode.LineList
+                Sg.draw IndexedGeometryMode.LineList  //REVIEW
                 |> Sg.trafo shiftVec
                 |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant fArr) 
                 |> Sg.uniform "Color" (Mod.constant C4b.Green)
