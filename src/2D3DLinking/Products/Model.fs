@@ -156,6 +156,7 @@ type SgFeatures = {
     coordinates : V3d[]
     colors      : C4b[]
     trafo       : Trafo3d
+    instruments  : Instrument[]
 }
 
 [<DomainType>]
@@ -391,6 +392,7 @@ module Initial =
         coordinates = Array.empty
         colors      = Array.empty
         trafo       = Trafo3d.Identity
+        instruments = Array.empty
     }
 
   let sgSelfeatures =
@@ -400,6 +402,7 @@ module Initial =
         coordinates = Array.empty
         colors      = Array.empty
         trafo       = Trafo3d.Identity
+        instruments = Array.empty
     }
 
   let queryFilter = 

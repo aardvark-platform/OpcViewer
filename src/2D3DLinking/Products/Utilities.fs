@@ -258,6 +258,7 @@ module Drawing =
                 ) a0 a1
         ) origin sgfeatures.coordinates)
 
+
         //let direction =
         //    origin |> Mod.map (fun a ->
         //        a |> Array.map (fun e ->
@@ -274,11 +275,47 @@ module Drawing =
 
         // 34 FOV: 16.370
         // 100 FOV: 5.67
-        let cam34Frustum = Frustum.perspective 16.370 0.01 100.0 1.0
-        let cam100Frustum = Frustum.perspective 5.67 0.01 100.0 1.0
-        
+        let cam34Frustum = Frustum.perspective 16.370 0.01 15.0 1.0
+        let cam100Frustum = Frustum.perspective 5.67 0.01 15.0 1.0
+
         let pos = V3d(-2486735.62,2289118.43,-276194.91)
         let posTrafo = Trafo3d.Translation pos
+
+        Log.line "%A" origin
+
+        let frustumTrafos =
+            let cam34Inv = Frustum.projTrafo(cam34Frustum).Inverse
+            let cam100Inv = Frustum.projTrafo(cam100Frustum).Inverse
+            sgfeatures.instruments
+            |> Mod.map (fun x ->
+                x |> Array.map (fun e ->
+                    match e with
+                    | Instrument.MastcamL -> cam34Inv
+                    | Instrument.MastcamR -> cam100Inv
+                    | Instrument.Mastcam -> (Trafo3d.Scale 0.0) // TODO: dunno?
+                    | _ -> (Trafo3d.Scale 0.0) // TODO: discard!
+                )
+            )
+
+        let rotTranslateTrafos = (Mod.map2 (fun (a0: V3f[]) (a1: V3d[]) ->
+            Array.map2 (fun (p0: V3f) (p1: V3d) ->
+                //works = Frustum.projTrafo(cam34Frustum).Inverse * Trafo3d.FromComponents(V3d.III, (p1 * angleToRad), V3d(p0))
+                //let frustum = Frustum.projTrafo(cam34Frustum).Inverse
+                let rotation = Trafo3d(Rot3d.FromAngleAxis(p1 * angleToRad.XYZ))
+                let translation = Trafo3d.Translation(V3d(p0))
+                let innerRot = Trafo3d.Rotation(V3d.OOI, -p1.Z * Math.PI / 180.0)
+                innerRot * rotation * translation
+                //frustum * innerRot * rotation * translation
+                //Trafo3d.FromComponents(V3d.III, V3d.OOO, V3d(p0))
+                //Frustum.projTrafo(cam34Frustum).Inverse * (Trafo3d.Translation(V3d(p0)))
+            ) a0 a1
+        ) origin sgfeatures.coordinates)
+
+        let trafos =
+            Mod.map2 (fun x y ->
+                Array.map2 (fun a b -> a * b) x y
+            ) frustumTrafos rotTranslateTrafos
+
 
         let frustumBox =
             Sg.wireBox' C4b.White (Box3d(V3d.NNN,V3d.III))
@@ -290,8 +327,45 @@ module Drawing =
                 do! DefaultSurfaces.vertexColor
             }
 
+        let frustumBox' =
+            Sg.wireBox' C4b.White (Box3d(V3d.NNN,V3d.III))
+            |> Sg.noEvents
+            |> Sg.shader {
+                do! DefaultSurfaces.stableTrafo
+                do! DefaultSurfaces.vertexColor
+            }
+
+        let frustra =
+            Mod.map2 (fun trafs cols -> 
+                Array.map2 (fun t c ->
+                    Sg.wireBox' c (Box3d(V3d.NNN,V3d.III))
+                    |> Sg.noEvents
+                    |> Sg.shader {
+                        do! DefaultSurfaces.stableTrafo
+                        do! DefaultSurfaces.vertexColor
+                    }
+                    |> Sg.transform t
+                ) trafs cols
+                |> Sg.ofArray
+            ) trafos sgfeatures.colors
+            |> Sg.dynamic
+            |> Sg.trafo sgfeatures.trafo
+
+        //let frustra =
+        //    trafos
+        //    |> Mod.map (fun x -> 
+        //        x |> Array.map (fun e ->
+        //            frustumBox'
+        //            |> Sg.transform e
+        //        )
+        //        |> Sg.ofArray
+        //    )
+        //    |> Sg.dynamic
+        //    |> Sg.trafo sgfeatures.trafo
+
+            
         let directionLines =
-            Sg.lines (Mod.constant (C4b(C4f(1.0, 1.0, 0.5, 0.5)))) directionLines 
+            Sg.lines (Mod.constant (C4b.Yellow)) directionLines 
             |> Sg.noEvents
             |> Sg.effect [
                 Shader.StableTrafo.Effect
@@ -299,7 +373,10 @@ module Drawing =
             ]
             |> Sg.trafo sgfeatures.trafo
 
-        frustumBox
+        Sg.ofArray [|
+            frustra
+            //directionLines
+        |]
 
 
 

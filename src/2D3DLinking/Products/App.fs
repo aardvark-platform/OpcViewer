@@ -111,6 +111,7 @@ module MinervaApp =
     let positions = array |> Array.map(fun f -> f.geometry.positions.Head)
     let coordinates = array |> Array.map(fun f -> f.geometry.coordinates.Head)    
     let colors    = array |> Array.map(fun f -> f.instrument |> MinervaModel.instrumentColor )
+    let instruments = array |> Array.map(fun f -> f.instrument)
     
     let trafo =
       match positions |> Array.tryHead with
@@ -123,6 +124,7 @@ module MinervaApp =
         coordinates = coordinates
         colors = colors
         trafo = trafo
+        instruments = instruments
     }
 
   let updateSelectedSgFeature (features:plist<Feature>) (selected:hset<string>) =
