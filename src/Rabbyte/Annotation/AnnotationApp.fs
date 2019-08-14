@@ -17,7 +17,7 @@ open AnnotationModel
 module AnnotationApp =
     open Rabbyte.Drawing
 
-    let update (model : AnnotationModel) (act : AnnotationAction) =
+    let update (model: AnnotationModel) (act: AnnotationAction) =
         match act with
         | ChangeExtrusionOffset offset -> { model with extrusionOffset = offset }
         | ShowDebugVis -> { model with showDebug = not model.showDebug }
@@ -37,22 +37,42 @@ module AnnotationApp =
 
             { model with annotations = updatedAnnotation; annotationsGrouped = updatedAnnotationsFilledPolygon }
 
-    let viewOutline (model: MAnnotationModel) = 
-        model |> AnnotationSg.drawAnnotationsOutline
+    let drawOutlines (model: MAnnotationModel) = 
+        model.annotations 
+        |> AList.map (fun x -> DrawingApp.drawCountour x.points x.segments x.style |> Sg.noEvents)
+        |> AList.toASet
+        |> Sg.set
 
-    let viewGrouped (model : MAnnotationModel) = 
-        [
-            model |> AnnotationSg.drawAnnotationsFilledGrouped
-            model |> AnnotationSg.drawAnnotationsOutline
-        ] |> Sg.ofList
+    let viewOutlines (model: MAnnotationModel) = 
+        model |> drawOutlines
 
-    let viewSeq (model : MAnnotationModel) =
+    let viewGrouped (beforeSg: ISg<'a>) (beforeRenderPass: RenderPass) (afterSg: ISg<'a>) (annotations: MAnnotationModel)  = 
+        let sg1 = 
+            beforeSg 
+            |> Sg.pass beforeRenderPass
+
+        let sg2, nextRenderPass = 
+            annotations |> AnnotationSg.drawAnnotationsFilledGrouped (RenderPass.after "init" RenderPassOrder.Arbitrary beforeRenderPass)
+
+        let sg3 = 
+            [
+                afterSg 
+                annotations |> drawOutlines
+            ]
+            |> Sg.ofList
+            |> Sg.pass nextRenderPass
+
+        [ sg1; sg2; sg3 ] 
+        |> Sg.ofList
+
+    let viewSeq (model: MAnnotationModel) =
+        // TODO...renderpass same as for grouping 
         [
             model |> AnnotationSg.drawAnnotationsFilledSeq
-            model |> AnnotationSg.drawAnnotationsOutline
+            model |> drawOutlines
         ] |> Sg.ofList
 
-    let viewGui (model : MAnnotationModel) =
+    let viewGui (model: MAnnotationModel) =
         let style' = "color: white; font-family:Consolas;"
 
         table [clazz "item"] [

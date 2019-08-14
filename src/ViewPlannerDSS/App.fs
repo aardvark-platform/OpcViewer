@@ -117,7 +117,7 @@ module App =
                 let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
                 let dir = Direction (model.drawing.points |> PList.toSeq |> fun x -> PlaneFitting.planeFit x).Normal
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some dir))
-                { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
                 
                 //let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
                 //let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddBrush pointsOnAxisFunc)
@@ -218,17 +218,14 @@ module App =
 
 
 
-
-
+      let afterSg = 
+        [
+          m.drawing |> DrawingApp.view
+          // myPlane
+        ] |> Sg.ofList
 
       let scene = 
-        [
-          opcs
-          // PickingApp.view m.pickingModel // TODO...restore after refactoring...
-          DrawingApp.view m.drawing
-          AnnotationApp.viewGrouped m.annotations
-          //myPlane 
-        ] |> Sg.ofList
+        m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main afterSg
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 

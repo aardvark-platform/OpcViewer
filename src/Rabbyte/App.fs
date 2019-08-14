@@ -24,9 +24,9 @@ type Action =
     | UpdateDrawing of DrawingAction
     | UpdateAnnotation of AnnotationAction
 
-let update (model : SimpleDrawingModel) (act : Action) =
+let update (model: SimpleDrawingModel) (act: Action) =
 
-    let drawingUpdate (model : SimpleDrawingModel) (act : DrawingAction) = 
+    let drawingUpdate (model: SimpleDrawingModel) (act: DrawingAction) = 
        { model with drawing = DrawingApp.update model.drawing act }
 
     match act, model.drawingEnabled with
@@ -44,11 +44,11 @@ let update (model : SimpleDrawingModel) (act : Action) =
             | Keys.F -> 
                 let finished = drawingUpdate model (DrawingAction.FinishClose None) // TODO add dummy-hitF
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some (ClippingVolumeType.Direction V3d.ZAxis)))
-                { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
             | Keys.Enter -> 
                 let finished = drawingUpdate model DrawingAction.Finish
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
-                { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
             | _ -> model
         | Move p, true -> { model with hoverPosition = Some (Trafo3d.Translation p) }
         | UpdateDrawing a, _ -> 
@@ -74,60 +74,65 @@ let testScene =
             box1
             box2
         ]
-            |> List.choose (fun v -> OpcViewer.Base.Picking.Intersect.single ray kdTree)
-            |> List.sort 
-            |> List.map (ray.Ray.GetPointOnRay)|> List.tryHead
+        |> List.choose (fun v -> OpcViewer.Base.Picking.Intersect.single ray kdTree)
+        |> List.sort 
+        |> List.map (ray.Ray.GetPointOnRay)|> List.tryHead
 
     [
         box1.GetIndexedGeometry().Sg |> Sg.noEvents
         box2.GetIndexedGeometry().Sg |> Sg.noEvents
     ]
-        |> Sg.ofList  
+    |> Sg.ofList  
+    |> Sg.shader {
+        do! DefaultSurfaces.trafo
+        do! DefaultSurfaces.vertexColor
+        do! DefaultSurfaces.simpleLighting
+    }
+    |> Sg.requirePicking
+    |> Sg.noEvents 
+    |> Sg.withEvents [
+        Sg.onMouseMove (fun p -> Move p)
+        Sg.onClick(fun p -> 
+            let hitF = Some hitFunc
+            UpdateDrawing (DrawingAction.AddPoint (p, hitF)))
+        Sg.onLeave (fun _ -> Exit)
+    ]    
+
+let frustum =
+    Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+
+let scene3D (model: MSimpleDrawingModel) =
+                                 
+    let cursorTrafo = 
+        model.hoverPosition 
+        |> Mod.map (Option.defaultValue(Trafo3d.Scale(V3d.Zero)))
+
+    let cursorSg color size trafo =         
+        Sg.sphere 5 (Mod.constant color) (Mod.constant size)
         |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
             do! DefaultSurfaces.simpleLighting
         }
-        |> Sg.requirePicking
-        |> Sg.noEvents 
-            |> Sg.withEvents [
-                Sg.onMouseMove (fun p -> Move p)
-                Sg.onClick(fun p -> 
-                    let hitF = Some hitFunc
-                    UpdateDrawing (DrawingAction.AddPoint (p, hitF)))
-                Sg.onLeave (fun _ -> Exit)
-            ]    
+        |> Sg.noEvents
+        |> Sg.trafo trafo
 
-let frustum =
-    Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
-
-let scene3D (model : MSimpleDrawingModel) =
-                                 
-    let cursorTrafo = 
-        model.hoverPosition 
-            |> Mod.map (Option.defaultValue(Trafo3d.Scale(V3d.Zero)))
-
-    let cursorSg color size trafo =         
-        Sg.sphere 5 (Mod.constant color) (Mod.constant size)
-            |> Sg.shader {
-                do! DefaultSurfaces.trafo
-                do! DefaultSurfaces.vertexColor
-                do! DefaultSurfaces.simpleLighting
-            }
-            |> Sg.noEvents
-            |> Sg.trafo (trafo)
-
-    let cursor = cursorSg C4b.Red 0.05 cursorTrafo
-        
-    let drawingApp = DrawingApp.view model.drawing
-    let annotationApp = AnnotationApp.viewGrouped model.annotations
-        
-    [testScene; cursor; drawingApp; annotationApp]
+    let afterAnnotationSg =
+        [
+            model.drawing |> DrawingApp.view  
+            cursorSg C4b.Red 0.05 cursorTrafo 
+        ]
         |> Sg.ofList
-        |> Sg.fillMode (Mod.constant(FillMode.Fill))
-        |> Sg.cullMode (Mod.constant(CullMode.None))
 
-let view (model : MSimpleDrawingModel) =            
+    let finalComposed = 
+        model.annotations 
+        |> AnnotationApp.viewGrouped testScene RenderPass.main afterAnnotationSg
+
+    finalComposed
+    |> Sg.fillMode (Mod.constant FillMode.Fill)
+    |> Sg.cullMode (Mod.constant CullMode.None)
+
+let view (model: MSimpleDrawingModel) =            
     require (Html.semui) (
         div [clazz "ui"; style "background: #1B1C1E"] [
             ArcBallController.controlledControl model.camera CameraMessage frustum

@@ -460,15 +460,14 @@ module App =
             return trafo     
         }
 
-      
-      let scene = 
+      let afterSg = 
         [
-          opcs
-          //PickingApp.view m.picking
-          DrawingApp.view m.drawing
-          AnnotationApp.viewGrouped m.annotations
+          m.drawing |> DrawingApp.view
         ] |> Sg.ofList
-          |> Sg.projTrafo projTrafo
+
+      let scene = 
+        m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main afterSg
+        |> Sg.projTrafo projTrafo
         
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 

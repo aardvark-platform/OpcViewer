@@ -26,46 +26,44 @@ type PrimitiveType =
 
 type SegmentCreation =
     | NoSegement
-    //| Linear of float           // SamplingRate -> linear subsampled
     | ProjDir of float * V3d    // SamplingRate // Projection Dir
     //| ViewPoint   // -> pro3d
     //| Sky         // -> pro3d
     //| Axis        // -> dibit
 
 [<DomainType>]
-type BrushStyle = {
-    primary     : ColorInput // use for lines and planes
-    secondary   : ColorInput // use for vertices
-    lineStyle   : Option<LineStyle>
-    areaStyle   : Option<AreaStyle>
-    thickness   : float
-    samplingRate: float 
-}
+type BrushStyle = 
+    {
+        primary     : ColorInput
+        secondary   : ColorInput
+        lineStyle   : Option<LineStyle>
+        areaStyle   : Option<AreaStyle>
+        thickness   : float
+        samplingRate: float 
+    }
 
-type Segment = {
-    startPoint : V3d
-    endPoint   : V3d 
-    points     : plist<V3d> 
-}
+type Segment = 
+    {
+        startPoint : V3d
+        innerPoints: plist<V3d> 
+        endPoint   : V3d 
+    }
 
 [<DomainType>]
-type DrawingModel = {
-    points          : plist<V3d>
-    segments        : plist<Segment>
-    style           : BrushStyle
-    segmentCreation : SegmentCreation
-    [<TreatAsValue>]
-    past            : Option<DrawingModel>
-    [<TreatAsValue>]
-    future          : Option<DrawingModel>
-    primitiveType          : PrimitiveType
-    areaStyleNames  : hmap<AreaStyle, string>
-    lineStyleNames  : hmap<LineStyle, string>
-    
-    //showOutline          : bool 
-    //showDetailOutline    : bool 
-    //alpha                : float
-}
+type DrawingModel = 
+    {
+        points          : plist<V3d>
+        segments        : plist<Segment>
+        style           : BrushStyle
+        segmentCreation : SegmentCreation
+        [<TreatAsValue>]
+        past            : Option<DrawingModel>
+        [<TreatAsValue>]
+        future          : Option<DrawingModel>
+        primitiveType   : PrimitiveType
+        areaStyleNames  : hmap<AreaStyle, string>
+        lineStyleNames  : hmap<LineStyle, string>
+    }
 
 type DrawingAction =
     | ChangeColorPrimary    of ColorPicker.Action
@@ -97,14 +95,24 @@ module DrawingModel =
             samplingRate = 0.2
         }
 
-    let initial = {                 
-        style           = defaultStyle
-        points          = plist.Empty
-        segments        = plist.Empty
-        segmentCreation = NoSegement
-        past            = None
-        future          = None
-        primitiveType   = PrimitiveType.Empty
-        areaStyleNames = HMap.ofList [Pattern, "Pattern"; Filled, "Filled"; AreaStyle.Empty, "Empty";]
-        lineStyleNames = HMap.ofList [Solid, "Solid"; Dashed, "Dashed"]
-    }
+    let initial = 
+        {                 
+            style           = defaultStyle
+            points          = plist.Empty
+            segments        = plist.Empty
+            segmentCreation = NoSegement
+            past            = None
+            future          = None
+            primitiveType   = PrimitiveType.Empty
+            areaStyleNames = HMap.ofList [Pattern, "Pattern"; Filled, "Filled"; AreaStyle.Empty, "Empty";]
+            lineStyleNames = HMap.ofList [Solid, "Solid"; Dashed, "Dashed"]
+        }
+
+    let reset m =
+        { m with
+            points          = plist.Empty
+            segments        = plist.Empty
+            past            = None
+            future          = None
+            primitiveType   = PrimitiveType.Empty
+        }
