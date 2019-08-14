@@ -80,6 +80,7 @@ module SgUtilities =
             Shader.DepthOffset.Effect
             Shader.PointSize.EffectPointSpriteFragment
         ] 
+        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
 
     let drawSingleColorPoints (color: IMod<V4f>) (pointSize: IMod<float>) (offsetNormalized: IMod<float>) (pointsF: IMod<V3f[]>) =
         drawPoints pointSize offsetNormalized pointsF
@@ -103,13 +104,14 @@ module SgUtilities =
         edges
         |> Sg.lines color
         |> Sg.uniform "LineWidth" width
-        |> Sg.uniform "DepthOffset" offsetNormalized 
+        |> Sg.uniform "DepthOffset" offsetNormalized
         |> Sg.effect [
             Shader.StableTrafo.Effect
             Shader.ThickLineNew.Effect
             Shader.DepthOffset.Effect
         ]
         |> Sg.trafo trafo
+        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
 
     let lines' (offsetWorld: IMod<float>) (color: IMod<C4b>) (width: IMod<float>) (near: IMod<float>) (far: IMod<float>) (points: alist<V3d>) =
         let nearFar = Mod.map2 (fun near far -> near,far) near far

@@ -218,14 +218,25 @@ module App =
       let near = m.mainFrustum |> Mod.map(fun x -> x.near)
       let far = m.mainFrustum |> Mod.map(fun x -> x.far)
 
-      let afterSg = 
+      let filledPolygonSg, afterFilledPolygonRenderPass = 
+        m.annotations 
+        |> AnnotationApp.viewGrouped near far (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
+
+      let afterFilledPolygonSg = 
         [
           m.drawing |> DrawingApp.view near far
           // myPlane
-        ] |> Sg.ofList
+        ] 
+        |> Sg.ofList
+        |> Sg.pass afterFilledPolygonRenderPass
 
       let scene = 
-        m.annotations |> AnnotationApp.viewGrouped near far opcs RenderPass.main afterSg
+        [
+            opcs
+            filledPolygonSg
+            afterFilledPolygonSg
+        ]
+        |> Sg.ofList
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 

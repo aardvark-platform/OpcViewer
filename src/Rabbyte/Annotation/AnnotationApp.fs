@@ -46,31 +46,33 @@ module AnnotationApp =
     let viewOutlines (near: IMod<float>) (far: IMod<float>) (model: MAnnotationModel) = 
         model |> drawOutlines near far
 
-    let viewGrouped (near: IMod<float>) (far: IMod<float>) (beforeSg: ISg<'a>) (beforeRenderPass: RenderPass) (afterSg: ISg<'a>) (annotations: MAnnotationModel)  = 
-        let sg1 = 
-            beforeSg 
-            |> Sg.pass beforeRenderPass
+    let viewGrouped (near: IMod<float>) (far: IMod<float>) (startRenderPass: RenderPass) (model: MAnnotationModel) : (ISg<'a> * RenderPass) = 
 
-        let sg2, nextRenderPass = 
-            annotations |> AnnotationSg.drawAnnotationsFilledGrouped (RenderPass.after "init" RenderPassOrder.Arbitrary beforeRenderPass)
-
-        let sg3 = 
-            [
-                afterSg 
-                annotations |> drawOutlines near far
-            ]
-            |> Sg.ofList
+        let filledSg, nextRenderPass = 
+            model |> AnnotationSg.drawAnnotationsFilledGrouped (RenderPass.after "" RenderPassOrder.Arbitrary startRenderPass)
+        let outlineSg = 
+            model |> drawOutlines near far
             |> Sg.pass nextRenderPass
 
-        [ sg1; sg2; sg3 ] 
-        |> Sg.ofList
+        let sg = 
+            [ filledSg; outlineSg ] 
+            |> Sg.ofList
 
-    let viewSeq (near: IMod<float>) (far: IMod<float>) (model: MAnnotationModel) =
-        // TODO...renderpass same as for grouping 
-        [
-            model |> AnnotationSg.drawAnnotationsFilledSeq
+        sg, nextRenderPass
+
+    let viewSeq (near: IMod<float>) (far: IMod<float>) (startRenderPass: RenderPass) (model: MAnnotationModel) : (ISg<'a> * RenderPass) =
+        
+        let filledSg, nextRenderPass =
+            model |> AnnotationSg.drawAnnotationsFilledSeq (RenderPass.after "" RenderPassOrder.Arbitrary startRenderPass)
+        let outlineSg = 
             model |> drawOutlines near far
-        ] |> Sg.ofList
+            |> Sg.pass nextRenderPass
+
+        let sg = 
+            [ filledSg; outlineSg ] 
+            |> Sg.ofList
+
+        sg, nextRenderPass
 
     let viewGui (model: MAnnotationModel) =
         let style' = "color: white; font-family:Consolas;"

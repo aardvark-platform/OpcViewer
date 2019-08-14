@@ -120,16 +120,26 @@ let scene3D (model: MSimpleDrawingModel) =
         |> Sg.noEvents
         |> Sg.trafo trafo
 
-    let afterAnnotationSg =
+    let filledPolygonSg, afterFilledPolygonRenderPass = 
+        model.annotations 
+        |> AnnotationApp.viewGrouped near far (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
+
+    let afterFilledPolygonSg =
         [
             model.drawing |> DrawingApp.view near far
             cursorSg C4b.Red 0.05 cursorTrafo 
         ]
         |> Sg.ofList
+        |> Sg.pass afterFilledPolygonRenderPass
 
     let finalComposed = 
-        model.annotations 
-        |> AnnotationApp.viewGrouped near far testScene RenderPass.main afterAnnotationSg
+        [
+            testScene
+            filledPolygonSg
+            afterFilledPolygonSg
+        ]
+        |> Sg.ofList
+
 
     finalComposed
     |> Sg.fillMode (Mod.constant FillMode.Fill)
