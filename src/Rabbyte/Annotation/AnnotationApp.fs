@@ -37,16 +37,16 @@ module AnnotationApp =
 
             { model with annotations = updatedAnnotation; annotationsGrouped = updatedAnnotationsFilledPolygon }
 
-    let drawOutlines (model: MAnnotationModel) = 
+    let drawOutlines (near: IMod<float>) (far: IMod<float>) (model: MAnnotationModel) = 
         model.annotations 
-        |> AList.map (fun x -> DrawingApp.drawCountour x.points x.segments x.style |> Sg.noEvents)
+        |> AList.map (fun x -> DrawingApp.drawContour x.points x.segments x.style near far |> Sg.noEvents)
         |> AList.toASet
         |> Sg.set
 
-    let viewOutlines (model: MAnnotationModel) = 
-        model |> drawOutlines
+    let viewOutlines (near: IMod<float>) (far: IMod<float>) (model: MAnnotationModel) = 
+        model |> drawOutlines near far
 
-    let viewGrouped (beforeSg: ISg<'a>) (beforeRenderPass: RenderPass) (afterSg: ISg<'a>) (annotations: MAnnotationModel)  = 
+    let viewGrouped (near: IMod<float>) (far: IMod<float>) (beforeSg: ISg<'a>) (beforeRenderPass: RenderPass) (afterSg: ISg<'a>) (annotations: MAnnotationModel)  = 
         let sg1 = 
             beforeSg 
             |> Sg.pass beforeRenderPass
@@ -57,7 +57,7 @@ module AnnotationApp =
         let sg3 = 
             [
                 afterSg 
-                annotations |> drawOutlines
+                annotations |> drawOutlines near far
             ]
             |> Sg.ofList
             |> Sg.pass nextRenderPass
@@ -65,11 +65,11 @@ module AnnotationApp =
         [ sg1; sg2; sg3 ] 
         |> Sg.ofList
 
-    let viewSeq (model: MAnnotationModel) =
+    let viewSeq (near: IMod<float>) (far: IMod<float>) (model: MAnnotationModel) =
         // TODO...renderpass same as for grouping 
         [
             model |> AnnotationSg.drawAnnotationsFilledSeq
-            model |> drawOutlines
+            model |> drawOutlines near far
         ] |> Sg.ofList
 
     let viewGui (model: MAnnotationModel) =

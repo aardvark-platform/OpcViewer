@@ -137,12 +137,13 @@ module ClippingVolume =
           
                 // increase Precision
                 let shift = 
-                    pxs |> PList.tryAt 0 |> Option.defaultValue V3d.Zero
+                    pxs |> PList.tryFirst |> Option.defaultValue V3d.Zero
 
                 let shiftsPoints p =
                     p |> PList.map (fun (x:V3d) -> V3f(x-shift)) |> PList.toArray
 
-                let pointsF = shiftsPoints pxs |> Array.skip 1 // undo closing polygon (duplicates not needed) // TODO CHECK THIS!
+                let pointsF = 
+                    shiftsPoints pxs |> Array.skip 1 // undo closing polygon (duplicates not needed) // TODO CHECK THIS!
 
                 let vertices = 
                     let o = float32 extOff

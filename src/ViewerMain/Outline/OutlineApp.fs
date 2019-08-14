@@ -82,8 +82,6 @@ module OutlineApp =
             Html.row "Thickness:"     [Numeric.view' [NumericInputType.Slider]   model.lineThickness  |> UI.map SetLineThickness ]
         ]
                          
-      let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant  
-
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->

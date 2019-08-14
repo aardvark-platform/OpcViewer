@@ -197,27 +197,27 @@ module DrawingApp =
 
         AList.append allButLast lastPoint
 
-    let drawCountour (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) =  
+    let drawContour (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: IMod<float>) (far: IMod<float>) =  
 
         let pointsSg = 
             points 
-            |> SgUtilities.drawPointList  style.primary.c (Mod.constant 10.0) (Mod.constant 0.1)
+            |> SgUtilities.drawPointList style.primary.c (Mod.constant 10.0) (Mod.constant 0.1) near far
 
         let pointsInnerSg = 
             segments
             |> AList.map (fun x -> x.innerPoints |> AList.ofPList) 
             |> AList.concat 
-            |> SgUtilities.drawPointList (style.primary.c |> Mod.map (fun c -> SgUtilities.createSecondaryColor c)) (Mod.constant 8.0) (Mod.constant 0.1)
+            |> SgUtilities.drawPointList (style.primary.c |> Mod.map (fun c -> SgUtilities.createSecondaryColor c)) (Mod.constant 8.0) (Mod.constant 0.1) near far
 
         let edgesSg = 
             let lineWidth = style.thickness |> Mod.map (fun x -> x * 1.1)
             let sPoints = allSegmentPoints segments
             sPoints
-            |> SgUtilities.lines' (Mod.constant 0.06) style.secondary.c lineWidth
+            |> SgUtilities.lines' (Mod.constant 0.06) style.secondary.c lineWidth near far
 
         let edgesDirectSg = 
             points 
-            |> SgUtilities.lines' (Mod.constant 0.05) style.primary.c style.thickness 
+            |> SgUtilities.lines' (Mod.constant 0.05) style.primary.c style.thickness near far
         
         // drawing order does not fix overlappings (offset in worldspace could fix this...)
         //let edgesSg = [edges; edgesDirect] |> Sg.group |> Sg.noEvents |> Sg.pass RenderPass.main
@@ -226,8 +226,8 @@ module DrawingApp =
         
         [edgesSg; edgesDirectSg; pointsSg; pointsInnerSg] |> Sg.group
 
-    let view (model: MDrawingModel) = 
-        drawCountour model.points model.segments model.style |> Sg.noEvents
+    let view (near: IMod<float>) (far: IMod<float>) (model: MDrawingModel) = 
+        drawContour model.points model.segments model.style near far |> Sg.noEvents
 
     let viewGui (model: MDrawingModel) = 
         

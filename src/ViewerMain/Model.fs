@@ -56,7 +56,8 @@ type Axis = {
 [<DomainType>]
 type Model =
     {
-        cameraState          : CameraControllerState                       
+        cameraState          : CameraControllerState
+        mainFrustum          : Frustum
         fillMode             : FillMode                                
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>        

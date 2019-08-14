@@ -98,8 +98,11 @@ let testScene =
         Sg.onLeave (fun _ -> Exit)
     ]    
 
+let near = Mod.init 0.1
+let far = Mod.init 100.0
+
 let frustum =
-    Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+    Mod.map2 (fun near far -> Frustum.perspective 60.0 near far 1.0) near far
 
 let scene3D (model: MSimpleDrawingModel) =
                                  
@@ -119,14 +122,14 @@ let scene3D (model: MSimpleDrawingModel) =
 
     let afterAnnotationSg =
         [
-            model.drawing |> DrawingApp.view  
+            model.drawing |> DrawingApp.view near far
             cursorSg C4b.Red 0.05 cursorTrafo 
         ]
         |> Sg.ofList
 
     let finalComposed = 
         model.annotations 
-        |> AnnotationApp.viewGrouped testScene RenderPass.main afterAnnotationSg
+        |> AnnotationApp.viewGrouped near far testScene RenderPass.main afterAnnotationSg
 
     finalComposed
     |> Sg.fillMode (Mod.constant FillMode.Fill)
