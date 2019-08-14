@@ -80,6 +80,9 @@ type Model =
         drawing              : DrawingModel
         annotations          : AnnotationModel
         pickingActive        : bool
+
+        lineSelectionActive  : bool
+        opcBox               : Box3d
         
         opcCenterPosition    : V3d
         jumpSelectionActive  : bool

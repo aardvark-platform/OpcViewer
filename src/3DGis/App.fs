@@ -168,6 +168,12 @@ module App =
                     { model with jumpSelectionActive = true; pickingActive = true }
                 else
                     { model with jumpSelectionActive = false; pickingActive = false }
+          | Keys.LeftShift -> 
+            let p = { model.picking with intersectionPoints = plist.Empty }
+            //let newDraw = DrawingApp.update model.drawing (DrawingAction.AddPoint (model.opcCenterPosition, None))
+            //let newDraw2 = DrawingApp.update newDraw (DrawingAction.AddPoint (model.opcCenterPosition+100.0, None))
+            
+            { model with pickingActive = true; lineSelectionActive = true; picking = p; drawing = DrawingModel.initial; annotations = AnnotationModel.initial }
           | _ -> model
       | Message.KeyUp m ->
         match m with
@@ -178,6 +184,8 @@ module App =
                 update { model with jumpSelectionActive = false; pickingActive = false } Message.AnimateCameraViewSwitch            
             else 
                 { model with jumpSelectionActive = false; pickingActive = false }
+          | Keys.LeftShift -> 
+            { model with pickingActive = false; lineSelectionActive = false }
           | Keys.Delete ->            
             { model with picking = PickingApp.update model.picking (PickingAction.ClearPoints) }
           | Keys.Back ->
@@ -194,16 +202,6 @@ module App =
             let finished = { model with drawing = DrawingApp.update model.drawing DrawingAction.Finish } // TODO add dummy-hitF
             let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
             { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
-          //| Keys.Enter ->
-          //  let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
-          //  let updatedPicking = PickingApp.update model.picking (PickingAction.AddBrush pointsOnAxisFunc)
-            
-          //  { model with picking = updatedPicking }
-          //| Keys.T ->
-          //  let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
-          //  let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
-            
-          //  { model with picking = updatedPicking }
           | Keys.B ->
             update model Message.AnimateCameraComplete
           | Keys.N ->
@@ -315,50 +313,104 @@ module App =
         else 
             model
       
-      | PickingAction msg -> 
-        // TODO...refactor this!
+      | PickingAction msg ->         
+        Log.line "Message: %A" msg
         let pickingModel, drawingModel =
           match msg with
-          | HitSurface (a,b) -> //,_) -> 
-            //match model.axis with
-            //| Some axis -> 
-            //  let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
-            //  PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
-            //| None -> PickingApp.update model.picking msg
+          | HitSurface (a,b) -> 
             let updatePickM = PickingApp.update model.picking (HitSurface (a,b))
-            let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
+            let lastPick = updatePickM.intersectionPoints |> PList.tryFirst         
+            
             let updatedDrawM =
                 match lastPick with
                 | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
                 | None -> model.drawing
             updatePickM, updatedDrawM
           | _ -> PickingApp.update model.picking msg, model.drawing
+        Log.line "lastPick  %A" model.picking.intersectionPoints.AsList
+        Log.line "draw  %A" drawingModel.style.lineStyle
+        Log.line "-------------------------------------------------------------"
+        Log.line "ModelCamera %A" model.cameraState.view.Forward
+        let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 1.5; primary = { c = C4b.VRVisGreen } } } 
+        //let newDraw = DrawingApp.update newDrawingModel (DrawingAction.AddPoint (model.opcCenterPosition, None))
+       // let newDraw = { drawingModel with style = newStyle } 
+
+       /////////
+          
+       //////////
+
+
 
         if model.jumpSelectionActive && not model.camViewAnimRunning then
             update { model with selectedJumpPosition = pickingModel.intersectionPoints.Item(0); jumpSelectionActive = false; inJumpedPosition = true } Message.AnimateCameraJump            
-        else
-            //{ model with picking = pickingModel }
-            { model with picking = pickingModel; drawing = drawingModel }
+        elif model.lineSelectionActive && pickingModel.intersectionPoints.AsList.Length > 2 then
+            model
+        elif model.lineSelectionActive && pickingModel.intersectionPoints.AsList.Length = 2 then
 
-      
-      //| PickingAction msg -> 
-      //  let pickingModel =
-      //    match msg with
-      //    | HitSurface (a,b) -> 
+            let firstPoint = pickingModel.intersectionPoints.Item(0)
+            let secondPoint = pickingModel.intersectionPoints.Item(1)
+            let dir = secondPoint - firstPoint
+            let samplingSize = 500.0
+            let step = dir / samplingSize
+    
+            let rec drawPoints x y =
+                if y > 1.0 then
+                    let fray = FastRay3d(V3d.Zero, (firstPoint + step * y).Normalized)
+                    match model.picking.pickingInfos |> HMap.tryFind model.opcBox with
+                    | Some kk ->
+                        let closest = OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some kk.kdTree) fray      
+                        match closest with
+                        | Some t -> 
+                            let hitpoint = fray.Ray.GetPointOnRay t
+                            let sc = CooTransformation.getLatLonAlt hitpoint Planet.Mars
+                            Log.line "hitpoint: %A  -> altitude: %f" hitpoint sc.altitude
+                            DrawingApp.update (drawPoints x (y-1.0)) (DrawingAction.AddPoint (hitpoint, None))
+                        | None ->       
+                            (drawPoints x (y-1.0))            
+                    | None -> 
+                        (drawPoints x (y-1.0))                         
+                else 
+                    let fray = FastRay3d(V3d.Zero, (firstPoint + step * y).Normalized)
+                    match model.picking.pickingInfos |> HMap.tryFind model.opcBox with
+                    | Some kk ->
+                        let closest = OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some kk.kdTree) fray      
+                        match closest with
+                        | Some t -> 
+                            let hitpoint = fray.Ray.GetPointOnRay t
+                            let sc = CooTransformation.getLatLonAlt hitpoint Planet.Mars
+                            Log.line "hitpoint: %A  -> altitude: %f" hitpoint sc.altitude
+                            DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None))
+                        | None ->       
+                            x           
+                    | None -> 
+                        x     
             
-      //        let axisNearstFunc = fun p -> p
-      //        PickingApp.update model.picking (HitSurface (a,b))
-              
-      //    | _ -> PickingApp.update model.picking msg
-        
-      //  if model.jumpSelectionActive && not model.camViewAnimRunning then
-      //      update { model with selectedJumpPosition = pickingModel.intersectionPoints.Item(0); jumpSelectionActive = false; inJumpedPosition = true } Message.AnimateCameraJump            
-      //  else
-      //      { model with picking = pickingModel }
+            let newDraw = drawPoints newDrawingModel (samplingSize - 1.0)
 
-      | DrawingAction msg -> { model with drawing = DrawingApp.update model.drawing msg }
-      | AnnotationAction msg -> { model with annotations = AnnotationApp.update model.annotations msg}
-      
+            //let fray = FastRay3d(model.cameraState.view.Location, model.cameraState.view.Forward)
+            //match model.picking.pickingInfos |> HMap.tryFind model.opcBox with
+            //| Some kk ->
+            //  let closest = OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some kk.kdTree) fray      
+            //  match closest with
+            //    | Some t -> 
+            //      let hitpoint = fray.Ray.GetPointOnRay t
+            //      Log.line "hit surface at %A" hitpoint     
+            //    | None ->       
+            //      Log.error "[Intersection] didn't hit"            
+            //| None -> 
+            //  Log.error "[Intersection] box not found in picking infos"      
+
+
+
+
+            { model with picking = pickingModel; drawing = newDraw }
+        else
+            { model with picking = pickingModel; drawing = newDrawingModel }
+
+      | DrawingAction msg -> 
+        { model with drawing = DrawingApp.update model.drawing msg }
+      | AnnotationAction msg -> 
+        { model with annotations = AnnotationApp.update model.annotations msg}      
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | SetT t -> 
@@ -477,14 +529,7 @@ module App =
                 p[][div[][text "t: "; slider { min = 0.0; max = 1.0; step = 0.01 } [clazz "ui inverted blue slider"] m.persToOrthoValue Message.SetT]]
                 h3[][text "NIOBE"]
                 p[][text "Hold Ctrl-Left to add Point"]
-                p[][text "Press Enter to close Polygon"]
-                //p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.picking.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.picking.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
-                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
-                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useGrouping PickingAction.UseGrouping "Use Grouping"] |> UI.map PickingAction
-                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showOutline PickingAction.ShowOutline "Show Outline"] |> UI.map PickingAction
-                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showDetailOutline PickingAction.ShowOutlineDetail "Show Outline Detail"] |> UI.map PickingAction
-                //p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
-                //p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
+               
               ]
             ]
           )
@@ -605,6 +650,8 @@ module App =
           selectedJumpPosition = V3d.Zero
           jumpSelectionActive  = false
           inJumpedPosition     = false
+          lineSelectionActive  = false
+          opcBox               = box
         }
 
       {

@@ -255,7 +255,7 @@ module Intersect =
           x.Intersects(r', &t)
       )
 
-  let private intersectWithOpc (kdTree0 : option<hmap<Box3d, Level0KdTree>>) ray =
+  let intersectWithOpc (kdTree0 : option<hmap<Box3d, Level0KdTree>>) ray =
     kdTree0 
       |> Option.bind(fun kd ->
           let boxes = hitBoxes kd ray Trafo3d.Identity
