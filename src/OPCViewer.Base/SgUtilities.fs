@@ -74,7 +74,7 @@ module SgUtilities =
         Sg.draw IndexedGeometryMode.PointList
         |> Sg.vertexAttribute DefaultSemantic.Positions pointsF
         |> Sg.uniform "PointSize" pointSize
-        |> Sg.uniform "DepthOffset" (offset |> Mod.map (fun depthWorld -> depthWorld / (100.0 - 0.1)))
+        |> Sg.uniform "DepthOffset" (offset |> Mod.map (fun depthWorld -> depthWorld / (100.0 - 0.1))) // TODO...check near far values: Should convert z-worldOffset to normalized depth (farPlane - nearPlane
         |> Sg.effect [
             Shader.PointSize.EffectPointTrafo
             toEffect DefaultSurfaces.pointSprite
@@ -102,7 +102,7 @@ module SgUtilities =
         edges
         |> Sg.lines color
         |> Sg.uniform "LineWidth" width
-        |> Sg.uniform "DepthOffset" (offset |> Mod.map (fun depthWorld -> depthWorld / (100.0 - 0.1))) 
+        |> Sg.uniform "DepthOffset" (offset |> Mod.map (fun depthWorld -> depthWorld / (100.0 - 0.1))) // TODO...check near far values: Should convert z-worldOffset to normalized depth (farPlane - nearPlane
         |> Sg.effect [
             Shader.StableTrafo.Effect
             Shader.ThickLineNew.Effect
