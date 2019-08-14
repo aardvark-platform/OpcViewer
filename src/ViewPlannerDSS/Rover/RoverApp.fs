@@ -50,22 +50,23 @@ module RoverApp =
 
     let calcTheta (x:float) (y:float) =
        
-       
-        let v = Math.Atan(x/y)
+        (atan2 x y)* Constant.DegreesPerRadian
+        //let v = Math.Atan(y/x)
         
-        let absV = Math.Abs(v)
-        let absVinDegree = absV * Constant.DegreesPerRadian
-        let signX = Math.Sign(x)
-        let signY = Math.Sign(y)
+        //let absV = Math.Abs(v)
+        //let absVinDegree = absV * Constant.DegreesPerRadian
+        //let signX = Math.Sign(x)
+        //let signY = Math.Sign(y)
 
-        match signX,signY with
-            | 1,1 -> v * Constant.DegreesPerRadian
-            | -1,1 -> (180.0 - absVinDegree)
-            | -1, -1 -> (absVinDegree + 180.0)
-            | 1,-1 -> (360.0 - absVinDegree)
-            | _ -> v
-
-       
+        //match signX,signY with
+        //    | 1,1 -> v * Constant.DegreesPerRadian
+        //    | -1,1 -> (180.0 - absVinDegree)
+        //    | -1, -1 -> (absVinDegree + 180.0)
+        //    | 1,-1 -> (360.0 - absVinDegree)
+        //    | 0, 1 -> 90.0
+        //    | 0,0 -> 0.0
+        //    | 0, -1 -> 270.0
+            
 
 
     
@@ -82,18 +83,18 @@ module RoverApp =
         let rotX = Trafo3d.RotateInto(forward,V3d.IOO)
 
        
-        //let final = 
-
-        //    let rotatedbyZ = rotZ.Forward.TransformDir vector
-        //    rotatedbyZ
-        
         let final = 
 
-            //rotate x y
-            let rX = rotX.Forward.TransformDir vector
-            let rY = rotY.Forward.TransformDir rX
-            let rZ = rotZ.Forward.TransformDir rY
-            rZ
+            let rotatedbyZ = rotZ.Forward.TransformDir vector
+            rotatedbyZ
+        
+        //let final = 
+
+        //    //rotate x y
+        //    let rX = rotX.Forward.TransformDir vector
+        //    let rY = rotY.Forward.TransformDir rX
+        //    let rZ = rotZ.Forward.TransformDir rY
+        //    rZ
 
         final
         
@@ -386,7 +387,6 @@ module RoverApp =
                 printfn "thetaOnForward %A"  thetaOfPointonForwardVec
                 let setR = initializePan rover thetaOfPointonForwardVec
                 let setR2 = initializeTilt setR ((acos(r.Z))*Constant.DegreesPerRadian)
-
                 {setR2 with thetaPhiValues = plist; projPoints = projectionPoints}
     
         newRover

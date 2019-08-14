@@ -108,21 +108,12 @@ module App =
                         | true -> V3d.OOO
                         | false -> l.Head
                 let p = PickingApp.update model.pickingModel (PickingAction.RemoveLastPoint)
+                let d = DrawingApp.update model.drawing (DrawingAction.RemoveLastPoint)
                 let forward = t-model.rover.position
                 let cam = CameraView.look model.rover.position forward.Normalized model.rover.up
                 let r = { model.rover with target = t; camera = { model.rover.camera with view = cam }} 
-                { model with rover = r; pickingModel = p}
+                { model with rover = r; pickingModel = p; drawing = d}
 
-                //let picked = model.pickingModel.pickedPointOnPlane
-                //let roverModel = 
-                //    match picked with
-                //        | Some p -> 
-                //            let forward = p-model.rover.position
-                //            let cam = CameraView.look model.rover.position forward.Normalized model.rover.up
-                //            { model.rover with target = p; camera = { model.rover.camera with view = cam }}
-                        
-                //        | None -> model.rover
-                //{ model with rover = roverModel}
 
             | Keys.R -> 
                 let intersect = model.pickingModel.intersectionPoints
@@ -133,19 +124,10 @@ module App =
                         | true -> V3d.OOO
                         | false -> l.Head
                 let p = PickingApp.update model.pickingModel (PickingAction.RemoveLastPoint)
+                let d = DrawingApp.update model.drawing (DrawingAction.RemoveLastPoint)
                 let r = { model.rover with position = (m+n); projsphere = {model.rover.projsphere with position = (m+n)}} 
-                { model with rover = r; pickingModel = p}
+                { model with rover = r; pickingModel = p; drawing = d}
                         
-                       
-                        
-                //point on plane
-                //let picked = model.pickingModel.pickedPointOnPlane
-                //let n = model.rover.up
-                //let roverModel = 
-                //    match picked with
-                //        | Some p -> { model.rover with position = (p+n); projsphere = {model.rover.projsphere with position = (p+n)}}
-                //        | None -> model.rover
-                //{ model with rover = roverModel}
 
             | Keys.Enter ->
                 let points = model.pickingModel.intersectionPoints
@@ -541,7 +523,7 @@ module App =
          alist {
             let! p = m.rover.position
             let! view = m.rover.camera.view
-            let f = (view.Forward*2.0)
+            let f = (view.Forward*10.0)
             //shift points
             let shiftedPos = p - p
             let shiftedF = f - p
@@ -1035,7 +1017,6 @@ module App =
       let afterSg = 
         [
           m.drawing |> DrawingApp.view
-          // myPlane
           rov
           target
           frustumBox
@@ -1043,32 +1024,20 @@ module App =
           forward |> Sg.dynamic
           right |> Sg.dynamic
           camForw |> Sg.dynamic
-          //refSphere
-          //poleSphere
-          //pointZeroSphere
           points |> Sg.dynamic
         ] |> Sg.ofList
     
       let roverCamScene = 
        [
-          // PickingApp.view m.pickingModel
+          m.drawing |> DrawingApp.view
+          //PickingApp.view m.pickingModel
           //drawPlane
           //target
-          //shading
+          points |> Sg.dynamic
+          shading
           frustumBox
-          //boxP1 |> Sg.dynamic
-          //boxP2 |> Sg.dynamic
-          //line1
-          //line2
-          LBF|> Sg.dynamic
-          RBF|> Sg.dynamic
-          LTF|> Sg.dynamic
-          RTF|> Sg.dynamic
-          LBB|> Sg.dynamic
-          RBB|> Sg.dynamic
-          LTB|> Sg.dynamic
-          RTB|> Sg.dynamic
-          line
+  
+         
         ] |> Sg.ofList
         
 
