@@ -363,13 +363,13 @@ module Shader =
             member x.DepthOffset : float = x?DepthOffset
         
         [<GLSLIntrinsic("gl_DepthRange.diff")>]
-        let depthDiff()  : float = failwith ""
+        let depthDiff()  : float = onlyInShaderCode ""
     
         [<GLSLIntrinsic("gl_DepthRange.near")>]
-        let depthNear()  : float = failwith ""
+        let depthNear()  : float = onlyInShaderCode ""
     
         [<GLSLIntrinsic("gl_DepthRange.far")>]
-        let depthFar()  : float = failwith ""
+        let depthFar()  : float = onlyInShaderCode ""
 
         let depthOffsetFS (v : Vertex) =
             fragment {

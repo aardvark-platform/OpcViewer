@@ -275,7 +275,7 @@ module Intersect =
           closest
       )
   
-  let perform (m : PickingModel) (hit : SceneHit) (boxId : Box3d) = //(axisfunc:V3d->V3d) = 
+  let perform (m : PickingModel) (hit : SceneHit) (boxId : Box3d) = // (hitFun: V3d->V3d) = 
     let fray = hit.globalRay.Ray
     Log.line "try intersecting %A" boxId    
     
@@ -287,13 +287,13 @@ module Intersect =
           let hitpoint = fray.Ray.GetPointOnRay t
           Log.line "hit surface at %A" hitpoint 
           
-          //let axisPoint = (axisfunc hitpoint) + V3d.OOI // shift axis to tunnel center
+          //let projOrigin = (hitFun hitpoint)// + V3d.OOI // shift axis to tunnel center
           
           //let intersectFunc (p:V3d) : Option<V3d> = 
           //  let ray = 
           //    // ViewerModality.XYZ - standard axis centered projection
-          //    let dir = (p - axisPoint).Normalized          
-          //    FastRay3d(Ray3d(axisPoint, dir))              
+          //    let dir = (p - projOrigin).Normalized          
+          //    FastRay3d(Ray3d(projOrigin, dir))              
           
           //  match intersectWithOpc (Some kk.kdTree) ray with
           //  | Some t -> Some (ray.Ray.GetPointOnRay t)

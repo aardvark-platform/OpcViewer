@@ -215,17 +215,17 @@ module App =
 
 
 
-
-
+      let near = m.mainFrustum |> Mod.map(fun x -> x.near)
+      let far = m.mainFrustum |> Mod.map(fun x -> x.far)
 
       let afterSg = 
         [
-          m.drawing |> DrawingApp.view
+          m.drawing |> DrawingApp.view near far
           // myPlane
         ] |> Sg.ofList
 
       let scene = 
-        m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main afterSg
+        m.annotations |> AnnotationApp.viewGrouped near far opcs RenderPass.main afterSg
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
@@ -241,7 +241,7 @@ module App =
         ]
 
       let renderControl =
-       FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl m.cameraState Camera m.mainFrustum 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
            attribute "showFPS" "true";       // optional, default is false
@@ -390,6 +390,7 @@ module App =
       let initialModel : Model = 
         { 
           cameraState        = camState
+          mainFrustum        = Frustum.perspective 60.0 0.01 1000.0 1.0
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
           

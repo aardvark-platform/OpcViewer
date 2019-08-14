@@ -410,13 +410,16 @@ module App =
             return trafo     
         }
 
+      let near = m.mainFrustum |> Mod.map(fun x -> x.near)
+      let far = m.mainFrustum |> Mod.map(fun x -> x.far)
+
       let afterSg = 
         [
-          m.drawing |> DrawingApp.view
+          m.drawing |> DrawingApp.view near far
         ] |> Sg.ofList
 
       let scene = 
-        m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main afterSg
+        m.annotations |> AnnotationApp.viewGrouped near far opcs RenderPass.main afterSg
         |> Sg.projTrafo projTrafo
         
       let textOverlays (cv : IMod<CameraView>) = 
@@ -433,7 +436,7 @@ module App =
         ]
       
       let renderControl (state : MModel) (f : Message -> 'msg)=
-       FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 10000.0 1.0 |> Mod.constant)
+       FreeFlyController.controlledControl m.cameraState Camera m.mainFrustum 
 
          (AttributeMap.ofListCond [ 
            always (style "width: 100%; height:100%"; )
@@ -564,6 +567,7 @@ module App =
       let initialModel : Model = 
         { 
           cameraState          = camState
+          mainFrustum          = Frustum.perspective 60.0 0.01 10000.0 1.0
           fillMode             = FillMode.Fill                    
           patchHierarchies     = patchHierarchies          
           axis                 = None
