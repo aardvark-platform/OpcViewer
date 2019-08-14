@@ -1,0 +1,11 @@
+type file
+id OPCViewer.Base
+authors Aardvark Platform Team
+owners Aardvark Platform Team
+projectUrl http://github.com/aardvark-platform
+licenseUrl http://www.apache.org/licenses/LICENSE-2.0.txt
+description
+    OPCViewer.Base
+files
+	..\..\bin\Release\netcoreapp2.0\OPCViewer.Base.dll ==> lib\netstandard2.0
+	..\..\bin\Release\netcoreapp2.0\OPCViewer.Base.pdb ==> lib\netstandard2.0
