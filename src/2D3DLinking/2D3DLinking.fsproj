@@ -17,6 +17,8 @@
     <Compile Include="Products\Model.fs" />
     <Compile Include="Products\Utilities.fs" />
     <Compile Include="Products\App.fs" />
+    <Compile Include="Linking\Model.fs" />
+    <Compile Include="Linking\App.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />

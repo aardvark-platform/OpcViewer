@@ -1,4 +1,6 @@
-﻿namespace Linking
+﻿namespace LinkingView
+
+open Linking
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
@@ -20,7 +22,7 @@ type Action =
   | PickingAction    of PickingAction
   | DrawingAction    of DrawingAction
   | AnnotationAction of AnnotationAction
-  | MinervaAction    of MinervaAction
+  | LinkingAction    of LinkingAction
   | PickPoint        of V3d
 
 type CameraStateLean = 
@@ -64,7 +66,8 @@ type Model =
         pickedPoint          : Option<V3d>
         planePoints          : Option<plist<V3d>>
         pickingActive        : bool
-        minervaModel         : MinervaModel
+        linkingModel         : LinkingModel
+        //minervaModel         : MinervaModel
     }
 
    

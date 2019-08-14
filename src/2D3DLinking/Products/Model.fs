@@ -5,8 +5,6 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.UI
 
-open FSharp.Data
-open Aardvark.Application
 open Aardvark.Geometry
 
 type FeatureId = FeatureId of string
@@ -153,10 +151,8 @@ type MinervaAction =
 type SgFeatures = {
     names       : string[]
     positions   : V3d[]
-    coordinates : V3d[]
     colors      : C4b[]
     trafo       : Trafo3d
-    instruments  : Instrument[]
 }
 
 [<DomainType>]
@@ -214,38 +210,16 @@ type SelectionModel = {
     selectionMinDist     : float
 }
 
-type MessagingMailbox = MailboxProcessor<MailboxAction>
-
-and MailboxState = {
-  events  : list<MailboxAction>
-  update  : seq<MinervaAction> -> unit
-}
-and MailboxAction =
-  | MiniAction  of MinervaAction
-  | InitMailboxState of MailboxState  
-
-module MailboxState = 
-  let empty = 
-    {
-      events = list.Empty
-      update = fun _ -> ()
-    }
   
 [<DomainType>]
 type MinervaModel = 
   {
     data             : FeatureCollection
-    queries          : list<string>
     queryFilter      : QueryModel
     filteredFeatures : plist<Feature>
 
-    //[<NonIncremental>]
-    //comm     : option<Communicator.Communicator>
-
     vplMessages : ThreadPool<MinervaAction>
 
-    //minervaMessagingMailbox : MessagingMailbox
-    //minervaMailboxState     : MailboxState
     featureProperties       : FeatureProperties
     selection               : SelectionModel
     kdTreeBounds         : Box3d
@@ -364,19 +338,6 @@ module Initial =
             step = 0.001
             format = "{0:0.000}"
         }
-  //let instrumentC =
-  //  {
-  //      mahli        = { c = C4b(255,127,0)  }   
-  //      frontHazcam  = { c = C4b(255,255,255)} 
-  //      mastcam      = { c = C4b(255,255,255)} 
-  //      apxs         = { c = C4b(230,171,2)  } 
-  //      frontHazcamR = { c = C4b(31,120,180) } 
-  //      frontHazcamL = { c = C4b(166,206,227)} 
-  //      mastcamR     = { c = C4b(227,26,28)  } 
-  //      mastcamL     = { c = C4b(251,154,153)} 
-  //      chemLib      = { c = C4b(173,221,142)} 
-  //      chemRmi      = { c = C4b(49,163,84)  } 
-  //  }
 
   let fProps = 
     {
@@ -389,20 +350,16 @@ module Initial =
     {
         names       = Array.empty
         positions   = Array.empty
-        coordinates = Array.empty
         colors      = Array.empty
         trafo       = Trafo3d.Identity
-        instruments = Array.empty
     }
 
   let sgSelfeatures =
     {
         names       = Array.empty
         positions   = Array.empty
-        coordinates = Array.empty
         colors      = Array.empty
         trafo       = Trafo3d.Identity
-        instruments = Array.empty
     }
 
   let queryFilter = 
@@ -435,20 +392,9 @@ module Initial =
         selectionMinDist = 0.05
    }
           
-  let sites = [
-    //@"https://minerva.eox.at/opensearch/collections/MAHLI/json/"
-    //@"https://minerva.eox.at/opensearch/collections/FrontHazcam-Right/json/"
-    //@"https://minerva.eox.at/opensearch/collections/FrontHazcam-Left/json/"
-    //@"https://minerva.eox.at/opensearch/collections/Mastcam-Right/json/"    
-    //@"https://minerva.eox.at/opensearch/collections/Mastcam-Left/json/"
-    //@"https://minerva.eox.at/opensearch/collections/APXS/json/"
-    @"https://minerva.eox.at/opensearch/collections/all/json/"
-  ]
-
   let model = 
     {
       data    = data
-      queries = sites
       //comm    = None
       vplMessages = ThreadPool.Empty
 

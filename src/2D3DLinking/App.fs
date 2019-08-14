@@ -1,4 +1,4 @@
-﻿namespace Linking
+﻿namespace LinkingView
 
 open System.IO
 
@@ -23,8 +23,7 @@ open PRo3D.Minerva
 open Aardvark.VRVis.Opc
 open Rabbyte.Annotation
 open Rabbyte.Drawing
-
-
+open Linking
 
 
 module App = 
@@ -105,7 +104,7 @@ module App =
             | _ -> model
 
 
-        | PickingAction msg -> 
+        | PickingAction msg ->
             // TODO...refactor this!
             let pickingModel, drawingModel =
               match msg with
@@ -121,6 +120,7 @@ module App =
                     match lastPick with
                     | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
                     | None -> model.drawing
+                Log.line "Hit!: %A" lastPick
                 updatePickM, updatedDrawM
               | _ -> PickingApp.update model.pickingModel msg, model.drawing
             { model with pickingModel = pickingModel; drawing = drawingModel }
@@ -131,8 +131,9 @@ module App =
         | AnnotationAction msg ->
             { model with annotations = AnnotationApp.update model.annotations msg }
 
-        | MinervaAction msg ->
-            { model with minervaModel = MinervaApp.update model.cameraState.view model.minervaModel msg }
+        | LinkingAction msg ->
+            //{ model with minervaModel = MinervaApp.update model.cameraState.view model.minervaModel msg }
+            { model with linkingModel = LinkingApp.update model.cameraState.view model.linkingModel msg }
 
         | UpdateDockConfig cfg ->
             { model with dockConfig = cfg }
@@ -152,7 +153,7 @@ module App =
     //    ]
 
     let view (m : MModel) =
-                                                 
+                               
         let opcs = 
             m.opcInfos
                 |> AMap.toASet
@@ -162,43 +163,6 @@ module App =
                     toEffect Shader.stableTrafo
                     toEffect DefaultSurfaces.diffuseTexture       
                 ]
-
-        //let debugLines =
-        //  Sg.lines (Mod.constant C4b.Yellow)
-        //      Line3d (V3d.OOO) (m.cameraState.view |> Mod.map(fun x -> x.Location))
-        //  ])
-
-        //let t = m.minervaModel.sgFeatures.positions |> Mod.map(fun x -> x.Map(fun y -> Line3d [y;V3d.OOO]))
-        //let debugLines = Sg.lines (Mod.constant C4b.Yellow) t
-        let camPos = m.cameraState.view |> Mod.map (fun x -> x.Location)
-        let points = 
-            Mod.map (fun (x:V3d[]) ->
-                [|
-                    yield V3d [|-2486734.85;2289118.76;-276192.39|]
-                    yield V3d [|-2486744.85;2289128.76;-276182.39|]
-                    //yield camPos
-                    //yield camPos + (V3d.III * 15.0)
-                    //yield camPos + (V3d.OIO * 13.0)
-                    //yield camPos + (V3d.IOO * 14.0)
-                    for i in x do
-                        yield i
-        
-                |]) m.minervaModel.sgFeatures.positions
-            //Mod.map2 (fun (x:V3d[]) camPos ->
-            //    [|
-            //        yield V3d [|-2486734.85;2289118.76;-276192.39|]
-            //        yield V3d [|-2486744.85;2289128.76;-276182.39|]
-            //        //yield camPos
-            //        //yield camPos + (V3d.III * 15.0)
-            //        //yield camPos + (V3d.OIO * 13.0)
-            //        //yield camPos + (V3d.IOO * 14.0)
-            //        for i in x do
-            //            yield i
-            //            yield camPos
-        
-            //    |]) m.minervaModel.sgFeatures.positions camPos
-        Log.line "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
-        Log.line "%A" points
 
         let pos = V3d [|-2486735.62;2289118.43;-276194.91|]
         let trafo = Mod.constant (Trafo3d.Translation pos)
@@ -214,57 +178,12 @@ module App =
                 toEffect DefaultSurfaces.vertexColor
             ]
 
-        let debugSpheres = 
-            points 
-                |> Mod.map (fun x -> 
-                    x |> Array.map (fun e ->
-                        Sg.sphere 4 (Mod.constant C4b.Cyan) radius
-                            |> Sg.trafo (Mod.constant (Trafo3d.Translation e)))
-                    |> Sg.ofArray)
-                |> Sg.dynamic
-                |> Sg.effect [
-                    Shader.StableTrafo.Effect
-                    toEffect DefaultSurfaces.vertexColor
-                ]
-        //let debugSpheres =
-        //    Sg.ofList [
-        //        for i in trafos
-        //            let trafo = Trafo3d.Translation e
-        //            Sg.sphere 3 (Mod.constant C3b.Yellow) radius
-        //            |> Sg.trafo trafo
-        //            |> Sg.uniform "WorldPos" (trafo |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
-        //            //|> Sg.uniform "Size" radius // 5.0
-        //            |> Sg.effect [
-        //                //Shader.ScreenSpaceScale.Effect
-        //                Shader.StableTrafo.Effect
-        //                toEffect DefaultSurfaces.vertexColor
-        //            ]
-        //        )
-        //    ]
-
-        let debugLines =
-            Sg.draw IndexedGeometryMode.TriangleStrip
-            //|> Sg.trafo shiftTrafo
-            |> Sg.vertexAttribute DefaultSemantic.Positions points
-            |> Sg.uniform "Color" (Mod.constant C4b.Cyan)
-            |> Sg.uniform "LineWidth" (Mod.constant 2.0)
-            |> Sg.effect [
-                //toEffect DefaultSurfaces.stableTrafo
-                toEffect DefaultSurfaces.thickLine
-                toEffect DefaultSurfaces.sgColor
-            ]
-      
-        //let debuglines =
-        //    m.minervaModel.sgFeatures.positions
-        //      |> Mod.map(fun x -> Line3d x (m.cameraState.view |> Mod.map(fun x -> x.Location))
-        
-
         let scene = 
             [
                 opcs |> Sg.map PickingAction
-                MinervaApp.viewFeaturesSg m.minervaModel |> Sg.map MinervaAction
-                //debugSpheres |> Sg.noEvents
-                debug |> Sg.noEvents
+                //MinervaApp.viewFeaturesSg m.minervaModel |> Sg.map MinervaAction
+                ////debugSpheres |> Sg.noEvents
+                LinkingApp.view m.linkingModel |> Sg.map LinkingAction
                 DrawingApp.view m.drawing |> Sg.map DrawingAction
                 AnnotationApp.viewGrouped m.annotations |> Sg.map AnnotationAction
             ] |> Sg.ofList
@@ -277,9 +196,6 @@ module App =
                     yield table [] [
                     tr[][
                         td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
-                    ]
-                    tr[][ 
-                        td[style style'][Incremental.text(points |> Mod.map(fun y -> string(y.Length)))]
                     ]
                     //tr[][ 
                     //    td[style style'][Incremental.text(points |> Mod.map(fun x -> x |> Array.map (fun e -> e.ToString("0.00")) |> String.concat ", "))]
@@ -411,7 +327,7 @@ module App =
       let roverinitialCamera = CameraView.lookAt box.Max box.Center box.Center.Normalized
 
 
-      let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 4.0}
+      let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
       let camState = camState |> OpcSelectionViewer.Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
 
       let initialDockConfig = 
@@ -442,8 +358,8 @@ module App =
           drawing            = DrawingModel.initial
           pickedPoint        = None
           planePoints        = setPlaneForPicking
-          dockConfig         = initialDockConfig     
-          minervaModel       = MinervaApp.update camState.view Initial.model (LoadProducts (dumpFile, cacheFile))
+          dockConfig         = initialDockConfig   
+          linkingModel       = LinkingApp.update camState.view LinkingModel.initial (MinervaAction(LoadProducts(dumpFile, cacheFile)))
         }
 
       

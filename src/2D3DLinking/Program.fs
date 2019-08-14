@@ -9,6 +9,8 @@ open Suave
 open PRo3D.Minerva
 open PRo3D.Base
 
+open LinkingView
+
 [<EntryPoint>]
 let main argv =
     Ag.initialize()
@@ -17,7 +19,7 @@ let main argv =
 
     use app = new OpenGlApplication()
 
-    let argsList = List.fold(fun (x:string) (y : string)-> x + " " + y) String.Empty (argv |> Array.toList)
+    let argsList = List.fold(fun (x: string) (y: string)-> x + " " + y) String.Empty (argv |> Array.toList)
 
     let argsKv = 
       argv 
@@ -49,7 +51,7 @@ let main argv =
 
     let rotate = argsList.Contains("-rotate")
     
-    let instance =  Linking.App.app opcDir rotate dumpFile cacheFile |> App.start 
+    let instance =  LinkingView.App.app opcDir rotate dumpFile cacheFile |> App.start 
 
     WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
