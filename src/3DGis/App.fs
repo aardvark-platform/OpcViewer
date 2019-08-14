@@ -350,7 +350,7 @@ module App =
             let firstPoint = pickingModel.intersectionPoints.Item(0)
             let secondPoint = pickingModel.intersectionPoints.Item(1)
             let dir = secondPoint - firstPoint
-            let samplingSize = 50.0
+            let samplingSize = 500.0
             let step = dir / samplingSize
     
             let rec drawPoints x y =
@@ -362,12 +362,13 @@ module App =
                         match closest with
                         | Some t -> 
                             let hitpoint = fray.Ray.GetPointOnRay t
-                            Log.line "hit surface at %A" hitpoint     
+                            let sc = CooTransformation.getLatLonAlt hitpoint Planet.Mars
+                            Log.line "hitpoint: %A  -> altitude: %f" hitpoint sc.altitude
                             DrawingApp.update (drawPoints x (y-1.0)) (DrawingAction.AddPoint (hitpoint, None))
                         | None ->       
-                            x           
+                            (drawPoints x (y-1.0))            
                     | None -> 
-                        x                          
+                        (drawPoints x (y-1.0))                         
                 else 
                     let fray = FastRay3d(V3d.Zero, (firstPoint + step * y).Normalized)
                     match model.picking.pickingInfos |> HMap.tryFind model.opcBox with
@@ -376,13 +377,14 @@ module App =
                         match closest with
                         | Some t -> 
                             let hitpoint = fray.Ray.GetPointOnRay t
-                            Log.line "hit surface at %A" hitpoint     
+                            let sc = CooTransformation.getLatLonAlt hitpoint Planet.Mars
+                            Log.line "hitpoint: %A  -> altitude: %f" hitpoint sc.altitude
                             DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None))
                         | None ->       
                             x           
                     | None -> 
                         x     
-
+            
             let newDraw = drawPoints newDrawingModel (samplingSize - 1.0)
 
             //let fray = FastRay3d(model.cameraState.view.Location, model.cameraState.view.Forward)

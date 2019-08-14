@@ -5,6 +5,7 @@ open Aardvark.UI
 open Aardium
 
 open Suave
+open OpcViewer.Base
 
 type EmbeddedRessource = EmbeddedRessource
 
@@ -15,7 +16,7 @@ let main argv =
     Aardium.init()
 
     use app = new OpenGlApplication()
-
+    CooTransformation.initCooTrafo ()
     let argsList = List.fold(fun (x:string) (y : string)-> x + " " + y) String.Empty (argv |> Array.toList)
 
     let argsKv = 
