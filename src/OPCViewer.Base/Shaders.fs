@@ -348,10 +348,10 @@ module Shader =
     
                     let rel = t / (Vec.length fwp)
     
-                    yield { line.P0 with i = 0; pos = V4d(p00, 1.0); lc = V2d(-1.0, -rel); w = rel }
-                    yield { line.P0 with i = 0; pos = V4d(p10, 1.0); lc = V2d( 1.0, -rel); w = rel }
-                    yield { line.P1 with i = 1; pos = V4d(p01, 1.0); lc = V2d(-1.0, 1.0 + rel); w = rel }
-                    yield { line.P1 with i = 1; pos = V4d(p11, 1.0); lc = V2d( 1.0, 1.0 + rel); w = rel }
+                    yield { line.P0 with i = 0; pos = V4d(p00 * pp0.W, pp0.W); lc = V2d(-1.0, -rel); w = rel }      // restore W component for depthOffset
+                    yield { line.P0 with i = 0; pos = V4d(p10 * pp1.W, pp1.W); lc = V2d( 1.0, -rel); w = rel }      // restore W component for depthOffset
+                    yield { line.P1 with i = 1; pos = V4d(p01 * pp0.W, pp0.W); lc = V2d(-1.0, 1.0 + rel); w = rel } // restore W component for depthOffset
+                    yield { line.P1 with i = 1; pos = V4d(p11 * pp1.W, pp1.W); lc = V2d( 1.0, 1.0 + rel); w = rel } // restore W component for depthOffset
             }
     
         let Effect =
@@ -363,13 +363,13 @@ module Shader =
             member x.DepthOffset : float = x?DepthOffset
         
         [<GLSLIntrinsic("gl_DepthRange.diff")>]
-        let depthDiff()  : float = failwith ""
+        let depthDiff()  : float = onlyInShaderCode ""
     
         [<GLSLIntrinsic("gl_DepthRange.near")>]
-        let depthNear()  : float = failwith ""
+        let depthNear()  : float = onlyInShaderCode ""
     
         [<GLSLIntrinsic("gl_DepthRange.far")>]
-        let depthFar()  : float = failwith ""
+        let depthFar()  : float = onlyInShaderCode ""
 
         let depthOffsetFS (v : Vertex) =
             fragment {
@@ -538,32 +538,20 @@ module Shader =
         let Effect =
             toEffect falseColor
 
-//Pro3d shaders...
+//Pro3d shaders...(simplified)
     module PointSize = 
 
         type UniformScope with
             member x.PointSize : float = uniform?PointSize
-            member x.SingleColor : V4d = uniform?SingleColor
-
-        let constantColor (v : PointVertex) =
-            vertex {
-                let ps : float = uniform.PointSize
-                let col : V4d = uniform.SingleColor
-                return { v with c = col; p = ps }
-            }
-
-        let differentColor (v : PointVertex) =
-            vertex {
-                let ps : float = uniform.PointSize
-                return { v with c = v.c; p = ps }
-            }
 
         let pointTrafo (v : PointVertex) =
             vertex {
+                let ps : float = uniform.PointSize
                 let vp = uniform.ModelViewTrafo * v.pos
                 return { 
                     v with 
                         pos = uniform.ProjTrafo * vp
+                        p = ps
                 }
             }
 
@@ -592,12 +580,6 @@ module Shader =
                 yield t.P0
                 restartStrip()
             }
-
-        let EffectConstColor =
-            toEffect constantColor
-
-        let EffectDifferentColor =
-            toEffect differentColor
 
         let EffectPointTrafo =
             toEffect pointTrafo

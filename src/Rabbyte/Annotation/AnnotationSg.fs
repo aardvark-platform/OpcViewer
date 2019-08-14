@@ -46,16 +46,16 @@ module StencilAreaMasking =
         |> Sg.blendMode (Mod.constant BlendMode.Blend)
         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
 
-    let stencilArea (pass1:RenderPass) (pass2:RenderPass) sg1 sg2 =
+    let stencilArea (pass1: RenderPass) (pass2: RenderPass) sg1 sg2 =
         [
           maskSG pass1 sg1   // one pass by using EXT_stencil_two_side :)
           fillSG pass2 sg2
         ] |> Sg.ofList
 
-    let stencilArea' (pass1:RenderPass) (pass2:RenderPass) sg=
+    let stencilArea' (pass1: RenderPass) (pass2: RenderPass) sg=
         stencilArea pass1 pass2 sg sg
 
-    let stencilAreaGrouped (pass1:RenderPass) (pass2:RenderPass) (color:IMod<V4f>) sg =
+    let stencilAreaGrouped (pass1: RenderPass) (pass2: RenderPass) (color: IMod<V4f>) sg =
 
         let fullscreenSg =     
           Aardvark.SceneGraph.SgPrimitives.Sg.fullScreenQuad
@@ -69,7 +69,7 @@ module ClippingVolume =
     
     open OpcViewer.Base
 
-    let private createPlaneFittedExtrusionVolume (points:plist<V3d>) extrusionOffset = 
+    let private createPlaneFittedExtrusionVolume (points: plist<V3d>) extrusionOffset = 
         let plane = PlaneFitting.planeFit points
         let extrudeNormal = plane.Normal
         let projPointsOnPlane = points |> PList.map(plane.Project) |> PList.toList
@@ -102,7 +102,7 @@ module ClippingVolume =
                 ]
             ) |> List.concat
 
-    let planeFittedClippingVolume (colorAlpha:IMod<V4f>) (extrusionOffset:IMod<float>) (points:alist<V3d>) =
+    let planeFittedClippingVolume (colorAlpha: IMod<V4f>) (extrusionOffset: IMod<float>) (points: alist<V3d>) =
 
         let generatePolygonTriangles (extrusionOffset : float) (points:alist<V3d>) =
             let shiftAndPosAndCol =
@@ -126,7 +126,7 @@ module ClippingVolume =
   
         sg |> Mod.toASet |> Sg.set
 
-    let clippingVolume (colorAlpha:IMod<V4f>) (extrusionOffset:IMod<float>) (creation:IMod<ClippingVolumeType>) (points:alist<V3d>) = 
+    let clippingVolume (colorAlpha: IMod<V4f>) (extrusionOffset: IMod<float>) (creation: IMod<ClippingVolumeType>) (points: alist<V3d>) = 
         
         let offsetAndCreation = Mod.map2 (fun o c -> o,c) extrusionOffset creation
         
@@ -137,12 +137,13 @@ module ClippingVolume =
           
                 // increase Precision
                 let shift = 
-                    pxs |> PList.tryAt 0 |> Option.defaultValue V3d.Zero
+                    pxs |> PList.tryFirst |> Option.defaultValue V3d.Zero
 
                 let shiftsPoints p =
                     p |> PList.map (fun (x:V3d) -> V3f(x-shift)) |> PList.toArray
 
-                let pointsF = shiftsPoints pxs |> Array.skip 1 // undo closing polygon (duplicates not needed) // TODO CHECK THIS!
+                let pointsF = 
+                    shiftsPoints pxs |> Array.skip 1 // undo closing polygon (duplicates not needed) // TODO CHECK THIS!
 
                 let vertices = 
                     let o = float32 extOff
@@ -248,62 +249,71 @@ module AnnotationSg =
     open AnnotationModel
 
     // grouped...fast -> alpha broken
-    let drawAnnotationsFilledGrouped  (model: MAnnotationModel) =
+    let drawAnnotationsFilledGrouped (firstRenderPass: RenderPass) (model: MAnnotationModel) =
     
-        let mutable maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
-        let mutable areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
+        let mutable maskPass = firstRenderPass
+        let mutable areaPass = RenderPass.after "" RenderPassOrder.Arbitrary maskPass
 
-        model.annotationsGrouped 
-        |> AMap.map (fun groupColor annotations -> 
-            let colorAlpha = SgUtilities.colorAlpha (Mod.constant groupColor) (Mod.constant 0.5)
-            let groupedSg = 
-                annotations
-                |> AList.map (fun x -> clippingVolume colorAlpha model.extrusionOffset x.clippingVolume x.points)
-                |> AList.toASet
-                |> Sg.set
-                |> Sg.effect [
-                    Shader.StableTrafo.Effect
-                    toEffect DefaultSurfaces.vertexColor
-                ]
-            let coloredPolygon =
-                groupedSg
-                |> StencilAreaMasking.stencilAreaGrouped maskPass areaPass colorAlpha   
+        let sg = 
+            model.annotationsGrouped 
+            |> AMap.map (fun groupColor annotations -> 
+                let colorAlpha = SgUtilities.colorAlpha (Mod.constant groupColor) (Mod.constant 0.5)
+                let groupedSg = 
+                    annotations
+                    |> AList.map (fun x -> clippingVolume colorAlpha model.extrusionOffset x.clippingVolume x.points)
+                    |> AList.toASet
+                    |> Sg.set
+                    |> Sg.effect [
+                        Shader.StableTrafo.Effect
+                        toEffect DefaultSurfaces.vertexColor
+                    ]
+                let coloredPolygon =
+                    groupedSg
+                    |> StencilAreaMasking.stencilAreaGrouped maskPass areaPass colorAlpha   
 
-            maskPass <- RenderPass.after "mask" RenderPassOrder.Arbitrary areaPass
-            areaPass <- RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
+                maskPass <- RenderPass.after "" RenderPassOrder.Arbitrary areaPass
+                areaPass <- RenderPass.after "" RenderPassOrder.Arbitrary maskPass
                 
-            [
-                coloredPolygon
-                model.showDebug |> Mod.map (fun show -> if show then groupedSg |> drawClippingVolumeDebug else Sg.empty) |> Sg.dynamic
-            ] |> Sg.ofList)
-        |> AMap.toASet
-        |> ASet.map snd
-        |> Sg.set
+                [
+                    coloredPolygon
+                    model.showDebug |> Mod.map (fun show -> if show then groupedSg |> drawClippingVolumeDebug else Sg.empty) |> Sg.dynamic
+                ] |> Sg.ofList)
+            |> AMap.toASet
+            |> ASet.map snd
+            |> Sg.set
+
+
+        let nextRenderPass = RenderPass.after "" RenderPassOrder.Arbitrary areaPass
+        (sg, nextRenderPass)
 
     // sequentiel...correct Alphablending
-    let drawAnnotationsFilledSeq (model: MAnnotationModel) =
+    let drawAnnotationsFilledSeq (firstRenderPass: RenderPass) (model: MAnnotationModel) =
     
-        let mutable maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
-        let mutable areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
+        let mutable maskPass = firstRenderPass
+        let mutable areaPass = RenderPass.after "" RenderPassOrder.Arbitrary maskPass
 
-        model.annotations 
-        |> AList.map (fun x -> 
-            let colorAlpha = SgUtilities.colorAlpha x.style.primary.c (Mod.constant 0.5)
-            let sg = 
-                clippingVolume colorAlpha model.extrusionOffset x.clippingVolume x.points
-                |> Sg.effect [
-                    Shader.StableTrafo.Effect
-                    toEffect DefaultSurfaces.vertexColor
-                ]
-            let coloredPolygon =
-                sg  |> StencilAreaMasking.stencilAreaGrouped maskPass areaPass colorAlpha
+        let sg = 
+            model.annotations 
+            |> AList.map (fun x -> 
+                let colorAlpha = SgUtilities.colorAlpha x.style.primary.c (Mod.constant 0.5)
+                let sg = 
+                    clippingVolume colorAlpha model.extrusionOffset x.clippingVolume x.points
+                    |> Sg.effect [
+                        Shader.StableTrafo.Effect
+                        toEffect DefaultSurfaces.vertexColor
+                    ]
+                let coloredPolygon =
+                    sg  |> StencilAreaMasking.stencilAreaGrouped maskPass areaPass colorAlpha
 
-            maskPass <- RenderPass.after "mask" RenderPassOrder.Arbitrary areaPass
-            areaPass <- RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
+                maskPass <- RenderPass.after "" RenderPassOrder.Arbitrary areaPass
+                areaPass <- RenderPass.after "" RenderPassOrder.Arbitrary maskPass
                 
-            [
-                coloredPolygon
-                model.showDebug |> Mod.map (fun show -> if show then sg |> drawClippingVolumeDebug else Sg.empty) |> Sg.dynamic
-            ] |> Sg.ofList)
-        |> AList.toASet
-        |> Sg.set
+                [
+                    coloredPolygon
+                    model.showDebug |> Mod.map (fun show -> if show then sg |> drawClippingVolumeDebug else Sg.empty) |> Sg.dynamic
+                ] |> Sg.ofList)
+            |> AList.toASet
+            |> Sg.set
+
+        let nextRenderPass = RenderPass.after "" RenderPassOrder.Arbitrary areaPass
+        (sg, nextRenderPass)

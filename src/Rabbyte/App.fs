@@ -24,9 +24,9 @@ type Action =
     | UpdateDrawing of DrawingAction
     | UpdateAnnotation of AnnotationAction
 
-let update (model : SimpleDrawingModel) (act : Action) =
+let update (model: SimpleDrawingModel) (act: Action) =
 
-    let drawingUpdate (model : SimpleDrawingModel) (act : DrawingAction) = 
+    let drawingUpdate (model: SimpleDrawingModel) (act: DrawingAction) = 
        { model with drawing = DrawingApp.update model.drawing act }
 
     match act, model.drawingEnabled with
@@ -44,11 +44,11 @@ let update (model : SimpleDrawingModel) (act : Action) =
             | Keys.F -> 
                 let finished = drawingUpdate model (DrawingAction.FinishClose None) // TODO add dummy-hitF
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some (ClippingVolumeType.Direction V3d.ZAxis)))
-                { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
             | Keys.Enter -> 
                 let finished = drawingUpdate model DrawingAction.Finish
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
-                { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
             | _ -> model
         | Move p, true -> { model with hoverPosition = Some (Trafo3d.Translation p) }
         | UpdateDrawing a, _ -> 
@@ -98,10 +98,13 @@ let testScene =
         Sg.onLeave (fun _ -> Exit)
     ]    
 
-let frustum =
-    Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+let near = Mod.init 0.1
+let far = Mod.init 100.0
 
-let scene3D (model : MSimpleDrawingModel) =
+let frustum =
+    Mod.map2 (fun near far -> Frustum.perspective 60.0 near far 1.0) near far
+
+let scene3D (model: MSimpleDrawingModel) =
                                  
     let cursorTrafo = 
         model.hoverPosition 
@@ -117,17 +120,32 @@ let scene3D (model : MSimpleDrawingModel) =
         |> Sg.noEvents
         |> Sg.trafo trafo
 
-    let cursor = cursorSg C4b.Red 0.05 cursorTrafo
-        
-    let drawingApp = DrawingApp.view model.drawing
-    let annotationApp = AnnotationApp.viewGrouped model.annotations
-        
-    [testScene; cursor; drawingApp; annotationApp]
-    |> Sg.ofList
+    let filledPolygonSg, afterFilledPolygonRenderPass = 
+        model.annotations 
+        |> AnnotationApp.viewGrouped near far (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
+
+    let afterFilledPolygonSg =
+        [
+            model.drawing |> DrawingApp.view near far
+            cursorSg C4b.Red 0.05 cursorTrafo 
+        ]
+        |> Sg.ofList
+        |> Sg.pass afterFilledPolygonRenderPass
+
+    let finalComposed = 
+        [
+            testScene
+            filledPolygonSg
+            afterFilledPolygonSg
+        ]
+        |> Sg.ofList
+
+
+    finalComposed
     |> Sg.fillMode (Mod.constant FillMode.Fill)
     |> Sg.cullMode (Mod.constant CullMode.None)
 
-let view (model : MSimpleDrawingModel) =            
+let view (model: MSimpleDrawingModel) =            
     require (Html.semui) (
         div [clazz "ui"; style "background: #1B1C1E"] [
             ArcBallController.controlledControl model.camera CameraMessage frustum

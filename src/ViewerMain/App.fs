@@ -88,7 +88,7 @@ module App =
 
             let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
             let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
-            { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+            { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
           //| Keys.T ->
           //  let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
           //  //let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
@@ -144,23 +144,35 @@ module App =
             toEffect Shader.AttributeShader.falseColorLegend //falseColorLegendGray
             ]
 
-      let axis = 
-        m |> AxisSg.axisSgs
+      let near = m.mainFrustum |> Mod.map(fun x -> x.near)
+      let far = m.mainFrustum |> Mod.map(fun x -> x.far)
+
+
+      let filledPolygonSg, afterFilledPolygonRenderPass = 
+        m.annotations 
+        |> AnnotationApp.viewGrouped near far (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
+
+      let afterFilledPolygonSg = 
+        [
+          m.drawing |> DrawingApp.view near far
+          m |> AxisSg.axisSgs
+        ] 
+        |> Sg.ofList
+        |> Sg.pass afterFilledPolygonRenderPass
 
       let scene = 
         [
-          opcs
-          axis
-          DrawingApp.view m.drawing
-          AnnotationApp.viewGrouped m.annotations
-        ] |> Sg.ofList
+            opcs
+            filledPolygonSg
+            afterFilledPolygonSg
+        ]
+        |> Sg.ofList
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
            let style' = "color: white; font-family:Consolas;"
     
            yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left" ] [          
-           //yield table [] []
               yield table [] [
                 tr[][
                     td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
@@ -170,7 +182,7 @@ module App =
         ]
 
       let renderControl =
-       FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl m.cameraState Camera m.mainFrustum
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
            attribute "showFPS" "true";       // optional, default is false
@@ -183,9 +195,8 @@ module App =
          ]) 
          (scene |> Sg.map PickingAction) 
             
-      let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant          
-        
-      let cam = Mod.map2 Camera.create m.cameraState.view frustum 
+      //let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant          
+      //let cam = Mod.map2 Camera.create m.cameraState.view frustum 
 
       let semui = 
           [ 
@@ -314,6 +325,7 @@ module App =
 
         { 
           cameraState        = camState
+          mainFrustum        = Frustum.perspective 60.0 0.01 1000.0 1.0
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
           axis               = axis

@@ -66,7 +66,8 @@ type Axis = {
 [<DomainType>]
 type Model =
     {
-        cameraState          : CameraControllerState                       
+        cameraState          : CameraControllerState 
+        mainFrustum          : Frustum
         fillMode             : FillMode                                
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>        
@@ -79,6 +80,9 @@ type Model =
         drawing              : DrawingModel
         annotations          : AnnotationModel
         pickingActive        : bool
+
+        lineSelectionActive  : bool
+        opcBox               : Box3d
         
         opcCenterPosition    : V3d
         jumpSelectionActive  : bool

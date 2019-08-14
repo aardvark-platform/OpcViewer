@@ -117,7 +117,7 @@ module App =
                 let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
                 let dir = Direction (model.drawing.points |> PList.toSeq |> fun x -> PlaneFitting.planeFit x).Normal
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some dir))
-                { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
+                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
                 
                 //let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
                 //let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddBrush pointsOnAxisFunc)
@@ -215,20 +215,28 @@ module App =
 
 
 
+      let near = m.mainFrustum |> Mod.map(fun x -> x.near)
+      let far = m.mainFrustum |> Mod.map(fun x -> x.far)
 
+      let filledPolygonSg, afterFilledPolygonRenderPass = 
+        m.annotations 
+        |> AnnotationApp.viewGrouped near far (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
 
-
-
-
+      let afterFilledPolygonSg = 
+        [
+          m.drawing |> DrawingApp.view near far
+          // myPlane
+        ] 
+        |> Sg.ofList
+        |> Sg.pass afterFilledPolygonRenderPass
 
       let scene = 
         [
-          opcs
-          // PickingApp.view m.pickingModel // TODO...restore after refactoring...
-          DrawingApp.view m.drawing
-          AnnotationApp.viewGrouped m.annotations
-          //myPlane 
-        ] |> Sg.ofList
+            opcs
+            filledPolygonSg
+            afterFilledPolygonSg
+        ]
+        |> Sg.ofList
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
@@ -244,7 +252,7 @@ module App =
         ]
 
       let renderControl =
-       FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl m.cameraState Camera m.mainFrustum 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
            attribute "showFPS" "true";       // optional, default is false
@@ -393,6 +401,7 @@ module App =
       let initialModel : Model = 
         { 
           cameraState        = camState
+          mainFrustum        = Frustum.perspective 60.0 0.01 1000.0 1.0
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
           

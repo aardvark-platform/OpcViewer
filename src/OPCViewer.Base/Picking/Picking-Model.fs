@@ -6,13 +6,6 @@ open Aardvark.Base.Incremental
 open Aardvark.VRVis.Opc.KdTrees
 open Aardvark.SceneGraph.Opc
 
-// move to ViewerMain
-type VolumeGeneration = 
-  | Plane
-  | AxisMidPoint
-  | AxisPoints
-  | AxisPointsMidRing
-
   // Debug info....move to ViewerMain -> Axis...
 [<DomainType>]
 type AxisPointInfo = {
@@ -24,15 +17,6 @@ type PickingAction =
   | HitSurface of Box3d*SceneHit //*(V3d -> V3d)
   | RemoveLastPoint
   | ClearPoints
-  //| AddBrush of (plist<V3d> -> Option<AxisPointInfo>)
-  //| AddTestBrushes of (plist<V3d> -> Option<AxisPointInfo>)
-  //| ShowDebugVis
-  //| ShowOutline
-  //| ShowOutlineDetail
-  //| UseGrouping
-  //| SetAlpha of float
-  //| SetExtrusionOffset of float
-  //| SetVolumeGeneration of Option<VolumeGeneration>
 
 type BoxNeighbors = {
   neighbors : List<Box3d> 
@@ -54,10 +38,6 @@ type PickingModel = {
   pickingInfos         : hmap<Box3d, OpcData>
   hitPointsInfo        : hmap<V3d, Box3d>
   intersectionPoints   : plist<V3d>                 // TODO...change to LastIntersectionPoint : Option<V3d> 
-  //useGrouping          : bool                     // TODO move to ViewerMain
-  //groupedBrushes       : hmap<C4b, plist<Brush>>  // maintained by ViewerMain
-  //volumeGeneration     : Option<VolumeGeneration> // TODO move to ViewerMain
-  //volumeGenerationOptions : hmap<VolumeGeneration, string> // TODO move to ViewerMain
 }  
 
 module PickingModel =

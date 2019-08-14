@@ -34,8 +34,8 @@ type SegmentCreation =
 [<DomainType>]
 type BrushStyle = 
     {
-        primary     : ColorInput // use for lines and planes
-        secondary   : ColorInput // use for vertices
+        primary     : ColorInput
+        secondary   : ColorInput
         lineStyle   : Option<LineStyle>
         areaStyle   : Option<AreaStyle>
         thickness   : float
@@ -45,8 +45,8 @@ type BrushStyle =
 type Segment = 
     {
         startPoint : V3d
+        innerPoints: plist<V3d> 
         endPoint   : V3d 
-        points     : plist<V3d> 
     }
 
 [<DomainType>]
@@ -63,10 +63,6 @@ type DrawingModel =
         primitiveType   : PrimitiveType
         areaStyleNames  : hmap<AreaStyle, string>
         lineStyleNames  : hmap<LineStyle, string>
-    
-        //showOutline          : bool 
-        //showDetailOutline    : bool 
-        //alpha                : float
     }
 
 type DrawingAction =
@@ -110,4 +106,13 @@ module DrawingModel =
             primitiveType   = PrimitiveType.Empty
             areaStyleNames = HMap.ofList [Pattern, "Pattern"; Filled, "Filled"; AreaStyle.Empty, "Empty";]
             lineStyleNames = HMap.ofList [Solid, "Solid"; Dashed, "Dashed"]
+        }
+
+    let reset m =
+        { m with
+            points          = plist.Empty
+            segments        = plist.Empty
+            past            = None
+            future          = None
+            primitiveType   = PrimitiveType.Empty
         }
