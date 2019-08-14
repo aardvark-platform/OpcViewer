@@ -137,10 +137,6 @@ module App =
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some dir))
                 { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing; region = Some points; rover = rover} // reset drawingApp, but keep brush-style
                 
-                //let pointsOnAxisFunc = OpcSelectionViewer.AxisFunctions.pointsOnAxis None
-                //let updatedPicking = PickingApp.update model.pickingModel (PickingAction.AddBrush pointsOnAxisFunc)
-                //let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) // TODO...add hitFunc
-                //{ model with drawing = updatedDrawing }
 
             | Keys.F1 -> {model with roiBboxFull = not model.roiBboxFull}
 
@@ -206,14 +202,10 @@ module App =
           |> AMap.toASet
           |> ASet.map(fun info -> Sg.createSingleOpcSg (Mod.constant None) m.pickingActive m.cameraState.view info)
           |> Sg.set
-          //|> Sg.effect [ 
-          //  toEffect Shader.stableTrafo
-          //  toEffect DefaultSurfaces.diffuseTexture       
-          //  ]
-       
 
+  
        //projection points on sphere
-      
+  
       let i =
         m.rover.projPoints  //REVIEW
             |> AList.toMod
@@ -246,162 +238,7 @@ module App =
       let points = i|> Mod.map(fun cast -> (cast:ISg<PickingAction>)) 
 
 
-      //let po = m.rover.projPoints
-      //let li = po |> AList.toList
-      
-      
-      
-      //let shifted = li |> List.map(fun p -> p - shift)
-      //let arr = shifted |> List.toArray |> Mod.constant
-      //let shiftV = Trafo3d.Translation(shift)
-      //let points = 
-      //  Sg.draw IndexedGeometryMode.PointList 
-      //   |> Sg.vertexAttribute DefaultSemantic.Positions arr
-      //   |> Sg.trafo (Mod.constant shiftV)
-      //   |> Sg.effect [
-      //      toEffect DefaultSurfaces.stableTrafo
-      //      toEffect (DefaultSurfaces.constantColor C4f.White)
-      //      //Shader.PointSprite.Effect
-      //      ]
-            
-      //      |> Sg.uniform "PointSize" (Mod.constant 10.0)
-
-
-
-        //|> Sg.translate' (Mod.constant shift)
-        //|> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant arr) 
-        //|> Sg.uniform "Color" (Mod.constant C4b.Yellow)
-        //|> Sg.uniform "PointSize" (Mod.constant 2.0)
-        //|> Sg.effect [
-        //    toEffect DefaultSurfaces.stableTrafo
-        //    toEffect DefaultSurfaces.sgColor
-        //    ]
-        
-        
-      
-      let rotateIntoCoordinateSystem (vector:V3d) = 
-        
-        let pos = m.rover.position
-        let target = m.rover.target
-        let up = m.rover.up
-
-        let forward = Mod.map2(fun (p:V3d) (t:V3d) -> ((t - p).Normalized)) pos target
-        let right = Mod.map2(fun (f:V3d) (u:V3d) -> ((f.Cross(u)).Normalized)) forward up
-        let rotZ = up |> Mod.map(fun u -> Trafo3d.RotateInto(V3d.OOI,u))
-        let rotY = Mod.map(fun (r:V3d) -> Trafo3d.RotateInto(V3d.OIO,r))right
-        let rotX = Mod.map(fun (f:V3d) -> Trafo3d.RotateInto(V3d.IOO,f))forward
-
-        //order z y x
-        let rotatedByZ = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos vector)rotZ
-        let rotatedByY = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotY rotatedByZ
-        let rotatedFinal = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotX rotatedByY
-
-        //order z x y
-        //let rotatedByZ = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos vector)rotZ
-        //let rotatedByX = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotX rotatedByZ
-        //let rotatedFinal = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotY rotatedByX
-
-        //order x y z
-        //let rotatedByX = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos vector)rotX
-        //let rotatedByY = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotY rotatedByX
-        //let rotatedFinal = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotZ rotatedByY
-
-        //order x z y
-        //let rotatedByX = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos vector)rotX
-        //let rotatedByZ = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotZ rotatedByX
-        //let rotatedFinal = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotY rotatedByZ
-
-        ////order y x z
-        //let rotatedByY = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos vector)rotY
-        //let rotatedByX = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotX rotatedByY
-        //let rotatedFinal = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotZ rotatedByX
-
-        //order y z x
-        //let rotatedByY = Mod.map(fun (r:Trafo3d) -> r.Forward.TransformPos vector)rotY
-        //let rotatedByZ = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotZ rotatedByY
-        //let rotatedFinal = Mod.map2(fun (r:Trafo3d)(v:V3d) -> r.Forward.TransformPos v)rotX rotatedByZ
-
-        rotatedFinal
-
-        
-      //point on sphere where theta = 90 phi = 90
-      let xCartesian = cos(90.0)*sin(90.0)
-      let yCartesian = sin(90.0)*sin(90.0)
-      let zCartesian = cos(90.0)
-      let ref = V3d(xCartesian, yCartesian, zCartesian) 
-      let s = m.rover.position
-
-      ///let rotated = rotateIntoCoordinateSystem ref
-      let shifted = Mod.map(fun s  -> ref + s) s 
-      let translation = Mod.map(fun a -> Trafo3d.Translation(a)) shifted
-
-      let refSphere = 
-           Sg.sphere 5 (Mod.constant C4b.Green) (Mod.constant 0.05)
-            |> Sg.noEvents
-            |> Sg.effect [ 
-                    toEffect Shader.stableTrafo
-                    toEffect DefaultSurfaces.vertexColor
-                    ]
-            |> Sg.trafo translation
-      
-      //
-     
-     //point on sphere where theta = 90 phi = 180
-      let xPole = cos(90.0)*sin(180.0)
-      let yPole = sin(90.0)*sin(180.0)
-      let zPole = cos(180.0)
-      let pole = V3d(xPole, yPole, zPole) 
-      //let poleRef = rotateIntoCoordinateSystem pole
-      let poleshifted = Mod.map(fun s  -> pole + s)  s 
-      let poletranslation = Mod.map(fun a -> Trafo3d.Translation(a)) poleshifted
-
-      let poleSphere = 
-           Sg.sphere 5 (Mod.constant C4b.Blue) (Mod.constant 0.05)
-            |> Sg.noEvents
-            |> Sg.effect [ 
-                    toEffect Shader.stableTrafo
-                    toEffect DefaultSurfaces.vertexColor
-                    ]
-            |> Sg.trafo poletranslation
-    
-      
-      //point on sphere where theta 0 = phi = 90
-      let xF = sin(90.0)
-      let yF = 0.0
-      let zF = cos(90.0)
-      let pointZero = V3d(xF, yF, zF)
-      //let pZRef = rotateIntoCoordinateSystem pointZero
-      let pZShifted = Mod.map(fun s -> pointZero + s)  s 
-      let pZTranslation = Mod.map(fun a -> Trafo3d.Translation(a)) pZShifted
-
-      let pointZeroSphere = 
-           Sg.sphere 5 (Mod.constant C4b.Magenta) (Mod.constant 0.05)
-            |> Sg.noEvents
-            |> Sg.effect [ 
-                    toEffect Shader.stableTrafo
-                    toEffect DefaultSurfaces.vertexColor
-                    ]
-            |> Sg.trafo pZTranslation
-      
-
-
-
-      //let sphere = Sphere3d(V3d.OOO, 1.0)
       let transl = m.rover.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
-      //let rot = m.rover.up |> Mod.map(fun u -> Trafo3d.RotateInto(V3d.OIO, u))
-      //let rot2 = forw |> Mod.map(fun r -> Trafo3d.RotateInto(V3d.OOI, r))
-      //let trafo1 = Mod.map2 (fun r1 r2 -> r1*r2)  rot rot2
-      //let rovertrafo = Mod.map2(fun t r -> r * t) transl trafo1
-      //let geom = IndexedGeometryPrimitives.Sphere.wireframePhiThetaSphere sphere 5 C4b.Cyan
-      //let rov = 
-      //     geom
-      //      |> Sg.ofIndexedGeometry
-      //      |> Sg.trafo transl
-      //      |> Sg.uniform "Color" (Mod.constant C4b.Cyan)
-      //      |> Sg.effect [
-      //          toEffect DefaultSurfaces.stableTrafo
-      //          toEffect DefaultSurfaces.sgColor
-      //      ]
       let rov = 
            Sg.sphere 5 (Mod.constant C4b.Yellow) (Mod.constant 0.1)
             |> Sg.noEvents
@@ -433,7 +270,7 @@ module App =
       let upAxisLine = 
         upAxis
             |> AList.toMod
-            |> Mod.map (fun m -> //REVIEW
+            |> Mod.map (fun m -> 
                 let upArr = m |> PList.toArray
                         
                 Sg.draw IndexedGeometryMode.LineList
@@ -468,7 +305,7 @@ module App =
             |> Mod.map (fun m -> 
                 let fArr = m |> PList.toArray
                         
-                Sg.draw IndexedGeometryMode.LineList  //REVIEW
+                Sg.draw IndexedGeometryMode.LineList  
                 |> Sg.trafo shiftVec
                 |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant fArr) 
                 |> Sg.uniform "Color" (Mod.constant C4b.Green)
@@ -553,29 +390,6 @@ module App =
 
 
 
-      let projTrafo1 = m.rover.projPoint1 |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
-      let projection1 = 
-          Sg.sphere 5 (Mod.constant C4b.Yellow) (Mod.constant 0.05)
-            |> Sg.noEvents
-            |> Sg.effect [ 
-                    toEffect Shader.stableTrafo
-                    toEffect DefaultSurfaces.vertexColor
-                    ]
-            |> Sg.trafo projTrafo1
-      
-      let projTrafo2 = m.rover.projPoint2 |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
-      let projection2 = 
-          Sg.sphere 5 (Mod.constant C4b.Yellow) (Mod.constant 0.05)
-            |> Sg.noEvents
-            |> Sg.effect [ 
-                    toEffect Shader.stableTrafo
-                    toEffect DefaultSurfaces.vertexColor
-                    ]
-            |> Sg.trafo projTrafo2
-
-      
-      
-
       let targettrafo = m.rover.target |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
       let target = 
            Sg.sphere 5 (Mod.constant C4b.DarkMagenta) (Mod.constant 0.2)
@@ -587,382 +401,36 @@ module App =
             |> Sg.trafo targettrafo
       
       
-        
-
-     
-     
-
-      let vp = (RoverModel.getViewProj m.rover.camera.view m.rover.frustum)    
-      
-      let frustumBox =
+      let frustumModel (vp:IMod<Trafo3d>) = 
         Sg.wireBox' C4b.White (Box3d(V3d.NNN,V3d.III))
-        |> Sg.noEvents
-        |> Sg.trafo (vp |> Mod.map ( fun vp -> vp.Inverse))
-        |> Sg.shader {
-            do! DefaultSurfaces.stableTrafo
-            do! DefaultSurfaces.vertexColor
-        }
-    
-     
-     //visualize corner points
-      let corners = m.rover.corners
+                            |> Sg.noEvents
+                            |> Sg.trafo (vp |> Mod.map (fun vp -> vp.Inverse))
+                            |> Sg.shader {
+                                do! DefaultSurfaces.stableTrafo
+                                do! DefaultSurfaces.vertexColor
+                                }
 
-      //shift vector
-      //let shifted = 
-      //  corners
-      //      |> Mod.map (fun point -> 
-      //          match point with
-      //          | None -> List.empty
-      //          | Some p -> 
-      //              let l = p |> AList.toList 
-      //              let first = l.Head
-      //              l |> List.map(fun point -> point - first)
-      //              )
-
-      //front corners
-      let LBF = 
-         m.rover.cornerLBF |> Mod.map(fun p -> 
-      
-            match p with
-                | Some lbf -> 
-                    Sg.sphere 5 (Mod.constant C4b.DarkGreen) (Mod.constant 0.1)
-                        |> Sg.noEvents
-                        |> Sg.effect [ 
-                            toEffect Shader.stableTrafo
-                            toEffect DefaultSurfaces.vertexColor
-                                    ]
-                        |> Sg.trafo (Mod.constant(Trafo3d.Translation(lbf)))
-                | None -> Sg.empty
-        )
-
-      let RBF = 
-         m.rover.cornerRBF |> Mod.map(fun p -> 
-      
-            match p with
-                | Some rbf -> 
-                    Sg.sphere 5 (Mod.constant C4b.DarkGreen) (Mod.constant 0.1)
-                        |> Sg.noEvents
-                        |> Sg.effect [ 
-                            toEffect Shader.stableTrafo
-                            toEffect DefaultSurfaces.vertexColor
-                                    ]
-                        |> Sg.trafo (Mod.constant(Trafo3d.Translation(rbf)))
-                | None -> Sg.empty
-                
-        )
-
-      let LTF = 
-         m.rover.cornerLTF |> Mod.map(fun p -> 
-      
-            match p with
-                | Some ltf -> 
-                    Sg.sphere 5 (Mod.constant C4b.Green) (Mod.constant 0.1)
-                        |> Sg.noEvents
-                        |> Sg.effect [ 
-                            toEffect Shader.stableTrafo
-                            toEffect DefaultSurfaces.vertexColor
-                                    ]
-                        |> Sg.trafo (Mod.constant(Trafo3d.Translation(ltf)))
-                | None -> Sg.empty
-                
-        )
-    
-      let RTF = 
-         m.rover.cornerRTF |> Mod.map(fun p -> 
-      
-            match p with
-                | Some rtf -> 
-                    Sg.sphere 5 (Mod.constant C4b.Yellow) (Mod.constant 0.1)
-                        |> Sg.noEvents
-                        |> Sg.effect [ 
-                            toEffect Shader.stableTrafo
-                            toEffect DefaultSurfaces.vertexColor
-                                    ]
-                        |> Sg.trafo (Mod.constant(Trafo3d.Translation(rtf)))
-                | None -> Sg.empty
-                
-        )
-
-    
-    //back corners
-      let LBB = 
-         m.rover.cornerLBB |> Mod.map(fun p -> 
-      
-            match p with
-                | Some lbb -> 
-                    Sg.sphere 5 (Mod.constant C4b.DarkGreen) (Mod.constant 0.1)
-                        |> Sg.noEvents
-                        |> Sg.effect [ 
-                            toEffect Shader.stableTrafo
-                            toEffect DefaultSurfaces.vertexColor
-                                    ]
-                        |> Sg.trafo (Mod.constant(Trafo3d.Translation(lbb)))
-                | None -> Sg.empty
-        )
-
-      let RBB = 
-         m.rover.cornerRBB |> Mod.map(fun p -> 
-      
-            match p with
-                | Some rbb -> 
-                    Sg.sphere 5 (Mod.constant C4b.DarkGreen) (Mod.constant 0.1)
-                        |> Sg.noEvents
-                        |> Sg.effect [ 
-                            toEffect Shader.stableTrafo
-                            toEffect DefaultSurfaces.vertexColor
-                                    ]
-                        |> Sg.trafo (Mod.constant(Trafo3d.Translation(rbb)))
-                | None -> Sg.empty
-                
-        )
-
-      let LTB = 
-         m.rover.cornerLTB |> Mod.map(fun p -> 
-      
-            match p with
-                | Some ltb -> 
-                    Sg.sphere 5 (Mod.constant C4b.White) (Mod.constant 0.1)
-                        |> Sg.noEvents
-                        |> Sg.effect [ 
-                            toEffect Shader.stableTrafo
-                            toEffect DefaultSurfaces.vertexColor
-                                    ]
-                        |> Sg.trafo (Mod.constant(Trafo3d.Translation(ltb)))
-                | None -> Sg.empty
-                
-        )
-    
-      let RTB = 
-         m.rover.cornerRTB |> Mod.map(fun p -> 
-      
-            match p with
-                | Some rtb -> 
-                    Sg.sphere 5 (Mod.constant C4b.White) (Mod.constant 0.1)
-                        |> Sg.noEvents
-                        |> Sg.effect [ 
-                            toEffect Shader.stableTrafo
-                            toEffect DefaultSurfaces.vertexColor
-                                    ]
-                        |> Sg.trafo (Mod.constant(Trafo3d.Translation(rtb)))
-                | None -> Sg.empty
-                
-        )
-
-      //line between bottom points
-      let shiftP = m.rover.cornerLBF
-      let lbb = m.rover.cornerLBB
-      let rbb = m.rover.cornerRBB
-      let rbf = m.rover.cornerRBF
-
-      let pointsB = 
-        Mod.map2 (fun (p1:Option<V3d>) (p2:Option<V3d>) ->
-            match p1,p2 with
-                | Some p1, Some p2 -> 
-                    let p1Shifted = p1 - p1
-                    let p2Shifted = p2 - p1
-                    [|p1Shifted; p2Shifted|]
-                | _ -> [||]
-
-        ) shiftP lbb
-    
+      //main camera view frustum
+      let vp = (RoverModel.getViewProj m.rover.camera.view m.rover.frustum) 
+      let frustumBox = frustumModel vp
        
-      let shiftTrafo = 
-        Mod.map(fun p -> 
-            match p with
-                | Some v -> Trafo3d.Translation(v)
-                | None -> Trafo3d.Translation(V3d.OOO)
-                ) shiftP
-      let line1 = 
-        Sg.draw IndexedGeometryMode.LineList
-        |> Sg.trafo shiftTrafo
-        |> Sg.vertexAttribute DefaultSemantic.Positions pointsB 
-        |> Sg.uniform "Color" (Mod.constant C4b.Cyan)
-        |> Sg.uniform "LineWidth" (Mod.constant 2.0)
-        |> Sg.effect [
-            toEffect DefaultSurfaces.stableTrafo
-            toEffect DefaultSurfaces.thickLine
-            toEffect DefaultSurfaces.sgColor
-            ]
-      
-      let line = (line1:ISg<PickingAction>)
+      //set of frustums
 
-      //let tup = shiftP, ltf, rbf,rtf
-      //let lineBottom = 
-      //  Mod.map(fun t -> 
-      //      Mod.map(fun r -> 
-      //      match r with
-      //          | Some ap, Some bp, Some cp, Some dp -> 
-      //              let apSh = ap - ap
-      //              let bpSh = bp - ap
-      //              let cpSh = cp - ap
-      //              let dpSh = dp - ap
-      //              [|apSh; bpSh;cpSh;dpSh|]
-      //          | _ -> [||]
-            
-      //          )t
-      //      )tup
-       
-
-
-
-      //let leftBottomFront = 
-      // shifted |> Mod.map(fun l -> 
-     
-      //  match l.IsEmpty with
-      //      | true -> Sg.empty
-      //      | false -> 
-      //          let trafo = Mod.map(fun (s:List<V3d>) -> Trafo3d.Translation(s.Item(1))) shifted
-      //          Sg.sphere 5 (Mod.constant C4b.DarkCyan) (Mod.constant 0.2)
-      //          |> Sg.noEvents
-      //          |> Sg.effect [ 
-      //              toEffect Shader.stableTrafo
-      //              toEffect DefaultSurfaces.vertexColor
-      //              ]
-      //          |> Sg.trafo trafo
-      //    )
-      //let LBF = Mod.map(fun lf -> lf:ISg<PickingAction>)leftBottomFront
-
-      
-
-      
-      
-
-
-
-
-      let ROIbox = 
-       m.rover.reg |> 
-        Mod.map (fun p ->
-            match p with
-                | None -> Sg.empty
-                | Some points -> 
-                        let lis = points |> AList.toPList
-                         //set shift vector
-                        let shift = lis |> PList.first
-
-                        //shift points
-                        let list = lis |> PList.toList 
-                        let lis2 = list |> List.map (fun (p:V3d) ->  p - shift)
-                        let box = Box3d(lis2)
-                        let translation = Trafo3d.Translation(shift)
-                        let rotation = Mod.map (fun up -> Trafo3d.RotateInto(V3d.OIO,up)) m.rover.up
-                        let trafo =  Mod.map(fun r -> r * translation) rotation
-                        //let rotation = Trafo3d.RotateInto(V3d.OIO,box.Center.Normalized)
-                        //let trafo =  rotation * translation
-                        //let toggle = m.roiBboxFull
-                        //let boxForm = toggle |> Mod.map (fun f -> 
-                        //                            match f with
-                        //                            | true -> Sg.box' C4b.Cyan box
-                        //                            | false -> Sg.wireBox' C4b.Cyan box
-                        //                                )
-                        //boxForm |> Mod.map (fun dr -> 
-                        Sg.wireBox' C4b.Cyan box
-                             |> Sg.noEvents
-                             |> Sg.trafo (Mod.constant translation)//trafo//(Mod.constant trafo)
-                             |> Sg.effect [
-                                              toEffect DefaultSurfaces.stableTrafo
-                                              toEffect DefaultSurfaces.vertexColor
-                                            ]
-                                            //)
-                  
-                                   
-            
-                   )    
-                   |> Sg.dynamic
-              
-         
-     
-
-      //let camPos = m.rover.position
-      //let p1Pos = m.rover.boxP1
-      //let p2Pos = m.rover.boxP2
-
-
-      //let points1 = 
-      //  Mod.map2 (fun (camP:V3d) (p1:Option<V3d>) ->
-      //      match p1 with
-      //          | Some po -> 
-      //              //let p1L = V3d(po.X, po.Y, po.Z * 2.0)
-      //              //shift the points
-      //              let camShifted = camP - camP
-      //              let p1LShifted = po - camP
-      //              [|camShifted; p1LShifted|]
-      //          | None -> [||]
-      //  ) camPos p1Pos
+      let sgFrustums = 
+            m.rover.viewList 
+                |> AList.map (fun v -> 
+                    let vp = (RoverModel.getViewProj (Mod.constant v) m.rover.frustum)    
+                    frustumModel vp
+                             )       
+                |> AList.toASet
+                |> Sg.set
     
-      //let points2 = 
-      //  Mod.map2 (fun (camP:V3d) (p2:Option<V3d>) ->
-      //      match p2 with
-      //          | Some po -> 
-      //              //let p2L = V3d(po.X, po.Y, po.Z * 2.0)
-      //              //shift the points
-      //              let camShifted = camP - camP
-      //              let p2LShifted = po - camP
-      //              [|camShifted; p2LShifted|]
-      //          | None -> [||]
-      //  ) camPos p2Pos
-    
-      //let shiftTrafo = Mod.map(fun p -> Trafo3d.Translation(p)) camPos
-      //let line1 = 
-      //  Sg.draw IndexedGeometryMode.LineList
-      //  |> Sg.trafo shiftTrafo
-      //  |> Sg.vertexAttribute DefaultSemantic.Positions points1 
-      //  |> Sg.uniform "Color" (Mod.constant C4b.Cyan)
-      //  |> Sg.uniform "LineWidth" (Mod.constant 2.0)
-      //  |> Sg.effect [
-      //      toEffect DefaultSurfaces.stableTrafo
-      //      toEffect DefaultSurfaces.thickLine
-      //      toEffect DefaultSurfaces.sgColor
-      //      ]
-
-      //let line2 = 
-      //  Sg.draw IndexedGeometryMode.LineList
-      //  |> Sg.trafo shiftTrafo
-      //  |> Sg.vertexAttribute DefaultSemantic.Positions points2 
-      //  |> Sg.uniform "Color" (Mod.constant C4b.Cyan)
-      //  |> Sg.uniform "LineWidth" (Mod.constant 2.0)
-      //  |> Sg.effect [
-      //      toEffect DefaultSurfaces.stableTrafo
-      //      toEffect DefaultSurfaces.thickLine
-      //      toEffect DefaultSurfaces.sgColor
-      //      ]
-
-
-
-
-
-      //let line1 = 
-      //  points1 |> Mod.map (fun l -> 
-      //      Picking.Sg.drawOutline (Mod.constant C4b.DarkBlue) (Mod.constant C4b.DarkBlue) (Mod.constant 1.0) (Mod.constant 0.01) (Mod.constant 2.0) (Mod.constant true) l  
-      //      )
       
-      //let line2 = 
-      //  points2 |> Mod.map (fun l -> 
-      //      Picking.Sg.drawOutline (Mod.constant C4b.DarkBlue) (Mod.constant C4b.DarkBlue) (Mod.constant 1.0) (Mod.constant 0.01) (Mod.constant 2.0) (Mod.constant true) l  
-      //      )
-       
         
 
-      //let region = m.region
-      //let centerPoint = 
-      //  let r = region |> AList.toList
-      //  match r.Length with
-      //      | 0 -> Sg.empty
-      //      | _ -> 
-      //          let sum = r.Sum()
-      //          let c = r |> List.length
-      //          let average = sum / (float c)
-      //          let tr = Trafo3d.Translation(average)
-      //          Sg.sphere 5 (Mod.constant C4b.DarkCyan) (Mod.constant 0.2)
-      //          |> Sg.noEvents
-      //          |> Sg.effect [ 
-      //                      toEffect Shader.stableTrafo
-      //                      toEffect DefaultSurfaces.vertexColor
-      //                              ]
-      //          |> Sg.trafo (Mod.constant tr)
-                
-            
-       
+   
+
+      
       //highlights the area of the model which is inside the rover's view frustum
       let shading = 
         opcs
@@ -1025,24 +493,26 @@ module App =
           right |> Sg.dynamic
           camForw |> Sg.dynamic
           points |> Sg.dynamic
+          sgFrustums
+          
         ] |> Sg.ofList
+        
     
-      let roverCamScene = 
+
+      let roverCamSg = 
        [
           m.drawing |> DrawingApp.view
-          //PickingApp.view m.pickingModel
-          //drawPlane
-          //target
           points |> Sg.dynamic
           shading
           frustumBox
-  
-         
         ] |> Sg.ofList
         
 
       let fullScene = 
         m.annotations |> AnnotationApp.viewGrouped shading RenderPass.main afterSg
+      
+      let roverScene = 
+         m.annotations |> AnnotationApp.viewGrouped shading RenderPass.main roverCamSg
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
@@ -1058,11 +528,6 @@ module App =
         ]
 
       
-      //let asp = Mod.map(fun aspect -> aspect |> Frustum.withAspect) m.rover.frustum
-
-
-      
-
       let roverCamControl = 
        
         FreeFlyController.controlledControl  m.rover.camera Camera m.rover.frustum 
@@ -1073,7 +538,7 @@ module App =
            attribute "data-samples" "4"
          ]) 
             
-         (roverCamScene |> Sg.map PickingAction)
+         (roverScene |> Sg.map PickingAction)
       
 
 
@@ -1113,29 +578,18 @@ module App =
                 //p[][text "Press R to place rover at picked point"]
                 //p[][text "Press L to select picked point as rover target"]
                 p[][Incremental.text (m.rover.position |> Mod.map (fun f -> f.ToString())) ]
-                p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = 0.0; max = 360.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
+                p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
                 p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
                 p[][div[][text "Select Camera: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
                 
-                //button [onClick (fun _ -> RoverAction.MoveToRegion (m.region |> AList.toPList))] [text "Move to region"] |> UI.map RoverAction
-                button [onClick (fun _ -> RoverAction.MoveToRegion)]  [text "Move to region"] |> UI.map RoverAction
+                //button [onClick (fun _ -> RoverAction.MoveToRegion)]  [text "Move to region"] |> UI.map RoverAction
                 button [onClick (fun _ -> RoverAction.CalculateAngles)]  [text "calculate values"] |> UI.map RoverAction
                 button [onClick (fun _ -> RoverAction.RotateToPoint)]  [text "rotate to points"] |> UI.map RoverAction
-
-
-
-
 
                 h3[][text "NIOBE"]
                 p[][text "Hold Ctrl-Left to add Point"]
                 p[][text "Press Enter to close Polygon"]
-                //p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.pickingModel.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.pickingModel.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
-                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
-                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.useGrouping PickingAction.UseGrouping "Use Grouping"] |> UI.map PickingAction
-                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.showOutline PickingAction.ShowOutline "Show Outline"] |> UI.map PickingAction
-                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.showDetailOutline PickingAction.ShowOutlineDetail "Show Outline Detail"] |> UI.map PickingAction
-                //p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.pickingModel.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
-                //p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.pickingModel.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
+           
               ]
             ]
           )

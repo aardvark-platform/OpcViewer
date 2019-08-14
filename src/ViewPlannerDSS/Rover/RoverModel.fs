@@ -36,39 +36,27 @@ type ProjectionSphere =
 type RoverModel =
     {
 
-        position :  V3d             
-        target   :  V3d            
-        tilt     :  CameraInput
-        pan      :  CameraInput
-        camera   :  CameraControllerState
-        up       :  V3d
-        frustum  :  Frustum
+        position :       V3d             
+        target   :       V3d            
+        tilt     :       CameraInput
+        pan      :       CameraInput
+        camera   :       CameraControllerState
+        up       :       V3d
+        frustum  :       Frustum
+        fov      :       float
         currentCamType : Option<CameraType>
-        cameraOptions : hmap<CameraType, string>
-        panTiltValues : Option<plist<V2d>>
-        cornerLBF : Option<V3d> //left bottom front
-        cornerLTF : Option<V3d>
-        cornerRBF : Option<V3d>
-        cornerRTF : Option<V3d>
-        cornerLBB : Option<V3d> //left bottom back
-        cornerLTB : Option<V3d>
-        cornerRBB : Option<V3d>
-        cornerRTB : Option<V3d>
-        corners : Option<plist<V3d>> //in world space
-        reg :   Option<plist<V3d>>
-
-        projsphere : ProjectionSphere
-        projPoint1 : V3d
-        projPoint2 : V3d
-
-        projPoints : plist<V3d>
+        cameraOptions :  hmap<CameraType, string>
+        reg :            Option<plist<V3d>>
+        projsphere :     ProjectionSphere
+        projPoints :     plist<V3d>
         thetaPhiValues : plist<V2d>
-        currIdx : int
+        currIdx :        int
+        viewList:        plist<CameraView>
 
     }
 
 type RoverAction =
-    | ChangePosition of V3d     //locate the rover at an intersection point
+    | ChangePosition of V3d     
     | ChangePan of float
     | ChangeTilt of float
     | SwitchCamera of Option<CameraType>
@@ -111,16 +99,7 @@ module RoverModel =
 
         currentCamType = Some Camera30
         cameraOptions = HMap.ofList [Camera60, "Camera60"; Camera30, "Camera30"; Camera15, "Camera15"; Stereo, "Stereo"]
-        panTiltValues = None
-        cornerLBF = None
-        cornerLTF = None
-        cornerRBF = None
-        cornerRTF = None
-        cornerLBB = None
-        cornerLTB = None
-        cornerRBB = None
-        cornerRTB = None
-        corners = None
+        
         reg = None
 
         projsphere =
@@ -129,11 +108,11 @@ module RoverModel =
             position = V3d.III
             }
 
-        projPoint1 = V3d.OOO
-        projPoint2 = V3d.OOO
         projPoints = PList.empty
         thetaPhiValues = PList.empty
         currIdx = 0
+        viewList = PList.empty
+        fov = 30.0
         }
 
     let getViewProj (cam : IMod<CameraView>) (frustum:IMod<Frustum>) =

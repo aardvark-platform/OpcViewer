@@ -47,58 +47,17 @@ module RoverApp =
         let curr = value
         {m with tilt = {m.tilt with delta = dt; previous = prev; current = curr}}
     
-
-    let calcTheta (x:float) (y:float) =
-       
-        (atan2 x y)* Constant.DegreesPerRadian
-        //let v = Math.Atan(y/x)
-        
-        //let absV = Math.Abs(v)
-        //let absVinDegree = absV * Constant.DegreesPerRadian
-        //let signX = Math.Sign(x)
-        //let signY = Math.Sign(y)
-
-        //match signX,signY with
-        //    | 1,1 -> v * Constant.DegreesPerRadian
-        //    | -1,1 -> (180.0 - absVinDegree)
-        //    | -1, -1 -> (absVinDegree + 180.0)
-        //    | 1,-1 -> (360.0 - absVinDegree)
-        //    | 0, 1 -> 90.0
-        //    | 0,0 -> 0.0
-        //    | 0, -1 -> 270.0
-            
-
-
     
     let rotateIntoCoordinateSystem (m:RoverModel) (vector:V3d) = 
         
-        let pos = m.position
-        let target = m.target
         let up = m.up
-
-        let forward = (target - pos).Normalized
-        let right = (forward.Cross(up)).Normalized
         let rotZ = Trafo3d.RotateInto(up,V3d.OOI)
-        let rotY = Trafo3d.RotateInto(right,V3d.OIO)
-        let rotX = Trafo3d.RotateInto(forward,V3d.IOO)
 
-       
-        let final = 
-
-            let rotatedbyZ = rotZ.Forward.TransformDir vector
-            rotatedbyZ
+        let rotatedbyZ = rotZ.Forward.TransformDir vector
+        rotatedbyZ
+    
         
-        //let final = 
-
-        //    //rotate x y
-        //    let rX = rotX.Forward.TransformDir vector
-        //    let rY = rotY.Forward.TransformDir rX
-        //    let rZ = rotZ.Forward.TransformDir rY
-        //    rZ
-
-        final
-        
-
+    //returns theta, phi values in degrees
     let calcThetaPhi (position:V3d) =
         
         let x = position.X
@@ -106,151 +65,81 @@ module RoverApp =
         let z = position.Z
    
         //quadrant
-        let theta = calcTheta x y 
-
-        //let theta = atan2 y x//atan(y/x)
-        let phi = acos(z)//atan2 z (sqrt((pown x 2)+(pown y 2)))
+        let theta = (atan2 x y)* Constant.DegreesPerRadian 
+        let phi = (acos(z)) * Constant.DegreesPerRadian
 
         V2d(theta,phi)
 
 
 
     //points: in world space
-    let calcPanTiltValues (m:RoverModel) (points:List<V3d>) (cam:CameraView) =
+    //let calcPanTiltValues (m:RoverModel) (points:List<V3d>) (cam:CameraView) =
         
-        let rotTrafo = Trafo3d.RotateInto(V3d.OOI, m.up)
-        //let rotTrafo = Trafo3d.RotateInto( m.up, V3d.OOI)
-        //project points onto projection sphere
-        let spherePos = m.projsphere.position
+    //    let rotTrafo = Trafo3d.RotateInto(V3d.OOI, m.up)
+    //    //let rotTrafo = Trafo3d.RotateInto( m.up, V3d.OOI)
+    //    //project points onto projection sphere
+    //    let spherePos = m.projsphere.position
 
-    
-        //rotated points
-        //let rotatedSpherePos = rotTrafo.Forward.TransformPos spherePos
-        //let rotatedPoints = points  |> List.map (fun p -> rotTrafo.Forward.TransformPos p)
-        //let shiftedPoints = rotatedPoints  |> List.map (fun p -> (p - rotatedSpherePos).Normalized)
         
-        //normal points
-        let testPoint = m.target
-        let upPoint = m.position + (m.up*1.5)
-        let rightPoint = 
-            let forw = (testPoint - m.position).Normalized
-            let r = forw.Cross(m.up)
-            m.position + r
+    //    //normal points
+    //    let testPoint = m.target
+    //    let upPoint = m.position + (m.up*1.5)
+    //    let rightPoint = 
+    //        let forw = (testPoint - m.position).Normalized
+    //        let r = forw.Cross(m.up)
+    //        m.position + r
 
        
-        //add target point for testing
-        let l2 = [rightPoint;upPoint;testPoint]
-        let testList = List.append points l2
-        let shiftedPoints = testList  |> List.map (fun p -> (p - spherePos).Normalized)
-        //let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotTrafo.Forward.TransformPos p)
-        let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotateIntoCoordinateSystem m p)
+    //    //add target point for testing
+    //    let l2 = [rightPoint;upPoint;testPoint]
+    //    let testList = List.append points l2
+    //    let shiftedPoints = testList  |> List.map (fun p -> (p - spherePos).Normalized)
+    //    //let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotTrafo.Forward.TransformPos p)
+    //    let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotateIntoCoordinateSystem m p)
 
-        let r = rotatedPoints.Item(rotatedPoints.Length - 1)
-        let thetaOfPointonForwardVec = calcTheta r.X r.Y
-        let setR = initializePan m thetaOfPointonForwardVec
-        let setR2 = initializeTilt setR ((acos(r.Z))*Constant.DegreesPerRadian)
+    //    let r = rotatedPoints.Item(rotatedPoints.Length - 1)
+    //    let thetaOfPointonForwardVec = calcTheta r.X r.Y
+    //    let setR = initializePan m thetaOfPointonForwardVec
+    //    let setR2 = initializeTilt setR ((acos(r.Z))*Constant.DegreesPerRadian)
 
-        //calculate theta and phi for coordinates
-        //test for the first point in the list
+    //    //calculate theta and phi for coordinates
+    //    //test for the first point in the list
 
-        let listOfAngles = rotatedPoints |> List.map(fun pos -> calcThetaPhi pos)
-        //debuging
-        for p in listOfAngles do
-            printfn "theta phi %A %A"  (p.X) (p.Y* Constant.DegreesPerRadian) 
+    //    let listOfAngles = rotatedPoints |> List.map(fun pos -> calcThetaPhi pos)
+    //    //debuging
+    //    for p in listOfAngles do
+    //        printfn "theta phi %A %A"  (p.X) (p.Y* Constant.DegreesPerRadian) 
         
-        let index = shiftedPoints.Length - 1 
-        let point = rotatedPoints.Item (0)
-        let second = rotatedPoints.Item(1)
-        let projectionPoint1 = point + spherePos
-        let projectionPoint2 = second + spherePos
-        let x = point.X
-        let y = point.Y
-        let z = point.Z
-        let theta = calcTheta x y
-        let phi = acos(z) //atan2 z (sqrt((pown x 2)+(pown y 2))) 
+    //    let index = shiftedPoints.Length - 1 
+    //    let point = rotatedPoints.Item (0)
+    //    let second = rotatedPoints.Item(1)
+    //    let projectionPoint1 = point + spherePos
+    //    let projectionPoint2 = second + spherePos
+    //    let x = point.X
+    //    let y = point.Y
+    //    let z = point.Z
+    //    let theta = calcTheta x y
+    //    let phi = acos(z) //atan2 z (sqrt((pown x 2)+(pown y 2))) 
 
 
-        printfn "theta: %A" theta
-        printfn "phi: %A" (phi * Constant.DegreesPerRadian)
+    //    printfn "theta: %A" theta
+    //    printfn "phi: %A" (phi * Constant.DegreesPerRadian)
 
 
 
 
-        let panned = setPan setR2 (theta)
-        let pannedRover = panning panned
-        let tilted = setTilt pannedRover (phi* Constant.DegreesPerRadian)
-        let newR = tilting tilted
+    //    let panned = setPan setR2 (theta)
+    //    let pannedRover = panning panned
+    //    let tilted = setTilt pannedRover (phi* Constant.DegreesPerRadian)
+    //    let newR = tilting tilted
 
-        let projectionPoints = shiftedPoints |> List.map (fun p -> p + spherePos) |> PList.ofList
-        {newR with projPoint1 = projectionPoint1; projPoint2 = projectionPoint2; projPoints = projectionPoints }
-        //let tilted = setTilt pannedRover (phi* Constant.DegreesPerRadian)
-        //tilting tilted
-        //let rotTrafo = Trafo3d.Rotation(theta, phi, 0.0)
-        //let viewM2 = CameraView.ofTrafo (m.camera.view.ViewTrafo * rotTrafo)
+    //    let projectionPoints = shiftedPoints |> List.map (fun p -> p + spherePos) |> PList.ofList
+    //    {newR with projPoint1 = projectionPoint1; projPoint2 = projectionPoint2; projPoints = projectionPoints }
+
 
         
 
-        //ATTEMPT:calculate bounding box
-        //let pointsInViewSpace = points  |> List.map (fun p -> cam.ViewTrafo.Forward.TransformPos p) 
-
-        ////get corners of box
-        //let box = pointsInViewSpace |> Box3d
-
-        //let xMin = box.Min.X
-        //let xMax = box.Max.X
-        //let yMin = box.Min.Y
-        //let yMax = box.Max.Y
-        //let zMin = box.Min.Z
-        //let zMax = box.Max.Z
         
-        ////8 corner points
-        //let leftBottomFront = V3d(xMin, yMin, zMin)
-        //let rightBottomFront = V3d(xMax, yMin, zMin)
-        //let leftTopFront = V3d(xMin, yMax, zMin)
-        //let rightTopFront = V3d(xMax, yMax, zMin)
-        //let leftBottomBack = V3d(xMin, yMin, zMax)
-        //let rightBottomBack = V3d(xMax, yMin, zMax)
-        //let leftTopBack = V3d(xMin, yMax, zMax)
-        //let rightTopBack = V3d(xMax, yMax, zMax)
-
-        ////store them in list and transform every point back to world space
-        //let cornerList = [leftBottomFront; rightBottomFront; leftTopFront; rightTopFront; leftBottomBack;rightBottomBack; leftTopBack; rightTopBack]
-        //let cornersInWorldSpace = cornerList |> List.map(fun corner -> cam.ViewTrafo.Backward.TransformPos corner)
-        //let cornersPList = cornersInWorldSpace |> PList.ofList
-
-        //let LBF = cornersInWorldSpace.Item(0)
-        //let RBF = cornersInWorldSpace.Item(1)
-        //let LTF = cornersInWorldSpace.Item(2) //p1
-        //let RTF = cornersInWorldSpace.Item(3) //p2
-        //let LBB = cornersInWorldSpace.Item(4)
-        //let RBB = cornersInWorldSpace.Item(5)
-        //let LTB = cornersInWorldSpace.Item(6)
-        //let RTB = cornersInWorldSpace.Item(7)
-
-        //let p1 = leftTopFront
-        //let p2 = rightTopFront
-
-        //let camPos = m.camera.view.Location
-        //let dir1 = LTB - camPos
-        //let dir2 = RTB - camPos
-        //let p1Norm = dir1.Normalized
-        //let p2Norm = dir2.Normalized
-
-        //let angleBetween = (acos(p1Norm.Dot(p2Norm))) * Constant.DegreesPerRadian
-
-        //printfn "%A angle:" angleBetween
-
-        //let p1ws = p1 |> cam.ViewTrafo.Backward.TransformPos 
-        //let p2ws = p2 |> cam.ViewTrafo.Backward.TransformPos 
-
-     
-        //{m with camera =  {m.camera with view = cam}; cornerLBF = Some LBF; cornerLTF = Some LTF; 
-        //    cornerRBF = Some RBF; cornerRTF = Some RTF; 
-        //    cornerLBB = Some LBB; cornerRBB = Some RBB;
-        //    cornerLTB = Some LTB; cornerRTB = Some RTB;
-        //    corners = Some cornersPList }
-
-        //{m with camera =  {m.camera with view = viewM2} }
 
 
 
@@ -288,11 +177,39 @@ module RoverApp =
        //if true then ROI fits in frustum
                 match allInside with
                     | true -> {m with camera =  {m.camera with view = viewM2} }
-                    | false -> calcPanTiltValues m points viewM2
+                    | false -> m//calcPanTiltValues m points viewM2
             
     
 
 
+    let sampling (rover : RoverModel) = 
+        
+        let fov = rover.fov
+        let values = rover.thetaPhiValues
+        let li = values |> PList.toList
+        let pans = li |> List.map (fun l -> l.X) //list with just pan values
+        let tilts = li |> List.map (fun l -> l.Y) //list with just tilt values
+
+        //sort pan values
+        let sortedPans = List.sort pans
+        let minPan = sortedPans.Head
+        let maxPan = sortedPans.Item(sortedPans.Length - 1)
+        let deltaPan = Math.Abs (maxPan - minPan)
+        
+        let sampleRate = Math.Round(deltaPan / fov)
+        let s = sampleRate
+
+        //sort tilt values
+        let sortedTilts = List.sort tilts
+        let minTilt = sortedTilts.Head
+        let maxTilt = sortedTilts.Item(sortedTilts.Length - 1)
+        let deltaTilt = Math.Abs (maxTilt - minTilt)
+
+        //generate a sampling list with pan and tilt values
+       
+
+
+        rover
 
 
 
@@ -300,36 +217,33 @@ module RoverApp =
        
         let v = checkROIFullyInside m m.reg
         v
-       
-                
+   
 
-        //let viewM = m.camera.view.ViewTrafo
-        //let projM = Frustum.projTrafo(m.frustum)
-        //let viewProj = viewM * projM
+    //takes pan and tilt values and calculates a view matrix for frustum visualisation
+    let calculateViewMatrix (rover : RoverModel) (pan : float) (tilt : float) =
+        
+        let panCurr = rover.pan.current
+        let panDelta = panCurr - pan
+        let tiltCurr = rover.tilt.current
+        let tiltDelta = tiltCurr - tilt
 
-        ////transform points to projection space
-        //let transformedpoints = region |> PList.toList |> List.map (fun p -> viewProj.Forward.TransformPosProj p)
+        let forward = rover.camera.view.Forward
+        let up = rover.up 
+        let right = rover.camera.view.Right
 
-        ////set up bounding box
-        //let boxPoints = transformedpoints |> List.map(fun p -> ((V2d(p.X, p.Y) + V2d.One) * 0.5))
-        //let bBox =  boxPoints |> Box2d //coords between 0 and 1
-        //let size = bBox.Size
-        //let leftBottomP = V3d(bBox.Min,1.0)
-      
-        ////transform point back to view space
-        //let invP = projM.Backward.TransformPos leftBottomP
+        //panning
+        let panRotation = Rot3d(up, panDelta.RadiansFromDegrees())
+        let targetWithPan = panRotation.TransformDir(forward)
 
-        ////Rotating of the camera
-        ////let iProj = viewM.Forward.TransformPos bBox.Center
-        //let iProj = invP
-        //let tiltAngle = atan2 -iProj.Y -iProj.Z
-        //let panAngle = atan2 iProj.X -iProj.Z 
+        //tilting
+        let tiltRotation = Rot3d(right, tiltDelta.RadiansFromDegrees())
+        let targetWithTilt = tiltRotation.TransformDir(targetWithPan)
 
-        //let rotTrafo = Trafo3d.Rotation(tiltAngle, panAngle, 0.0)
-        //let newView = CameraView.ofTrafo (m.camera.view.ViewTrafo * rotTrafo)
+        let view = CameraView.look rover.position targetWithTilt.Normalized up
 
-       
-        //{m with camera =  {m.camera with view = newView} }
+        view
+
+
 
     
     let rotateToPoint (rover:RoverModel) =
@@ -340,11 +254,11 @@ module RoverApp =
         let pair = values.Item(idx) //pair.X = theta; pair.Y = phi
 
         //values currently rotated to
-        printfn "thetaCurrent %A phiCurrent %A"  (pair.X) (pair.Y* Constant.DegreesPerRadian) 
+        printfn "thetaCurrent %A phiCurrent %A"  (pair.X) (pair.Y) 
 
         let panned = setPan rover pair.X
         let pannedRover = panning panned
-        let tilted = setTilt pannedRover (pair.Y* Constant.DegreesPerRadian)
+        let tilted = setTilt pannedRover (pair.Y)
         let newR = tilting tilted
 
         //set index
@@ -374,21 +288,32 @@ module RoverApp =
 
                 //debugging
                 for p in thetaPhiValues do
-                    printfn "theta %A phi %A"  (p.X) (p.Y* Constant.DegreesPerRadian) 
+                    printfn "theta %A phi %A"  (p.X) (p.Y) 
 
 
                 let plist = thetaPhiValues |> PList.ofList
+
+                
 
                 //point on forward vector
                 let referencePoint = rover.target
                 let shifted = (referencePoint-spherePos).Normalized
                 let r = rotateIntoCoordinateSystem rover shifted
-                let thetaOfPointonForwardVec = calcTheta r.X r.Y
-                printfn "thetaOnForward %A"  thetaOfPointonForwardVec
-                let setR = initializePan rover thetaOfPointonForwardVec
-                let setR2 = initializeTilt setR ((acos(r.Z))*Constant.DegreesPerRadian)
-                {setR2 with thetaPhiValues = plist; projPoints = projectionPoints}
+                let thetaPhi = calcThetaPhi r
+                printfn "thetaOnForward %A"  thetaPhi.X
+                let setR = initializePan rover thetaPhi.X
+                let setR2 = initializeTilt setR thetaPhi.Y
+
+                let viewMatrices = thetaPhiValues |> List.map(fun m -> calculateViewMatrix setR2 m.X m.Y) |> PList.ofList
+                
+
+                {setR2 with thetaPhiValues = plist; projPoints = projectionPoints; viewList = viewMatrices }
     
+
+        //for testing
+        let r = sampling newRover
+        let a = r
+                //
         newRover
         
        
@@ -406,15 +331,15 @@ module RoverApp =
         match camtype with
             |Some Camera60 -> 
                 let fr = Frustum.perspective 60.0 0.1 10.0 1.0
-                {rover with frustum = fr; currentCamType = Some Camera60}
+                {rover with frustum = fr; currentCamType = Some Camera60; fov = 60.0}
             
             |Some Camera30 ->
                 let fr = Frustum.perspective 30.0 0.1 10.0 1.0
-                {rover with frustum = fr; currentCamType = Some Camera30}
+                {rover with frustum = fr; currentCamType = Some Camera30; fov = 30.0}
             
             |Some Camera15 ->
                 let fr = Frustum.perspective 15.0 0.1 10.0 1.0
-                {rover with frustum = fr; currentCamType = Some Camera15}
+                {rover with frustum = fr; currentCamType = Some Camera15; fov = 15.0}
             
             |Some Stereo -> rover //TODO 
 
