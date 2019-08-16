@@ -215,17 +215,28 @@ module App =
 
 
 
+      let near = m.mainFrustum |> Mod.map(fun x -> x.near)
+      let far = m.mainFrustum |> Mod.map(fun x -> x.far)
 
+      let filledPolygonSg, afterFilledPolygonRenderPass = 
+        m.annotations 
+        |> AnnotationApp.viewGrouped near far (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
 
-
-      let afterSg = 
+      let afterFilledPolygonSg = 
         [
-          m.drawing |> DrawingApp.view
+          m.drawing |> DrawingApp.view near far
           // myPlane
-        ] |> Sg.ofList
+        ] 
+        |> Sg.ofList
+        |> Sg.pass afterFilledPolygonRenderPass
 
       let scene = 
-        m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main afterSg
+        [
+            opcs
+            filledPolygonSg
+            afterFilledPolygonSg
+        ]
+        |> Sg.ofList
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
@@ -241,7 +252,7 @@ module App =
         ]
 
       let renderControl =
-       FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl m.cameraState Camera m.mainFrustum 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
            attribute "showFPS" "true";       // optional, default is false
@@ -390,6 +401,7 @@ module App =
       let initialModel : Model = 
         { 
           cameraState        = camState
+          mainFrustum        = Frustum.perspective 60.0 0.01 1000.0 1.0
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
           

@@ -60,8 +60,7 @@ module SgUtilities =
     //    |> AList.toMod 
     //    |> Mod.map (fun l ->
     //        let list = PList.toList l
-    //        let head = list |> List.tryHead
-                
+    //        let head = list |> List.tryHead              
     //        match head with
     //            | Some h -> if close then list @ [h] else list
     //                            |> List.pairwise
@@ -70,47 +69,54 @@ module SgUtilities =
     //            | None -> [||])   
 
     // Points
-    let private drawPoints (pointSize: IMod<float>) (offset: IMod<float>) (pointsF: IMod<V3f[]>) =
+    let private drawPoints (pointSize: IMod<float>) (offsetNormalized: IMod<float>) (pointsF: IMod<V3f[]>) =
         Sg.draw IndexedGeometryMode.PointList
         |> Sg.vertexAttribute DefaultSemantic.Positions pointsF
         |> Sg.uniform "PointSize" pointSize
-        |> Sg.uniform "DepthOffset" (offset |> Mod.map (fun depthWorld -> depthWorld / (100.0 - 0.1)))
+        |> Sg.uniform "DepthOffset" offsetNormalized
         |> Sg.effect [
             Shader.PointSize.EffectPointTrafo
             toEffect DefaultSurfaces.pointSprite
             Shader.DepthOffset.Effect
             Shader.PointSize.EffectPointSpriteFragment
         ] 
+        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
 
-    let drawSingleColorPoints (color: IMod<V4f>) (pointSize: IMod<float>) (offset: IMod<float>) (pointsF: IMod<V3f[]>) =
-        drawPoints pointSize offset pointsF
+    let drawSingleColorPoints (color: IMod<V4f>) (pointSize: IMod<float>) (offsetNormalized: IMod<float>) (pointsF: IMod<V3f[]>) =
+        drawPoints pointSize offsetNormalized pointsF
         |> Sg.vertexBufferValue DefaultSemantic.Colors color
 
-    let drawColoredPoints (colors: IMod<V4f[]>) (pointSize: IMod<float>) (offset: IMod<float>) (pointsF: IMod<V3f[]>) = 
-        drawPoints pointSize offset pointsF
+    let drawColoredPoints (colors: IMod<V4f[]>) (pointSize: IMod<float>) (offsetNormalized: IMod<float>) (pointsF: IMod<V3f[]>) = 
+        drawPoints pointSize offsetNormalized pointsF
         |> Sg.vertexAttribute DefaultSemantic.Colors colors
 
-    let drawPointList (color: IMod<C4b>) (pointSize: IMod<float>) (offset: IMod<float>) (positions: alist<V3d>) = 
+    let drawPointList (color: IMod<C4b>) (pointSize: IMod<float>) (offsetWorld: IMod<float>) (near: IMod<float>) (far: IMod<float>)  (positions: alist<V3d>) = 
+        let nearFar = Mod.map2 (fun near far -> near,far) near far
+        let offsetNormalized = Mod.map2 (fun (near, far) offsetWorld -> offsetWorld / (far - near)) nearFar offsetWorld
         let positions = positions |> AList.toMod |> Mod.map PList.toArray
         let shiftedPoints, shiftTrafo  = stablePoints' positions
 
-        drawSingleColorPoints (color |> Mod.map(fun x -> x.ToC4f().ToV4f())) pointSize offset shiftedPoints
+        drawSingleColorPoints (color |> Mod.map(fun x -> x.ToC4f().ToV4f())) pointSize offsetNormalized shiftedPoints
         |> Sg.trafo shiftTrafo
                      
-    let lines (offset: IMod<float>) (color: IMod<C4b>) (width: IMod<float>) (trafo: IMod<Trafo3d>) (points: alist<V3d>) = 
+    let lines (offsetNormalized: IMod<float>) (color: IMod<C4b>) (width: IMod<float>) (trafo: IMod<Trafo3d>) (points: alist<V3d>) = 
         let edges = stableLines false trafo points // refactored edgeLine
         edges
         |> Sg.lines color
         |> Sg.uniform "LineWidth" width
-        |> Sg.uniform "DepthOffset" (offset |> Mod.map (fun depthWorld -> depthWorld / (100.0 - 0.1))) 
+        |> Sg.uniform "DepthOffset" offsetNormalized
         |> Sg.effect [
             Shader.StableTrafo.Effect
             Shader.ThickLineNew.Effect
             Shader.DepthOffset.Effect
         ]
         |> Sg.trafo trafo
+        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
 
-    let lines' (offset: IMod<float>) (color: IMod<C4b>) (width: IMod<float>) (points: alist<V3d>) =
+    let lines' (offsetWorld: IMod<float>) (color: IMod<C4b>) (width: IMod<float>) (near: IMod<float>) (far: IMod<float>) (points: alist<V3d>) =
+        let nearFar = Mod.map2 (fun near far -> near,far) near far
+        let offsetNormalized = Mod.map2 (fun (near, far) offsetWorld -> offsetWorld / (far - near)) nearFar offsetWorld
+        
         let trafo =
             points 
             |> AList.toMod
@@ -118,7 +124,7 @@ module SgUtilities =
                match l |> PList.tryFirst with
                | Some p -> Trafo3d.Translation p
                | None -> Trafo3d.Identity)
-        lines offset color width trafo points
+        lines offsetNormalized color width trafo points
                                
     let scaledLines (color: IMod<C4b>) (width: IMod<float>) (trafo: IMod<Trafo3d>) (points: alist<V3d>) = 
         let edges = stableLines false trafo points

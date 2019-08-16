@@ -37,40 +37,42 @@ module AnnotationApp =
 
             { model with annotations = updatedAnnotation; annotationsGrouped = updatedAnnotationsFilledPolygon }
 
-    let drawOutlines (model: MAnnotationModel) = 
+    let drawOutlines (near: IMod<float>) (far: IMod<float>) (model: MAnnotationModel) = 
         model.annotations 
-        |> AList.map (fun x -> DrawingApp.drawCountour x.points x.segments x.style |> Sg.noEvents)
+        |> AList.map (fun x -> DrawingApp.drawContour x.points x.segments x.style near far |> Sg.noEvents)
         |> AList.toASet
         |> Sg.set
 
-    let viewOutlines (model: MAnnotationModel) = 
-        model |> drawOutlines
+    let viewOutlines (near: IMod<float>) (far: IMod<float>) (model: MAnnotationModel) = 
+        model |> drawOutlines near far
 
-    let viewGrouped (beforeSg: ISg<'a>) (beforeRenderPass: RenderPass) (afterSg: ISg<'a>) (annotations: MAnnotationModel)  = 
-        let sg1 = 
-            beforeSg 
-            |> Sg.pass beforeRenderPass
+    let viewGrouped (near: IMod<float>) (far: IMod<float>) (startRenderPass: RenderPass) (model: MAnnotationModel) : (ISg<'a> * RenderPass) = 
 
-        let sg2, nextRenderPass = 
-            annotations |> AnnotationSg.drawAnnotationsFilledGrouped (RenderPass.after "init" RenderPassOrder.Arbitrary beforeRenderPass)
-
-        let sg3 = 
-            [
-                afterSg 
-                annotations |> drawOutlines
-            ]
-            |> Sg.ofList
+        let filledSg, nextRenderPass = 
+            model |> AnnotationSg.drawAnnotationsFilledGrouped (RenderPass.after "" RenderPassOrder.Arbitrary startRenderPass)
+        let outlineSg = 
+            model |> drawOutlines near far
             |> Sg.pass nextRenderPass
 
-        [ sg1; sg2; sg3 ] 
-        |> Sg.ofList
+        let sg = 
+            [ filledSg; outlineSg ] 
+            |> Sg.ofList
 
-    let viewSeq (model: MAnnotationModel) =
-        // TODO...renderpass same as for grouping 
-        [
-            model |> AnnotationSg.drawAnnotationsFilledSeq
-            model |> drawOutlines
-        ] |> Sg.ofList
+        sg, nextRenderPass
+
+    let viewSeq (near: IMod<float>) (far: IMod<float>) (startRenderPass: RenderPass) (model: MAnnotationModel) : (ISg<'a> * RenderPass) =
+        
+        let filledSg, nextRenderPass =
+            model |> AnnotationSg.drawAnnotationsFilledSeq (RenderPass.after "" RenderPassOrder.Arbitrary startRenderPass)
+        let outlineSg = 
+            model |> drawOutlines near far
+            |> Sg.pass nextRenderPass
+
+        let sg = 
+            [ filledSg; outlineSg ] 
+            |> Sg.ofList
+
+        sg, nextRenderPass
 
     let viewGui (model: MAnnotationModel) =
         let style' = "color: white; font-family:Consolas;"
