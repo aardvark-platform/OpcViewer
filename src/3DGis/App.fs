@@ -350,8 +350,28 @@ module App =
             let firstPoint = pickingModel.intersectionPoints.Item(0)
             let secondPoint = pickingModel.intersectionPoints.Item(1)
             let dir = secondPoint - firstPoint
-            let samplingSize = 500.0
+            let samplingSize = 3000.0
             let step = dir / samplingSize
+
+
+            //let rec map f xs = 
+            //    match xs with
+            //        | x :: xs -> f x :: map f xs
+            //        | [] -> []
+
+            //let rec fold f initial xs = 
+            //    match xs with
+            //        | x::xs -> f x (fold f xs)
+            //        | [] -> initial
+
+            //let sum xs = List.fold (fun summeBisher aktuelleWert -> summeBisher + aktuelleWert) 0 xs
+            //let multiplyAll xs = List.fold (fun p x -> x * x) 1 xs
+
+
+            //let addSinglePoint (m : DrawingModel) (v : float) = 
+            //    m
+            
+            //let newModel = List.fold addSinglePoint newDrawingModel [1.0..(samplingSize - 1.0)]
     
             let rec drawPoints x y =
                 if y > 1.0 then
@@ -364,7 +384,9 @@ module App =
                             let hitpoint = fray.Ray.GetPointOnRay t
                             let sc = CooTransformation.getLatLonAlt hitpoint Planet.Mars
                             Log.line "hitpoint: %A  -> altitude: %f" hitpoint sc.altitude
-                            DrawingApp.update (drawPoints x (y-1.0)) (DrawingAction.AddPoint (hitpoint, None))
+                            //DrawingApp.update (drawPoints x (y-1.0)) (DrawingAction.AddPoint (hitpoint, None))
+                            let x = DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None))
+                            drawPoints x (y - 1.0)
                         | None ->       
                             (drawPoints x (y-1.0))            
                     | None -> 
@@ -386,6 +408,25 @@ module App =
                         x     
             
             let newDraw = drawPoints newDrawingModel (samplingSize - 1.0)
+            
+            //for y in (int samplingSize - 1 ) .. -1 .. 1  do
+            //    if y > 1 then
+            //        let fray = FastRay3d(V3d.Zero, (firstPoint + step * y).Normalized)
+            //        match model.picking.pickingInfos |> HMap.tryFind model.opcBox with
+            //        | Some kk ->
+            //            let closest = OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some kk.kdTree) fray      
+            //            match closest with
+            //            | Some t -> 
+            //                let hitpoint = fray.Ray.GetPointOnRay t
+            //                let sc = CooTransformation.getLatLonAlt hitpoint Planet.Mars
+            //                Log.line "hitpoint: %A  -> altitude: %f" hitpoint sc.altitude
+            //                model.drawing <- DrawingApp.update model.drawing (DrawingAction.AddPoint (hitpoint, None))
+            //            | None ->       
+            //                Log.line ""            
+            //        | None -> 
+            //            Log.line ""  
+
+
 
             //let fray = FastRay3d(model.cameraState.view.Location, model.cameraState.view.Forward)
             //match model.picking.pickingInfos |> HMap.tryFind model.opcBox with
