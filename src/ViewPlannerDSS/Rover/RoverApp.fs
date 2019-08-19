@@ -180,6 +180,27 @@ module RoverApp =
                     | false -> m//calcPanTiltValues m points viewM2
             
     
+    //panR = number of required pans; tiltR = number of required tilts per pan
+    
+    let rec buildList (l:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int)(deltaTilt:float) (fov:float)=
+        match panR with 
+            | 0 -> l
+            | _ -> 
+                match tiltR with
+                    | 0 -> 
+                        let lastItem = l.Item(l.Length-1)
+                        let newPan = lastItem.X + fov
+                        let newDeltaTilt = deltaTilt * (-1.0) //change the sign
+                        let listItem = [V2d(newPan, lastItem.Y)]
+                        let newList = List.append l listItem
+                        buildList newList (panR-1) originalTiltR originalTiltR newDeltaTilt fov
+
+                    | _ -> 
+                        let lastItem = l.Item(l.Length-1)
+                        let newTilt = lastItem.Y + deltaTilt
+                        let listItem = [V2d(lastItem.X, newTilt)]
+                        let newList = List.append l listItem
+                        buildList newList panR (tiltR-1) originalTiltR deltaTilt fov
 
 
     let sampling (rover : RoverModel) = 
@@ -188,28 +209,38 @@ module RoverApp =
         let values = rover.thetaPhiValues
         let li = values |> PList.toList
         let pans = li |> List.map (fun l -> l.X) //list with just pan values
+        
+        let min = pans |> Seq.indexed |> Seq.min
+        let idx = fst min
+
         let tilts = li |> List.map (fun l -> l.Y) //list with just tilt values
 
         //sort pan values
         let sortedPans = List.sort pans
+        
         let minPan = sortedPans.Head
         let maxPan = sortedPans.Item(sortedPans.Length - 1)
         let deltaPan = Math.Abs (maxPan - minPan)
         
-        let sampleRate = Math.Round(deltaPan / fov)
-        let s = sampleRate
+        let panningRate = int(Math.Round(deltaPan / fov))
+
 
         //sort tilt values
         let sortedTilts = List.sort tilts
         let minTilt = sortedTilts.Head
         let maxTilt = sortedTilts.Item(sortedTilts.Length - 1)
-        let deltaTilt = Math.Abs (maxTilt - minTilt)
+        let deltaTilt = maxTilt - minTilt
+        
+        let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / fov))
+
 
         //generate a sampling list with pan and tilt values
-       
+        let firstPair = li.Item(idx) //pair with min pan value and corresponding tilt
+        let samplingValues = [firstPair] //initial list
 
-
-        rover
+        let samplings = buildList samplingValues panningRate tiltingRate tiltingRate -deltaTilt fov
+        samplings
+        //{rover with samplingValues = samplings |> PList.ofList}
 
 
 
@@ -248,7 +279,9 @@ module RoverApp =
     
     let rotateToPoint (rover:RoverModel) =
         
-        let values = rover.thetaPhiValues
+        //for testing 
+        let values = rover.samplingValues
+        //let values = rover.thetaPhiValues
         let li = values |> PList.toList
         let idx = rover.currIdx
         let pair = values.Item(idx) //pair.X = theta; pair.Y = phi
@@ -306,15 +339,13 @@ module RoverApp =
 
                 let viewMatrices = thetaPhiValues |> List.map(fun m -> calculateViewMatrix setR2 m.X m.Y) |> PList.ofList
                 
+               
 
                 {setR2 with thetaPhiValues = plist; projPoints = projectionPoints; viewList = viewMatrices }
-    
+        
+        let samplings = sampling newRover
 
-        //for testing
-        let r = sampling newRover
-        let a = r
-                //
-        newRover
+        {newRover with samplingValues = samplings |> PList.ofList}
         
        
         

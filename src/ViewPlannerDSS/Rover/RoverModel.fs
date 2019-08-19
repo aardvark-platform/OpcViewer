@@ -50,6 +50,7 @@ type RoverModel =
         projsphere :     ProjectionSphere
         projPoints :     plist<V3d>
         thetaPhiValues : plist<V2d>
+        samplingValues : plist<V2d>
         currIdx :        int
         viewList:        plist<CameraView>
 
@@ -110,6 +111,7 @@ module RoverModel =
 
         projPoints = PList.empty
         thetaPhiValues = PList.empty
+        samplingValues = PList.empty
         currIdx = 0
         viewList = PList.empty
         fov = 30.0
