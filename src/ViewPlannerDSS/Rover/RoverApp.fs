@@ -234,7 +234,7 @@ module RoverApp =
 
         //regarding vertical fov
         let adjustedTilt = ((Math.Abs(deltaTilt)) - (fov/2.0)) 
-        let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / fov))
+        let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (fov/2.0)))
         printfn "tilt delta %A rate %A " deltaTilt tiltingRate
 
         //generate a sampling list with pan and tilt values

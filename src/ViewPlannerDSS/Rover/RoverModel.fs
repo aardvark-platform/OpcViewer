@@ -24,6 +24,11 @@ type ProjectionSphere =
     position : V3d
     }
 
+ type initialRoverCoords = 
+    {
+    coordinates : plist<V3d>
+    }
+
 //[<DomainType>]
 //type CameraVariant =
 //    {

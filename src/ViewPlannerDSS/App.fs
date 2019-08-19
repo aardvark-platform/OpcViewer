@@ -29,6 +29,7 @@ open Rabbyte.Annotation
 module App = 
     open Aardvark.Base
     open Aardvark.Base.MultimethodTest
+    open DevILSharp
     
     let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
         let s' = cam.freeFlyConfig.moveSensitivity + incr
@@ -67,6 +68,20 @@ module App =
         c.points
     //---
 
+    //---saving and restoring rover position and target
+    let toRoverCoords(coords: plist<V3d>): initialRoverCoords = 
+        {
+        coordinates = coords
+        }
+    
+    let fromRoverCoords(c:initialRoverCoords) : plist<V3d> = 
+        c.coordinates
+
+
+
+
+
+
     //---UPDATE
     let update (model : Model) (msg : Action) =   
         match msg with
@@ -99,6 +114,7 @@ module App =
                 Log.line "[App] saving plane points"
                 model.pickingModel.intersectionPoints |> toPlaneCoords |> OpcSelectionViewer.Serialization.save ".\planestate" |> ignore
                 model
+            
 
             | Keys.L -> 
                 let intersect = model.pickingModel.intersectionPoints
@@ -563,6 +579,11 @@ module App =
         | Some "render" ->
           require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
               div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)]
+             
+               
+               
+
+
           )
         
         | Some "roverCam" ->
@@ -575,8 +596,30 @@ module App =
             body [style "width: 100%; height:100%; background: transparent";] [
               div[style "color:white; margin: 5px 15px 5px 5px"][
                 h3[][text "ROVER CONTROL"]
-                //p[][text "Press R to place rover at picked point"]
-                //p[][text "Press L to select picked point as rover target"]
+                div [ clazz "ui vertical menu" ] [
+                 div [clazz "ui dropdown item"] [
+                 
+                    div [clazz "menu"] [
+                    
+
+                     Static.a [clazz "item"] [
+                           //i [clazz (icon + " icon circular inverted")] []
+                           DomNode.Text(Mod.constant "Option A")
+                           ]
+
+                     Static.a [clazz "item"] [
+                           //i [clazz (icon + " icon circular inverted")] []
+                           DomNode.Text(Mod.constant "Option B")
+                           ]
+
+                    
+                    
+                    ]
+                
+                ]
+                ]
+
+
                 p[][Incremental.text (m.rover.position |> Mod.map (fun f -> f.ToString())) ]
                 p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
                 p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
