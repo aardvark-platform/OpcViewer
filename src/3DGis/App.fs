@@ -314,7 +314,6 @@ module App =
             model
       
       | PickingAction msg ->         
-        Log.line "Message: %A" msg
         let pickingModel, drawingModel =
           match msg with
           | HitSurface (a,b) -> 
@@ -327,18 +326,11 @@ module App =
                 | None -> model.drawing
             updatePickM, updatedDrawM
           | _ -> PickingApp.update model.picking msg, model.drawing
-        Log.line "lastPick  %A" model.picking.intersectionPoints.AsList
-        Log.line "draw  %A" drawingModel.style.lineStyle
-        Log.line "-------------------------------------------------------------"
-        Log.line "ModelCamera %A" model.cameraState.view.Forward
+        //Log.line "lastPick  %A" model.picking.intersectionPoints.AsList
+        //Log.line "draw  %A" drawingModel.style.lineStyle
+        //Log.line "-------------------------------------------------------------"
+        //Log.line "ModelCamera %A" model.cameraState.view.Forward
         let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 1.5; primary = { c = C4b.VRVisGreen } } } 
-        //let newDraw = DrawingApp.update newDrawingModel (DrawingAction.AddPoint (model.opcCenterPosition, None))
-       // let newDraw = { drawingModel with style = newStyle } 
-
-       /////////
-          
-       //////////
-
 
 
         if model.jumpSelectionActive && not model.camViewAnimRunning then
@@ -350,99 +342,25 @@ module App =
             let firstPoint = pickingModel.intersectionPoints.Item(0)
             let secondPoint = pickingModel.intersectionPoints.Item(1)
             let dir = secondPoint - firstPoint
-            let samplingSize = 3000.0
+            let samplingSize = (ceil (firstPoint-secondPoint).Length)*2.0
             let step = dir / samplingSize
-
-
-            //let rec map f xs = 
-            //    match xs with
-            //        | x :: xs -> f x :: map f xs
-            //        | [] -> []
-
-            //let rec fold f initial xs = 
-            //    match xs with
-            //        | x::xs -> f x (fold f xs)
-            //        | [] -> initial
-
-            //let sum xs = List.fold (fun summeBisher aktuelleWert -> summeBisher + aktuelleWert) 0 xs
-            //let multiplyAll xs = List.fold (fun p x -> x * x) 1 xs
-
-
-            //let addSinglePoint (m : DrawingModel) (v : float) = 
-            //    m
-            
-            //let newModel = List.fold addSinglePoint newDrawingModel [1.0..(samplingSize - 1.0)]
-    
-            let rec drawPoints x y =
-                if y > 1.0 then
-                    let fray = FastRay3d(V3d.Zero, (firstPoint + step * y).Normalized)
-                    match model.picking.pickingInfos |> HMap.tryFind model.opcBox with
-                    | Some kk ->
-                        let closest = OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some kk.kdTree) fray      
-                        match closest with
-                        | Some t -> 
-                            let hitpoint = fray.Ray.GetPointOnRay t
-                            let sc = CooTransformation.getLatLonAlt hitpoint Planet.Mars
-                            Log.line "hitpoint: %A  -> altitude: %f" hitpoint sc.altitude
-                            //DrawingApp.update (drawPoints x (y-1.0)) (DrawingAction.AddPoint (hitpoint, None))
-                            let x = DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None))
-                            drawPoints x (y - 1.0)
-                        | None ->       
-                            (drawPoints x (y-1.0))            
-                    | None -> 
-                        (drawPoints x (y-1.0))                         
-                else 
-                    let fray = FastRay3d(V3d.Zero, (firstPoint + step * y).Normalized)
-                    match model.picking.pickingInfos |> HMap.tryFind model.opcBox with
-                    | Some kk ->
-                        let closest = OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some kk.kdTree) fray      
-                        match closest with
-                        | Some t -> 
-                            let hitpoint = fray.Ray.GetPointOnRay t
-                            let sc = CooTransformation.getLatLonAlt hitpoint Planet.Mars
-                            Log.line "hitpoint: %A  -> altitude: %f" hitpoint sc.altitude
-                            DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None))
-                        | None ->       
-                            x           
-                    | None -> 
-                        x     
-            
-            let newDraw = drawPoints newDrawingModel (samplingSize - 1.0)
-            
-            //for y in (int samplingSize - 1 ) .. -1 .. 1  do
-            //    if y > 1 then
-            //        let fray = FastRay3d(V3d.Zero, (firstPoint + step * y).Normalized)
-            //        match model.picking.pickingInfos |> HMap.tryFind model.opcBox with
-            //        | Some kk ->
-            //            let closest = OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some kk.kdTree) fray      
-            //            match closest with
-            //            | Some t -> 
-            //                let hitpoint = fray.Ray.GetPointOnRay t
-            //                let sc = CooTransformation.getLatLonAlt hitpoint Planet.Mars
-            //                Log.line "hitpoint: %A  -> altitude: %f" hitpoint sc.altitude
-            //                model.drawing <- DrawingApp.update model.drawing (DrawingAction.AddPoint (hitpoint, None))
-            //            | None ->       
-            //                Log.line ""            
-            //        | None -> 
-            //            Log.line ""  
-
-
-
-            //let fray = FastRay3d(model.cameraState.view.Location, model.cameraState.view.Forward)
-            //match model.picking.pickingInfos |> HMap.tryFind model.opcBox with
-            //| Some kk ->
-            //  let closest = OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some kk.kdTree) fray      
-            //  match closest with
-            //    | Some t -> 
-            //      let hitpoint = fray.Ray.GetPointOnRay t
-            //      Log.line "hit surface at %A" hitpoint     
-            //    | None ->       
-            //      Log.error "[Intersection] didn't hit"            
-            //| None -> 
-            //  Log.error "[Intersection] box not found in picking infos"      
-
-
-
+  
+            let drawPoints x y =
+                let fray = FastRay3d(V3d.Zero, (firstPoint + (step * float y)).Normalized)
+                
+                model.picking.pickingInfos 
+                |> HMap.tryFind model.opcBox
+                |> Option.bind (fun opcData -> 
+                    OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some opcData.kdTree) fray
+                    |> Option.map (fun t -> 
+                        let hitpoint = fray.Ray.GetPointOnRay t
+                        let sc = CooTransformation.getLatLonAlt hitpoint Planet.Mars
+                        //Log.line "hitpoint: %A  -> altitude: %f" hitpoint sc.altitude
+                        DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None)))
+                    )
+                |> Option.defaultValue x
+                              
+            let newDraw = List.fold drawPoints newDrawingModel [1.0..(samplingSize - 1.0)]
 
             { model with picking = pickingModel; drawing = newDraw }
         else
@@ -454,8 +372,6 @@ module App =
         { model with annotations = AnnotationApp.update model.annotations msg}      
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
-      | SetT t -> 
-        { model with persToOrthoValue = t}
       | _ -> model
 
 
@@ -513,7 +429,9 @@ module App =
       let afterFilledPolygonSg = 
         [
           m.drawing |> DrawingApp.view near far
-        ] |> Sg.ofList
+        ] 
+        |> Sg.ofList
+        |> Sg.pass afterFilledPolygonRenderPass
 
       let scene = 
         [
@@ -522,6 +440,8 @@ module App =
             afterFilledPolygonSg
         ]
         |> Sg.ofList
+        |> Sg.projTrafo projTrafo
+        |> Sg.pass RenderPass.main
         
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
@@ -567,9 +487,9 @@ module App =
           require Html.semui (
             body [style "width: 100%; height:100%; background: transparent";] [
               div[style "color:white; margin: 5px 15px 5px 5px"][
-                p[][div[][text "t: "; slider { min = 0.0; max = 1.0; step = 0.01 } [clazz "ui inverted blue slider"] m.persToOrthoValue Message.SetT]]
-                h3[][text "NIOBE"]
-                p[][text "Hold Ctrl-Left to add Point"]
+              //  p[][div[][text "t: "; slider { min = 0.0; max = 1.0; step = 0.01 } [clazz "ui inverted blue slider"] m.persToOrthoValue Message.SetT]]
+               // h3[][text "NIOBE"]
+              //  p[][text "Hold Ctrl-Left to add Point"]
                
               ]
             ]
