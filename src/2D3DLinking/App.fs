@@ -178,15 +178,29 @@ module App =
                 toEffect DefaultSurfaces.vertexColor
             ]
 
-        let scene = 
+        let near = m.mainFrustum |> Mod.map(fun x -> x.near)
+        let far = m.mainFrustum |> Mod.map(fun x -> x.far)
+
+
+        let filledPolygonSg, afterFilledPolygonRenderPass = 
+          m.annotations 
+          |> AnnotationApp.viewGrouped near far (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
+
+        let afterFilledPolygonSg = 
             [
-                opcs |> Sg.map PickingAction
-                //MinervaApp.viewFeaturesSg m.minervaModel |> Sg.map MinervaAction
-                ////debugSpheres |> Sg.noEvents
                 LinkingApp.view m.linkingModel |> Sg.map LinkingAction
-                DrawingApp.view m.drawing |> Sg.map DrawingAction
-                AnnotationApp.viewGrouped m.annotations |> Sg.map AnnotationAction
-            ] |> Sg.ofList
+                DrawingApp.view near far m.drawing |> Sg.map DrawingAction
+            ] 
+            |> Sg.ofList
+            |> Sg.pass afterFilledPolygonRenderPass
+
+        let scene = 
+          [
+              opcs |> Sg.map PickingAction
+              filledPolygonSg |> Sg.map AnnotationAction
+              afterFilledPolygonSg
+          ]
+          |> Sg.ofList
 
         let textOverlays (cv : IMod<CameraView>) = 
             div [js "oncontextmenu" "event.preventDefault();"] [ 
@@ -205,7 +219,7 @@ module App =
             ]
 
         let renderControl =
-            FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+            FreeFlyController.controlledControl m.cameraState Camera m.mainFrustum
                 (AttributeMap.ofList [ 
                     style "width: 100%; height:100%"; 
                     attribute "showFPS" "true";       // optional, default is false
@@ -232,6 +246,9 @@ module App =
                     h3[][text "2D/3D Linking"]
                     p[][text "Hold Ctrl-Left to add Point"]
                     p[][text "Press Enter to close Polygon"]
+
+                    LinkingApp.guiView m.linkingModel |> UI.map LinkingAction
+
                     //p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.pickingModel.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.pickingModel.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
                     //p[][checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
                     //p[][checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.useGrouping PickingAction.UseGrouping "Use Grouping"] |> UI.map PickingAction
@@ -345,6 +362,7 @@ module App =
       let initialModel : Model = 
         { 
           cameraState        = camState
+          mainFrustum        = Frustum.perspective 60.0 0.01 1000.0 1.0
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
           

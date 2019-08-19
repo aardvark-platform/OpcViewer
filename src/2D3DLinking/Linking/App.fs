@@ -110,8 +110,21 @@ module LinkingApp =
 
 
     let update (view: CameraView) (m: LinkingModel) (msg: LinkingAction) : LinkingModel =
+
+        let minervaFrustumHit (hit: SceneHit) =
+            let closestPoints = MinervaApp.queryClosestPoint m.minervaModel hit
+            match closestPoints with
+            | emptySeq when Seq.isEmpty emptySeq -> 
+                None
+            | seq -> 
+                let index = seq |> Seq.map (fun (depth, pos, index) -> index) |> Seq.head
+                let closestID = m.minervaModel.selection.flatID.[index]
+                (m.frustums.TryFind closestID)
+            
+
         match msg with
         | MinervaAction a ->
+
             match a with
 
             | MinervaAction.LoadProducts _ -> 
@@ -120,16 +133,27 @@ module LinkingApp =
                 { m with minervaModel = minervaModel; frustums = frustums; trafo = trafo }
 
             | MinervaAction.HoverProducts hit ->
-                let minervaModel = MinervaApp.update view m.minervaModel a
-                let closestPoints = MinervaApp.queryClosestPoint m.minervaModel hit
-                match closestPoints with
-                | emptySeq when Seq.isEmpty emptySeq -> { m with minervaModel = minervaModel }
-                | seq -> 
-                    let index = seq |> Seq.map (fun (depth, pos, index) -> index) |> Seq.head
-                    let closestID = m.minervaModel.selection.flatID.[index]
+                { m with 
+                    minervaModel = MinervaApp.update view m.minervaModel a
+                    hoveredFrustrum = minervaFrustumHit hit 
+                }
 
-                    let hoveredFrustrum = (m.frustums.TryFind closestID)
-                    {  m with minervaModel = minervaModel; hoveredFrustrum = hoveredFrustrum }
+            |  MinervaAction.PickProducts hit -> //MinervaAction.AddProductToSelection name -> // MinervaAction.SingleSelectProduct |  no idea what difference
+                let selectedFrustums =
+                    match minervaFrustumHit hit with
+                    | Some f -> 
+                        match m.selectedFrustums.TryFind f with
+                        | Some i -> m.selectedFrustums.Remove i
+                        | None -> PList.prepend f m.selectedFrustums
+                    | None -> m.selectedFrustums
+                { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = selectedFrustums}
+              
+            | MinervaAction.UpdateSelection list ->
+                let selectedFrustums = list |> List.choose(fun s -> (HMap.tryFind s m.frustums)) |> PList.ofList
+                { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = selectedFrustums}
+
+            | MinervaAction.ClearSelection ->
+                { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = plist.Empty}
 
             | _ -> { m with minervaModel = MinervaApp.update view m.minervaModel a}
 
@@ -158,14 +182,14 @@ module LinkingApp =
 
         let hoverFrustum =
             m.hoveredFrustrum
-            |> Mod.map (fun f -> f |> (Option.defaultValue LinkingFeature.initial))
+            |> Mod.map (fun f -> f |> (Option.defaultValue { LinkingFeature.initial with trafo = (Trafo3d.Scale 0.0) }))
             |> sgFrustum
 
         let frustra =
             m.selectedFrustums
             |> AList.map sgFrustum'
-            |> AList.toList
-            |> Sg.ofList
+            |> ASet.ofAList
+            |> Sg.set
 
         let scene = 
             Sg.ofArray [|
@@ -178,3 +202,12 @@ module LinkingApp =
             scene
             MinervaApp.viewFeaturesSg m.minervaModel |> Sg.map MinervaAction
         |]
+
+    let guiView (m: MLinkingModel) =
+        
+        div [clazz "ui buttons"] [         
+            //button [clazz "ui button"; onClick (fun _ -> LoadProducts)][text "Load"]
+            button [clazz "ui button"; onClick (fun _ -> MinervaAction(MinervaAction.UpdateSelection(m.frustums |> AMap.keys |> ASet.toList)))][text "Select All"]         
+            button [clazz "ui button"; onClick (fun _ -> MinervaAction(MinervaAction.ClearSelection))][text "Clear Selection"]         
+            //button [clazz "ui button"; onClick (fun _ -> ApplyFilters)][text "Filter"]         
+        ]
