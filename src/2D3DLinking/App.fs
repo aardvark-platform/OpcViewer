@@ -106,7 +106,7 @@ module App =
 
         | PickingAction msg ->
             // TODO...refactor this!
-            let pickingModel, drawingModel =
+            let pickingModel, drawingModel, linkingModel =
               match msg with
               | HitSurface (a,b) -> //,_) -> 
                 //match model.axis with
@@ -116,14 +116,21 @@ module App =
                 //| None -> PickingApp.update model.picking msg
                 let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
                 let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
-                let updatedDrawM =
+
+                let updatedDrawM = model.drawing // DISABLING DRAWING
+                //let updatedDrawM =
+                //    match lastPick with
+                //    | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
+                //    | None -> model.drawing
+
+                let updatedLinkingM = 
                     match lastPick with
-                    | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
-                    | None -> model.drawing
-                Log.line "Hit!: %A" lastPick
-                updatePickM, updatedDrawM
-              | _ -> PickingApp.update model.pickingModel msg, model.drawing
-            { model with pickingModel = pickingModel; drawing = drawingModel }
+                    | Some p -> LinkingApp.update model.cameraState.view model.linkingModel (LinkingAction.CheckPoint(p))
+                    | None -> model.linkingModel
+
+                updatePickM, updatedDrawM, updatedLinkingM
+              | _ -> PickingApp.update model.pickingModel msg, model.drawing, model.linkingModel
+            { model with pickingModel = pickingModel; drawing = drawingModel; linkingModel = linkingModel }
         
         | DrawingAction msg ->
             { model with drawing = DrawingApp.update model.drawing msg }
@@ -189,7 +196,7 @@ module App =
         let afterFilledPolygonSg = 
             [
                 LinkingApp.view m.linkingModel |> Sg.map LinkingAction
-                DrawingApp.view near far m.drawing |> Sg.map DrawingAction
+                DrawingApp.view near far (* whereever you are ♫ *) m.drawing |> Sg.map DrawingAction
             ] 
             |> Sg.ofList
             |> Sg.pass afterFilledPolygonRenderPass

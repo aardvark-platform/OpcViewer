@@ -77,12 +77,12 @@ module LinkingApp =
 
                 let color = f.instrument |> MinervaModel.instrumentColor
 
-                let frustumTrafo =
+                let frustumTrafo, frustumTrafoInv =
                     match f.instrument with
-                    | Instrument.MastcamL -> cam34Inv
-                    | Instrument.MastcamR -> cam100Inv
-                    | Instrument.Mastcam -> (Trafo3d.Scale 0.0) // TODO: dunno?
-                    | _ -> (Trafo3d.Scale 0.0) // TODO: discard!
+                    | Instrument.MastcamL -> cam34Frustum, cam34Inv
+                    | Instrument.MastcamR -> cam100Frustum, cam100Inv
+                    | Instrument.Mastcam -> (Trafo3d.Scale 0.0), (Trafo3d.Scale 0.0) // TODO: dunno?
+                    | _ -> (Trafo3d.Scale 0.0), (Trafo3d.Scale 0.0) // TODO: discard!
 
                 let rotation = Rot3d.FromAngleAxis(angles * angleToRad)
                 let translation = Trafo3d.Translation position
@@ -90,9 +90,9 @@ module LinkingApp =
                 let innerRot = Trafo3d.Rotation(V3d.OOI, -angles.Z * Math.PI / 180.0)
 
                 let rotTranslateTrafo = innerRot * Trafo3d(rotation) * translation
-                let trafo = frustumTrafo * rotTranslateTrafo
+                let trafo = frustumTrafoInv * rotTranslateTrafo
 
-                let hull = trafo |> toHull3d 
+                let hull = (rotTranslateTrafo.Inverse * frustumTrafo) |> toHull3d 
 
                 (f.id, {
                     id = f.id
@@ -109,7 +109,7 @@ module LinkingApp =
         (linkingFeatures, originTrafo)
 
 
-    let update (view: CameraView) (m: LinkingModel) (msg: LinkingAction) : LinkingModel =
+    let rec update (view: CameraView) (m: LinkingModel) (msg: LinkingAction) : LinkingModel =
 
         let minervaFrustumHit (hit: SceneHit) =
             let closestPoints = MinervaApp.queryClosestPoint m.minervaModel hit
@@ -123,6 +123,20 @@ module LinkingApp =
             
 
         match msg with
+        | CheckPoint p ->
+            let originP = m.trafo.Backward.TransformPos p
+
+            let intersected = 
+                m.frustums 
+                |> HMap.filter (fun _ v -> v.hull.Contains originP) 
+                |> HMap.keys 
+                |> HSet.toList
+
+            Log.line "checkpoint: ix#: %A" intersected.Length
+
+            let partialUpdatedM = { m with pickingPos = Some(originP) }
+            update view partialUpdatedM (MinervaAction(MinervaAction.UpdateSelection intersected))
+
         | MinervaAction a ->
 
             match a with
@@ -142,18 +156,20 @@ module LinkingApp =
                 let selectedFrustums =
                     match minervaFrustumHit hit with
                     | Some f -> 
-                        match m.selectedFrustums.TryFind f with
-                        | Some i -> m.selectedFrustums.Remove i
-                        | None -> PList.prepend f m.selectedFrustums
+                        if m.selectedFrustums.Contains f.id 
+                        then m.selectedFrustums.Remove f.id
+                        else m.selectedFrustums.Add f.id
                     | None -> m.selectedFrustums
                 { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = selectedFrustums}
               
             | MinervaAction.UpdateSelection list ->
-                let selectedFrustums = list |> List.choose(fun s -> (HMap.tryFind s m.frustums)) |> PList.ofList
+                let selectedFrustums = list |> List.filter(fun s -> (HMap.containsKey s m.frustums)) |> HSet.ofList
+
+                Log.line "updateselection: s#: %A" list.Length
                 { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = selectedFrustums}
 
             | MinervaAction.ClearSelection ->
-                { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = plist.Empty}
+                { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = hset.Empty}
 
             | _ -> { m with minervaModel = MinervaApp.update view m.minervaModel a}
 
@@ -169,7 +185,6 @@ module LinkingApp =
                 do! DefaultSurfaces.stableTrafo
                 do! DefaultSurfaces.vertexColor
             }
-            |> Sg.transform f.trafo
 
         let sgFrustum (f: IMod<LinkingFeature>) =
             Sg.wireBox (f |> Mod.map(fun f -> f.color)) (Mod.constant(Box3d(V3d.NNN,V3d.III)))
@@ -180,21 +195,49 @@ module LinkingApp =
             }
             |> Sg.trafo (f |> Mod.map(fun f -> f.trafo))
 
+        let infinitelySmall = Trafo3d.Scale 0.0
+
         let hoverFrustum =
             m.hoveredFrustrum
-            |> Mod.map (fun f -> f |> (Option.defaultValue { LinkingFeature.initial with trafo = (Trafo3d.Scale 0.0) }))
+            |> Mod.map (fun f -> f |> (Option.defaultValue { LinkingFeature.initial with trafo = infinitelySmall }))
             |> sgFrustum
 
         let frustra =
-            m.selectedFrustums
-            |> AList.map sgFrustum'
-            |> ASet.ofAList
+            m.frustums
+            |> AMap.toASet
+            |> ASet.map (fun (k, v) ->
+                v 
+                |> sgFrustum'
+                |> Sg.trafo (
+                    m.selectedFrustums  
+                    |> ASet.contains k
+                    |> Mod.map (fun s -> if s then v.trafo else infinitelySmall) 
+                )
+            )
             |> Sg.set
+
+        let pickingIndicator =
+            Sg.sphere 3 (Mod.constant(C4b.VRVisGreen)) (Mod.constant(0.1))
+            |> Sg.noEvents
+            |> Sg.shader {
+                do! DefaultSurfaces.stableTrafo
+                do! DefaultSurfaces.vertexColor
+            }
+            |> Sg.trafo (
+                m.pickingPos 
+                |> Mod.map (fun p -> 
+                    p 
+                    |> Option.map Trafo3d.Translation 
+                    |> Option.defaultValue (Trafo3d.Scale 0.0)
+                )
+            )
+            
 
         let scene = 
             Sg.ofArray [|
                 frustra
                 hoverFrustum
+                pickingIndicator
             |]
             |> Sg.trafo m.trafo
 

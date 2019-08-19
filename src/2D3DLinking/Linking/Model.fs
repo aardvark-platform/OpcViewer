@@ -36,18 +36,20 @@ module LinkingFeature =
 type LinkingModel =
     {
         frustums:           hmap<string,LinkingFeature>
-        selectedFrustums:   plist<LinkingFeature>
+        selectedFrustums:   hset<string>
         hoveredFrustrum:    Option<LinkingFeature>
         trafo:              Trafo3d
         minervaModel:       MinervaModel
+        pickingPos:         Option<V3d>
     }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module LinkingModel = 
     let initial = {
         frustums            = hmap.Empty
-        selectedFrustums    = plist.Empty
+        selectedFrustums    = hset.Empty
         hoveredFrustrum     = None
         trafo               = Trafo3d.Identity
         minervaModel        = Initial.model
+        pickingPos          = None
     }
