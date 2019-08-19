@@ -46,11 +46,6 @@ type CameraStateLean =
     }
 
   
-  //type RegionOfInterest = 
-  //  {
-  //      regionCoords : plist<V3d>
-  //  }
-
 [<DomainType>]
 type Model =
     {

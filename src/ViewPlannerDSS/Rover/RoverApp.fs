@@ -181,7 +181,7 @@ module RoverApp =
             
     
     //panR = number of required pans; tiltR = number of required tilts per pan
-    
+    //TODO: incoorporate possible overlap between pans
     let rec buildList (l:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int)(deltaTilt:float) (fov:float)=
         match panR with 
             | 0 -> l
@@ -223,22 +223,25 @@ module RoverApp =
         let deltaPan = Math.Abs (maxPan - minPan)
         
         let panningRate = int(Math.Round(deltaPan / fov))
-
+        printfn "pan delta %A rate %A " deltaPan panningRate
 
         //sort tilt values
         let sortedTilts = List.sort tilts
         let minTilt = sortedTilts.Head
         let maxTilt = sortedTilts.Item(sortedTilts.Length - 1)
         let deltaTilt = maxTilt - minTilt
-        
-        let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / fov))
+       
 
+        //regarding vertical fov
+        let adjustedTilt = ((Math.Abs(deltaTilt)) - (fov/2.0)) 
+        let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / fov))
+        printfn "tilt delta %A rate %A " deltaTilt tiltingRate
 
         //generate a sampling list with pan and tilt values
         let firstPair = li.Item(idx) //pair with min pan value and corresponding tilt
         let samplingValues = [firstPair] //initial list
 
-        let samplings = buildList samplingValues panningRate tiltingRate tiltingRate -deltaTilt fov
+        let samplings = buildList samplingValues panningRate tiltingRate tiltingRate -adjustedTilt fov
         samplings
         //{rover with samplingValues = samplings |> PList.ofList}
 

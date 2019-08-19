@@ -54,6 +54,8 @@ type RoverModel =
         currIdx :        int
         viewList:        plist<CameraView>
 
+
+
     }
 
 type RoverAction =
