@@ -431,7 +431,7 @@ module App =
             let plane = Plane3d(camPos.Location, camPos.Location + camPos.Right, camPos.Location + camPos.Up)
             let distance = (opcPos - plane.NearestPoint(opcPos)).Length
             
-            let aspect = float(1024/768)
+            let aspect = 1.0//float(1024/768)
             let sizeY = ratioSizePerDepth * distance
             let sizeX = ratioSizePerDepth * distance * aspect
             let o = (Frustum.projTrafo (Frustum.ortho (Box3d(V3d(-sizeX, -sizeY, 0.0),V3d(sizeX, sizeY, 2.0*distance)))))
@@ -448,7 +448,8 @@ module App =
 
             return trafo     
         }
-      
+
+     
       let near = m.mainFrustum |> Mod.map(fun x -> x.near)
       let far = m.mainFrustum |> Mod.map(fun x -> x.far)
 
@@ -510,11 +511,12 @@ module App =
         Html.semui @ [        
           { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
           { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
-          ]
+        ]
 
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
+
           require Html.semui ( 
               div [clazz "ui"; style "background: #1B1C1E"] [renderControl m id]
               
@@ -527,9 +529,11 @@ module App =
                   div[style "color:white; margin: 5px 15px 5px 5px"] [
                         Html.SemUi.accordion "Camera" "camera" true [     
                             div [ clazz "item" ] [ 
-                                dropdown { placeholder = "Thingy"; allowEmpty = false } [ clazz "ui inverted selection dropdown" ] dropDownValues m.currentOption SetProjection
+                                dropdown { placeholder = "Thingy"; allowEmpty = false } [ clazz "ui simple inverted selection dropdown" ] dropDownValues m.currentOption SetProjection
                             ]                                                                       
                         ]
+                        br[]
+                        br[]
                         Html.SemUi.accordion "Elevation Info" "map" true [     
                             Html.table [  
                                 Html.row "Number of Points:" [Incremental.text (m.numSampledPoints |> Mod.map (fun f -> f.ToString())) ]
@@ -543,6 +547,35 @@ module App =
                   ]
               ]
           )
+        | Some "cutview" ->
+            require Html.semui ( 
+              body [style "width: 100%; height:100%; background: transparent; overflow-y:visible"] [
+                 Svg.svg [clazz "mySvg"; style "stroke='blue';user-select: none;"] [
+                        //Incremental.Svg.circle ( 
+                        //    amap {
+                        //        yield attribute "r" "20"
+                        //        yield attribute "fill" "white"
+                        //        yield attribute "stroke" "blue"
+                        //        yield attribute "stroke-width" "4"
+                        //        let! pos = Mod.constant (V2d(30.0,30.0))
+                        //        yield attribute "cx" (sprintf "%f" pos.X)
+                        //        yield attribute "cy" (sprintf "%f" pos.Y)
+                        //    } |> AttributeMap.ofAMap
+
+                        Incremental.Svg.line ( 
+                            amap {
+                                yield attribute "x1" "20"
+                                yield attribute "y1" "20"
+                                yield attribute "x2" "20"
+                                yield attribute "y2" "100"
+                                yield attribute "stroke" "rgb(255,255,0)"
+                                yield attribute "stroke-width" "2"
+
+                            } |> AttributeMap.ofAMap
+                        )
+                ]
+              ]              
+            )
         | Some other -> 
           let msg = sprintf "Unknown page: %A" other
           body [] [
@@ -616,10 +649,13 @@ module App =
       let initialDockConfig = 
         config {
           content (
-              horizontal 10.0 [
-                  element { id "render"; title "Render View"; weight 7.0 }
-                  element { id "controls"; title "Controls"; weight 3.0 } 
-              ]
+              vertical 10.0 [
+                    horizontal 8.0 [
+                      element { id "render"; title "Render View"; weight 5.5 }
+                      element { id "controls"; title "Controls"; weight 2.5 } 
+                    ]
+                    element { id "cutview"; title "Elevation Profile Viewer"; weight 2.0 }
+              ]    
           )
           appName "OpcSelectionViewer"
           useCachedConfig true
@@ -629,7 +665,7 @@ module App =
       let initialModel : Model = 
         { 
           cameraState          = camState
-          mainFrustum          = Frustum.perspective 60.0 0.01 10000.0 (float(1024/768))
+          mainFrustum          = Frustum.perspective 60.0 0.01 10000.0 1.0
           fillMode             = FillMode.Fill                    
           patchHierarchies     = patchHierarchies          
           axis                 = None
