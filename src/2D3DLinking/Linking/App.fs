@@ -15,6 +15,7 @@ open PRo3D.Minerva
 open FShade
 open OpcViewer.Base
 open Aardvark.UI
+open Aardvark.UI.Primitives
 
 module LinkingApp =
 
@@ -101,6 +102,7 @@ module LinkingApp =
                     rotation = rotation
                     trafo = trafo
                     color = color
+                    instrument = f.instrument
                 })
             )
             |> PList.toList
@@ -129,13 +131,23 @@ module LinkingApp =
             let intersected = 
                 m.frustums 
                 |> HMap.filter (fun _ v -> v.hull.Contains originP) 
-                |> HMap.keys 
-                |> HSet.toList
+                |> HMap.keys
 
-            Log.line "checkpoint: ix#: %A" intersected.Length
+            let filterProducts =
+                intersected
+                |> HSet.choose (fun p -> HMap.tryFind p m.frustums)
+                |> HSet.map (fun p -> p.instrument)
+                |> HSet.mapHMap (fun _ -> true)
 
-            let partialUpdatedM = { m with pickingPos = Some(originP) }
-            update view partialUpdatedM (MinervaAction(MinervaAction.UpdateSelection intersected))
+            let partialUpdatedM = { m with pickingPos = Some(originP); filterProducts = filterProducts }
+            update view partialUpdatedM (MinervaAction(MinervaAction.UpdateSelection (intersected |> HSet.toList)))
+
+        | ToggleView i ->
+            let filterProducts = 
+                match m.filterProducts.TryFind i with
+                | Some b -> m.filterProducts.Add (i, not b)
+                | None -> m.filterProducts
+            { m with filterProducts = filterProducts }
 
         | MinervaAction a ->
 
@@ -206,7 +218,7 @@ module LinkingApp =
             m.frustums
             |> AMap.toASet
             |> ASet.map (fun (k, v) ->
-                v 
+                v
                 |> sgFrustum'
                 |> Sg.trafo (
                     m.selectedFrustums  
@@ -246,11 +258,76 @@ module LinkingApp =
             MinervaApp.viewFeaturesSg m.minervaModel |> Sg.map MinervaAction
         |]
 
-    let guiView (m: MLinkingModel) =
+    let viewSideBar (m: MLinkingModel) =
         
         div [clazz "ui buttons"] [         
             //button [clazz "ui button"; onClick (fun _ -> LoadProducts)][text "Load"]
-            button [clazz "ui button"; onClick (fun _ -> MinervaAction(MinervaAction.UpdateSelection(m.frustums |> AMap.keys |> ASet.toList)))][text "Select All"]         
-            button [clazz "ui button"; onClick (fun _ -> MinervaAction(MinervaAction.ClearSelection))][text "Clear Selection"]         
+            button [clazz "ui button inverted"; onClick (fun _ -> MinervaAction(MinervaAction.UpdateSelection(m.frustums |> AMap.keys |> ASet.toList)))][text "Select All"]         
+            button [clazz "ui button inverted"; onClick (fun _ -> MinervaAction(MinervaAction.ClearSelection))][text "Clear Selection"]         
             //button [clazz "ui button"; onClick (fun _ -> ApplyFilters)][text "Filter"]         
         ]
+
+    let viewHorizontalBar (m: MLinkingModel) =
+        
+        //<div class="ui checkbox">
+        //    <input type="checkbox" name="example">
+        //    <label>Make my profile visible</label>
+        //</div>
+
+        let products =
+            m.selectedFrustums
+            |> ASet.chooseM (fun k -> AMap.tryFind k m.frustums)
+
+        let countStringPerInstrument =
+            products
+            |> ASet.groupBy (fun f -> f.instrument)
+            |> AMap.map (fun _ v -> v.Count)
+            |> AMap.toASet
+            |> ASet.toAList
+            |> AList.sortBy (fun (i, _) -> i)
+            |> AList.map (fun (i, c) -> 
+                let s = sprintf "%A: %d" i c
+                (i, Mod.constant s)
+            )
+
+        let cssColor (c: C4b) =
+            sprintf "rgba(%d, %d, %d, %f)" c.R c.G c.B c.Opacity
+
+        require Html.semui (
+            body [style "width: 100%; height:100%; background: transparent";] [
+                div[style "color:white; padding: 5px; width: 100%; height: 100%; position: absolute"][
+                    div[style "padding: 5px; position: fixed"][
+                        span[clazz "ui label inverted"; style "margin-right: 10px"][
+                            text "Products"
+                            div[clazz "detail"][Incremental.text(m.selectedFrustums |> ASet.count |> Mod.map string)]
+                        ]
+                        Incremental.span AttributeMap.Empty (
+                            countStringPerInstrument
+                            |> AList.map (fun (i, s) ->
+                            
+                                //Incremental.li (AttributeMap.ofList([style "display: inline-block;";])) (AList.ofModSingle (Mod.constant (Incremental.text m)))
+                                
+                                let o = AMap.tryFind i m.filterProducts |> Mod.map (fun b -> b |> Option.defaultValue false)
+                                //checkbox [clazz "ui inverted checkbox"] o (ToggleView i) s
+                                //span[clazz "spectrum-Label spectrum-Label--grey";
+                                span[clazz "ui inverted label";
+                                    style (sprintf "background-color: %s;" (i |> MinervaModel.instrumentColor |> cssColor))][
+                                    Html.SemUi.iconCheckBox o (ToggleView i)
+                                    Incremental.text s
+                                    //checkbox [clazz "ui inverted checkbox"] o (ToggleView i) s
+                                ]
+                            )
+                        )
+                        //checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"
+                    ]
+                    Incremental.div (AttributeMap.ofList[style "overflow-x: scroll; overflow-y: hidden; white-space: nowrap; height: 100%; padding: 5px; padding-top: 2.8em;"]) (
+                        products
+                        |> ASet.toAList
+                        |> AList.map (fun f -> 
+                            img[clazz f.id; attribute "alt" f.id; style "width: 300px; height: 100%; display: inline-block"]
+                        )
+                    )
+                ]
+            ]
+        )
+        

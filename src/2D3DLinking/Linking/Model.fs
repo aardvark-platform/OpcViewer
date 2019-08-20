@@ -8,8 +8,7 @@ open PRo3D.Minerva
 type LinkingAction =
     | MinervaAction of MinervaAction
     | CheckPoint of V3d
-    | SelectFeature of string
-    | UnselectFeature of string
+    | ToggleView of Instrument
 
 type LinkingFeature =
     {
@@ -19,6 +18,7 @@ type LinkingFeature =
         rotation: Rot3d
         trafo: Trafo3d
         color: C4b
+        instrument: Instrument
     }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -30,6 +30,7 @@ module LinkingFeature =
         rotation = Rot3d.Identity
         trafo = Trafo3d.Identity
         color = C4b.Black
+        instrument = Instrument.NotImplemented
     }
 
 [<DomainType>]
@@ -41,6 +42,7 @@ type LinkingModel =
         trafo:              Trafo3d
         minervaModel:       MinervaModel
         pickingPos:         Option<V3d>
+        filterProducts:     hmap<Instrument, bool>
     }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -52,4 +54,5 @@ module LinkingModel =
         trafo               = Trafo3d.Identity
         minervaModel        = Initial.model
         pickingPos          = None
+        filterProducts      = hmap.Empty
     }

@@ -254,7 +254,7 @@ module App =
                     p[][text "Hold Ctrl-Left to add Point"]
                     p[][text "Press Enter to close Polygon"]
 
-                    LinkingApp.guiView m.linkingModel |> UI.map LinkingAction
+                    LinkingApp.viewSideBar m.linkingModel |> UI.map LinkingAction
 
                     //p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.pickingModel.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.pickingModel.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
                     //p[][checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
@@ -266,6 +266,7 @@ module App =
                     ]
                 ]
             )
+        | Some "products" -> LinkingApp.viewHorizontalBar m.linkingModel |> UI.map LinkingAction
         | Some other -> 
             let msg = sprintf "Unknown page: %A" other
             body [] [
@@ -283,118 +284,119 @@ module App =
 
 
     let app dir (rotate : bool) dumpFile cacheFile =
-      OpcSelectionViewer.Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
+        OpcSelectionViewer.Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
-      let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
+        let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
 
 
-      let patchHierarchies =
-        [ 
-          for h in phDirs do
-            yield PatchHierarchy.load 
-              OpcSelectionViewer.Serialization.binarySerializer.Pickle 
-              OpcSelectionViewer.Serialization.binarySerializer.UnPickle 
-              (h |> OpcPaths)
-        ]    
+        let patchHierarchies =
+            [ 
+            for h in phDirs do
+                yield PatchHierarchy.load 
+                    OpcSelectionViewer.Serialization.binarySerializer.Pickle 
+                    OpcSelectionViewer.Serialization.binarySerializer.UnPickle 
+                    (h |> OpcPaths)
+            ]    
 
-      let box = 
-        patchHierarchies 
-          |> List.map(fun x -> x.tree |> QTree.getRoot) 
-          |> List.map(fun x -> x.info.GlobalBoundingBox)
-          |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
+        let box = 
+            patchHierarchies 
+            |> List.map(fun x -> x.tree |> QTree.getRoot) 
+            |> List.map(fun x -> x.info.GlobalBoundingBox)
+            |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
       
-      let opcInfos = 
-        [
-          for h in patchHierarchies do
+        let opcInfos = 
+            [
+                for h in patchHierarchies do
             
-            let rootTree = h.tree |> QTree.getRoot
+                    let rootTree = h.tree |> QTree.getRoot
 
-            yield {
-              patchHierarchy = h
-              kdTree         = Aardvark.VRVis.Opc.KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath (KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ OpcSelectionViewer.Serialization.binarySerializer)
-              localBB        = rootTree.info.LocalBoundingBox 
-              globalBB       = rootTree.info.GlobalBoundingBox
-              neighborMap    = HMap.empty
-            }
-        ]
-        |> List.map (fun info -> info.globalBB, info)
-        |> HMap.ofList      
+                    yield {
+                        patchHierarchy = h
+                        kdTree         = Aardvark.VRVis.Opc.KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath (KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ OpcSelectionViewer.Serialization.binarySerializer)
+                        localBB        = rootTree.info.LocalBoundingBox 
+                        globalBB       = rootTree.info.GlobalBoundingBox
+                        neighborMap    = HMap.empty
+                    }
+            ]
+            |> List.map (fun info -> info.globalBB, info)
+            |> HMap.ofList      
                       
-      let up = if rotate then (box.Center.Normalized) else V3d.OOI
+        let up = if rotate then (box.Center.Normalized) else V3d.OOI
 
-      let restoreCamState : CameraControllerState =
-        if File.Exists ".\camerastate" then          
-          Log.line "[App] restoring camstate"
-          let csLight : CameraStateLean = OpcSelectionViewer.Serialization.loadAs ".\camerastate"
-          { FreeFlyController.initial with view = csLight |> fromCameraStateLean }
-        else 
-          { FreeFlyController.initial with view = CameraView.lookAt (box.Max) box.Center up; }                    
+        let restoreCamState : CameraControllerState =
+            if File.Exists ".\camerastate" then          
+                Log.line "[App] restoring camstate"
+                let csLight : CameraStateLean = OpcSelectionViewer.Serialization.loadAs ".\camerastate"
+                { FreeFlyController.initial with view = csLight |> fromCameraStateLean }
+            else 
+                { FreeFlyController.initial with view = CameraView.lookAt (box.Max) box.Center up; }                    
 
-      let camState = restoreCamState
+        let camState = restoreCamState
 
-      let restorePlane =
-        if File.Exists ".\planestate" then
-            Log.line "[App] restoring planestate"
-            let p : PlaneCoordinates = OpcSelectionViewer.Serialization.loadAs ".\planestate"
-            p |> fromPlaneCoords
-        else
-        PList.empty
+        let restorePlane =
+            if File.Exists ".\planestate" then
+                Log.line "[App] restoring planestate"
+                let p : PlaneCoordinates = OpcSelectionViewer.Serialization.loadAs ".\planestate"
+                p |> fromPlaneCoords
+            else
+                PList.empty
 
-      let planeState = restorePlane
+        let planeState = restorePlane
 
-      let setPlaneForPicking =
-        match planeState.IsEmpty() with
+        let setPlaneForPicking =
+            match planeState.IsEmpty() with
             | true -> None
             | false -> Some planeState
 
 
-      let roverinitialCamera = CameraView.lookAt box.Max box.Center box.Center.Normalized
+        let roverinitialCamera = CameraView.lookAt box.Max box.Center box.Center.Normalized
 
 
-      let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
-      let camState = camState |> OpcSelectionViewer.Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
+        let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
+        let camState = camState |> OpcSelectionViewer.Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
 
-      let initialDockConfig = 
-        config {
-          content (
-              horizontal 10.0 [
-                  element { id "render"; title "Render View"; weight 7.0 }
-                  element { id "controls"; title "Controls"; weight 3.0 }                         
-              ]
-          )
-          appName "ViewPlanner"
-          useCachedConfig true
+        let initialDockConfig = 
+            config {
+                content (
+                    horizontal 10.0 [
+                        vertical 7.0 [
+                        element { id "render"; title "Render View"; weight 5.0 }
+                        element { id "products"; title "Product View"; weight 2.0 }
+                        ]
+                        element { id "controls"; title "Controls"; weight 3.0 }                         
+                    ]
+                )
+                appName "2D3D Linking"
+                useCachedConfig true
+            }
+      
+        let initialModel : Model = 
+            { 
+                cameraState        = camState
+                mainFrustum        = Frustum.perspective 60.0 0.01 1000.0 1.0
+                fillMode           = FillMode.Fill                    
+                patchHierarchies   = patchHierarchies          
+            
+                threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
+                boxes              = List.empty 
+            
+                pickingActive      = false
+                opcInfos           = opcInfos
+                pickingModel       = { PickingModel.initial with pickingInfos = opcInfos }
+                annotations        = AnnotationModel.initial
+                drawing            = DrawingModel.initial
+                pickedPoint        = None
+                planePoints        = setPlaneForPicking
+                dockConfig         = initialDockConfig   
+                linkingModel       = LinkingApp.update camState.view LinkingModel.initial (MinervaAction(LoadProducts(dumpFile, cacheFile)))
+            }
+
+        {
+            initial = initialModel             
+            update = update
+            view   = view          
+            threads = fun m -> m.threads
+            unpersist = Unpersist.instance<Model, MModel>
         }
-      
-      let initialModel : Model = 
-        { 
-          cameraState        = camState
-          mainFrustum        = Frustum.perspective 60.0 0.01 1000.0 1.0
-          fillMode           = FillMode.Fill                    
-          patchHierarchies   = patchHierarchies          
-          
-          threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
-          boxes              = List.empty 
-      
-          pickingActive      = false
-          opcInfos           = opcInfos
-          pickingModel       = { PickingModel.initial with pickingInfos = opcInfos }
-          annotations        = AnnotationModel.initial
-          drawing            = DrawingModel.initial
-          pickedPoint        = None
-          planePoints        = setPlaneForPicking
-          dockConfig         = initialDockConfig   
-          linkingModel       = LinkingApp.update camState.view LinkingModel.initial (MinervaAction(LoadProducts(dumpFile, cacheFile)))
-        }
-
-      
-
-      {
-          initial = initialModel             
-          update = update
-          view   = view          
-          threads = fun m -> m.threads
-          unpersist = Unpersist.instance<Model, MModel>
-      }
 
 
