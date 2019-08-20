@@ -144,7 +144,8 @@ type MinervaAction =
   | AddProductToSelection of string
   | PickProducts  of SceneHit
   | HoverProducts of SceneHit
-  | OpenTif of string
+  | OpenTif of string * string
+  | LoadTifs of string
   //| ChangeInstrumentColor of ColorPicker.Action * Instrument
 
 [<DomainType>]

@@ -2,6 +2,7 @@
 
 open System
 open System.Diagnostics
+open System.Drawing
 
 //open Aardvark.GeoSpatial.Opc
 open Aardvark.Base
@@ -124,30 +125,26 @@ module Files =
             Log.error "[Minerva] sth. went wrong with dump.csv"
             Initial.data        
 
-    let loadTif (featureId:string) (model:MinervaModel) =
+    let loadTif (access: string) (featureId: string) =
         // https://minerva.eox.at/store/datafile/FRB_495137799RADLF0492626FHAZ00323M1/frb_495137799radlf0492626fhaz00323m1.tif
         let filename = featureId.ToLower() + ".tif" //"frb_495137799radlf0492626fhaz00323m1.tif"
         let imagePath = @".\MinervaData\" + filename
         let path = "https://minerva.eox.at/store/datafile/" + featureId + "/" + filename
         match (File.Exists imagePath) with
-         | true -> 
-            let argument = sprintf "/select, \"%s\"" imagePath
-            Process.Start("explorer.exe", argument) |> ignore
-            model
-         |  false -> 
+        | true -> ()
+        | false -> 
             let mutable client = new System.Net.WebClient()
             client.UseDefaultCredentials <- true       
-            let credentials = System.Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes("minerva:tai8Ies7"))   
+            let credentials = System.Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes(access))   
             client.Headers.[System.Net.HttpRequestHeader.Authorization] <- "Basic " + credentials  
-            //try takeScreenshot baseAddress sh.col sh.row sh.id sh.folder with e -> printfn "error: %A" e
-            try (client.DownloadFile(path, imagePath) |> ignore) with e -> Log.error "[Minerva] error: %A" e
-            match (File.Exists imagePath) with
-                | true -> let argument = sprintf "/select, \"%s\"" imagePath
-                          Process.Start("explorer.exe", argument) |> ignore
-                | _ -> Log.error "[Minerva] sth. went wrong with tif file"
-            model
-
-
+            try
+                client.DownloadFile(path, imagePath) |> ignore
+                let targetPath = @".\MinervaData\" + featureId.ToLower() + ".png"
+                //PixImage.Create(imagePath, PixLoadOptions.UseFreeImage).ToPixImage<float>().SaveAsImage(targetPath)
+                System.Drawing.Bitmap.FromFile(imagePath).Save(targetPath, System.Drawing.Imaging.ImageFormat.Png)
+            with e -> Log.error "[Minerva] error: %A" e
+            
+            //PixImage.Create()
 module Shader = 
 
     type UniformScope with

@@ -283,7 +283,7 @@ module App =
     //---
 
 
-    let app dir (rotate : bool) dumpFile cacheFile =
+    let app dir (rotate : bool) dumpFile cacheFile access =
         OpcSelectionViewer.Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
         let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
@@ -369,6 +369,12 @@ module App =
                 appName "2D3D Linking"
                 useCachedConfig true
             }
+
+        let linkingUpdate = LinkingApp.update camState.view
+        let initialLinkingModel : LinkingModel = 
+            linkingUpdate (
+                linkingUpdate LinkingModel.initial (MinervaAction(LoadProducts(dumpFile, cacheFile)))
+            ) (MinervaAction(LoadTifs(access)))
       
         let initialModel : Model = 
             { 
@@ -388,8 +394,7 @@ module App =
                 pickedPoint        = None
                 planePoints        = setPlaneForPicking
                 dockConfig         = initialDockConfig   
-                linkingModel       = LinkingApp.update camState.view LinkingModel.initial (MinervaAction(LoadProducts(dumpFile, cacheFile)))
-            }
+                linkingModel       = initialLinkingModel}
 
         {
             initial = initialModel             

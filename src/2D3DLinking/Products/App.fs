@@ -113,7 +113,16 @@ module MinervaApp =
             { model with filteredFeatures = filtered } |> updateFeaturesForRendering view.Location
 
           | FlyToProduct _ -> model //handled in higher level app
-          | OpenTif id -> Files.loadTif id model     
+          | OpenTif (access, id) -> 
+            Files.loadTif access id
+            model
+          | LoadTifs access ->
+            Log.startTimed "[Minerva] Fetching all TIFs from data file"
+            model.data.features.Map(fun f ->
+                Files.loadTif access f.id
+            ) |> ignore
+            Log.stop()  
+            model
           | Reset ->
             { model with filteredFeatures = model.data.features; queryFilter = Initial.queryFilter }   
           | LoadProducts (dumpFile, cacheFile) ->                            

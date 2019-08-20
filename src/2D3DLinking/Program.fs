@@ -46,12 +46,17 @@ let main argv =
         | Some file -> file
         | None -> failwith "need cache file ... cache=\"[cachefilepath]\" "
 
+    let access =
+        match argsKv |> HMap.tryFind "access" with
+        | Some file -> file
+        | None -> failwith "need minerva access ... access=\"minervaaccount:pw\" "
+
     ////let dumpData = Files.loadDataFile dumpFile cacheFile
     ////Log.line "%A" dumpData
 
     let rotate = argsList.Contains("-rotate")
     
-    let instance =  LinkingView.App.app opcDir rotate dumpFile cacheFile |> App.start 
+    let instance =  LinkingView.App.app opcDir rotate dumpFile cacheFile access |> App.start 
 
     WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance

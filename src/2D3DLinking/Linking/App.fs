@@ -324,7 +324,13 @@ module LinkingApp =
                         products
                         |> ASet.toAList
                         |> AList.map (fun f -> 
-                            img[clazz f.id; attribute "alt" f.id; style "width: 300px; height: 100%; display: inline-block"]
+                            let fileName = sprintf "MinervaData\%s.png" (f.id.ToLower())
+                            let imgSrc = System.IO.Path.GetFullPath(System.IO.Path.Combine(Environment.CurrentDirectory, fileName))
+                            img[
+                                clazz f.id; 
+                                attribute "alt" f.id; 
+                                attribute "src" imgSrc;
+                                style "width: 300px; height: 100%; display: inline-block"]
                         )
                     )
                 ]
