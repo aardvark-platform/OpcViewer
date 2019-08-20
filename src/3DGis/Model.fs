@@ -14,6 +14,10 @@ open Rabbyte.Annotation
 
 type Time = float
 
+type Alternative =
+    | P
+    | O
+
 type Message =
   | Camera                  of FreeFlyController.Message
   | KeyUp                   of key : Keys
@@ -32,6 +36,7 @@ type Message =
   | AnimateCameraComplete
   | AnimateCameraReturn
   | Tick                    of Time
+  | SetProjection          of Option<Alternative>
 
 
 
@@ -63,6 +68,7 @@ type Axis = {
     rangeSv         : Range1d
 }
 
+
 [<DomainType>]
 type Model =
     {
@@ -83,6 +89,12 @@ type Model =
 
         lineSelectionActive  : bool
         opcBox               : Box3d
+        numSampledPoints     : int
+        stepSampleSize       : float
+        linearDistance       : float
+        accDistance          : float
+        maxHeight            : float
+        minHeight            : float
         
         opcCenterPosition    : V3d
         jumpSelectionActive  : bool
@@ -99,6 +111,8 @@ type Model =
 
         perspectiveView      : bool
         persToOrthoValue     : float
+        dropDownOptions      : hmap<Alternative, string>
+        currentOption        : Option<Alternative>
 
         camViewAnimRunning   : bool
         camJumpAnimRunning   : bool

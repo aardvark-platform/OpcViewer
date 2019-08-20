@@ -27,6 +27,8 @@ open OpcViewer.Base.Attributes
 
 open Aardvark.VRVis.Opc
 
+open System.Collections.Generic
+
 module App = 
   open Rabbyte.Drawing
   open Rabbyte.Annotation
@@ -141,11 +143,11 @@ module App =
 
       elif model.camViewAnimRunning && model.cameraAnimEndTime < t then
         if model.perspectiveView then
-            { model with perspectiveView = false; persToOrthoValue = 1.0; camViewAnimRunning = false }
+            { model with perspectiveView = false; persToOrthoValue = 1.0; camViewAnimRunning = false; currentOption = Some O }
         else
             let duration = TimeSpan.FromSeconds 2.0
             let total = DateTime.Now.AddTicks (duration.Ticks)
-            { model with perspectiveView = true; persToOrthoValue = 0.0; camViewAnimRunning = false; camJumpAnimRunning = model.camCompAnimRunning; camRetAnimRunning = false; cameraAnimEndTime = float total.Ticks}
+            { model with perspectiveView = true; persToOrthoValue = 0.0; camViewAnimRunning = false; camJumpAnimRunning = model.camCompAnimRunning; camRetAnimRunning = false; cameraAnimEndTime = float total.Ticks;  currentOption = Some P }
       else
         model
 
@@ -170,10 +172,8 @@ module App =
                     { model with jumpSelectionActive = false; pickingActive = false }
           | Keys.LeftShift -> 
             let p = { model.picking with intersectionPoints = plist.Empty }
-            //let newDraw = DrawingApp.update model.drawing (DrawingAction.AddPoint (model.opcCenterPosition, None))
-            //let newDraw2 = DrawingApp.update newDraw (DrawingAction.AddPoint (model.opcCenterPosition+100.0, None))
             
-            { model with pickingActive = true; lineSelectionActive = true; picking = p; drawing = DrawingModel.initial; annotations = AnnotationModel.initial }
+            { model with pickingActive = true; lineSelectionActive = true; picking = p; drawing = DrawingModel.initial; annotations = AnnotationModel.initial; numSampledPoints = 0; stepSampleSize = 0.0; linearDistance = 0.0; minHeight = 0.0; maxHeight = 0.0; accDistance = 0.0 }
           | _ -> model
       | Message.KeyUp m ->
         match m with
@@ -326,10 +326,7 @@ module App =
                 | None -> model.drawing
             updatePickM, updatedDrawM
           | _ -> PickingApp.update model.picking msg, model.drawing
-        //Log.line "lastPick  %A" model.picking.intersectionPoints.AsList
-        //Log.line "draw  %A" drawingModel.style.lineStyle
-        //Log.line "-------------------------------------------------------------"
-        //Log.line "ModelCamera %A" model.cameraState.view.Forward
+        
         let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 1.5; primary = { c = C4b.VRVisGreen } } } 
 
 
@@ -342,9 +339,12 @@ module App =
             let firstPoint = pickingModel.intersectionPoints.Item(0)
             let secondPoint = pickingModel.intersectionPoints.Item(1)
             let dir = secondPoint - firstPoint
-            let samplingSize = (ceil (firstPoint-secondPoint).Length)*2.0
+            let samplingSize = (ceil (firstPoint-secondPoint).Length)*2.0 
             let step = dir / samplingSize
   
+            let pointList = new List<V3d>()
+            let altitudeList = new List<float>()
+
             let drawPoints x y =
                 let fray = FastRay3d(V3d.Zero, (firstPoint + (step * float y)).Normalized)
                 
@@ -354,22 +354,52 @@ module App =
                     OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some opcData.kdTree) fray
                     |> Option.map (fun t -> 
                         let hitpoint = fray.Ray.GetPointOnRay t
-                        let sc = CooTransformation.getLatLonAlt hitpoint Planet.Mars
+                        let pointHeight = CooTransformation.getLatLonAlt hitpoint Planet.Mars
+
+                        pointList.Add(hitpoint)
+                        altitudeList.Add(pointHeight.altitude)
                         //Log.line "hitpoint: %A  -> altitude: %f" hitpoint sc.altitude
                         DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None)))
                     )
                 |> Option.defaultValue x
                               
             let newDraw = List.fold drawPoints newDrawingModel [1.0..(samplingSize - 1.0)]
+            
+            let rec accDistance i acc= 
+                if i >= 1 then
+                    let A = pointList.Item(i)
+                    let B = pointList.Item(i-1)
+                    let distance = (A-B).Length
+                    accDistance (i-1) (acc+distance)
+                else 
+                    acc
 
-            { model with picking = pickingModel; drawing = newDraw }
+            { model with 
+                    picking             = pickingModel 
+                    drawing             = newDraw 
+                    numSampledPoints    = int samplingSize 
+                    stepSampleSize      = Math.Round(dir.Length/samplingSize,2) 
+                    linearDistance      = Math.Round(dir.Length,2) 
+                    minHeight           = Math.Round(altitudeList.Min (altitudeList.Item(0)),2)
+                    maxHeight           = Math.Round(altitudeList.Max (altitudeList.Item(0)),2)
+                    accDistance         = Math.Round(accDistance (pointList.Count-1) 0.0,2)
+            }
         else
             { model with picking = pickingModel; drawing = newDrawingModel }
 
       | DrawingAction msg -> 
         { model with drawing = DrawingApp.update model.drawing msg }
       | AnnotationAction msg -> 
-        { model with annotations = AnnotationApp.update model.annotations msg}      
+        { model with annotations = AnnotationApp.update model.annotations msg}   
+      | SetProjection a ->
+        if model.inJumpedPosition then
+            model
+        elif a = Some O && model.perspectiveView then
+            update { model with currentOption = a } Message.AnimateCameraViewSwitch
+        elif a = Some P && not model.perspectiveView then
+            update { model with currentOption = a } Message.AnimateCameraViewSwitch
+        else
+            { model with currentOption = a }
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | _ -> model
@@ -400,15 +430,15 @@ module App =
 
             let plane = Plane3d(camPos.Location, camPos.Location + camPos.Right, camPos.Location + camPos.Up)
             let distance = (opcPos - plane.NearestPoint(opcPos)).Length
-
-            let aspect = 1.0
+            
+            let aspect = float(1024/768)
             let sizeY = ratioSizePerDepth * distance
             let sizeX = ratioSizePerDepth * distance * aspect
             let o = (Frustum.projTrafo (Frustum.ortho (Box3d(V3d(-sizeX, -sizeY, 0.0),V3d(sizeX, sizeY, 2.0*distance)))))
+            
+            let p = (Frustum.projTrafo (Frustum.perspective 60.0 0.01 10000.0 aspect))
 
-            let p = (Frustum.projTrafo (Frustum.perspective 60.0 0.01 10000.0 1.0))
-
-
+            
             let t = t ** (1.0 / 50.0)
             let trafo = 
                 Trafo3d (
@@ -418,7 +448,7 @@ module App =
 
             return trafo     
         }
-
+      
       let near = m.mainFrustum |> Mod.map(fun x -> x.near)
       let far = m.mainFrustum |> Mod.map(fun x -> x.far)
 
@@ -473,9 +503,15 @@ module App =
            onlyWhen state.pan (onMouseMove (Message.Pan >> f))
          ]) 
          (scene |> Sg.map PickingAction) 
-
-         
       
+      let dropDownValues = m.dropDownOptions |> AMap.map (fun k v -> text v)
+      
+      let dependencies =   
+        Html.semui @ [        
+          { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
+          { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
+          ]
+
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
@@ -483,18 +519,30 @@ module App =
               div [clazz "ui"; style "background: #1B1C1E"] [renderControl m id]
               
           )
+          
         | Some "controls" -> 
-          require Html.semui (
-            body [style "width: 100%; height:100%; background: transparent";] [
-              div[style "color:white; margin: 5px 15px 5px 5px"][
-              //  p[][div[][text "t: "; slider { min = 0.0; max = 1.0; step = 0.01 } [clazz "ui inverted blue slider"] m.persToOrthoValue Message.SetT]]
-               // h3[][text "NIOBE"]
-              //  p[][text "Hold Ctrl-Left to add Point"]
-               
+         
+          require dependencies (
+              body [style "width: 100%; height:100%; background: transparent; overflow-y:visible"] [
+                  div[style "color:white; margin: 5px 15px 5px 5px"] [
+                        Html.SemUi.accordion "Camera" "camera" true [     
+                            div [ clazz "item" ] [ 
+                                dropdown { placeholder = "Thingy"; allowEmpty = false } [ clazz "ui inverted selection dropdown" ] dropDownValues m.currentOption SetProjection
+                            ]                                                                       
+                        ]
+                        Html.SemUi.accordion "Elevation Info" "map" true [     
+                            Html.table [  
+                                Html.row "Number of Points:" [Incremental.text (m.numSampledPoints |> Mod.map (fun f -> f.ToString())) ]
+                                Html.row "Linear Distance:" [Incremental.text (m.linearDistance |> Mod.map (fun f -> f.ToString())) ]
+                                Html.row "Accumulated Distance:" [Incremental.text (m.accDistance |> Mod.map (fun f -> f.ToString())) ]
+                                Html.row "Step Sample Size:" [Incremental.text (m.stepSampleSize |> Mod.map (fun f -> f.ToString())) ]
+                                Html.row "Min Height:" [Incremental.text (m.minHeight |> Mod.map (fun f -> f.ToString())) ]
+                                Html.row "Max Height:" [Incremental.text (m.maxHeight |> Mod.map (fun f -> f.ToString())) ]                                         
+                            ]                       
+                        ]
+                  ]
               ]
-            ]
           )
-        
         | Some other -> 
           let msg = sprintf "Unknown page: %A" other
           body [] [
@@ -581,7 +629,7 @@ module App =
       let initialModel : Model = 
         { 
           cameraState          = camState
-          mainFrustum          = Frustum.perspective 60.0 0.01 10000.0 1.0
+          mainFrustum          = Frustum.perspective 60.0 0.01 10000.0 (float(1024/768))
           fillMode             = FillMode.Fill                    
           patchHierarchies     = patchHierarchies          
           axis                 = None
@@ -613,6 +661,14 @@ module App =
           inJumpedPosition     = false
           lineSelectionActive  = false
           opcBox               = box
+          numSampledPoints     = 0
+          stepSampleSize       = 0.0
+          linearDistance       = 0.0
+          accDistance          = 0.0
+          maxHeight            = 0.0
+          minHeight            = 0.0
+          dropDownOptions      = HMap.ofList [P, "Perspective"; O, "Orthographic";]
+          currentOption        = Some O
         }
 
       {
