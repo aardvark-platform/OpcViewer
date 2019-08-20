@@ -5,10 +5,6 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.UI
 
-open FSharp.Data
-open FSharp.Data.JsonExtensions
-open Aardvark.Application
-open PRo3D.Minerva.Communication
 open Aardvark.Geometry
 
 type FeatureId = FeatureId of string
@@ -130,7 +126,7 @@ type QueryAction =
   //| UseQueriesForDataFile
 
 type MinervaAction =
-  | LoadProducts
+  | LoadProducts of string * string
   | ApplyFilters
   | PerformQueries  
   | Reset
@@ -214,43 +210,16 @@ type SelectionModel = {
     selectionMinDist     : float
 }
 
-//type Selection = {
-//    selectedProducts        : hset<string> 
-//    singleSelectProduct     : option<string>
-//}
-
-type MessagingMailbox = MailboxProcessor<MailboxAction>
-
-and MailboxState = {
-  events  : list<MailboxAction>
-  update  : seq<MinervaAction> -> unit
-}
-and MailboxAction =
-  | MiniAction  of MinervaAction
-  | InitMailboxState of MailboxState  
-
-module MailboxState = 
-  let empty = 
-    {
-      events = list.Empty
-      update = fun _ -> ()
-    }
   
 [<DomainType>]
-type Model = 
+type MinervaModel = 
   {
     data             : FeatureCollection
-    queries          : list<string>
     queryFilter      : QueryModel
     filteredFeatures : plist<Feature>
 
-    [<NonIncremental>]
-    comm     : option<Communicator.Communicator>
-
     vplMessages : ThreadPool<MinervaAction>
 
-    minervaMessagingMailbox : MessagingMailbox
-    minervaMailboxState     : MailboxState
     featureProperties       : FeatureProperties
     selection               : SelectionModel
     kdTreeBounds         : Box3d
@@ -259,7 +228,6 @@ type Model =
     sgFeatures           : SgFeatures
     selectedSgFeatures   : SgFeatures
     picking              : bool
-    //selection               : Selection
   }
 
 [<StructuredFormatDisplay("{AsString}"); Struct>]
@@ -286,11 +254,11 @@ type Len(meter : float) =
       elif x.Centimeter > 1.0 then sprintf "%.2fcm" x.Centimeter
       elif x.Millimeter > 1.0 then sprintf "%.0fmm" x.Millimeter
       elif x.Micrometer > 1.0 then sprintf "%.0fµm" x.Micrometer
-      elif x.Nanometer > 1.0 then sprintf "%.0fµm" x.Nanometer
+      elif x.Nanometer > 1.0 then sprintf "%.0fnm" x.Nanometer
       elif meter > 0.0 then sprintf "%.0f" x.Angstrom
       else "0"
 
-module Model = 
+module MinervaModel = 
   let toInstrument (id : string) =
  //   let instr = id.ToCharArray() |> Array.takeWhile(fun x -> x <> '_')
    // let instr = new string(instr)
@@ -370,19 +338,6 @@ module Initial =
             step = 0.001
             format = "{0:0.000}"
         }
-  //let instrumentC =
-  //  {
-  //      mahli        = { c = C4b(255,127,0)  }   
-  //      frontHazcam  = { c = C4b(255,255,255)} 
-  //      mastcam      = { c = C4b(255,255,255)} 
-  //      apxs         = { c = C4b(230,171,2)  } 
-  //      frontHazcamR = { c = C4b(31,120,180) } 
-  //      frontHazcamL = { c = C4b(166,206,227)} 
-  //      mastcamR     = { c = C4b(227,26,28)  } 
-  //      mastcamL     = { c = C4b(251,154,153)} 
-  //      chemLib      = { c = C4b(173,221,142)} 
-  //      chemRmi      = { c = C4b(49,163,84)  } 
-  //  }
 
   let fProps = 
     {
@@ -393,18 +348,18 @@ module Initial =
 
   let sgfeatures =
     {
-        names     = Array.empty
-        positions = Array.empty
-        colors    = Array.empty
-        trafo     = Trafo3d.Identity
+        names       = Array.empty
+        positions   = Array.empty
+        colors      = Array.empty
+        trafo       = Trafo3d.Identity
     }
 
   let sgSelfeatures =
     {
-        names     = Array.empty
-        positions = Array.empty
-        colors    = Array.empty
-        trafo     = Trafo3d.Identity
+        names       = Array.empty
+        positions   = Array.empty
+        colors      = Array.empty
+        trafo       = Trafo3d.Identity
     }
 
   let queryFilter = 
@@ -435,27 +390,16 @@ module Initial =
         flatPos = Array.empty
         flatID = Array.empty
         selectionMinDist = 0.05
-    }
+   }
           
-  let sites = [
-    //@"https://minerva.eox.at/opensearch/collections/MAHLI/json/"
-    //@"https://minerva.eox.at/opensearch/collections/FrontHazcam-Right/json/"
-    //@"https://minerva.eox.at/opensearch/collections/FrontHazcam-Left/json/"
-    //@"https://minerva.eox.at/opensearch/collections/Mastcam-Right/json/"    
-    //@"https://minerva.eox.at/opensearch/collections/Mastcam-Left/json/"
-    //@"https://minerva.eox.at/opensearch/collections/APXS/json/"
-    @"https://minerva.eox.at/opensearch/collections/all/json/"
-  ]
-
-  let model mailbox = 
+  let model = 
     {
       data    = data
-      queries = sites
-      comm    = None
+      //comm    = None
       vplMessages = ThreadPool.Empty
 
-      minervaMailboxState = MailboxState.empty
-      minervaMessagingMailbox = mailbox
+      //minervaMailboxState = MailboxState.empty
+      //minervaMessagingMailbox = mailbox
       queryFilter = queryFilter
       featureProperties = fProps
       selection = selectionM

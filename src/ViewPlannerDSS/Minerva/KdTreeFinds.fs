@@ -235,4 +235,3 @@ type KdTreeQuery () =
         KdTreeQuery.FindPointsInternal(self, worldBox, positions, viewProj, box)
         |> Seq.filter (fun (pp,w, index) -> Vec.lengthSquared (m * (pp.XY - ellipse.Center)) <= 1.0)
         |> Seq.map (fun (pp,w, index) -> pp.Z, w, index)
-

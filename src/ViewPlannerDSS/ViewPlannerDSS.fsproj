@@ -11,6 +11,11 @@
     <OutputPath>..\..\bin\Release</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Minerva\Model.fs" />
+    <Compile Include="Minerva\Serialization.fs" />
+    <Compile Include="Minerva\Utilities.fs" />
+    <Compile Include="Minerva\KdTreeFinds.fs" />
+    <Compile Include="Minerva\MinervaApp.fs" />
     <Compile Include="Rover\RoverModel.fs" />
     <Compile Include="Rover\RoverApp.fs" />
     <Compile Include="Shading.fs" />
@@ -23,9 +28,6 @@
   <ItemGroup>
     <ProjectReference Include="..\OPCViewer.Base\OPCViewer.Base.fsproj" />
     <ProjectReference Include="..\ViewerMain\ViewerMain.fsproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Minerva\" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

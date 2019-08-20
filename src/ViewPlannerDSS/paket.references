@@ -11,12 +11,16 @@ Aardvark.SceneGraph
 Aardvark.SceneGraph.IO
 Aardvark.SceneGraph.Opc
 Aardvark.Compiler.DomainTypes.MSBuild
+Aardvark.Geometry
 Aardvark.Geometry.Intersection
+Aardvark.Geometry.PointTree
 
 FsPickler
 FsPickler.Json
 
 Aardium
+Uncodium.Eigensystems 
 
 Suave
 FSharp.Core
+FSharp.Data
