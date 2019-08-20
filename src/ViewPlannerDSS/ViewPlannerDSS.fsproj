@@ -11,7 +11,7 @@
     <OutputPath>..\..\bin\Release</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Minerva\Model.fs" />
+    <Compile Include="Minerva\MinervaModel.fs" />
     <Compile Include="Minerva\Serialization.fs" />
     <Compile Include="Minerva\Utilities.fs" />
     <Compile Include="Minerva\KdTreeFinds.fs" />

@@ -11,6 +11,13 @@ open OpcViewer.Base.Picking
 open ViewPlanner.Rover
 open Rabbyte.Drawing
 open Rabbyte.Annotation
+open System.Xml.Linq
+
+type SaveOption =
+    | CameraState   
+    | RoverState   
+    | PlaneState
+
 
 type Action =
   | Camera           of FreeFlyController.Message
@@ -19,6 +26,9 @@ type Action =
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
   | RoverAction      of RoverAction
+  | SaveConfigs      of Option<SaveOption>
+
+
 
 
 type CameraStateLean = 
@@ -67,7 +77,9 @@ type Model =
         rover                : RoverModel
         region               : Option<plist<V3d>>
         roiBboxFull          : bool
-       
+        saveOptions          : hmap<SaveOption, string>
+        currentSaveOption    : Option<SaveOption>
+
     }
 
    

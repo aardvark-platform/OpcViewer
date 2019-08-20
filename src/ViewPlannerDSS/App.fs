@@ -204,6 +204,42 @@ module App =
                   | RotateToPoint ->
                     let r = RoverApp.update model.rover (RotateToPoint)
                     {model with rover = r}
+        
+        | SaveConfigs msg ->
+            match msg with 
+            | Some CameraState -> 
+                Log.line "[App] saving camstate"
+                model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camerastate" |> ignore 
+                model
+            | Some PlaneState ->
+                Log.line "[App] saving plane points"
+                model.pickingModel.intersectionPoints |> toPlaneCoords |> OpcSelectionViewer.Serialization.save ".\planestate" |> ignore
+                model
+            | Some RoverState ->
+                let intersect = model.pickingModel.intersectionPoints |> PList.toList
+                let r =
+                    if intersect |> List.isEmpty then model
+                    elif intersect.Length < 2 then model
+                    else
+                        Log.line "[App] saving rover position and target"
+                        let n = model.rover.up
+                        let m = (intersect |> List.item (1)) + n
+                        let t = intersect |> List.item (0)
+                        let adaptedList = [m;t] |> PList.ofList
+                        adaptedList |> toRoverCoords |> OpcSelectionViewer.Serialization.save ".\Roverstate" |> ignore
+                     
+                        let forward = t-m
+                        let cam = CameraView.look model.rover.position forward.Normalized model.rover.up
+
+                        let p = PickingApp.update model.pickingModel (PickingAction.ClearPoints)
+                        let d = DrawingApp.update model.drawing (DrawingAction.Clear) 
+
+                        let r = { model.rover with position = m; target = t; camera = { model.rover.camera with view = cam }; projsphere = {model.rover.projsphere with position = m}} 
+                        { model with rover = r; pickingModel = p; drawing = d}
+
+                r
+            | None -> model
+
 
 
         | _ -> model
@@ -222,7 +258,7 @@ module App =
   
        //projection points on sphere
   
-      let i =
+      let ps =
         m.rover.projPoints  //REVIEW
             |> AList.toMod
             |> Mod.map(fun li -> 
@@ -251,7 +287,7 @@ module App =
 
             )
       
-      let points = i|> Mod.map(fun cast -> (cast:ISg<PickingAction>)) 
+      let points = ps|> Mod.map(fun cast -> (cast:ISg<PickingAction>)) 
 
 
       let transl = m.rover.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
@@ -572,7 +608,16 @@ module App =
            onKeyUp (Action.KeyUp)
          ]) 
          (fullScene |> Sg.map PickingAction) 
-            
+           
+           
+      let dependencies =   
+        Html.semui @ [        
+          { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
+          { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
+          ]
+
+
+
    
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
@@ -591,35 +636,22 @@ module App =
               div [clazz "ui"; style "background: #1B1C1E"] [roverCamControl]
           )
 
+        | Some "menuBar" ->
+            require dependencies (
+              div [ clazz "item" ] [ 
+                dropdown { placeholder = "Save..."; allowEmpty = false } [ clazz "ui simple inverted selection dropdown" ] (m.saveOptions |> AMap.map (fun k v -> text v)) m.currentSaveOption Action.SaveConfigs 
+                     ]                                                                       
+               
+            )
+            
+            
+
         | Some "controls" -> 
           require Html.semui (
             body [style "width: 100%; height:100%; background: transparent";] [
               div[style "color:white; margin: 5px 15px 5px 5px"][
                 h3[][text "ROVER CONTROL"]
-                div [ clazz "ui vertical menu" ] [
-                 div [clazz "ui dropdown item"] [
-                 
-                    div [clazz "menu"] [
-                    
-
-                     Static.a [clazz "item"] [
-                           //i [clazz (icon + " icon circular inverted")] []
-                           DomNode.Text(Mod.constant "Option A")
-                           ]
-
-                     Static.a [clazz "item"] [
-                           //i [clazz (icon + " icon circular inverted")] []
-                           DomNode.Text(Mod.constant "Option B")
-                           ]
-
-                    
-                    
-                    ]
-                
-                ]
-                ]
-
-
+      
                 p[][Incremental.text (m.rover.position |> Mod.map (fun f -> f.ToString())) ]
                 p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
                 p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
@@ -629,10 +661,6 @@ module App =
                 button [onClick (fun _ -> RoverAction.CalculateAngles)]  [text "calculate values"] |> UI.map RoverAction
                 button [onClick (fun _ -> RoverAction.RotateToPoint)]  [text "rotate to points"] |> UI.map RoverAction
 
-                h3[][text "NIOBE"]
-                p[][text "Hold Ctrl-Left to add Point"]
-                p[][text "Press Enter to close Polygon"]
-           
               ]
             ]
           )
@@ -716,11 +744,34 @@ module App =
         match planeState.IsEmpty() with
             | true -> None
             | false -> Some planeState
+        
 
+      let restoreRoverCoords = 
+         if File.Exists ".\Roverstate" then
+            Log.line "[App] restoring roverstate"
+            let p : initialRoverCoords = OpcSelectionViewer.Serialization.loadAs ".\Roverstate"
+            p |> fromRoverCoords
+         else
+         PList.empty
+
+      let roverState = restoreRoverCoords
+
+      let initialRoverPos = 
+         match roverState.IsEmpty() with
+            | true -> V3d.OOO
+            | false -> roverState |> PList.toList |> List.item (0)
+      
+      let initialRoverTarget = 
+         match roverState.IsEmpty() with
+            | true -> V3d.OOI
+            | false -> roverState |> PList.toList |> List.item (1)
+      
+      
+      let forward = initialRoverTarget - initialRoverPos
 
       let roverinitialCamera = {
-      
-        FreeFlyController.initial with view = CameraView.lookAt box.Max box.Center box.Center.Normalized
+        
+        FreeFlyController.initial with view = CameraView.look initialRoverPos forward.Normalized box.Center.Normalized
       }
 
 
@@ -730,7 +781,8 @@ module App =
       let initialDockConfig = 
         config {
           content (
-              vertical 13.0 [
+              vertical 15.0 [
+                  element {id "menuBar"; title "Menu"; weight 2.0}
                   element { id "render"; title "Render View"; weight 7.0 }
                   horizontal 6.0 [
                   element { id "roverCam"; title "Rover view"; weight 3.0 }
@@ -760,10 +812,12 @@ module App =
           annotations        = AnnotationModel.initial
           pickedPoint        = None
           planePoints        = setPlaneForPicking
-          rover              = { RoverModel.initial with up = box.Center.Normalized; camera = roverinitialCamera; position = box.Center}
+          rover              = { RoverModel.initial with up = box.Center.Normalized; camera = roverinitialCamera; position = initialRoverPos; target = initialRoverTarget; projsphere = {RoverModel.initial.projsphere with position = initialRoverPos}}
           dockConfig         = initialDockConfig        
           region             = None
           roiBboxFull        = false
+          saveOptions        = HMap.ofList [CameraState, "CameraState"; RoverState, "RoverState"; PlaneState, "PlaneState"]
+          currentSaveOption  = None
         }
 
       {

@@ -18,6 +18,7 @@ type CameraType =
     | Camera15   //fov = 15°
     | Stereo    //two cameras
 
+
 type ProjectionSphere = 
     {
     radius : float
