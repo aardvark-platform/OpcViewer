@@ -24,5 +24,8 @@
     <ProjectReference Include="..\OPCViewer.Base\OPCViewer.Base.fsproj" />
     <ProjectReference Include="..\ViewerMain\ViewerMain.fsproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Minerva\" />
+  </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
