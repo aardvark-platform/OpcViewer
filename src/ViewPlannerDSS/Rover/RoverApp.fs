@@ -5,6 +5,7 @@ open Aardvark.Base
 
 module RoverApp =
     open Aardvark.UI
+    open System.Threading
 
     let panning (m:RoverModel) =
         let forward = m.camera.view.Forward
@@ -233,17 +234,19 @@ module RoverApp =
        
 
         //regarding vertical fov
-        let adjustedTilt = ((Math.Abs(deltaTilt)) - (fov/2.0)) 
+        let fovHalf = fov/2.0
+        let deltaBetween = ((Math.Abs(deltaTilt)) - fovHalf)
+        let adjustedTilt =  fovHalf - deltaBetween
         let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (fov/2.0)))
         printfn "tilt delta %A rate %A " deltaTilt tiltingRate
 
         //generate a sampling list with pan and tilt values
-        let firstPair = li.Item(idx) //pair with min pan value and corresponding tilt
+        let firstPair = V2d(minPan, maxTilt) //pair with min pan value and max tilt value (equals left bottom corner of bounding box)
         let samplingValues = [firstPair] //initial list
 
         let samplings = buildList samplingValues panningRate tiltingRate tiltingRate -adjustedTilt fov
         samplings
-        //{rover with samplingValues = samplings |> PList.ofList}
+       
 
 
 
@@ -282,12 +285,11 @@ module RoverApp =
     
     let rotateToPoint (rover:RoverModel) =
         
-        //for testing 
+        
         let values = rover.samplingValues
-        //let values = rover.thetaPhiValues
         let li = values |> PList.toList
         let idx = rover.currIdx
-        let pair = values.Item(idx) //pair.X = theta; pair.Y = phi
+        let pair = values.Item(idx) 
 
         //values currently rotated to
         printfn "thetaCurrent %A phiCurrent %A"  (pair.X) (pair.Y) 
