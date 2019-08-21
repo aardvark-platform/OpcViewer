@@ -204,7 +204,7 @@ module RoverApp =
     
     //test with interpolation
     //panC, tilt C --> interpolation coefficients
-    let rec buildList2 (l:List<V2d>) (inputPan:List<V2d>) (inputTilt:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (panC:float) (tiltC:float)=
+    let rec buildList2 (l:List<V2d>) (inputPan:List<V2d>) (inputTilt:List<V2d>) (panR:int) (tiltR:int) (panC:float) (tiltC:float)=
         match panC,tiltC with 
             | (p,t) when  p > 1.0 && t > 1.0 -> l
             | (p,t) when  (p < 1.0 && t < 1.0) || (p >= 1.0 && t < 1.0) -> 
@@ -217,7 +217,7 @@ module RoverApp =
                         let newTiltC = tiltC + i
                         let interpolated = ref1 * (1.0-newTiltC) + ref2 * newTiltC                     
                         let newList = List.append l [interpolated]
-                        buildList2 newList inputPan inputTilt panR tiltR originalTiltR panC newTiltC
+                        buildList2 newList inputPan inputTilt panR tiltR panC newTiltC
             | (p,t) when p < 1.0 && t >= 1.0 -> 
                         let lastItem = l.Item(l.Length-1)
                         let p1 = inputPan.Item(0)
@@ -229,7 +229,7 @@ module RoverApp =
                         let newList = List.append l [V2d(interpolated.X, lastItem.Y)]
                         //new input list
                         let newInputTilt = [inputTilt.Item(1); inputTilt.Item(0)]
-                        buildList2 newList inputPan newInputTilt panR originalTiltR originalTiltR newpanC 0.0
+                        buildList2 newList inputPan newInputTilt panR tiltR newpanC 0.0
             | _,_ -> l 
 
 
@@ -300,7 +300,7 @@ module RoverApp =
 
         //sampling with algorithm buildList2
         //let rec buildList2 (l:List<V2d>) (inputPan:List<V2d>) (inputTilt:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (panC:float) (tiltC:float)=
-        let samplings = buildList2 samplingValues inputPan inputTilt panningRate tiltingRate tiltingRate 0.0 0.0 //panC tiltC
+        let samplings = buildList2 samplingValues inputPan inputTilt panningRate tiltingRate 0.0 0.0 //panC tiltC
 
         samplings
        

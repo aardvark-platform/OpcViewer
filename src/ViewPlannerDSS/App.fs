@@ -453,8 +453,8 @@ module App =
             |> Sg.trafo targettrafo
       
       
-      let frustumModel (vp:IMod<Trafo3d>) = 
-        Sg.wireBox' C4b.White (Box3d(V3d.NNN,V3d.III))
+      let frustumModel (vp:IMod<Trafo3d>) (col:C4b)= 
+        Sg.wireBox' col (Box3d(V3d.NNN,V3d.III))
                             |> Sg.noEvents
                             |> Sg.trafo (vp |> Mod.map (fun vp -> vp.Inverse))
                             |> Sg.shader {
@@ -464,15 +464,14 @@ module App =
 
       //main camera view frustum
       let vp = (RoverModel.getViewProj m.rover.camera.view m.rover.frustum) 
-      let frustumBox = frustumModel vp
+      let frustumBox = frustumModel vp C4b.Red
        
       //set of frustums
-
       let sgFrustums = 
             m.rover.viewList 
                 |> AList.map (fun v -> 
                     let vp = (RoverModel.getViewProj (Mod.constant v) m.rover.frustum)    
-                    frustumModel vp
+                    frustumModel vp C4b.White
                              )       
                 |> AList.toASet
                 |> Sg.set
