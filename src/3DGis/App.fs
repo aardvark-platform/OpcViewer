@@ -507,11 +507,6 @@ module App =
       
       let dropDownValues = m.dropDownOptions |> AMap.map (fun k v -> text v)
       
-      let dependencies =   
-        Html.semui @ [        
-          { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
-          { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
-        ]
 
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
@@ -523,8 +518,6 @@ module App =
           )
           
         | Some "controls" -> 
-         
-          require dependencies (
               body [style "width: 100%; height:100%; background: transparent; overflow-y:visible"] [
                   div[style "color:white; margin: 5px 15px 5px 5px"] [
                         Html.SemUi.accordion "Camera" "camera" true [     
@@ -545,34 +538,56 @@ module App =
                             ]                       
                         ]
                   ]
-              ]
-          )
+              ]       
         | Some "cutview" ->
             require Html.semui ( 
               body [style "width: 100%; height:100%; background: transparent; overflow-y:visible"] [
-                 Svg.svg [clazz "mySvg"; style "stroke='blue';user-select: none;"] [
-                        //Incremental.Svg.circle ( 
-                        //    amap {
-                        //        yield attribute "r" "20"
-                        //        yield attribute "fill" "white"
-                        //        yield attribute "stroke" "blue"
-                        //        yield attribute "stroke-width" "4"
-                        //        let! pos = Mod.constant (V2d(30.0,30.0))
-                        //        yield attribute "cx" (sprintf "%f" pos.X)
-                        //        yield attribute "cy" (sprintf "%f" pos.Y)
-                        //    } |> AttributeMap.ofAMap
-
+                 Svg.svg [clazz "mySvg"; style "width:1500px;height:170px;stroke='blue';user-select: none;"] [
+                       
                         Incremental.Svg.line ( 
                             amap {
                                 yield attribute "x1" "20"
                                 yield attribute "y1" "20"
                                 yield attribute "x2" "20"
-                                yield attribute "y2" "100"
-                                yield attribute "stroke" "rgb(255,255,0)"
-                                yield attribute "stroke-width" "2"
+                                yield attribute "y2" "150"
+                                yield attribute "stroke" "rgb(119,136,153)"
+                                yield attribute "stroke-width" "3"
 
                             } |> AttributeMap.ofAMap
                         )
+
+                        Incremental.Svg.line ( 
+                            amap {
+                                yield attribute "x1" "20"
+                                yield attribute "y1" "150"
+                                yield attribute "x2" "1400"
+                                yield attribute "y2" "150"
+                                yield attribute "stroke" "rgb(119,136,153)"
+                                yield attribute "stroke-width" "3"
+
+                            } |> AttributeMap.ofAMap
+                        )
+
+                        Incremental.Svg.polygon  ( 
+                            amap {
+                                yield attribute "points" "15,30 20,20 25,30"                               
+                                yield attribute "fill" "rgb(119,136,153)"
+                                yield attribute "stroke" "rgb(119,136,153)"
+                                yield attribute "stroke-width" "3"
+
+                            } |> AttributeMap.ofAMap
+                        )
+
+                        Incremental.Svg.polygon  ( 
+                            amap {
+                                yield attribute "points" "1390,145 1400,150 1390,155"                               
+                                yield attribute "fill" "rgb(119,136,153)"
+                                yield attribute "stroke" "rgb(119,136,153)"
+                                yield attribute "stroke-width" "3"
+
+                            } |> AttributeMap.ofAMap
+                        )
+                       
                 ]
               ]              
             )
