@@ -293,8 +293,35 @@ module LinkingApp =
         let cssColor (c: C4b) =
             sprintf "rgba(%d, %d, %d, %f)" c.R c.G c.B c.Opacity
 
-        require Html.semui (
+        let dependencies =
+            Html.semui @ [
+                { kind = Stylesheet; name = "linking.css"; url = "resources/linking.css" }
+            ]
+
+        let styleTag = 
+           DomNode.Text("style", None, AttributeMap.Empty, (Mod.constant("
+                .product-view {
+                    display: inline-block;
+                    position: relative;
+                    margin: 0 5px;
+                }
+
+                .product-view img {
+                    height: 100%;
+                    display: inline-block
+                }
+
+                .product-view svg {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    display: inline-block;
+                    height: 100%
+                }")))
+
+        require dependencies (
             body [style "width: 100%; height:100%; background: transparent";] [
+                styleTag
                 div[style "color:white; padding: 5px; width: 100%; height: 100%; position: absolute"][
                     div[style "padding: 5px; position: fixed"][
                         span[clazz "ui label inverted"; style "margin-right: 10px"][
@@ -320,17 +347,38 @@ module LinkingApp =
                         )
                         //checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"
                     ]
-                    Incremental.div (AttributeMap.ofList[style "overflow-x: scroll; overflow-y: hidden; white-space: nowrap; height: 100%; padding: 5px; padding-top: 2.8em;"]) (
+
+                    Incremental.div (AttributeMap.ofList[style "overflow-x: scroll; overflow-y: hidden; white-space: nowrap; height: 100%; padding-top: 2.8em;"]) (
                         products
                         |> ASet.toAList
                         |> AList.map (fun f -> 
                             let fileName = sprintf "MinervaData\%s.png" (f.id.ToLower())
                             let imgSrc = System.IO.Path.GetFullPath(System.IO.Path.Combine(Environment.CurrentDirectory, fileName))
-                            img[
-                                clazz f.id; 
-                                attribute "alt" f.id; 
-                                attribute "src" imgSrc;
-                                style "width: 300px; height: 100%; display: inline-block"]
+                            let webSrc = "file:///" + imgSrc.Replace("\\", "/")
+                            //div[style "display: inline-block; position: relative; margin: 0 5px";
+                            div[
+                                clazz "product-view"
+                            ][
+                            div[
+                                clazz "product-view-inner"
+                            ][
+                                img[
+                                    clazz f.id; 
+                                    attribute "alt" f.id; 
+                                    attribute "src" webSrc;
+                                    //style "height: 100%; display: inline-block"
+                                ]
+                                Svg.svg[attribute "viewBox" "0 0 1 1"
+                                //style "position: absolute; top: 0; left: 0; display: inline-block; height: 100%"
+                                ][
+                                    Svg.circle[
+                                        attribute "cx" "0.5"
+                                        attribute "cy" "0.5"
+                                        attribute "r" "0.05"
+                                        attribute "fill" "red"
+                                    ]
+                                ]
+                            ]]
                         )
                     )
                 ]

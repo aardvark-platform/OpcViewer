@@ -11,6 +11,8 @@ open PRo3D.Base
 
 open LinkingView
 
+type EmbeddedRessource = EmbeddedRessource
+
 [<EntryPoint>]
 let main argv =
     Ag.initialize()
@@ -60,6 +62,8 @@ let main argv =
 
     WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
+        Reflection.assemblyWebPart typeof<EmbeddedRessource>.Assembly
+        //Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
         Suave.Files.browseHome
     ] |> ignore
 

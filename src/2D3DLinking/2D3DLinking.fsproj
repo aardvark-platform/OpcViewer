@@ -12,6 +12,11 @@
     <OutputPath>..\..\bin\Release</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="resources\linking.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="Products\KdTreeFinds.fs" />
     <Compile Include="Products\Serialization.fs" />
     <Compile Include="Products\Model.fs" />

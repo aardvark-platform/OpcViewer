@@ -1,8 +1,6 @@
 ﻿namespace PRo3D.Minerva
 
 open System
-open System.Diagnostics
-open System.Drawing
 
 //open Aardvark.GeoSpatial.Opc
 open Aardvark.Base
@@ -140,8 +138,7 @@ module Files =
             try
                 client.DownloadFile(path, imagePath) |> ignore
                 let targetPath = @".\MinervaData\" + featureId.ToLower() + ".png"
-                //PixImage.Create(imagePath, PixLoadOptions.UseFreeImage).ToPixImage<float>().SaveAsImage(targetPath)
-                System.Drawing.Bitmap.FromFile(imagePath).Save(targetPath, System.Drawing.Imaging.ImageFormat.Png)
+                PixImage.Create(imagePath).ToPixImage<byte>().SaveAsImage(targetPath)
             with e -> Log.error "[Minerva] error: %A" e
             
             //PixImage.Create()
