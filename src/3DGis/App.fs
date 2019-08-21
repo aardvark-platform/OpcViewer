@@ -32,6 +32,7 @@ open System.Collections.Generic
 module App = 
   open Rabbyte.Drawing
   open Rabbyte.Annotation
+  open Aardvark.UI.Static
 
   let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
     let s' = cam.freeFlyConfig.moveSensitivity + incr
@@ -542,53 +543,220 @@ module App =
         | Some "cutview" ->
             require Html.semui ( 
               body [style "width: 100%; height:100%; background: transparent; overflow-y:visible"] [
-                 Svg.svg [clazz "mySvg"; style "width:1500px;height:170px;stroke='blue';user-select: none;"] [
-                       
+                 Svg.svg [clazz "mySvg"; style "width: 100%; height:100%;user-select: none;"; ] [
+                        
+                        
+                        //Box
+                        Incremental.Svg.rect ( 
+                            amap {
+                               // let xOffset = 2 
+                                //let! s = m.opcCenterPosition
+                                //let yOffset = 10 
+                                yield attribute "x" "2%"
+                                yield attribute "y" "10%"  
+                                yield attribute "rx" "1px"
+                                yield attribute "ry" "1px" 
+                                yield attribute "width" "96%"
+                                yield attribute "height" "80%"
+                                yield attribute "fill" "transparent"
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "0.1px"
+                            } |> AttributeMap.ofAMap
+                        )
+
+                        //contour line (very high)
                         Incremental.Svg.line ( 
                             amap {
-                                yield attribute "x1" "20"
-                                yield attribute "y1" "20"
-                                yield attribute "x2" "20"
-                                yield attribute "y2" "150"
-                                yield attribute "stroke" "rgb(119,136,153)"
-                                yield attribute "stroke-width" "3"
-
+                                yield attribute "x1" "1.5%"
+                                yield attribute "y1" "10%"  
+                                yield attribute "x2" "98.5%"
+                                yield attribute "y2" "10%" 
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "1.5px"
                             } |> AttributeMap.ofAMap
                         )
 
+                        // very high
+                        Incremental.Svg.rect ( 
+                            amap {
+                                yield attribute "x" "2%"
+                                yield attribute "y" "10%"  
+                                yield attribute "width" "96%"
+                                yield attribute "height" "16%"
+                                yield attribute "opacity" "0.15"
+                                yield attribute "fill" "rgb( 180, 180, 180 )"
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "0.0"
+                            } |> AttributeMap.ofAMap
+                        )
+
+                        //contour line (high)
                         Incremental.Svg.line ( 
                             amap {
-                                yield attribute "x1" "20"
-                                yield attribute "y1" "150"
-                                yield attribute "x2" "1400"
-                                yield attribute "y2" "150"
-                                yield attribute "stroke" "rgb(119,136,153)"
-                                yield attribute "stroke-width" "3"
-
+                                yield attribute "x1" "1.5%"
+                                yield attribute "y1" "26%"  
+                                yield attribute "x2" "98.5%"
+                                yield attribute "y2" "26%" 
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "1.5px"
+                                yield attribute "stroke-opacity" "0.5"
                             } |> AttributeMap.ofAMap
                         )
 
-                        Incremental.Svg.polygon  ( 
+                        // high
+                        Incremental.Svg.rect ( 
                             amap {
-                                yield attribute "points" "15,30 20,20 25,30"                               
-                                yield attribute "fill" "rgb(119,136,153)"
-                                yield attribute "stroke" "rgb(119,136,153)"
-                                yield attribute "stroke-width" "3"
-
+                                yield attribute "x" "2%"
+                                yield attribute "y" "26%"  
+                                yield attribute "width" "96%"
+                                yield attribute "height" "16%"
+                                yield attribute "opacity" "0.15"
+                                yield attribute "fill" "rgb( 149, 149, 149 )"
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "0.0"
                             } |> AttributeMap.ofAMap
                         )
 
-                        Incremental.Svg.polygon  ( 
+                        //contour line (medium high)
+                        Incremental.Svg.line ( 
                             amap {
-                                yield attribute "points" "1390,145 1400,150 1390,155"                               
-                                yield attribute "fill" "rgb(119,136,153)"
-                                yield attribute "stroke" "rgb(119,136,153)"
-                                yield attribute "stroke-width" "3"
-
+                                yield attribute "x1" "1.5%"
+                                yield attribute "y1" "42%"  
+                                yield attribute "x2" "98.5%"
+                                yield attribute "y2" "42%" 
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "1.5px"
+                                yield attribute "stroke-opacity" "0.5"
                             } |> AttributeMap.ofAMap
                         )
+
+                        // medium high
+                        Incremental.Svg.rect ( 
+                            amap {
+                                yield attribute "x" "2%"
+                                yield attribute "y" "42%"  
+                                yield attribute "width" "96%"
+                                yield attribute "height" "16%"
+                                yield attribute "opacity" "0.15"
+                                yield attribute "fill" "rgb( 118, 118, 118 )"
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "0.0"
+                            } |> AttributeMap.ofAMap
+                        )
+
+                        //contour line (medium low)
+                        Incremental.Svg.line ( 
+                            amap {
+                                yield attribute "x1" "1.5%"
+                                yield attribute "y1" "58%"  
+                                yield attribute "x2" "98.5%"
+                                yield attribute "y2" "58%" 
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "1.5px"
+                                yield attribute "stroke-opacity" "0.5"
+                            } |> AttributeMap.ofAMap
+                        )
+
+                        //low
+                        Incremental.Svg.rect ( 
+                            amap {
+                                yield attribute "x" "2%"
+                                yield attribute "y" "58%"  
+                                yield attribute "width" "96%"
+                                yield attribute "height" "16%"
+                                yield attribute "opacity" "0.15"
+                                yield attribute "fill" "rgb(96, 96, 96)"
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "0.0"
+                            } |> AttributeMap.ofAMap
+                        )
+
+                        //contour line (low)
+                        Incremental.Svg.line ( 
+                            amap {
+                                yield attribute "x1" "1.5%"
+                                yield attribute "y1" "74%"  
+                                yield attribute "x2" "98.5%"
+                                yield attribute "y2" "74%" 
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "1.5px"
+                                yield attribute "stroke-opacity" "0.5"
+                            } |> AttributeMap.ofAMap
+                        )
+
+                        //very low
+                        Incremental.Svg.rect ( 
+                            amap {
+                                yield attribute "x" "2%"
+                                yield attribute "y" "74%"  
+                                yield attribute "width" "96%"
+                                yield attribute "height" "16%"
+                                yield attribute "opacity" "0.15"
+                                yield attribute "fill" "rgb(79,79,79)"
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "0.0"
+                            } |> AttributeMap.ofAMap
+                        )
+
+                        //contour line (very low)
+                        Incremental.Svg.line ( 
+                            amap {
+                                yield attribute "x1" "1.5%"
+                                yield attribute "y1" "90%"  
+                                yield attribute "x2" "98.5%"
+                                yield attribute "y2" "90%" 
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "1.5px"
+                            } |> AttributeMap.ofAMap
+                        )
+
+                        //contour line (vertical low)
+                        Incremental.Svg.line ( 
+                            amap {
+                                yield attribute "x1" "2%"
+                                yield attribute "y1" "7.5%"  
+                                yield attribute "x2" "2%"
+                                yield attribute "y2" "92.5%" 
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "1.5px"
+                            } |> AttributeMap.ofAMap
+                        )
+
+                        //contour line (vertical heigh)
+                        Incremental.Svg.line ( 
+                            amap {
+                                yield attribute "x1" "98%"
+                                yield attribute "y1" "7.5%"  
+                                yield attribute "x2" "98%"
+                                yield attribute "y2" "92.5%" 
+                                yield attribute "stroke" "rgb(255,255,255)"
+                                yield attribute "stroke-width" "1.5px"
+                            } |> AttributeMap.ofAMap
+                        )
+
+                        Svg.svg [style "width:100%;height:100%;"; attribute "viewBox" "0 0 100 100";attribute "preserveAspectRatio" "none"] [      
+                            //chart line
+                            Incremental.Svg.polygon ( 
+                                amap {
+                                    yield attribute "points" "98,90 2,90 10,30"
+                                    yield attribute "fill" "rgb( 122, 239, 253 )" 
+                                    yield attribute "opacity" "0.5"
+                                    yield attribute "stroke" "rgb(255,255,255)"
+                                    yield attribute "stroke-width" "0.0"
+                                } |> AttributeMap.ofAMap
+                            )
+                        
+                        ]
+
+
+                        
                        
+
+
+
                 ]
+
+                
               ]              
             )
         | Some other -> 

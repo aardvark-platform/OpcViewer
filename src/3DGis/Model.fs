@@ -36,7 +36,7 @@ type Message =
   | AnimateCameraComplete
   | AnimateCameraReturn
   | Tick                    of Time
-  | SetProjection          of Option<Alternative>
+  | SetProjection           of Option<Alternative>
   | RenderControlResized of V2i
 
 
