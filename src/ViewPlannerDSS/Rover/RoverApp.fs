@@ -207,7 +207,7 @@ module RoverApp =
     let rec buildList2 (l:List<V2d>) (inputPan:List<V2d>) (inputTilt:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (panC:float) (tiltC:float)=
         match panC,tiltC with 
             | (p,t) when  p > 1.0 && t > 1.0 -> l
-            | (p,t) when  p < 1.0 && t < 1.0 -> 
+            | (p,t) when  (p < 1.0 && t < 1.0) || (p >= 1.0 && t < 1.0) -> 
                         let lastItem = l.Item(l.Length-1)
                         let currPan = lastItem.X
                         let ref1 = V2d(currPan, inputTilt.Item(0).Y)
