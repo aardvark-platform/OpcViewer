@@ -17,6 +17,7 @@ type LinkingFeature =
         position: V3d
         rotation: Rot3d
         trafo: Trafo3d
+        trafoInv: Trafo3d
         color: C4b
         instrument: Instrument
     }
@@ -29,6 +30,7 @@ module LinkingFeature =
         position = V3d.Zero
         rotation = Rot3d.Identity
         trafo = Trafo3d.Identity
+        trafoInv = Trafo3d.Identity
         color = C4b.Black
         instrument = Instrument.NotImplemented
     }

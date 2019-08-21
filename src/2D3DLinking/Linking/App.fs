@@ -92,8 +92,9 @@ module LinkingApp =
 
                 let rotTranslateTrafo = innerRot * Trafo3d(rotation) * translation
                 let trafo = frustumTrafoInv * rotTranslateTrafo
+                let trafoInv = rotTranslateTrafo.Inverse * frustumTrafo
 
-                let hull = (rotTranslateTrafo.Inverse * frustumTrafo) |> toHull3d 
+                let hull = trafoInv |> toHull3d 
 
                 (f.id, {
                     id = f.id
@@ -101,6 +102,7 @@ module LinkingApp =
                     position = position
                     rotation = rotation
                     trafo = trafo
+                    trafoInv = trafoInv
                     color = color
                     instrument = f.instrument
                 })
@@ -229,7 +231,7 @@ module LinkingApp =
             |> Sg.set
 
         let pickingIndicator =
-            Sg.sphere 3 (Mod.constant(C4b.VRVisGreen)) (Mod.constant(0.1))
+            Sg.sphere 3 (Mod.constant(C4b.Green)) (Mod.constant(0.1))
             |> Sg.noEvents
             |> Sg.shader {
                 do! DefaultSurfaces.stableTrafo
@@ -278,6 +280,21 @@ module LinkingApp =
             m.selectedFrustums
             |> ASet.chooseM (fun k -> AMap.tryFind k m.frustums)
 
+        let productsAndPoints =
+            products
+            |> ASet.map(fun prod ->
+                m.pickingPos 
+                |> Mod.map(fun f -> 
+                    f 
+                    |> Option.defaultValue V3d.Zero
+                    |> fun p -> V4d(p, 1.0)
+                    |> prod.trafoInv.Forward.Transform
+                    |> fun p -> V3d((p.XY / p.W), p.Z)
+                )
+                |> Mod.map(fun pp -> (prod, pp))
+            )
+            |> ASet.mapM (fun p -> p)
+
         let countStringPerInstrument =
             products
             |> ASet.groupBy (fun f -> f.instrument)
@@ -316,8 +333,16 @@ module LinkingApp =
                     top: 0;
                     left: 0;
                     display: inline-block;
-                    height: 100%
-                }")))
+                    width: 100%;
+                    height: 100%;
+                }
+                
+                .product-view span {
+                    position: absolute;
+                    z-index: 5;
+                    left: 0;
+                }
+                ")))
 
         require dependencies (
             body [style "width: 100%; height:100%; background: transparent";] [
@@ -349,18 +374,21 @@ module LinkingApp =
                     ]
 
                     Incremental.div (AttributeMap.ofList[style "overflow-x: scroll; overflow-y: hidden; white-space: nowrap; height: 100%; padding-top: 2.8em;"]) (
-                        products
+                        productsAndPoints
                         |> ASet.toAList
-                        |> AList.map (fun f -> 
+                        |> AList.sortBy (fun (f, p) ->
+                            p.X*p.X + p.Y*p.Y // sort by euclidean distance from center
+                        )
+                        |> AList.map (fun (f, p) -> 
                             let fileName = sprintf "MinervaData\%s.png" (f.id.ToLower())
                             let imgSrc = System.IO.Path.GetFullPath(System.IO.Path.Combine(Environment.CurrentDirectory, fileName))
                             let webSrc = "file:///" + imgSrc.Replace("\\", "/")
+                            
+                            let c = (p.XY + 1.0) * 0.5 // transform [-1, 1] to [0, 1]
+
                             //div[style "display: inline-block; position: relative; margin: 0 5px";
                             div[
                                 clazz "product-view"
-                            ][
-                            div[
-                                clazz "product-view-inner"
                             ][
                                 img[
                                     clazz f.id; 
@@ -372,13 +400,14 @@ module LinkingApp =
                                 //style "position: absolute; top: 0; left: 0; display: inline-block; height: 100%"
                                 ][
                                     Svg.circle[
-                                        attribute "cx" "0.5"
-                                        attribute "cy" "0.5"
+                                        attribute "cx" (sprintf "%f" c.X)
+                                        attribute "cy" (sprintf "%f" c.Y)
                                         attribute "r" "0.05"
-                                        attribute "fill" "red"
+                                        attribute "fill" (C4b.Green |> cssColor)
                                     ]
                                 ]
-                            ]]
+                                text (p.ToString("0.00"))
+                            ]
                         )
                     )
                 ]
