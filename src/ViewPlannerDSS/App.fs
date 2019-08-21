@@ -555,7 +555,6 @@ module App =
        [
           m.drawing |> DrawingApp.view
           points |> Sg.dynamic
-          shading
           frustumBox
         ] |> Sg.ofList
         

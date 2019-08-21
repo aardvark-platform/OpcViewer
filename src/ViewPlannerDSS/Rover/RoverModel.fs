@@ -50,6 +50,7 @@ type RoverModel =
         up       :       V3d
         frustum  :       Frustum
         fov      :       float
+        overlap  :       float                      //how much overlap between sampling pictures
         currentCamType : Option<CameraType>
         cameraOptions :  hmap<CameraType, string>
         reg :            Option<plist<V3d>>
@@ -81,7 +82,7 @@ module RoverModel =
         FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
          }
 
-    let initfrustum = Frustum.perspective 30.0 0.1 20.0 1.0
+    let initfrustum = Frustum.perspective 15.0 0.1 20.0 1.0
     
     let initial = 
         {
@@ -106,7 +107,7 @@ module RoverModel =
         up     = initCamera.view.Up
         frustum = initfrustum
 
-        currentCamType = Some Camera30
+        currentCamType = Some Camera15
         cameraOptions = HMap.ofList [Camera60, "Camera60"; Camera30, "Camera30"; Camera15, "Camera15"; Stereo, "Stereo"]
         
         reg = None
@@ -122,7 +123,8 @@ module RoverModel =
         samplingValues = PList.empty
         currIdx = 0
         viewList = PList.empty
-        fov = 30.0
+        fov = 15.0
+        overlap = 0.0
         }
 
     let getViewProj (cam : IMod<CameraView>) (frustum:IMod<Frustum>) =
