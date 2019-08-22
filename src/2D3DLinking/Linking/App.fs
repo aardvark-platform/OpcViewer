@@ -324,6 +324,8 @@ module LinkingApp =
                     display: inline-block;
                     position: relative;
                     margin: 0 5px;
+                    border-top: 2px solid white;
+                    border-radius: 2px;
                 }
 
                 .product-view img {
@@ -398,8 +400,7 @@ module LinkingApp =
                             let sensor = V2d(sensorW, sensorH)
                             let image = V2d(imageW, imageH)
 
-                            let border = 1.0 - (image / sensor) // ratio is inside so take 1.0 -
-                            let max = 1.0 - (border) // * 0.5) split border to both sides
+                            let max = image / sensor // ratio is inside
 
                             (f, p, (image, sensor, max))
                         )
@@ -417,20 +418,20 @@ module LinkingApp =
                             let webSrc = "file:///" + imgSrc.Replace("\\", "/")
                             
                             let (w, h) = f.imageDimensions
-                            let imDim = V2d(w, h)
                             //let c = ((p.XY * V2d(1.0, -1.0)) + 1.0) * 0.5 // transform [-1, 1] to [0, 1]
                             let c = (p.XY * V2d(1.0, -1.0)) // flip y
 
-                            let cc = c / max.XX // correct for max
+                            let cc = c / max // correct for max
                             
                             let ratio = (float h)/(float w)
                             let invRatio = 1.0/ratio
 
-                            let rc = cc * invRatio
+                            let rc = cc * V2d(invRatio, 1.0)
 
                             //div[style "display: inline-block; position: relative; margin: 0 5px";
                             div[
                                 clazz "product-view"
+                                style (sprintf "border-color: %s" (f.instrument |> MinervaModel.instrumentColor |> cssColor))
                             ][
                                 img[
                                     clazz f.id; 
@@ -478,7 +479,7 @@ module LinkingApp =
                                         attribute "stroke-width" "0.01"
                                     ]
                                 ]
-                                text (sprintf "%s %s %s" (p.ToString("0.00")) (max.ToString("0.00")) (imDim.ToString("0.00")))
+                                text (sprintf "%s" (cc.ToString("0.00")))
                             ]
                         )
                     )
