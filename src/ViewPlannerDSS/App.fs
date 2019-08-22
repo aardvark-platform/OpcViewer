@@ -253,7 +253,7 @@ module App =
                     |> Sg.trafo (Mod.constant shiftV)
                     |> Sg.effect [
                         toEffect DefaultSurfaces.stableTrafo
-                        toEffect (DefaultSurfaces.constantColor C4f.White)
+                        toEffect (DefaultSurfaces.constantColor C4f.Red)
                         Shader.PointSprite.Effect
                         ]
             

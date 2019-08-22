@@ -397,15 +397,14 @@ module RoverApp =
                 let setR = initializePan rover thetaPhi.X
                 let setR2 = initializeTilt setR thetaPhi.Y
 
-                let viewMatrices = thetaPhiValues |> List.map(fun m -> calculateViewMatrix setR2 m.X m.Y) |> PList.ofList
-                
-               
-
-                {setR2 with thetaPhiValues = plist; projPoints = projectionPoints; viewList = viewMatrices }
+                //let viewMatrices = thetaPhiValues |> List.map(fun m -> calculateViewMatrix setR2 m.X m.Y) |> PList.ofList
+                //{setR2 with thetaPhiValues = plist; projPoints = projectionPoints; viewList = viewMatrices }
+                {setR2 with thetaPhiValues = plist; projPoints = projectionPoints}
         
         let samplings = sampling newRover
+        let viewMatrices = samplings |> List.map(fun m -> calculateViewMatrix newRover m.X m.Y) |> PList.ofList
 
-        {newRover with samplingValues = samplings |> PList.ofList}
+        {newRover with samplingValues = samplings |> PList.ofList; viewList = viewMatrices}
         
        
         
@@ -420,13 +419,13 @@ module RoverApp =
     let changeCam (rover:RoverModel) (camtype:Option<CameraType>)=
         
         match camtype with
-            |Some Camera60 -> 
-                let fr = Frustum.perspective 60.0 0.1 10.0 1.0
-                {rover with frustum = fr; currentCamType = Some Camera60; fov = 60.0}
+            |Some Camera5 -> 
+                let fr = Frustum.perspective 5.0 0.1 10.0 1.0
+                {rover with frustum = fr; currentCamType = Some Camera5; fov = 5.0}
             
-            |Some Camera30 ->
-                let fr = Frustum.perspective 30.0 0.1 10.0 1.0
-                {rover with frustum = fr; currentCamType = Some Camera30; fov = 30.0}
+            |Some Camera10 ->
+                let fr = Frustum.perspective 10.0 0.1 10.0 1.0
+                {rover with frustum = fr; currentCamType = Some Camera10; fov = 10.0}
             
             |Some Camera15 ->
                 let fr = Frustum.perspective 15.0 0.1 10.0 1.0

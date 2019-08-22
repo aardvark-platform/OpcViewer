@@ -13,10 +13,10 @@ type CameraInput =
     }
 
 type CameraType =
-    | Camera60   //fov = 60°
-    | Camera30   //fov = 30°
-    | Camera15   //fov = 15°
-    | Stereo    //two cameras
+    | Camera5   
+    | Camera10   
+    | Camera15   
+    | Stereo    
 
  type Overlap =
     | Percent_20
@@ -96,7 +96,7 @@ module RoverModel =
         FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
          }
 
-    let initfrustum = Frustum.perspective 15.0 0.1 20.0 1.0
+    let initfrustum = Frustum.perspective 5.0 0.1 20.0 1.0
     
     let initial = 
         {
@@ -123,8 +123,8 @@ module RoverModel =
 
         currentPanOverlap = Some Percent_20
         currentTiltOverlap = Some Percent_20
-        currentCamType = Some Camera15
-        cameraOptions = HMap.ofList [Camera60, "Camera60"; Camera30, "Camera30"; Camera15, "Camera15"; Stereo, "Stereo"]
+        currentCamType = Some Camera5
+        cameraOptions = HMap.ofList [Camera5, "5°"; Camera10, "10°"; Camera15, "15°"; Stereo, "Stereo"]
         panOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
         tiltOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
         
@@ -141,7 +141,7 @@ module RoverModel =
         samplingValues = PList.empty
         currIdx = 0
         viewList = PList.empty
-        fov = 15.0
+        fov = 5.0
         panOverlap = 20.0       //at least 20% according to https://mars.nasa.gov/msl/mission/instruments/mastcam/
         tiltOverlap = 20.0
         }
