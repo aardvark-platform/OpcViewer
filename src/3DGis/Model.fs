@@ -122,6 +122,9 @@ type Model =
 
         cameraAnimEndTime    : float
 
+        offsetUIDrawX        : float
+        offsetUIDrawY        : float
+
 
     }
 
