@@ -11,6 +11,8 @@ open OpcViewer.Base.Picking
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 
+open System.Collections.Generic
+
 
 type Time = float
 
@@ -124,6 +126,8 @@ type Model =
 
         offsetUIDrawX        : float
         offsetUIDrawY        : float
+        pointList            : List<V3d>   
+        altitudeList         : List<float>
 
 
     }

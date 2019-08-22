@@ -359,9 +359,10 @@ module App =
 
                         pointList.Add(hitpoint)
                         altitudeList.Add(pointHeight.altitude)
-                        //Log.line "hitpoint: %A  -> altitude: %f" hitpoint sc.altitude
+
                         DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None)))
                     )
+                                        
                 |> Option.defaultValue x
                               
             let newDraw = List.fold drawPoints newDrawingModel [1.0..(samplingSize - 1.0)]
@@ -384,6 +385,8 @@ module App =
                     minHeight           = Math.Round(altitudeList.Min (altitudeList.Item(0)),2)
                     maxHeight           = Math.Round(altitudeList.Max (altitudeList.Item(0)),2)
                     accDistance         = Math.Round(accDistance (pointList.Count-1) 0.0,2)
+                    pointList           = pointList
+                    altitudeList        = altitudeList
             }
         else
             { model with picking = pickingModel; drawing = newDrawingModel }
@@ -552,8 +555,8 @@ module App =
               let polygonColor = "rgb( 122, 239, 253 )"
               let heightRectOpacity = "0.15"
 
-              body [style "width: 100%; height:100%; background: transparent; overflow-y:visible"] [
-                 Svg.svg [clazz "mySvg"; style "width: 100%; height:100%;user-select: none;"; ] [
+              body [style "width: 100%; height:100%; background: transparent; overflow-y:visible "] [
+                 Svg.svg [clazz "mySvg"; style "width: 100%; height:100%; user-select: none"; ] [
                         
                         //Box
                         Incremental.Svg.rect ( 
@@ -882,7 +885,7 @@ module App =
                             Incremental.Svg.polygon ( 
                                 amap {
                                     let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
+                                    let! yOffset = m.offsetUIDrawY                                   
                             
                                     let sX = (sprintf "%f" xOffset) 
                                     let sY = (sprintf "%f" yOffset) 
@@ -893,8 +896,30 @@ module App =
                                     let space = " "
                                     let comma = ","
 
+                                    let! pointList = m.pointList
+                                    let! altitudeList = m.altitudeList
+
+                                    let! maxAltitude = m.maxHeight
+                                    let! minAltitude = m.minHeight
+                                    let range = maxAltitude - minAltitude
+                                    
+                                    let lineCoord = 
+                                        let mutable currentPoints = ""
+                                        for i = 0 to altitudeList.Count-1 do
+                                            let currentX = (100.0/ (float) (altitudeList.Count-1)) * (float i)
+                                            Log.line "currentX: %A" currentX
+                                            let currentY = ((altitudeList.Item(i) - minAltitude) / range) * 100.0
+
+                                            let normalizeX = (sprintf "%f" (xOffset+ (currentX/100.0) * (100.0-xOffset*2.0)) )
+                                            let normalizeY = (sprintf "%f" (yOffset+ ((100.0-currentY)/100.0) * (100.0-yOffset*2.0)) )
+                                            currentPoints <- currentPoints + normalizeX + comma + normalizeY + space
+                                        currentPoints
+                                        
+
+                                    
+                                    
                                     let initialPointsCoord = wX + comma + wY + space + sX + comma + wY + space
-                                    let finalPointsCoord = initialPointsCoord + "10,30"
+                                    let finalPointsCoord = initialPointsCoord + lineCoord
 
                                     yield attribute "points" finalPointsCoord
                                     yield attribute "fill" polygonColor
@@ -1042,6 +1067,8 @@ module App =
           currentOption        = Some O
           offsetUIDrawX        = 2.0
           offsetUIDrawY        = 10.0
+          pointList            = new List<V3d>() 
+          altitudeList         = new List<float>() 
         }
 
       {
