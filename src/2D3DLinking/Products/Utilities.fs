@@ -73,6 +73,13 @@ module Files =
             let y = (row.GetColumn "{CartY}Y").AsFloat()
             let z = (row.GetColumn "{CartZ}Z").AsFloat()
 
+            let tryInt (name: string) =
+                try Some ((row.GetColumn name).AsInteger())
+                with _ -> None
+
+            let w = (tryInt "{Value}Image_width") |> Option.defaultValue 0
+            let h = (tryInt "{Value}Image_height") |> Option.defaultValue 0
+
             let instName = row.GetColumn "{Category}Instrument_name"
 
             let props = getProperties instrument inst row
@@ -93,6 +100,7 @@ module Files =
                   properties  = props
                   geometry    = geo
                   sol         = sol'
+                  dimensions  = (w, h)
                 } 
             Some feature
 
@@ -127,6 +135,7 @@ module Files =
         // https://minerva.eox.at/store/datafile/FRB_495137799RADLF0492626FHAZ00323M1/frb_495137799radlf0492626fhaz00323m1.tif
         let filename = featureId.ToLower() + ".tif" //"frb_495137799radlf0492626fhaz00323m1.tif"
         let imagePath = @".\MinervaData\" + filename
+        let targetPath = @".\MinervaData\" + featureId.ToLower() + ".png"
         let path = "https://minerva.eox.at/store/datafile/" + featureId + "/" + filename
         match (File.Exists imagePath) with
         | true -> ()
@@ -139,9 +148,8 @@ module Files =
                 client.DownloadFile(path, imagePath) |> ignore
                 let targetPath = @".\MinervaData\" + featureId.ToLower() + ".png"
                 PixImage.Create(imagePath).ToPixImage<byte>().SaveAsImage(targetPath)
-            with e -> Log.error "[Minerva] error: %A" e
+            with e -> Log.line "[Minerva] error: %A" e
             
-            //PixImage.Create()
 module Shader = 
 
     type UniformScope with

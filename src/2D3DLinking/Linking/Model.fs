@@ -20,6 +20,7 @@ type LinkingFeature =
         trafoInv: Trafo3d
         color: C4b
         instrument: Instrument
+        imageDimensions: int * int
     }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -33,6 +34,7 @@ module LinkingFeature =
         trafoInv = Trafo3d.Identity
         color = C4b.Black
         instrument = Instrument.NotImplemented
+        imageDimensions = (0, 0)
     }
 
 [<DomainType>]

@@ -50,7 +50,7 @@ module LinkingApp =
 
         // creating frustums by specifying fov
         let createFrustumProj (fov : float) =
-            let frustum = Frustum.perspective fov 0.01 15.0 1.0
+            let frustum = Frustum.perspective fov 0.01 15.0 (1.3333333333333333333)
             let proj = Frustum.projTrafo(frustum)
             (proj, proj.Inverse)
 
@@ -77,6 +77,8 @@ module LinkingApp =
                 let angles = f.geometry.coordinates.Head
 
                 let color = f.instrument |> MinervaModel.instrumentColor
+
+                let dimensions = f.dimensions
 
                 let frustumTrafo, frustumTrafoInv =
                     match f.instrument with
@@ -105,6 +107,7 @@ module LinkingApp =
                     trafoInv = trafoInv
                     color = color
                     instrument = f.instrument
+                    imageDimensions = dimensions
                 })
             )
             |> PList.toList
@@ -231,7 +234,7 @@ module LinkingApp =
             |> Sg.set
 
         let pickingIndicator =
-            Sg.sphere 3 (Mod.constant(C4b.Green)) (Mod.constant(0.1))
+            Sg.sphere 3 (Mod.constant(C4b.VRVisGreen)) (Mod.constant(0.1))
             |> Sg.noEvents
             |> Sg.shader {
                 do! DefaultSurfaces.stableTrafo
@@ -332,8 +335,8 @@ module LinkingApp =
                     position: absolute;
                     top: 0;
                     left: 0;
+                    right: 0;
                     display: inline-block;
-                    width: 100%;
                     height: 100%;
                 }
                 
@@ -343,10 +346,21 @@ module LinkingApp =
                     left: 0;
                 }
                 ")))
+           
+        let scriptTag =
+           DomNode.Text("script", None, AttributeMap.Empty, (Mod.constant("
+
+                function productLoad(elem) {
+                    var h = $(this).height();
+                    var w = $(this).width();
+                }
+
+           ")))
 
         require dependencies (
             body [style "width: 100%; height:100%; background: transparent";] [
                 styleTag
+                scriptTag
                 div[style "color:white; padding: 5px; width: 100%; height: 100%; position: absolute"][
                     div[style "padding: 5px; position: fixed"][
                         span[clazz "ui label inverted"; style "margin-right: 10px"][
@@ -376,15 +390,43 @@ module LinkingApp =
                     Incremental.div (AttributeMap.ofList[style "overflow-x: scroll; overflow-y: hidden; white-space: nowrap; height: 100%; padding-top: 2.8em;"]) (
                         productsAndPoints
                         |> ASet.toAList
-                        |> AList.sortBy (fun (f, p) ->
-                            p.X*p.X + p.Y*p.Y // sort by euclidean distance from center
+                        |> AList.map (fun (f, p) ->
+                            // check if inside image!
+                            let (sensorW, sensorH) = (1600, 1200)
+                            let (imageW, imageH) = f.imageDimensions
+
+                            let sensor = V2d(sensorW, sensorH)
+                            let image = V2d(imageW, imageH)
+
+                            let border = 1.0 - (image / sensor) // ratio is inside so take 1.0 -
+                            let max = 1.0 - (border) // * 0.5) split border to both sides
+
+                            (f, p, (image, sensor, max))
                         )
-                        |> AList.map (fun (f, p) -> 
+                        |> AList.sortBy (fun (f, p, (image, sensor, max)) ->
+                            let ratioP = p.XY * V2d(1.0, sensor.Y / sensor.X)
+                            let dist = V2d.Dot(ratioP, ratioP) // euclidean peseudo distance (w/o root)
+
+                            if abs(p.X) > max.X || abs(p.Y) > max.Y
+                            then infinity
+                            else dist
+                        )
+                        |> AList.map (fun (f, p, (image, sensor, max)) -> 
                             let fileName = sprintf "MinervaData\%s.png" (f.id.ToLower())
                             let imgSrc = System.IO.Path.GetFullPath(System.IO.Path.Combine(Environment.CurrentDirectory, fileName))
                             let webSrc = "file:///" + imgSrc.Replace("\\", "/")
                             
-                            let c = (p.XY + 1.0) * 0.5 // transform [-1, 1] to [0, 1]
+                            let (w, h) = f.imageDimensions
+                            let imDim = V2d(w, h)
+                            //let c = ((p.XY * V2d(1.0, -1.0)) + 1.0) * 0.5 // transform [-1, 1] to [0, 1]
+                            let c = (p.XY * V2d(1.0, -1.0)) // flip y
+
+                            let cc = c / max.XX // correct for max
+                            
+                            let ratio = (float h)/(float w)
+                            let invRatio = 1.0/ratio
+
+                            let rc = cc * invRatio
 
                             //div[style "display: inline-block; position: relative; margin: 0 5px";
                             div[
@@ -394,19 +436,49 @@ module LinkingApp =
                                     clazz f.id; 
                                     attribute "alt" f.id; 
                                     attribute "src" webSrc;
+                                    attribute "onload" "productLoad(this);"
                                     //style "height: 100%; display: inline-block"
                                 ]
-                                Svg.svg[attribute "viewBox" "0 0 1 1"
+                                Svg.svg[attribute "viewBox" (sprintf "%f -1 %f 2" (-invRatio) (invRatio * 2.0))
                                 //style "position: absolute; top: 0; left: 0; display: inline-block; height: 100%"
                                 ][
                                     Svg.circle[
-                                        attribute "cx" (sprintf "%f" c.X)
-                                        attribute "cy" (sprintf "%f" c.Y)
-                                        attribute "r" "0.05"
-                                        attribute "fill" (C4b.Green |> cssColor)
+                                        attribute "cx" (sprintf "%f" rc.X)
+                                        attribute "cy" (sprintf "%f" rc.Y)
+                                        attribute "r" "0.1"
+                                        //attribute "fill" (C4b.VRVisGreen |> cssColor)
+                                        attribute "fill" "transparent"
+                                        attribute "stroke" (C4b.VRVisGreen |> cssColor)
+                                        attribute "stroke-width" "0.02"
+                                    ]
+                                    // vertical line
+                                    Svg.line[
+                                        attribute "x1" "0"
+                                        attribute "y1" "-1"
+                                        attribute "x2" "0"
+                                        attribute "y2" "1"
+                                        attribute "stroke" "black"
+                                        attribute "stroke-width" "0.01"
+                                    ]
+                                    // horizontal line
+                                    Svg.line[
+                                        attribute "x1" (sprintf "%f" -invRatio)
+                                        attribute "y1" "0"
+                                        attribute "x2" (sprintf "%f" invRatio)
+                                        attribute "y2" "0"
+                                        attribute "stroke" "black"
+                                        attribute "stroke-width" "0.01"
+                                    ]
+                                    Svg.line[
+                                        attribute "x1" "0"
+                                        attribute "y1" "0"
+                                        attribute "x2" (sprintf "%f" rc.X)
+                                        attribute "y2" (sprintf "%f" rc.Y)
+                                        attribute "stroke" "black"
+                                        attribute "stroke-width" "0.01"
                                     ]
                                 ]
-                                text (p.ToString("0.00"))
+                                text (sprintf "%s %s %s" (p.ToString("0.00")) (max.ToString("0.00")) (imDim.ToString("0.00")))
                             ]
                         )
                     )

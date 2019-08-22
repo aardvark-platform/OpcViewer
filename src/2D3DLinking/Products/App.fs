@@ -114,7 +114,7 @@ module MinervaApp =
 
           | FlyToProduct _ -> model //handled in higher level app
           | OpenTif (access, id) -> 
-            Files.loadTif access id
+            Files.loadTif access id |> ignore
             model
           | LoadTifs access ->
             Log.startTimed "[Minerva] Fetching all TIFs from data file"

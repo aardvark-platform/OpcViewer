@@ -2,7 +2,7 @@
   "profiles": {
     "2D3DLinking": {
       "commandName": "Project",
-      "commandLineArgs": "opc=\"C:\\Users\\Dominik\\Desktop\\Praktikum\\Data\\1087_004777_MSLMST_0013\" -rotate dump=\"C:\\Users\\Dominik\\Desktop\\Praktikum\\Data\\dump_1087.csv\" cache=dump=\"C:\\Users\\Dominik\\Desktop\\Praktikum\\Data\\dump.cache\" access=\"minerva:tai8Ies7\""
+      "commandLineArgs": "opc=\"C:\\Users\\Dominik\\Desktop\\Praktikum\\Data\\1087_004777_MSLMST_0013\" -rotate dump=\"C:\\Users\\Dominik\\Desktop\\Praktikum\\Data\\dump_1087.csv\" cache=\"C:\\Users\\Dominik\\Desktop\\Praktikum\\Data\\dump.cache\" access=\"minerva:tai8Ies7\""
     }
   }
 }
