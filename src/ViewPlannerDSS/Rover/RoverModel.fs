@@ -18,6 +18,12 @@ type CameraType =
     | Camera15   //fov = 15°
     | Stereo    //two cameras
 
+ type Overlap =
+    | Percent_20
+    | Percent_30
+    | Percent_40
+    | Percent_50
+
 
 type ProjectionSphere = 
     {
@@ -50,9 +56,14 @@ type RoverModel =
         up       :       V3d
         frustum  :       Frustum
         fov      :       float
-        overlap  :       float                      //how much overlap between sampling pictures
+        panOverlap  :    float     
+        tiltOverlap :    float
         currentCamType : Option<CameraType>
+        currentPanOverlap : Option<Overlap>
+        currentTiltOverlap : Option<Overlap>
         cameraOptions :  hmap<CameraType, string>
+        panOverlapOptions :  hmap<Overlap, string>
+        tiltOverlapOptions :  hmap<Overlap, string>
         reg :            Option<plist<V3d>>
         projsphere :     ProjectionSphere
         projPoints :     plist<V3d>
@@ -73,6 +84,9 @@ type RoverAction =
     | MoveToRegion 
     | CalculateAngles
     | RotateToPoint
+    | ChangePanOverlap of Option<Overlap>
+    | ChangeTiltOverlap of Option<Overlap>
+
 
 
 module RoverModel =
@@ -107,8 +121,12 @@ module RoverModel =
         up     = initCamera.view.Up
         frustum = initfrustum
 
+        currentPanOverlap = Some Percent_20
+        currentTiltOverlap = Some Percent_20
         currentCamType = Some Camera15
         cameraOptions = HMap.ofList [Camera60, "Camera60"; Camera30, "Camera30"; Camera15, "Camera15"; Stereo, "Stereo"]
+        panOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
+        tiltOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
         
         reg = None
 
@@ -124,7 +142,8 @@ module RoverModel =
         currIdx = 0
         viewList = PList.empty
         fov = 15.0
-        overlap = 0.0
+        panOverlap = 20.0       //at least 20% according to https://mars.nasa.gov/msl/mission/instruments/mastcam/
+        tiltOverlap = 20.0
         }
 
     let getViewProj (cam : IMod<CameraView>) (frustum:IMod<Frustum>) =

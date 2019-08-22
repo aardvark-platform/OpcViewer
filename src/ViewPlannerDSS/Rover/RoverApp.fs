@@ -206,7 +206,7 @@ module RoverApp =
     //panC, tilt C --> interpolation coefficients
     let rec buildList2 (l:List<V2d>) (inputPan:List<V2d>) (inputTilt:List<V2d>) (panR:int) (tiltR:int) (panC:float) (tiltC:float)=
         match panC,tiltC with 
-            | (p,t) when  p > 1.0 && t > 1.0 -> l
+            | (p,t) when  p >= 1.0 && t >= 1.0 -> l
             | (p,t) when  (p < 1.0 && t < 1.0) || (p >= 1.0 && t < 1.0) -> 
                         let lastItem = l.Item(l.Length-1)
                         let currPan = lastItem.X
@@ -223,29 +223,32 @@ module RoverApp =
                         let p1 = inputPan.Item(0)
                         let p2 = inputPan.Item(1)
                         let ip = 1.0 / (float(panR))
-                        //let it = if tiltR = 1 then 0.5 else 1.0 / (float(tiltR))
                         let newpanC = panC + ip
                         let interpolated = p1 * (1.0-newpanC) + p2 * newpanC
                         let newList = List.append l [V2d(interpolated.X, lastItem.Y)]
                         //new input list
                         let newInputTilt = [inputTilt.Item(1); inputTilt.Item(0)]
                         buildList2 newList inputPan newInputTilt panR tiltR newpanC 0.0
-            | _,_ -> l 
+            | _,_-> l 
 
 
     let sampling (rover : RoverModel) = 
         
+        let panOverlap = rover.panOverlap
+        let tiltOverlap = rover.tiltOverlap
+
         let fov = rover.fov
         let values = rover.thetaPhiValues
         let li = values |> PList.toList
         let pans = li |> List.map (fun l -> l.X) //list with just pan values
         
-        let min = pans |> Seq.indexed |> Seq.min
-        let idx = fst min
+        //let min = pans |> Seq.indexed |> Seq.min
+        //let idx = fst min
 
         let tilts = li |> List.map (fun l -> l.Y) //list with just tilt values
 
-        
+        let panRef = fov * (1.0 - (panOverlap/100.0))
+        let tiltRef = fov * (1.0 - (tiltOverlap/100.0))
 
 
         //sort pan values
@@ -255,7 +258,7 @@ module RoverApp =
         let maxPan = sortedPans.Item(sortedPans.Length - 1)
         let deltaPan = Math.Abs (maxPan - minPan)
         
-        let panningRate = int(Math.Round(deltaPan / fov))
+        let panningRate = int(Math.Round(deltaPan / panRef))
         printfn "pan delta %A rate %A " deltaPan panningRate
 
         //sort tilt values
@@ -280,7 +283,7 @@ module RoverApp =
         //let fovHalf = fov/2.0
         //let deltaBetween = ((Math.Abs(deltaTilt)) - fovHalf)
         //let adjustedTilt =  fovHalf - deltaBetween
-        let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (fov)))
+        let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef)))
         printfn "tilt delta %A rate %A " deltaTilt tiltingRate
 
         //generate a sampling list with pan and tilt values
@@ -290,17 +293,12 @@ module RoverApp =
         let inputPan = [p2;p3]
         let inputTilt = [p1;p2]
 
-        let panC = if panningRate = 1 then 0.5 else 1.0 / (float(panningRate))
-        let tiltC = if tiltingRate = 1 then 0.5 else 1.0 / (float(tiltingRate))
-
-
-
         //let samplings = buildList samplingValues panningRate tiltingRate tiltingRate -adjustedTilt fov
         //let samplings = buildList samplingValues panningRate tiltingRate tiltingRate -fov fov
 
         //sampling with algorithm buildList2
         //let rec buildList2 (l:List<V2d>) (inputPan:List<V2d>) (inputTilt:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (panC:float) (tiltC:float)=
-        let samplings = buildList2 samplingValues inputPan inputTilt panningRate tiltingRate 0.0 0.0 //panC tiltC
+        let samplings = buildList2 samplingValues inputPan inputTilt panningRate tiltingRate 0.0 0.0 
 
         samplings
        
@@ -437,8 +435,25 @@ module RoverApp =
             |Some Stereo -> rover //TODO 
 
             |None -> rover
+    
 
+    let changePanOverlap (rover:RoverModel) (overlap:Option<Overlap>) =
+        
+        match overlap with
+        | Some Percent_20 -> {rover with panOverlap = 20.0; currentPanOverlap = Some Percent_20}
+        | Some Percent_30 -> {rover with panOverlap = 30.0; currentPanOverlap = Some Percent_30}
+        | Some Percent_40 -> {rover with panOverlap = 40.0; currentPanOverlap = Some Percent_40}
+        | Some Percent_50 -> {rover with panOverlap = 50.0; currentPanOverlap = Some Percent_50}
+        | None -> rover
 
+    let changeTiltOverlap (rover:RoverModel) (overlap:Option<Overlap>) = 
+         
+         match overlap with
+         | Some Percent_20 -> {rover with tiltOverlap = 20.0; currentTiltOverlap = Some Percent_20}
+         | Some Percent_30 -> {rover with tiltOverlap = 30.0; currentTiltOverlap = Some Percent_30}
+         | Some Percent_40 -> {rover with tiltOverlap = 40.0; currentTiltOverlap = Some Percent_40}
+         | Some Percent_50 -> {rover with tiltOverlap = 50.0; currentTiltOverlap = Some Percent_50}
+         | None -> rover
 
 
 
@@ -466,6 +481,12 @@ module RoverApp =
             
             | RotateToPoint ->
                 rotateToPoint rover
+            
+            | ChangePanOverlap o ->
+                changePanOverlap rover o
+            
+            | ChangeTiltOverlap o ->
+                changeTiltOverlap rover o
                 
                 
               

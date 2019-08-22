@@ -176,35 +176,10 @@ module App =
         | UpdateDockConfig cfg ->
             { model with dockConfig = cfg }
 
-        | RoverAction msg -> //REVIEW
-            match msg with
-                  | ChangePosition pos -> 
-                        let r = RoverApp.update model.rover (ChangePosition pos)
-                        {model with rover = r}
-                  | ChangePan p -> 
-                    let r = RoverApp.update model.rover (ChangePan p)
-                    {model with rover = r}
+        | RoverAction msg -> 
+            let r = RoverApp.update model.rover msg
+            {model with rover = r}
                     
-                  | ChangeTilt t -> 
-                    let r = RoverApp.update model.rover (ChangeTilt t)
-                    {model with rover = r}
-                
-                  | MoveToRegion ->
-                    let r = RoverApp.update model.rover (MoveToRegion)
-                    {model with rover = r}
-                
-                  | SwitchCamera c ->
-                    let r = RoverApp.update model.rover (SwitchCamera c)
-                    {model with rover = r}
-                
-                  | CalculateAngles -> 
-                    let r = RoverApp.update model.rover (CalculateAngles)
-                    {model with rover = r}
-                   
-                  | RotateToPoint ->
-                    let r = RoverApp.update model.rover (RotateToPoint)
-                    {model with rover = r}
-        
         | SaveConfigs msg ->
             match msg with 
             | Some CameraState -> 
@@ -654,7 +629,10 @@ module App =
                 p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
                 p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
                 p[][div[][text "Select Camera: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
-                
+                p[][div[][text "Select Pan Overlap: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.panOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentPanOverlap RoverAction.ChangePanOverlap ]] |> UI.map RoverAction
+                p[][div[][text "Select Tilt Overlap: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.tiltOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentTiltOverlap RoverAction.ChangeTiltOverlap ]] |> UI.map RoverAction
+
+
                 //button [onClick (fun _ -> RoverAction.MoveToRegion)]  [text "Move to region"] |> UI.map RoverAction
                 button [onClick (fun _ -> RoverAction.CalculateAngles)]  [text "calculate values"] |> UI.map RoverAction
                 button [onClick (fun _ -> RoverAction.RotateToPoint)]  [text "rotate to points"] |> UI.map RoverAction
