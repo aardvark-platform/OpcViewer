@@ -27,7 +27,6 @@ open OpcViewer.Base.Attributes
 
 open Aardvark.VRVis.Opc
 
-open System.Collections.Generic
 
 module App = 
   open Rabbyte.Drawing
@@ -152,6 +151,108 @@ module App =
       else
         model
 
+  let getNumberOfErrors (errorHitList : int list) (index : int) = 
+      let mutable keepCounting = true
+      let mutable i = index
+      let mutable numErrors = 0
+
+      while keepCounting && i < errorHitList.Length do
+          if errorHitList.Item(i) = -1 then
+                 numErrors <- numErrors + 1
+                 i <- i + 1
+             else 
+                 keepCounting <- false
+      numErrors
+      
+  let createInterpolatedSubList (min : float) (max : float) (amount : int) =
+      let mutable subList = []
+      for i = 1 to amount do
+          subList <- subList @ [min + ((max-min)/float (amount + 1)) * float i]
+      subList
+
+  let correctSamplingErrors (altitudeList : float list) (errorHitList : int list) =
+      let correctedList = 
+          let mutable finalList = altitudeList
+          let mutable i = 0
+          while i < finalList.Length do
+              if errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = 0 then
+                  let newArray = finalList |> List.toArray                
+                  let leftArray, rightArray = newArray |> Array.splitAt i
+                  let leftList = leftArray |> Array.toList
+                  let rightList = rightArray |> Array.toList
+                  
+                  let numMissingValues = getNumberOfErrors errorHitList i
+                  let interpolatedSubList = createInterpolatedSubList (leftList.Item(leftList.Length-1)) rightList.Head numMissingValues
+                  finalList <- (leftList @ interpolatedSubList @ rightList)
+              i <- i + 1
+          finalList   
+                                    
+      correctedList
+  
+  let sampleSurfacePointsForCutView (model : Model) (pickingModel : PickingModel) (drawingModel : DrawingModel) = 
+      let firstPoint = pickingModel.intersectionPoints.Item(0)
+      let secondPoint = pickingModel.intersectionPoints.Item(1)
+      let dir = secondPoint - firstPoint
+      let samplingSize = (ceil (firstPoint-secondPoint).Length)*2.0 
+      let step = dir / samplingSize
+    
+      let mutable pointList = []
+      let mutable altitudeList = []
+      let mutable errorHitList = []
+    
+      let drawPoints x y =
+          let fray = FastRay3d(V3d.Zero, (firstPoint + (step * float y)).Normalized)         
+          model.picking.pickingInfos 
+          |> HMap.tryFind model.opcBox
+          |> Option.map (fun opcData -> 
+              match OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some opcData.kdTree) fray with
+              | Some t -> 
+                  let hitpoint = fray.Ray.GetPointOnRay t
+                  let pointHeight = CooTransformation.getLatLonAlt hitpoint Planet.Mars
+    
+                  pointList <- hitpoint :: pointList
+                  altitudeList <- pointHeight.altitude :: altitudeList
+                  errorHitList <- 0 :: errorHitList
+    
+                  DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None)) 
+              | None -> 
+                  errorHitList <- -1 :: errorHitList
+                  Log.error "[Intersection] didn't hit"
+                  x
+              )
+          |> Option.defaultValue x
+                            
+      let newDraw = List.fold drawPoints drawingModel [1.0..(samplingSize - 1.0)]
+        
+      let correctedAltitudeList= correctSamplingErrors altitudeList errorHitList  
+
+     // let l =  [0  ;   0; -1; -1;    0;   0; -1; -1;  0;   0;   0;   0;   0;  -1;  -1; -1; -1; -1; -1; 0]
+     // let al = [1.0; 2.2;          2.8; 2.2;        1.8; 5.0; 6.0; 7.0; 6.0; 13.0]
+     // correctSamplingErrors al l
+
+      let rec accDistance i acc= 
+          if i >= 1 then
+              let A = pointList.Item(i)
+              let B = pointList.Item(i-1)
+              let distance = (A-B).Length
+              accDistance (i-1) (acc+distance)
+          else 
+              acc
+    
+      { model with 
+              picking             = pickingModel 
+              drawing             = newDraw 
+              numSampledPoints    = int samplingSize 
+              stepSampleSize      = Math.Round(dir.Length/samplingSize,2) 
+              linearDistance      = Math.Round(dir.Length,2) 
+              minHeight           = Math.Round(altitudeList.Min (altitudeList.Item(0)),2)
+              maxHeight           = Math.Round(altitudeList.Max (altitudeList.Item(0)),2)
+              accDistance         = Math.Round(accDistance (pointList.Length-1) 0.0,2)
+              pointList           = pointList
+              altitudeList        = correctedAltitudeList  //altitudeList
+              errorHitList        = errorHitList
+      }
+    
   let rec update (model : Model) (msg : Message) =   
     match msg with
       | Camera m when model.pickingActive = false -> 
@@ -335,59 +436,22 @@ module App =
             update { model with selectedJumpPosition = pickingModel.intersectionPoints.Item(0); jumpSelectionActive = false; inJumpedPosition = true } Message.AnimateCameraJump            
         elif model.lineSelectionActive && pickingModel.intersectionPoints.AsList.Length > 2 then
             model
-        elif model.lineSelectionActive && pickingModel.intersectionPoints.AsList.Length = 2 then
-
-            let firstPoint = pickingModel.intersectionPoints.Item(0)
-            let secondPoint = pickingModel.intersectionPoints.Item(1)
-            let dir = secondPoint - firstPoint
-            let samplingSize = (ceil (firstPoint-secondPoint).Length)*2.0 
-            let step = dir / samplingSize
-  
-            let pointList = new List<V3d>()
-            let altitudeList = new List<float>()
-
-            let drawPoints x y =
-                let fray = FastRay3d(V3d.Zero, (firstPoint + (step * float y)).Normalized)
-                
-                model.picking.pickingInfos 
-                |> HMap.tryFind model.opcBox
-                |> Option.bind (fun opcData -> 
-                    OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some opcData.kdTree) fray
-                    |> Option.map (fun t -> 
-                        let hitpoint = fray.Ray.GetPointOnRay t
-                        let pointHeight = CooTransformation.getLatLonAlt hitpoint Planet.Mars
-
-                        pointList.Add(hitpoint)
-                        altitudeList.Add(pointHeight.altitude)
-
-                        DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None)))
-                    )
-                                        
-                |> Option.defaultValue x
-                              
-            let newDraw = List.fold drawPoints newDrawingModel [1.0..(samplingSize - 1.0)]
+        elif model.lineSelectionActive && pickingModel.intersectionPoints.AsList.Length = 2 then       
+            //let error = [0;     0;  -1;   0;   0;   0;   0]
+            //let alt =   [1.0; 1.4;      1.8; 1.3; 1.0; 0.0]
             
-            let rec accDistance i acc= 
-                if i >= 1 then
-                    let A = pointList.Item(i)
-                    let B = pointList.Item(i-1)
-                    let distance = (A-B).Length
-                    accDistance (i-1) (acc+distance)
-                else 
-                    acc
+            //let rec insertInto error alt elem i =
+            //    match alt with
+            //    | [] -> []
+            //    | xs::x -> if ((error.Item(i)) = -1) then
+            //                  xs::0::x
+            //               else
+            //                  xs::(insertInto x alt elem (i+1))
+                            
 
-            { model with 
-                    picking             = pickingModel 
-                    drawing             = newDraw 
-                    numSampledPoints    = int samplingSize 
-                    stepSampleSize      = Math.Round(dir.Length/samplingSize,2) 
-                    linearDistance      = Math.Round(dir.Length,2) 
-                    minHeight           = Math.Round(altitudeList.Min (altitudeList.Item(0)),2)
-                    maxHeight           = Math.Round(altitudeList.Max (altitudeList.Item(0)),2)
-                    accDistance         = Math.Round(accDistance (pointList.Count-1) 0.0,2)
-                    pointList           = pointList
-                    altitudeList        = altitudeList
-            }
+            //let newL = insertInto error [] 2 0
+            //Log.line "NEEEWELSIST:  %A" newL
+           sampleSurfacePointsForCutView model pickingModel drawingModel
         else
             { model with picking = pickingModel; drawing = newDrawingModel }
 
@@ -905,18 +969,14 @@ module App =
                                     
                                     let lineCoord = 
                                         let mutable currentPoints = ""
-                                        for i = 0 to altitudeList.Count-1 do
-                                            let currentX = (100.0/ (float) (altitudeList.Count-1)) * (float i)
-                                            Log.line "currentX: %A" currentX
+                                        for i = 0 to altitudeList.Length-1 do
+                                            let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
                                             let currentY = ((altitudeList.Item(i) - minAltitude) / range) * 100.0
 
                                             let normalizeX = (sprintf "%f" (xOffset+ (currentX/100.0) * (100.0-xOffset*2.0)) )
                                             let normalizeY = (sprintf "%f" (yOffset+ ((100.0-currentY)/100.0) * (100.0-yOffset*2.0)) )
                                             currentPoints <- currentPoints + normalizeX + comma + normalizeY + space
-                                        currentPoints
-                                        
-
-                                    
+                                        currentPoints                           
                                     
                                     let initialPointsCoord = wX + comma + wY + space + sX + comma + wY + space
                                     let finalPointsCoord = initialPointsCoord + lineCoord
@@ -1067,8 +1127,9 @@ module App =
           currentOption        = Some O
           offsetUIDrawX        = 2.0
           offsetUIDrawY        = 10.0
-          pointList            = new List<V3d>() 
-          altitudeList         = new List<float>() 
+          pointList            = []
+          altitudeList         = []
+          errorHitList         = []
         }
 
       {
