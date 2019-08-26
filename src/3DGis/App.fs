@@ -988,6 +988,76 @@ module App =
                                     yield attribute "stroke-width" "0.0"
                                 } |> AttributeMap.ofAMap
                             )
+
+                            //missing data
+                            Incremental.Svg.polygon ( 
+                                amap {
+                                    let! xOffset = m.offsetUIDrawX
+                                    let! yOffset = m.offsetUIDrawY                                   
+                            
+                                    let sX = (sprintf "%f" xOffset) 
+
+                                    let wX = (sprintf "%f" (100.0-xOffset)) 
+                                    let wY = (sprintf "%f" (100.0-yOffset)) 
+
+                                    let space = " "
+                                    let comma = ","
+
+                                    let! errorHitList = m.errorHitList
+                                    let! altitudeList = m.altitudeList
+
+                                    let! maxAltitude = m.maxHeight
+                                    let! minAltitude = m.minHeight
+                                    let range = maxAltitude - minAltitude
+                                    
+                                    let lineCoord = 
+                                        let mutable currentPoints = ""
+                                        for i = 0 to altitudeList.Length-1 do
+                                            if errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = 0 then
+                                                let initY = (sprintf "%f" (100.0-yOffset))
+
+                                                let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
+                                                let currentY = ((altitudeList.Item(i) - minAltitude) / range) * 100.0
+                                                
+                                                let normalizeX = (sprintf "%f" (xOffset+ (currentX/100.0) * (100.0-xOffset*2.0)) )
+                                                let normalizeY = (sprintf "%f" (yOffset+ ((100.0-currentY)/100.0) * (100.0-yOffset*2.0)) )
+
+                                                let initialPointsCoord = normalizeX + comma + initY + space + normalizeX + comma + normalizeY + space
+
+                                                currentPoints <- currentPoints + initialPointsCoord
+                                            elif errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = -1 && errorHitList.Item(i+1) = -1 then
+                                                let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
+                                                let currentY = ((altitudeList.Item(i) - minAltitude) / range) * 100.0
+
+                                                let normalizeX = (sprintf "%f" (xOffset+ (currentX/100.0) * (100.0-xOffset*2.0)) )
+                                                let normalizeY = (sprintf "%f" (yOffset+ ((100.0-currentY)/100.0) * (100.0-yOffset*2.0)) )
+
+                                                currentPoints <- currentPoints + normalizeX + comma + normalizeY + space
+                                            elif errorHitList.Item(i) = -1 && errorHitList.Item(i+1) = 0 then
+                                                let endY = (sprintf "%f" (100.0-yOffset))
+
+                                                let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
+                                                let currentY = ((altitudeList.Item(i) - minAltitude) / range) * 100.0
+
+                                                let normalizeX = (sprintf "%f" (xOffset+ (currentX/100.0) * (100.0-xOffset*2.0)) )
+                                                let normalizeY = (sprintf "%f" (yOffset+ ((100.0-currentY)/100.0) * (100.0-yOffset*2.0)) )
+
+                                                let endPointsCoord = normalizeX + comma + normalizeY + space + normalizeX + comma + endY + space
+
+                                                currentPoints <- currentPoints + endPointsCoord
+                                                
+                                        currentPoints                           
+                                    
+                                    let initialPointsCoord = wX + comma + wY + space + sX + comma + wY + space
+                                    let finalPointsCoord = initialPointsCoord + lineCoord
+
+                                    yield attribute "points" finalPointsCoord
+                                    yield attribute "fill" "rgb(255, 0, 0)"
+                                    yield attribute "opacity" polygonOpacity
+                                    yield attribute "stroke" strokeColor
+                                    yield attribute "stroke-width" "0.0"
+                                } |> AttributeMap.ofAMap
+                            )
                         
                         ]
 
