@@ -50,12 +50,14 @@ module LinkingApp =
 
         // creating frustums by specifying fov
         let createFrustumProj (fov : float) =
-            let frustum = Frustum.perspective fov 0.01 15.0 (1.3333333333333333333)
+            let aspectRatio = 1.3333333333333333333 // 1600:1200
+            let frustum = Frustum.perspective fov 0.01 15.0 aspectRatio
+            let fullFrustum = Frustum.perspective fov 0.01 1000.0 aspectRatio
             let proj = Frustum.projTrafo(frustum)
-            (proj, proj.Inverse)
+            (proj, proj.Inverse, fullFrustum)
 
-        let cam34Frustum, cam34Inv = createFrustumProj 16.370
-        let cam100Frustum, cam100Inv = createFrustumProj 5.67
+        let cam34Frustum, cam34Inv, fullFrustum34 = createFrustumProj 16.370
+        let cam100Frustum, cam100Inv, fullFrustum100 = createFrustumProj 5.67
 
         let angleToRad = V3d(Math.PI / 180.0) * V3d(1.0,1.0,2.0)
         
@@ -78,14 +80,15 @@ module LinkingApp =
 
                 let color = f.instrument |> MinervaModel.instrumentColor
 
-                let dimensions = f.dimensions
+                let (w, h) = f.dimensions
+                let dimensions = V2i(w, h)
 
-                let frustumTrafo, frustumTrafoInv =
+                let frustumTrafo, frustumTrafoInv, fullFrustum =
                     match f.instrument with
-                    | Instrument.MastcamL -> cam34Frustum, cam34Inv
-                    | Instrument.MastcamR -> cam100Frustum, cam100Inv
-                    | Instrument.Mastcam -> (Trafo3d.Scale 0.0), (Trafo3d.Scale 0.0) // TODO: dunno?
-                    | _ -> (Trafo3d.Scale 0.0), (Trafo3d.Scale 0.0) // TODO: discard!
+                    | Instrument.MastcamL -> cam34Frustum, cam34Inv, fullFrustum34
+                    | Instrument.MastcamR -> cam100Frustum, cam100Inv, fullFrustum100
+                    | Instrument.Mastcam -> (Trafo3d.Scale 0.0), (Trafo3d.Scale 0.0), (Frustum.ofTrafo Trafo3d.Identity)  // TODO: dunno?
+                    | _ -> (Trafo3d.Scale 0.0), (Trafo3d.Scale 0.0), (Frustum.ofTrafo Trafo3d.Identity) // TODO: discard!
 
                 let rotation = Rot3d.FromAngleAxis(angles * angleToRad)
                 let translation = Trafo3d.Translation position
@@ -105,6 +108,8 @@ module LinkingApp =
                     rotation = rotation
                     trafo = trafo
                     trafoInv = trafoInv
+                    camTrafo = originTrafo.Inverse * rotTranslateTrafo.Inverse
+                    camFrustum = fullFrustum
                     color = color
                     instrument = f.instrument
                     imageDimensions = dimensions
@@ -154,6 +159,13 @@ module LinkingApp =
                 | None -> m.filterProducts
             { m with filterProducts = filterProducts }
 
+        | OpenFrustum f ->
+            // also handled by upper app
+            { m with overlayFeature = Some(f) }
+            
+        | CloseFrustum ->
+            { m with overlayFeature = None }
+
         | MinervaAction a ->
 
             match a with
@@ -192,6 +204,12 @@ module LinkingApp =
 
         | _ -> failwith "Not implemented yet"
 
+    
+    let cssColor (c: C4b) =
+        sprintf "rgba(%d, %d, %d, %f)" c.R c.G c.B c.Opacity
+
+    let instrumentColor (i: Instrument) =
+        i |> MinervaModel.instrumentColor |> cssColor
 
     let view (m: MLinkingModel) =
 
@@ -234,7 +252,7 @@ module LinkingApp =
             |> Sg.set
 
         let pickingIndicator =
-            Sg.sphere 3 (Mod.constant(C4b.VRVisGreen)) (Mod.constant(0.1))
+            Sg.sphere 3 (Mod.constant(C4b.VRVisGreen)) (Mod.constant(0.05))
             |> Sg.noEvents
             |> Sg.shader {
                 do! DefaultSurfaces.stableTrafo
@@ -248,13 +266,34 @@ module LinkingApp =
                     |> Option.defaultValue (Trafo3d.Scale 0.0)
                 )
             )
-            
 
-        let scene = 
+
+        let defaultScene = 
             Sg.ofArray [|
                 frustra
                 hoverFrustum
+            |]
+
+        let featureScene =
+            Sg.empty
+
+        let commonScene =
+            Sg.ofArray [|
                 pickingIndicator
+            |]
+
+        let scene = 
+            Sg.ofArray [|
+                (
+                    m.overlayFeature 
+                    |> Mod.map(fun o ->
+                        if o = None
+                        then defaultScene
+                        else featureScene
+                    )
+                    |> Sg.dynamic
+                )
+                commonScene
             |]
             |> Sg.trafo m.trafo
 
@@ -264,12 +303,90 @@ module LinkingApp =
         |]
 
     let viewSideBar (m: MLinkingModel) =
-        
-        div [clazz "ui buttons"] [         
+        div [clazz "ui buttons"] [
             //button [clazz "ui button"; onClick (fun _ -> LoadProducts)][text "Load"]
             button [clazz "ui button inverted"; onClick (fun _ -> MinervaAction(MinervaAction.UpdateSelection(m.frustums |> AMap.keys |> ASet.toList)))][text "Select All"]         
             button [clazz "ui button inverted"; onClick (fun _ -> MinervaAction(MinervaAction.ClearSelection))][text "Clear Selection"]         
             //button [clazz "ui button"; onClick (fun _ -> ApplyFilters)][text "Filter"]         
+        ]
+
+    let sceneOverlay (v: IMod<CameraView>) (m: MLinkingModel) =
+
+        // 75% = aspect ratio 4:3
+        let styleTag = 
+            DomNode.Text("style", None, AttributeMap.Empty, (Mod.constant("
+                 .scene-overlay {
+                     position: absolute;
+                     margin: 0;
+                     top: 0;
+                     z-index: 10;
+                     width: 100%;
+                     height: 100%;
+                     text-align: center;
+                 }
+
+                 .frustum-svg {
+                    height: 100%;
+                    border: 2px solid white;
+                 }
+                ")))
+
+        let overlayDom (f: LinkingFeature) : DomNode<LinkingAction> =
+            
+            let fullRect = [
+                attribute "x" "0"
+                attribute "y" "0"
+                attribute "width" "1600"
+                attribute "height" "1200"
+            ]
+
+            let dim = V2d(1600.0, 1200.0)
+            let border = (dim - V2d(f.imageDimensions)) * 0.5
+
+            let frustumRect = [
+                attribute "x" (sprintf "%f" border.X)
+                attribute "y" (sprintf "%f" border.Y)
+                attribute "width" (string f.imageDimensions.X)
+                attribute "height" (string f.imageDimensions.Y)
+            ]
+
+            div [clazz "ui scene-overlay"] [
+                Svg.svg[
+                    clazz "frustum-svg"
+                    attribute "viewBox" "0 0 1600 1200"
+                    style (sprintf "border-color: %s" (instrumentColor f.instrument))
+                ][
+                    (DomNode.Element ("mask", None, (AttributeMap.ofList [
+                        attribute "id" "frustumMask"
+                    ]), AList.ofList [
+                        Svg.rect (fullRect @ [
+                            attribute "fill" "white"
+                        ])
+                        Svg.rect (frustumRect @ [
+                            attribute "fill" "black"
+                        ])
+                    ]))
+                    Svg.rect (fullRect @ [
+                        attribute "fill" "rgba(0,0,0,0.5)"
+                        attribute "mask" "url(#frustumMask)"
+                    ])
+                    
+                ]
+            ]
+
+        let dom =
+            m.overlayFeature 
+            |> Mod.map(fun f ->
+                match f with
+                | None -> div[][] // DomNode.empty requires unit?
+                | Some(o) -> overlayDom o
+            )
+            |> AList.ofModSingle
+            |> Incremental.div AttributeMap.empty
+            
+        div[][
+            styleTag
+            dom
         ]
 
     let viewHorizontalBar (m: MLinkingModel) =
@@ -283,8 +400,15 @@ module LinkingApp =
             m.selectedFrustums
             |> ASet.chooseM (fun k -> AMap.tryFind k m.frustums)
 
-        let productsAndPoints =
+        let filteredProducts =
             products
+            |> ASet.filterM (fun p -> 
+                m.filterProducts
+                |> AMap.tryFind p.instrument
+                |> Mod.map (fun m -> m |> Option.defaultValue false))
+
+        let productsAndPoints =
+            filteredProducts
             |> ASet.map(fun prod ->
                 m.pickingPos 
                 |> Mod.map(fun f -> 
@@ -310,9 +434,6 @@ module LinkingApp =
                 (i, Mod.constant s)
             )
 
-        let cssColor (c: C4b) =
-            sprintf "rgba(%d, %d, %d, %f)" c.R c.G c.B c.Opacity
-
         let dependencies =
             Html.semui @ [
                 { kind = Stylesheet; name = "linking.css"; url = "resources/linking.css" }
@@ -326,6 +447,7 @@ module LinkingApp =
                     margin: 0 5px;
                     border-top: 2px solid white;
                     border-radius: 2px;
+                    cursor: pointer;
                 }
 
                 .product-view img {
@@ -346,28 +468,52 @@ module LinkingApp =
                     position: absolute;
                     z-index: 5;
                     left: 0;
+                    padding: 0.5em;
+                    line-height: 1em;
+                    font-size: 0.55em;
+                    background-color: rgba(0,0,0,0.5);
+                }
+
+                .noselect {
+                    cursor: default;
+                    -webkit-touch-callout: none;
+                    -webkit-user-select: none;
+                    -khtml-user-select: none;
+                    -moz-user-select: none;
+                    -ms-user-select: none;
+                    user-select: none;
                 }
                 ")))
            
-        let scriptTag =
-           DomNode.Text("script", None, AttributeMap.Empty, (Mod.constant("
+        //let scriptTag =
+        //   DomNode.Text("script", None, AttributeMap.Empty, (Mod.constant("
 
-                function productLoad(elem) {
-                    var h = $(this).height();
-                    var w = $(this).width();
-                }
+        //        function productLoad(elem) {
+        //            var h = $(this).height();
+        //            var w = $(this).width();
+        //        }
 
-           ")))
+        //   ")))
+
+        let fullCount = products |> ASet.count 
+        let filteredCount = filteredProducts |> ASet.count
+        let countString =
+            Mod.map2 (fun full filtered -> 
+                if full = filtered
+                then full |> string
+                else (sprintf "%d (%d)" full filtered)
+            ) fullCount filteredCount
+
 
         require dependencies (
-            body [style "width: 100%; height:100%; background: transparent";] [
+            body [style "width: 100%; height:100%; background: transparent;"] [
                 styleTag
-                scriptTag
-                div[style "color:white; padding: 5px; width: 100%; height: 100%; position: absolute"][
+                //scriptTag
+                div[clazz "noselect"; style "color:white; padding: 5px; width: 100%; height: 100%; position: absolute;"][
                     div[style "padding: 5px; position: fixed"][
-                        span[clazz "ui label inverted"; style "margin-right: 10px"][
+                        span[clazz "ui label inverted"; style "margin-right: 10px; width: 10em; position: relative;"][
                             text "Products"
-                            div[clazz "detail"][Incremental.text(m.selectedFrustums |> ASet.count |> Mod.map string)]
+                            div[clazz "detail"; style "position: absolute; right: 1em;"][Incremental.text countString]
                         ]
                         Incremental.span AttributeMap.Empty (
                             countStringPerInstrument
@@ -379,7 +525,7 @@ module LinkingApp =
                                 //checkbox [clazz "ui inverted checkbox"] o (ToggleView i) s
                                 //span[clazz "spectrum-Label spectrum-Label--grey";
                                 span[clazz "ui inverted label";
-                                    style (sprintf "background-color: %s;" (i |> MinervaModel.instrumentColor |> cssColor))][
+                                    style (sprintf "background-color: %s;" (instrumentColor i))][
                                     Html.SemUi.iconCheckBox o (ToggleView i)
                                     Incremental.text s
                                     //checkbox [clazz "ui inverted checkbox"] o (ToggleView i) s
@@ -395,10 +541,9 @@ module LinkingApp =
                         |> AList.map (fun (f, p) ->
                             // check if inside image!
                             let (sensorW, sensorH) = (1600, 1200)
-                            let (imageW, imageH) = f.imageDimensions
 
                             let sensor = V2d(sensorW, sensorH)
-                            let image = V2d(imageW, imageH)
+                            let image = V2d(f.imageDimensions)
 
                             let max = image / sensor // ratio is inside
 
@@ -417,7 +562,7 @@ module LinkingApp =
                             let imgSrc = System.IO.Path.GetFullPath(System.IO.Path.Combine(Environment.CurrentDirectory, fileName))
                             let webSrc = "file:///" + imgSrc.Replace("\\", "/")
                             
-                            let (w, h) = f.imageDimensions
+                            let (w, h) = (f.imageDimensions.X, f.imageDimensions.Y)
                             //let c = ((p.XY * V2d(1.0, -1.0)) + 1.0) * 0.5 // transform [-1, 1] to [0, 1]
                             let c = (p.XY * V2d(1.0, -1.0)) // flip y
 
@@ -431,13 +576,14 @@ module LinkingApp =
                             //div[style "display: inline-block; position: relative; margin: 0 5px";
                             div[
                                 clazz "product-view"
-                                style (sprintf "border-color: %s" (f.instrument |> MinervaModel.instrumentColor |> cssColor))
+                                style (sprintf "border-color: %s" (instrumentColor f.instrument))
+                                onClick (fun _ -> OpenFrustum f)
                             ][
                                 img[
                                     clazz f.id; 
                                     attribute "alt" f.id; 
                                     attribute "src" webSrc;
-                                    attribute "onload" "productLoad(this);"
+                                    //attribute "onload" "productLoad(this);"
                                     //style "height: 100%; display: inline-block"
                                 ]
                                 Svg.svg[attribute "viewBox" (sprintf "%f -1 %f 2" (-invRatio) (invRatio * 2.0))
@@ -446,11 +592,11 @@ module LinkingApp =
                                     Svg.circle[
                                         attribute "cx" (sprintf "%f" rc.X)
                                         attribute "cy" (sprintf "%f" rc.Y)
-                                        attribute "r" "0.1"
+                                        attribute "r" "1.0"
                                         //attribute "fill" (C4b.VRVisGreen |> cssColor)
                                         attribute "fill" "transparent"
                                         attribute "stroke" (C4b.VRVisGreen |> cssColor)
-                                        attribute "stroke-width" "0.02"
+                                        attribute "stroke-width" "0.03"
                                     ]
                                     // vertical line
                                     Svg.line[
@@ -479,7 +625,8 @@ module LinkingApp =
                                         attribute "stroke-width" "0.01"
                                     ]
                                 ]
-                                text (sprintf "%s" (cc.ToString("0.00")))
+                                //text (sprintf "%s" (cc.ToString("0.00")))
+                                text f.id
                             ]
                         )
                     )

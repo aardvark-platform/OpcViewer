@@ -100,7 +100,11 @@ module App =
                 let dir = Direction (model.drawing.points |> PList.toSeq |> fun x -> PlaneFitting.planeFit x).Normal
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some dir))
                 { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
-                
+            
+            | Keys.B ->
+                let updatedLinking = LinkingApp.update model.cameraState.view model.linkingModel CloseFrustum
+                { model with overlayFrustum = None; linkingModel = updatedLinking }
+
             | _ -> model
 
 
@@ -139,8 +143,14 @@ module App =
             { model with annotations = AnnotationApp.update model.annotations msg }
 
         | LinkingAction msg ->
-            //{ model with minervaModel = MinervaApp.update model.cameraState.view model.minervaModel msg }
-            { model with linkingModel = LinkingApp.update model.cameraState.view model.linkingModel msg }
+            
+            match msg with
+            | OpenFrustum f ->
+                let updatedLinking = LinkingApp.update model.cameraState.view model.linkingModel msg
+                let newCamState = { model.cameraState with view = CameraView.ofTrafo f.camTrafo }
+                { model with cameraState = newCamState; overlayFrustum = Some(f.camFrustum); linkingModel = updatedLinking }
+            | _ -> 
+                { model with linkingModel = LinkingApp.update model.cameraState.view model.linkingModel msg }
 
         | UpdateDockConfig cfg ->
             { model with dockConfig = cfg }
@@ -212,8 +222,8 @@ module App =
         let textOverlays (cv : IMod<CameraView>) = 
             div [js "oncontextmenu" "event.preventDefault();"] [ 
                 let style' = "color: white; font-family:Consolas;"
-    
-                yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left" ] [          
+
+                yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left; z-index: 20" ] [          
                     yield table [] [
                     tr[][
                         td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
@@ -226,7 +236,8 @@ module App =
             ]
 
         let renderControl =
-            FreeFlyController.controlledControl m.cameraState Camera m.mainFrustum
+            FreeFlyController.controlledControl m.cameraState Camera 
+                (Mod.map2(fun o m -> o |> Option.defaultValue m) m.overlayFrustum m.mainFrustum)
                 (AttributeMap.ofList [ 
                     style "width: 100%; height:100%"; 
                     attribute "showFPS" "true";       // optional, default is false
@@ -244,15 +255,18 @@ module App =
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
             require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
-                div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)]
+                div [clazz "ui"; style "background: #1B1C1E"] [
+                    renderControl
+                    textOverlays (m.cameraState.view)
+                    LinkingApp.sceneOverlay m.cameraState.view m.linkingModel |> UI.map LinkingAction
+                ]
             )
         | Some "controls" -> 
             require Html.semui (
                 body [style "width: 100%; height:100%; background: transparent";] [
                     div[style "color:white; margin: 5px 15px 5px 5px"][
                     h3[][text "2D/3D Linking"]
-                    p[][text "Hold Ctrl-Left to add Point"]
-                    p[][text "Press Enter to close Polygon"]
+                    p[][text "Hold Ctrl-Left to Pick Point"]
 
                     LinkingApp.viewSideBar m.linkingModel |> UI.map LinkingAction
 
@@ -380,6 +394,7 @@ module App =
             { 
                 cameraState        = camState
                 mainFrustum        = Frustum.perspective 60.0 0.01 1000.0 1.0
+                overlayFrustum     = None
                 fillMode           = FillMode.Fill                    
                 patchHierarchies   = patchHierarchies          
             

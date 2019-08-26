@@ -5,11 +5,6 @@ open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
 open PRo3D.Minerva
 
-type LinkingAction =
-    | MinervaAction of MinervaAction
-    | CheckPoint of V3d
-    | ToggleView of Instrument
-
 type LinkingFeature =
     {
         id: string
@@ -18,10 +13,19 @@ type LinkingFeature =
         rotation: Rot3d
         trafo: Trafo3d
         trafoInv: Trafo3d
+        camTrafo: Trafo3d
+        camFrustum: Frustum
         color: C4b
         instrument: Instrument
-        imageDimensions: int * int
+        imageDimensions: V2i
     }
+
+type LinkingAction =
+    | MinervaAction of MinervaAction
+    | CheckPoint of V3d
+    | ToggleView of Instrument
+    | OpenFrustum of LinkingFeature
+    | CloseFrustum
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module LinkingFeature =
@@ -32,9 +36,11 @@ module LinkingFeature =
         rotation = Rot3d.Identity
         trafo = Trafo3d.Identity
         trafoInv = Trafo3d.Identity
+        camTrafo = Trafo3d.Identity
+        camFrustum = Frustum.perspective 60.0 0.01 1000.0 1.0
         color = C4b.Black
         instrument = Instrument.NotImplemented
-        imageDimensions = (0, 0)
+        imageDimensions = V2i(0, 0)
     }
 
 [<DomainType>]
@@ -47,6 +53,7 @@ type LinkingModel =
         minervaModel:       MinervaModel
         pickingPos:         Option<V3d>
         filterProducts:     hmap<Instrument, bool>
+        overlayFeature:     Option<LinkingFeature>
     }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -59,4 +66,5 @@ module LinkingModel =
         minervaModel        = Initial.model
         pickingPos          = None
         filterProducts      = hmap.Empty
+        overlayFeature      = None
     }

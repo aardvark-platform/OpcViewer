@@ -54,6 +54,7 @@ type Model =
     {
         cameraState          : CameraControllerState     
         mainFrustum          : Frustum
+        overlayFrustum       : Option<Frustum>
         fillMode             : FillMode                                
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>        
