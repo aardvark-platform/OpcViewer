@@ -614,6 +614,105 @@ module App =
               let heightRectOpacity = "0.15"
 
               let inline (=>) a b = Attributes.attribute a b
+ 
+              let mainBoxRect =
+                 Incremental.Svg.rect (
+                    amap {                     
+                        let! xOffset = m.offsetUIDrawX
+                        let! yOffset = m.offsetUIDrawY
+                            
+                        let sX = (sprintf "%f" xOffset) + percent
+                        let sY = (sprintf "%f" yOffset) + percent
+
+                        let wX = (sprintf "%f" (100.0-xOffset*2.0)) + percent
+                        let wY = (sprintf "%f" (100.0-yOffset*2.0)) + percent
+
+                        yield attribute "x" sX
+                        yield attribute "y" sY 
+                        yield attribute "rx" "1px"
+                        yield attribute "ry" "1px" 
+                        yield attribute "width" wX
+                        yield attribute "height" wY
+                        yield attribute "fill" "transparent"
+                        yield attribute "stroke" strokeColor
+                        yield attribute "stroke-width" strokeWidthMainRect
+                    } |> AttributeMap.ofAMap
+                 )
+
+              let subBoxRect (order : float) (color : string) =
+                  Incremental.Svg.rect ( 
+                    amap {
+                        let! xOffset = m.offsetUIDrawX
+                        let! yOffset = m.offsetUIDrawY
+                            
+                        let heightRectValue = (100.0-yOffset*2.0)/5.0
+
+                        let sX = (sprintf "%f" xOffset) + percent
+                        let sY = (sprintf "%f" (yOffset + heightRectValue * order)) + percent
+
+                        let wX = (sprintf "%f" (100.0-xOffset*2.0)) + percent
+                        let heightRectH = (sprintf "%f" ((100.0-yOffset*2.0)/5.0)) + percent
+
+                        yield attribute "x" sX
+                        yield attribute "y" sY 
+                        yield attribute "width" wX
+                        yield attribute "height" heightRectH
+                        yield attribute "opacity" heightRectOpacity
+                        yield attribute "fill" color
+                        yield attribute "stroke" strokeColor
+                        yield attribute "stroke-width" "0.0"
+                    } |> AttributeMap.ofAMap
+                  )
+
+              let contourLine (order : float) (opacity : string) =
+                  Incremental.Svg.line ( 
+                    amap {
+
+                        let! xOffset = m.offsetUIDrawX
+                        let! yOffset = m.offsetUIDrawY
+                            
+                        let heightRectH = (100.0-yOffset*2.0)/5.0
+
+                        let sX = (sprintf "%f" (xOffset-0.5)) + percent
+                        let sY = (sprintf "%f" (yOffset + heightRectH * order)) + percent
+
+                        let wX = (sprintf "%f" (100.0-xOffset+0.5)) + percent
+
+                        yield attribute "x1" sX
+                        yield attribute "y1" sY  
+                        yield attribute "x2" wX
+                        yield attribute "y2" sY 
+                        yield attribute "stroke" strokeColor
+                        yield attribute "stroke-width" strokeWidthContorLineEdge
+                        yield attribute "stroke-opacity" opacity
+                    } |> AttributeMap.ofAMap
+                )
+
+              let verticalLine (order : string) =
+                  Incremental.Svg.line ( 
+                    amap {
+                        let! xOffset = m.offsetUIDrawX
+                        let! yOffset = m.offsetUIDrawY
+                            
+                        let sX = 
+                            if order = "left" then
+                                (sprintf "%f" (xOffset)) + percent
+                            else
+                                (sprintf "%f" (100.0-xOffset)) + percent
+
+                        let sY = (sprintf "%f" (yOffset - 2.5)) + percent
+
+                        let wY = (sprintf "%f" (100.0-yOffset+2.5)) + percent
+
+                        yield attribute "x1" sX
+                        yield attribute "y1" sY
+                        yield attribute "x2" sX
+                        yield attribute "y2" wY
+                        yield attribute "stroke" strokeColor
+                        yield attribute "stroke-width" strokeWidthContorLineEdge
+                    } |> AttributeMap.ofAMap
+                 )
+                
 
               let containerAttribs = 
                 amap {
@@ -629,332 +728,53 @@ module App =
 
 
               body [style "width: 100%; height:100%; background: transparent; overflow:auto "] [
-                   // cutViewControl id
 
                     Incremental.Svg.svg containerAttribs <|
                         alist {
                             //Box
-                            yield Incremental.Svg.rect ( 
-                                amap {                     
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-                            
-                                    let sX = (sprintf "%f" xOffset) + percent
-                                    let sY = (sprintf "%f" yOffset) + percent
+                            yield mainBoxRect
 
-                                    let wX = (sprintf "%f" (100.0-xOffset*2.0)) + percent
-                                    let wY = (sprintf "%f" (100.0-yOffset*2.0)) + percent
-
-                                    yield attribute "x" sX
-                                    yield attribute "y" sY 
-                                    yield attribute "rx" "1px"
-                                    yield attribute "ry" "1px" 
-                                    yield attribute "width" wX
-                                    yield attribute "height" wY
-                                    yield attribute "fill" "transparent"
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" strokeWidthMainRect
-                                } |> AttributeMap.ofAMap
-                            )
-
-                            //contour line (very high)
-                            yield Incremental.Svg.line ( 
-                                amap {
-
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-                            
-                                    let sX = (sprintf "%f" (xOffset-0.5)) + percent
-                                    let sY = (sprintf "%f" yOffset) + percent
-
-                                    let wX = (sprintf "%f" (100.0-xOffset+0.5)) + percent
-
-                                    yield attribute "x1" sX
-                                    yield attribute "y1" sY  
-                                    yield attribute "x2" wX
-                                    yield attribute "y2" sY 
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" strokeWidthContorLineEdge
-                                } |> AttributeMap.ofAMap
-                            )
 
                             // very high
-                            yield Incremental.Svg.rect ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-                            
-                                    let sX = (sprintf "%f" xOffset) + percent
-                                    let sY = (sprintf "%f" yOffset) + percent
-
-                                    let wX = (sprintf "%f" (100.0-xOffset*2.0)) + percent
-                                    let heightRectH = (sprintf "%f" ((100.0-yOffset*2.0)/5.0)) + percent
-
-                                    yield attribute "x" sX
-                                    yield attribute "y" sY 
-                                    yield attribute "width" wX
-                                    yield attribute "height" heightRectH
-                                    yield attribute "opacity" heightRectOpacity
-                                    yield attribute "fill" "rgb( 180, 180, 180 )"
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" "0.0"
-                                } |> AttributeMap.ofAMap
-                            )
-
-                            //contour line (high)
-                            yield Incremental.Svg.line ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-
-                                    let heightRectH = (100.0-yOffset*2.0)/5.0
- 
-                                    let sX = (sprintf "%f" (xOffset-0.5)) + percent
-                                    let sY = (sprintf "%f" (yOffset + heightRectH * 1.0)) + percent
-
-                                    let wX = (sprintf "%f" (100.0-xOffset+0.5)) + percent
-
-                                    yield attribute "x1" sX
-                                    yield attribute "y1" sY  
-                                    yield attribute "x2" wX
-                                    yield attribute "y2" sY
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" strokeWidthContorLineEdge
-                                    yield attribute "stroke-opacity" lineOpacity
-                                } |> AttributeMap.ofAMap
-                            )
+                            yield subBoxRect 0.0 "rgb( 180, 180, 180)"
 
                             // high
-                            yield Incremental.Svg.rect ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-                            
-                                    let heightRectH = (100.0-yOffset*2.0)/5.0
-
-                                    let sX = (sprintf "%f" xOffset) + percent
-                                    let sY = (sprintf "%f" (yOffset + heightRectH * 1.0)) + percent
-
-                                    let wX = (sprintf "%f" (100.0-xOffset*2.0)) + percent
-                                    let heightRectH = (sprintf "%f" ((100.0-yOffset*2.0)/5.0)) + percent
-
-                                    yield attribute "x" sX
-                                    yield attribute "y" sY 
-                                    yield attribute "width" wX
-                                    yield attribute "height" heightRectH
-                                    yield attribute "opacity" heightRectOpacity
-                                    yield attribute "fill" "rgb( 149, 149, 149 )"
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" "0.0"
-                                } |> AttributeMap.ofAMap
-                            )
-
-                            //contour line (medium high)
-                            yield Incremental.Svg.line ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-                            
-                                    let heightRectH = (100.0-yOffset*2.0)/5.0
-
-                                    let sX = (sprintf "%f" (xOffset-0.5)) + percent
-                                    let sY = (sprintf "%f" (yOffset + heightRectH * 2.0)) + percent
-
-                                    let wX = (sprintf "%f" (100.0-xOffset+0.5)) + percent
-
-                                    yield attribute "x1" sX
-                                    yield attribute "y1" sY  
-                                    yield attribute "x2" wX
-                                    yield attribute "y2" sY
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" strokeWidthContorLineEdge
-                                    yield attribute "stroke-opacity" lineOpacity
-                                } |> AttributeMap.ofAMap
-                            )
+                            yield subBoxRect 1.0 "rgb( 149, 149, 149)"                     
 
                             // medium high
-                            yield Incremental.Svg.rect ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
+                            yield subBoxRect 2.0 "rgb( 118, 118, 118)"        
                             
-                                    let heightRectH = (100.0-yOffset*2.0)/5.0
+                            //low
+                            yield subBoxRect 3.0 "rgb(96, 96, 96)"       
+                            
+                            //very low
+                            yield subBoxRect 4.0 "rgb(79,79,79)"     
+                           
 
-                                    let sX = (sprintf "%f" xOffset) + percent
-                                    let sY = (sprintf "%f" (yOffset + heightRectH * 2.0)) + percent
+                            //contour line (very high)
+                            yield contourLine 0.0 "1.0"     
 
-                                    let wX = (sprintf "%f" (100.0-xOffset*2.0)) + percent
-                                    let heightRectH = (sprintf "%f" ((100.0-yOffset*2.0)/5.0)) + percent
+                            //contour line (high)
+                            yield contourLine 1.0 "0.5"                        
 
-                                    yield attribute "x" sX
-                                    yield attribute "y" sY 
-                                    yield attribute "width" wX
-                                    yield attribute "height" heightRectH
-                                    yield attribute "opacity" heightRectOpacity
-                                    yield attribute "fill" "rgb( 118, 118, 118 )"
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" "0.0"
-                                } |> AttributeMap.ofAMap
-                            )
+                            //contour line (medium high)
+                            yield contourLine 2.0 "0.5"      
 
                             //contour line (medium low)
-                            yield Incremental.Svg.line ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-                            
-                                    let heightRectH = (100.0-yOffset*2.0)/5.0
-
-                                    let sX = (sprintf "%f" (xOffset-0.5)) + percent
-                                    let sY = (sprintf "%f" (yOffset + heightRectH * 3.0)) + percent
-
-                                    let wX = (sprintf "%f" (100.0-xOffset+0.5)) + percent
-
-                                    yield attribute "x1" sX
-                                    yield attribute "y1" sY 
-                                    yield attribute "x2" wX
-                                    yield attribute "y2" sY 
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" strokeWidthContorLineEdge
-                                    yield attribute "stroke-opacity" lineOpacity
-                                } |> AttributeMap.ofAMap
-                            )
-
-                            //low
-                            yield Incremental.Svg.rect ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-                            
-                                    let heightRectH = (100.0-yOffset*2.0)/5.0
-
-                                    let sX = (sprintf "%f" xOffset) + percent
-                                    let sY = (sprintf "%f" (yOffset + heightRectH * 3.0)) + percent
-
-                                    let wX = (sprintf "%f" (100.0-xOffset*2.0)) + percent
-                                    let heightRectH = (sprintf "%f" ((100.0-yOffset*2.0)/5.0)) + percent
-
-                                    yield attribute "x" sX
-                                    yield attribute "y" sY  
-                                    yield attribute "width" wX
-                                    yield attribute "height" heightRectH
-                                    yield attribute "opacity" heightRectOpacity
-                                    yield attribute "fill" "rgb(96, 96, 96)"
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" "0.0"
-                                } |> AttributeMap.ofAMap
-                            )
+                            yield contourLine 3.0 "0.5"      
 
                             //contour line (low)
-                            yield Incremental.Svg.line ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-                            
-                                    let heightRectH = (100.0-yOffset*2.0)/5.0
-
-                                    let sX = (sprintf "%f" (xOffset-0.5)) + percent
-                                    let sY = (sprintf "%f" (yOffset + heightRectH * 4.0)) + percent
-
-                                    let wX = (sprintf "%f" (100.0-xOffset+0.5)) + percent
-
-                                    yield attribute "x1" sX
-                                    yield attribute "y1" sY 
-                                    yield attribute "x2" wX
-                                    yield attribute "y2" sY
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" strokeWidthContorLineEdge
-                                    yield attribute "stroke-opacity" lineOpacity
-                                } |> AttributeMap.ofAMap
-                            )
-
-                            //very low
-                            yield Incremental.Svg.rect ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-                            
-                                    let heightRectH = (100.0-yOffset*2.0)/5.0
-
-                                    let sX = (sprintf "%f" xOffset) + percent
-                                    let sY = (sprintf "%f" (yOffset + heightRectH * 4.0)) + percent
-
-                                    let wX = (sprintf "%f" (100.0-xOffset*2.0)) + percent
-                                    let heightRectH = (sprintf "%f" ((100.0-yOffset*2.0)/5.0)) + percent
-
-                                    yield attribute "x" sX
-                                    yield attribute "y" sY 
-                                    yield attribute "width" wX
-                                    yield attribute "height" heightRectH
-                                    yield attribute "opacity" heightRectOpacity
-                                    yield attribute "fill" "rgb(79,79,79)"
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" "0.0"
-                                } |> AttributeMap.ofAMap
-                            )
+                            yield contourLine 4.0 "0.5"      
 
                             //contour line (very low)
-                            yield Incremental.Svg.line ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-                            
-                                    let heightRectH = (100.0-yOffset*2.0)/5.0
+                            yield contourLine 5.0 "1.0"      
 
-                                    let sX = (sprintf "%f" (xOffset-0.5)) + percent
-                                    let sY = (sprintf "%f" (yOffset + heightRectH * 5.0)) + percent
-
-                                    let wX = (sprintf "%f" (100.0-xOffset+0.5)) + percent
-
-                                    yield attribute "x1" sX
-                                    yield attribute "y1" sY
-                                    yield attribute "x2" wX
-                                    yield attribute "y2" sY
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" strokeWidthContorLineEdge
-                                } |> AttributeMap.ofAMap
-                            )
 
                             //contour line (vertical low)
-                            yield Incremental.Svg.line ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-                            
-                                    let sX = (sprintf "%f" (xOffset)) + percent
-                                    let sY = (sprintf "%f" (yOffset - 2.5)) + percent
-
-                                    let wY = (sprintf "%f" (100.0-yOffset+2.5)) + percent
-
-                                    yield attribute "x1" sX
-                                    yield attribute "y1" sY
-                                    yield attribute "x2" sX
-                                    yield attribute "y2" wY
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" strokeWidthContorLineEdge
-                                } |> AttributeMap.ofAMap
-                            )
+                            yield verticalLine "left"      
 
                             //contour line (vertical height)
-                            yield Incremental.Svg.line ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-                            
-                                    let sX = (sprintf "%f" (100.0-xOffset)) + percent
-                                    let sY = (sprintf "%f" (yOffset - 2.5)) + percent
-
-                                    let wY = (sprintf "%f" (100.0-yOffset+2.5)) + percent
-
-                                    yield attribute "x1" sX
-                                    yield attribute "y1" sY 
-                                    yield attribute "x2" sX
-                                    yield attribute "y2" wY 
-                                    yield attribute "stroke" strokeColor
-                                    yield attribute "stroke-width" strokeWidthContorLineEdge
-                                } |> AttributeMap.ofAMap
-                            )               
-                        
+                            yield verticalLine "right"
                         
                             //Svg.text ["x" => "0%" ; "y" => "50%"; "fill" => "white"] "Height [m]"
                         
