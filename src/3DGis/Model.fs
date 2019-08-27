@@ -4,12 +4,14 @@ open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
 open Aardvark.SceneGraph.Opc
+open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.Application
 
 open OpcViewer.Base.Picking
 open Rabbyte.Drawing
 open Rabbyte.Annotation
+open OpenTK.Input
 
 
 
@@ -38,7 +40,9 @@ type Message =
   | AnimateCameraReturn
   | Tick                    of Time
   | SetProjection           of Option<Alternative>
-  | RenderControlResized of V2i
+  | SetSamplingRate         of Numeric.Action
+  | MouseWheel              of V2d
+
 
 
 
@@ -92,7 +96,8 @@ type Model =
         lineSelectionActive  : bool
         opcBox               : Box3d
         numSampledPoints     : int
-        stepSampleSize       : float
+        stepSampleSize       : NumericInput
+        samplingDistance     : float
         linearDistance       : float
         accDistance          : float
         maxHeight            : float
@@ -128,6 +133,8 @@ type Model =
         pointList            : V3d list   
         altitudeList         : float list
         errorHitList         : int list
+
+        cutViewZoom          : float
 
 
     }
