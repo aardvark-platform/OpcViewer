@@ -12,11 +12,44 @@ type CameraInput =
     delta : float
     }
 
+[<DomainType>]
+type CamVariables = 
+    {
+    camera : CameraControllerState
+    position : V3d
+    frustum : Frustum
+    samplingValues : plist<V2d> //pairs of theta/phi values
+    viewList: plist<CameraView>
+
+    }
+
+//type Cam =
+//    {
+//    camera1 : CamVariables
+//    camera2 : Option<CamVariables>
+   
+//    }
+
+
+//PanCam; both cameras with equal FOV
+[<DomainType>]
+type Stereo = 
+ {
+    camL : CamVariables
+    camR : CamVariables
+    currIdx : int
+ }
+
+[<DomainType>]
+type HighRes = 
+    {
+    cam: CamVariables
+    currIdx : int
+    }
+
 type CameraType =
-    | Camera5   
-    | Camera10   
-    | Camera15   
-    | Stereo    
+    | HighResCam   
+    | WACLR     
 
  type Overlap =
     | Percent_20
@@ -52,13 +85,14 @@ type RoverModel =
         target   :       V3d            
         tilt     :       CameraInput
         pan      :       CameraInput
-        camera   :       CameraControllerState
+        HighResCam   :   HighRes  //single camera
+        WACLR :          Stereo  //stereo
         up       :       V3d
-        frustum  :       Frustum
-        fov      :       float
+        //frustum  :       Frustum
+        //fov      :       float
         panOverlap  :    float     
         tiltOverlap :    float
-        currentCamType : Option<CameraType>
+        currentCamType : CameraType
         currentPanOverlap : Option<Overlap>
         currentTiltOverlap : Option<Overlap>
         cameraOptions :  hmap<CameraType, string>
@@ -68,9 +102,9 @@ type RoverModel =
         projsphere :     ProjectionSphere
         projPoints :     plist<V3d>
         thetaPhiValues : plist<V2d>
-        samplingValues : plist<V2d>
-        currIdx :        int
-        viewList:        plist<CameraView>
+        //samplingValues : plist<V2d>
+        //currIdx :        int
+        //viewList:        plist<CameraView>
 
 
 
@@ -80,7 +114,7 @@ type RoverAction =
     | ChangePosition of V3d     
     | ChangePan of float
     | ChangeTilt of float
-    | SwitchCamera of Option<CameraType>
+    | SwitchCamera of CameraType
     | MoveToRegion 
     | CalculateAngles
     | RotateToPoint
@@ -91,12 +125,23 @@ type RoverAction =
 
 module RoverModel =
     
+    //High resolution camera //FOV 5.0°
     let initCamera = {
-   
+        
         FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
          }
 
     let initfrustum = Frustum.perspective 5.0 0.1 20.0 1.0
+
+    //Stereo camera //PanCam FOV 37.0°
+    let camL = {
+                    FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
+                }
+    let camR = {
+                    FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 6.0) V3d.OOO V3d.OOI
+                }
+    let frustumL = Frustum.perspective 37.0 0.1 20.0 1.0
+    let frustumR = Frustum.perspective 37.0 0.1 20.0 1.0
     
     let initial = 
         {
@@ -117,14 +162,69 @@ module RoverModel =
                 delta = 0.0
             }
 
-        camera = initCamera
+        HighResCam = 
+         {
+         
+           cam = 
+            {
+            camera = 
+             {
+              FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
+             }
+            
+            position = V3d.III
+            frustum = initfrustum
+            samplingValues = PList.empty
+            viewList = PList.empty
+            
+            
+            
+            }
+
+           currIdx = 0
+        
+           
+         
+         }
+
         up     = initCamera.view.Up
-        frustum = initfrustum
+        //frustum = initfrustum
+
+
+        
+
+        WACLR = 
+         {      
+                camL = 
+                    {
+                    camera = camL
+                    position = V3d.III
+                    frustum = frustumL
+                    samplingValues = PList.empty
+                    viewList = PList.empty
+         
+                    }
+                
+                camR = 
+                
+                    {
+                    camera = camR
+                    position = V3d.III
+                    frustum = frustumR
+                    samplingValues = PList.empty
+                    viewList = PList.empty
+                    
+                    }
+
+                currIdx = 0
+                
+   
+         }
 
         currentPanOverlap = Some Percent_20
         currentTiltOverlap = Some Percent_20
-        currentCamType = Some Camera5
-        cameraOptions = HMap.ofList [Camera5, "5°"; Camera10, "10°"; Camera15, "15°"; Stereo, "Stereo"]
+        currentCamType = HighResCam
+        cameraOptions = HMap.ofList [WACLR, "WACLR Stereo"; HighResCam, "High Resolution Camera"]
         panOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
         tiltOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
         
@@ -138,10 +238,10 @@ module RoverModel =
 
         projPoints = PList.empty
         thetaPhiValues = PList.empty
-        samplingValues = PList.empty
-        currIdx = 0
-        viewList = PList.empty
-        fov = 5.0
+        //samplingValues = PList.empty
+        //currIdx = 0
+        //viewList = PList.empty
+        //fov = 5.0
         panOverlap = 20.0       //at least 20% according to https://mars.nasa.gov/msl/mission/instruments/mastcam/
         tiltOverlap = 20.0
         }

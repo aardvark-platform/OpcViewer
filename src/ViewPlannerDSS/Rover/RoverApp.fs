@@ -5,26 +5,64 @@ open Aardvark.Base
 
 module RoverApp =
     open Aardvark.UI
-    open System.Threading
+    open Aardvark.UI.Primitives
 
-    let panning (m:RoverModel) =
-        let forward = m.camera.view.Forward
-        let up = m.up //rotate around global up axis
-        let panRotation = Rot3d(up, m.pan.delta.RadiansFromDegrees())
+    let pan (r:RoverModel) (view:CameraView) (pos:V3d)=
+        let forward = view.Forward
+        let up = r.up //rotate around global up axis
+        let panRotation = Rot3d(up, r.pan.delta.RadiansFromDegrees())
         let targetWithPan = panRotation.TransformDir(forward)
-        let newView = CameraView.look m.position targetWithPan.Normalized up
-        {m with camera =  {m.camera with view = newView} }
+        CameraView.look pos targetWithPan.Normalized up
+  
 
+    let panning (r:RoverModel) (camType:CameraType) =
+        
+        let newR = 
+            match camType with
+            | HighResCam ->
+                let view = r.HighResCam.cam.camera.view
+                let pos = r.HighResCam.cam.position
+                let newView = pan r view pos
+                {r with HighResCam = {r.HighResCam with cam = {r.HighResCam.cam with camera = {r.HighResCam.cam.camera with view = newView }}}}
 
-    
-    let tilting (m:RoverModel) =
-        let forward = m.camera.view.Forward
-        let right = m.camera.view.Right
-        let tiltRotation = Rot3d(right, m.tilt.delta.RadiansFromDegrees())
+            | WACLR -> 
+                let camL = r.WACLR.camL
+                let camR = r.WACLR.camR
+                let roverPanLeftCam = pan r camL.camera.view camL.position
+                let roverPanRightCam = pan r camR.camera.view camR.position
+                {r with WACLR = {r.WACLR with camL = {r.WACLR.camL with camera = {r.WACLR.camL.camera with view = roverPanLeftCam }}; camR = {r.WACLR.camR with camera = {r.WACLR.camR.camera with view = roverPanRightCam } } } } 
+
+        newR
+
+    let tilt (r:RoverModel) (view:CameraView) (pos:V3d) =
+        let forward = view.Forward
+        let right = view.Right
+        let tiltRotation = Rot3d(right, r.tilt.delta.RadiansFromDegrees())
         let targetWithTilt = tiltRotation.TransformDir(forward).Normalized
+        CameraView.look pos targetWithTilt view.Up
+  
+    
+    let tilting (r:RoverModel) (camType:CameraType) =
+        
+        let newR = 
+            match camType with
+            | HighResCam ->
+                let view = r.HighResCam.cam.camera.view
+                let pos = r.HighResCam.cam.position
+                let newView = tilt r view pos
+                {r with HighResCam = {r.HighResCam with cam = {r.HighResCam.cam with camera = {r.HighResCam.cam.camera with view = newView }}}}
 
-        let newView = CameraView.look m.position targetWithTilt m.camera.view.Up
-        {m with camera =  {m.camera with view = newView} }
+            | WACLR -> 
+                let camL = r.WACLR.camL
+                let camR = r.WACLR.camR
+                let roverPanLeftCam = tilt r camL.camera.view camL.position
+                let roverPanRightCam = tilt r camR.camera.view camR.position
+                {r with WACLR = {r.WACLR with camL = {r.WACLR.camL with camera = {r.WACLR.camL.camera with view = roverPanLeftCam }}; camR = {r.WACLR.camR with camera = {r.WACLR.camR.camera with view = roverPanRightCam } } } } 
+
+        newR
+
+
+
 
    
     let initializeTilt (m:RoverModel) (value:float) = 
@@ -144,41 +182,41 @@ module RoverApp =
 
 
 
-    let checkROIFullyInside (m:RoverModel) (region:Option<plist<V3d>>) =
+    //let checkROIFullyInside (m:RoverModel) (region:Option<plist<V3d>>) =
         
-        //calculate center point of region
-        match region with 
-            | None -> m
-            | Some region -> 
+    //    //calculate center point of region
+    //    match region with 
+    //        | None -> m
+    //        | Some region -> 
 
-                let sum = region.Sum()
-                let c = region |> PList.count
-                let centerpoint = sum / (float c)
+    //            let sum = region.Sum()
+    //            let c = region |> PList.count
+    //            let centerpoint = sum / (float c)
 
-        //calculate new view matrix by tilting and panning to center point
-                let viewM = m.camera.view.ViewTrafo
-                let iProj = viewM.Forward.TransformPos centerpoint
-                let tiltAngle = atan2 -iProj.Y -iProj.Z
-                let panAngle = atan2 iProj.X -iProj.Z
-                //let rotTrafo = Trafo3d.Rotation(tiltAngle, panAngle, 0.0)
-                let rotTrafo = Trafo3d.Rotation(0.0, panAngle, 0.0)
-                let viewM2 = CameraView.ofTrafo (m.camera.view.ViewTrafo * rotTrafo)
+    //    //calculate new view matrix by tilting and panning to center point
+    //            let viewM = m.camera.view.ViewTrafo
+    //            let iProj = viewM.Forward.TransformPos centerpoint
+    //            let tiltAngle = atan2 -iProj.Y -iProj.Z
+    //            let panAngle = atan2 iProj.X -iProj.Z
+    //            //let rotTrafo = Trafo3d.Rotation(tiltAngle, panAngle, 0.0)
+    //            let rotTrafo = Trafo3d.Rotation(0.0, panAngle, 0.0)
+    //            let viewM2 = CameraView.ofTrafo (m.camera.view.ViewTrafo * rotTrafo)
 
-        //transform region points to projection space
-                let projM = Frustum.projTrafo(m.frustum)
-                let viewProj = viewM2.ViewTrafo * projM
-                let transformedpoints = region |> PList.toList |> List.map (fun p -> viewProj.Forward.TransformPosProj p) 
-        //let normPoints = transformedpoints |> List.map(fun p -> ((V2d(p.X, p.Y) + V2d.One) * 0.5))
+    //    //transform region points to projection space
+    //            let projM = Frustum.projTrafo(m.frustum)
+    //            let viewProj = viewM2.ViewTrafo * projM
+    //            let transformedpoints = region |> PList.toList |> List.map (fun p -> viewProj.Forward.TransformPosProj p) 
+    //    //let normPoints = transformedpoints |> List.map(fun p -> ((V2d(p.X, p.Y) + V2d.One) * 0.5))
         
-        //check if all of the points have values between 0 and 1 
-        //let allInside = List.forall (fun (point:V2d) -> (( point.X > 0.0 && point.X < 1.0) && ( point.Y > 0.0 && point.Y < 1.0)) ) normPoints
-                let allInside = List.forall (fun (point:V3d) -> (( point.X > -1.0 && point.X  < 1.0) && ( point.Y > -1.0 && point.Y < 1.0)) ) transformedpoints
+    //    //check if all of the points have values between 0 and 1 
+    //    //let allInside = List.forall (fun (point:V2d) -> (( point.X > 0.0 && point.X < 1.0) && ( point.Y > 0.0 && point.Y < 1.0)) ) normPoints
+    //            let allInside = List.forall (fun (point:V3d) -> (( point.X > -1.0 && point.X  < 1.0) && ( point.Y > -1.0 && point.Y < 1.0)) ) transformedpoints
 
-                let points = region |> PList.toList
-       //if true then ROI fits in frustum
-                match allInside with
-                    | true -> {m with camera =  {m.camera with view = viewM2} }
-                    | false -> m//calcPanTiltValues m points viewM2
+    //            let points = region |> PList.toList
+    //   //if true then ROI fits in frustum
+    //            match allInside with
+    //                | true -> {m with camera =  {m.camera with view = viewM2} }
+    //                | false -> m//calcPanTiltValues m points viewM2
             
     
     //panR = number of required pans; tiltR = number of required tilts per pan
@@ -264,12 +302,44 @@ module RoverApp =
             | _,_ -> l //this case should never be reached
 
 
+    
+    //takes pan and tilt values and calculates a view matrix for frustum visualisation
+    let calculateViewMatrix (rover : RoverModel) (pan : float) (tilt : float) (cam:CameraControllerState) =
+        
+        let panCurr = rover.pan.current
+        let panDelta = panCurr - pan
+        let tiltCurr = rover.tilt.current
+        let tiltDelta = tiltCurr - tilt
+
+        let forward = cam.view.Forward
+        let up = rover.up 
+        let right = cam.view.Right
+
+        //panning
+        let panRotation = Rot3d(up, panDelta.RadiansFromDegrees())
+        let targetWithPan = panRotation.TransformDir(forward)
+
+        //tilting
+        let tiltRotation = Rot3d(right, tiltDelta.RadiansFromDegrees())
+        let targetWithTilt = tiltRotation.TransformDir(targetWithPan)
+
+        let view = CameraView.look rover.position targetWithTilt.Normalized up
+
+        view
+
+
+
+
+
     let sampling (rover : RoverModel) = 
         
         let panOverlap = rover.panOverlap
         let tiltOverlap = rover.tiltOverlap
+        let currentCamera = rover.currentCamType
+   
+        
 
-        let fov = rover.fov
+        //let fov = rover.fov
         let values = rover.thetaPhiValues
         let li = values |> PList.toList
         let pans = li |> List.map (fun l -> l.X) //list with just pan values
@@ -279,8 +349,19 @@ module RoverApp =
 
         let tilts = li |> List.map (fun l -> l.Y) //list with just tilt values
 
-        let panRef = fov * (1.0 - (panOverlap/100.0))
-        let tiltRef = fov * (1.0 - (tiltOverlap/100.0))
+      
+
+
+
+
+
+
+
+
+
+
+        //let panRef = fov * (1.0 - (panOverlap/100.0))
+        //let tiltRef = fov * (1.0 - (tiltOverlap/100.0))
 
 
         //sort pan values
@@ -298,103 +379,89 @@ module RoverApp =
         let minTilt = sortedTilts.Head
         let maxTilt = sortedTilts.Item(sortedTilts.Length - 1)
         let deltaTilt = maxTilt - minTilt
-       
-        //bounding box sampling
-        let p1 = V2d(minPan, maxTilt) //left bottom
-        let p2 = V2d(minPan, minTilt) //left top
-        let p3 = V2d(maxPan, minTilt) //right top
-        let p4 = V2d(maxPan, maxTilt) //right bottom
-
-
-
-
-
-
-
-        //regarding vertical fov
-        //let fovHalf = fov/2.0
-        //let deltaBetween = ((Math.Abs(deltaTilt)) - fovHalf)
-        //let adjustedTilt =  fovHalf - deltaBetween
+    
+    
         let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef))) //- 1 //-1 as the camera is initially positioned at the first tilting area
         printfn "tilt delta %A rate %A " deltaTilt tiltingRate
 
         //generate a sampling list with pan and tilt values
         let firstPair = V2d(minPan, maxTilt) //pair with min pan value and max tilt value (equals left bottom corner of bounding box)
         let samplingValues = [firstPair] //initial list
-
-        let inputPan = [p2;p3]
-        let inputTilt = [p1;p2]
-
-        //let samplings = buildList samplingValues panningRate tiltingRate tiltingRate -adjustedTilt fov
-        //let samplings = buildList samplingValues panningRate tiltingRate tiltingRate -fov fov
-
-        //sampling with algorithm buildList2
-        //let rec buildList2 (l:List<V2d>) (inputPan:List<V2d>) (inputTilt:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (panC:float) (tiltC:float)=
-        //let samplings = buildList2 samplingValues inputPan inputTilt panningRate tiltingRate 0.0 0.0 
         
-        //let rec buildList (l:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (deltaPan:float) (deltaTilt:float) 
-        let samplings = buildList samplingValues panningRate tiltingRate tiltingRate panRef -tiltRef
+        let newRover = 
+         match currentCamera with
+            | HighResCam -> 
+                let camera = rover.HighResCam
+                let fov = camera.cam.frustum |> Frustum.horizontalFieldOfViewInDegrees
+                let panRef = fov * (1.0 - (panOverlap/100.0))
+                let tiltRef = fov * (1.0 - (tiltOverlap/100.0))
+                let panningRate = int(Math.Round(deltaPan / panRef))
+                let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef)))
+                let values = buildList samplingValues panningRate tiltingRate tiltingRate panRef -tiltRef
+                let sv = values |> PList.ofList
 
-        samplings
+                //for visualising footprints
+                let viewMatrices = values |> List.map(fun m -> calculateViewMatrix rover m.X m.Y camera.cam.camera) |> PList.ofList
+
+                {rover with HighResCam = {rover.HighResCam with cam = { rover.HighResCam.cam with samplingValues = sv; viewList = viewMatrices }} }
+
+            | WACLR -> 
+                //TODO
+                rover
+                
+        newRover
+
+
+
+
+        //let samplings = buildList samplingValues panningRate tiltingRate tiltingRate panRef -tiltRef
+
+        //samplings
        
 
 
 
     let moveFrustum (m:RoverModel) = 
        
-        let v = checkROIFullyInside m m.reg
-        v
+        //let v = checkROIFullyInside m m.reg
+        //v
+        m
    
 
-    //takes pan and tilt values and calculates a view matrix for frustum visualisation
-    let calculateViewMatrix (rover : RoverModel) (pan : float) (tilt : float) =
-        
-        let panCurr = rover.pan.current
-        let panDelta = panCurr - pan
-        let tiltCurr = rover.tilt.current
-        let tiltDelta = tiltCurr - tilt
-
-        let forward = rover.camera.view.Forward
-        let up = rover.up 
-        let right = rover.camera.view.Right
-
-        //panning
-        let panRotation = Rot3d(up, panDelta.RadiansFromDegrees())
-        let targetWithPan = panRotation.TransformDir(forward)
-
-        //tilting
-        let tiltRotation = Rot3d(right, tiltDelta.RadiansFromDegrees())
-        let targetWithTilt = tiltRotation.TransformDir(targetWithPan)
-
-        let view = CameraView.look rover.position targetWithTilt.Normalized up
-
-        view
 
 
 
     
     let rotateToPoint (rover:RoverModel) =
         
-        
-        let values = rover.samplingValues
-        let li = values |> PList.toList
-        let idx = rover.currIdx
-        let pair = values.Item(idx) 
+        let currentCamera = rover.currentCamType
 
-        //values currently rotated to
-        printfn "thetaCurrent %A phiCurrent %A"  (pair.X) (pair.Y) 
+        let r = 
+         match currentCamera with
+         | HighResCam -> 
+           let c = rover.HighResCam.cam
+           let values = c.samplingValues
+           let li = values |> PList.toList
+           let idx = rover.HighResCam.currIdx
+           let pair = values.Item(idx)
 
-        let panned = setPan rover pair.X
-        let pannedRover = panning panned
-        let tilted = setTilt pannedRover (pair.Y)
-        let newR = tilting tilted
+           let panned = setPan rover pair.X
+           let pannedRover = panning panned currentCamera
+           let tilted = setTilt pannedRover (pair.Y)
+           let ro = tilting tilted currentCamera
 
-        //set index
-        let lastIdx = li.Length - 1
-        let newIdx = 
+           let lastIdx = li.Length - 1
+           let newIdx = 
             if idx = lastIdx then 0 else (idx+1)
+           
+           {ro with HighResCam = { ro.HighResCam with currIdx = newIdx}}
 
-        {newR with currIdx = newIdx}
+         | WACLR -> //TODO 
+            rover
+        
+        r
+
+        
 
        
     let calculateValues (rover:RoverModel) =
@@ -404,25 +471,21 @@ module RoverApp =
          match region with
             | None -> rover
             | Some reg -> 
+                let cameratype = rover.currentCamType
                 let spherePos = rover.projsphere.position
                 let l = reg |> PList.toList
                 let shiftedPoints = l  |> List.map (fun p -> (p - spherePos).Normalized)
                 let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotateIntoCoordinateSystem rover p)
-
                 let projectionPoints = shiftedPoints |> List.map (fun p -> p + spherePos) |> PList.ofList
-
                 let thetaPhiValues = rotatedPoints |> List.map(fun p -> calcThetaPhi p)
-
 
                 //debugging
                 for p in thetaPhiValues do
                     printfn "theta %A phi %A"  (p.X) (p.Y) 
 
-
                 let plist = thetaPhiValues |> PList.ofList
 
-                
-
+     
                 //point on forward vector
                 let referencePoint = rover.target
                 let shifted = (referencePoint-spherePos).Normalized
@@ -432,43 +495,23 @@ module RoverApp =
                 let setR = initializePan rover thetaPhi.X
                 let setR2 = initializeTilt setR thetaPhi.Y
 
-                //let viewMatrices = thetaPhiValues |> List.map(fun m -> calculateViewMatrix setR2 m.X m.Y) |> PList.ofList
-                //{setR2 with thetaPhiValues = plist; projPoints = projectionPoints; viewList = viewMatrices }
                 {setR2 with thetaPhiValues = plist; projPoints = projectionPoints}
         
-        let samplings = sampling newRover
-        let viewMatrices = samplings |> List.map(fun m -> calculateViewMatrix newRover m.X m.Y) |> PList.ofList
-
-        {newRover with samplingValues = samplings |> PList.ofList; viewList = viewMatrices}
+        let sampling = sampling newRover
+       // let viewMatrices = samplings |> List.map(fun m -> calculateViewMatrix newRover m.X m.Y) |> PList.ofList
+        sampling
+        //{newRover with samplingValues = samplings |> PList.ofList; viewList = viewMatrices}
         
-       
-        
-  
       
-
-        
-
-
-
-
-    let changeCam (rover:RoverModel) (camtype:Option<CameraType>)=
+    let changeCam (rover:RoverModel) (camtype:CameraType)=
         
         match camtype with
-            |Some Camera5 -> 
-                let fr = Frustum.perspective 5.0 0.1 10.0 1.0
-                {rover with frustum = fr; currentCamType = Some Camera5; fov = 5.0}
-            
-            |Some Camera10 ->
-                let fr = Frustum.perspective 10.0 0.1 10.0 1.0
-                {rover with frustum = fr; currentCamType = Some Camera10; fov = 10.0}
-            
-            |Some Camera15 ->
-                let fr = Frustum.perspective 15.0 0.1 10.0 1.0
-                {rover with frustum = fr; currentCamType = Some Camera15; fov = 15.0}
-            
-            |Some Stereo -> rover //TODO 
+            |HighResCam -> 
+                {rover with currentCamType = HighResCam}
 
-            |None -> rover
+            |WACLR ->
+                {rover with currentCamType = WACLR}
+
     
 
     let changePanOverlap (rover:RoverModel) (overlap:Option<Overlap>) =
@@ -498,11 +541,11 @@ module RoverApp =
 
             |ChangePan p -> 
                 let rover' = setPan rover p
-                panning rover'
+                panning rover' rover.currentCamType
 
             |ChangeTilt t -> 
                 let rover' = setTilt rover t
-                tilting rover'
+                tilting rover' rover.currentCamType
             
             |MoveToRegion  ->
                 moveFrustum rover 

@@ -386,7 +386,7 @@ module App =
       let camForward = 
          alist {
             let! p = m.rover.position
-            let! view = m.rover.camera.view
+            let! view = m.rover.HighResCam.cam.camera.view
             let f = (view.Forward*10.0)
             //shift points
             let shiftedPos = p - p
