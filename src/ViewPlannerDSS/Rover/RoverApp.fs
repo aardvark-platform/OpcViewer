@@ -183,7 +183,7 @@ module RoverApp =
     
     //panR = number of required pans; tiltR = number of required tilts per pan
     //TODO: incoorporate possible overlap between pans
-    let rec buildList (l:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (deltaTilt:float) (fov:float)=
+    let rec buildList (l:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (deltaPan:float) (deltaTilt:float) =
         match panR,tiltR with 
             | (p,t) when  p = 0 && t = 0 -> l
             | (p,t) when  p >= 0 && t > 0 -> 
@@ -191,14 +191,14 @@ module RoverApp =
                         let newTilt = lastItem.Y + deltaTilt
                         let listItem = [V2d(lastItem.X, newTilt)]
                         let newList = List.append l listItem
-                        buildList newList panR (tiltR-1) originalTiltR deltaTilt fov
+                        buildList newList panR (tiltR-1) originalTiltR deltaPan deltaTilt 
             | (p,t) when p > 0 && t = 0 -> 
                         let lastItem = l.Item(l.Length-1)
-                        let newPan = lastItem.X + fov
+                        let newPan = lastItem.X + deltaPan
                         let newDeltaTilt = deltaTilt * (-1.0) 
                         let listItem = [V2d(newPan, lastItem.Y)]
                         let newList = List.append l listItem
-                        buildList newList (panR-1) originalTiltR originalTiltR newDeltaTilt fov
+                        buildList newList (panR-1) originalTiltR originalTiltR deltaPan newDeltaTilt 
             | _,_ -> l //this case should never be reached
                 
     
@@ -230,6 +230,38 @@ module RoverApp =
                         let newInputTilt = [inputTilt.Item(1); inputTilt.Item(0)]
                         buildList2 newList inputPan newInputTilt panR tiltR newpanC 0.0
             | _,_-> l 
+
+    //combination between buildList1 and 2
+    //interpolation with indices
+    let rec buildList3 (l:List<V2d>) (inputPan:List<V2d>) (inputTilt:List<V2d>) (panR:int) (tiltR:int) (origTilt:int) (panC:float) (tiltC:float) =
+        match panR,tiltR with 
+            | (p,t) when  p = 0 && t = 0 -> l
+
+            | (p,t) when  p >= 0 && t > 0 -> //decrease tilt
+               let lastItem = l.Item(l.Length-1)
+               let currPan = lastItem.X
+               let ref1 = V2d(currPan, inputTilt.Item(0).Y)
+               let ref2 = V2d(currPan, inputTilt.Item(1).Y)
+               //calculate interpolation coefficient
+               let i = if tiltR = 1 then 0.5 else 1.0 / (float(tiltR))
+               let newTiltC = tiltC + i
+               let interpolated = ref1 * (1.0-newTiltC) + ref2 * newTiltC                     
+               let newList = List.append l [interpolated]
+               buildList3 newList inputPan inputTilt panR (tiltR-1) origTilt panC newTiltC         
+
+
+            | (p,t) when p > 0 && t = 0 -> //decrease pan; reset tilt
+               let lastItem = l.Item(l.Length-1)
+               let p1 = inputPan.Item(0)
+               let p2 = inputPan.Item(1)
+               let ip = 1.0 / (float(panR))
+               let newpanC = panC + ip
+               let interpolated = p1 * (1.0-newpanC) + p2 * newpanC
+               let newList = List.append l [V2d(interpolated.X, lastItem.Y)]
+               let newInputTilt = [inputTilt.Item(1); inputTilt.Item(0)]
+               buildList3 newList inputPan newInputTilt (panR-1) origTilt origTilt newpanC 0.0    
+
+            | _,_ -> l //this case should never be reached
 
 
     let sampling (rover : RoverModel) = 
@@ -283,7 +315,7 @@ module RoverApp =
         //let fovHalf = fov/2.0
         //let deltaBetween = ((Math.Abs(deltaTilt)) - fovHalf)
         //let adjustedTilt =  fovHalf - deltaBetween
-        let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef)))
+        let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef))) //- 1 //-1 as the camera is initially positioned at the first tilting area
         printfn "tilt delta %A rate %A " deltaTilt tiltingRate
 
         //generate a sampling list with pan and tilt values
@@ -298,7 +330,10 @@ module RoverApp =
 
         //sampling with algorithm buildList2
         //let rec buildList2 (l:List<V2d>) (inputPan:List<V2d>) (inputTilt:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (panC:float) (tiltC:float)=
-        let samplings = buildList2 samplingValues inputPan inputTilt panningRate tiltingRate 0.0 0.0 
+        //let samplings = buildList2 samplingValues inputPan inputTilt panningRate tiltingRate 0.0 0.0 
+        
+        //let rec buildList (l:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (deltaPan:float) (deltaTilt:float) 
+        let samplings = buildList samplingValues panningRate tiltingRate tiltingRate panRef -tiltRef
 
         samplings
        
