@@ -482,15 +482,17 @@ module App =
             sampleSurfacePointsForCutView { model with stepSampleSize = Numeric.update model.stepSampleSize f } model.picking DrawingModel.initial
         else 
             { model with stepSampleSize = Numeric.update model.stepSampleSize f }
-      | MouseWheel v ->
-        let newCutViewZoom = model.cutViewZoom + 2.0
+      | MouseWheel v ->       
+        let newCutViewZoom =
+            if v = V2d(0,1) then
+                Math.Max (model.cutViewZoom + 2.0, 0.0)
+            else
+                Math.Max (model.cutViewZoom - 2.0, 0.0)
+
         let originalXDim = Math.Round ((float) model.cutViewDim.X * (100.0/(100.0+model.cutViewZoom)))
         let newXDim = int <| Math.Round (originalXDim * ((100.0 + newCutViewZoom)/100.0))
-        
-        if v = V2d(0,1) then
-            { model with cutViewZoom = newCutViewZoom; cutViewDim = V2i(newXDim, model.cutViewDim.Y) }
-        else
-            { model with cutViewZoom = newCutViewZoom; cutViewDim = V2i(newXDim, model.cutViewDim.Y) }
+
+        { model with cutViewZoom = newCutViewZoom; cutViewDim = V2i(newXDim, model.cutViewDim.Y) }
       | ResizeRenderView d ->
         Log.line "Render View Resize %A" d
         { model with renderViewDim = d}
@@ -687,6 +689,7 @@ module App =
             require Html.semui ( 
 
               let percent = "%"
+              let px = "px"
               let strokeWidthMainRect = "0.1px"
               let strokeColor = "rgb(255,255,255)"
               let strokeWidthContorLineEdge = "1.5px"
@@ -702,12 +705,16 @@ module App =
                     amap {                     
                         let! xOffset = m.offsetUIDrawX
                         let! yOffset = m.offsetUIDrawY
-                            
-                        let sX = (sprintf "%f" xOffset) + percent
-                        let sY = (sprintf "%f" yOffset) + percent
 
-                        let wX = (sprintf "%f" (100.0-xOffset*2.0)) + percent
-                        let wY = (sprintf "%f" (100.0-yOffset*2.0)) + percent
+                        let! dimensions = m.cutViewDim
+                        let xWidth = (float) dimensions.X
+                        let yWidth = (float) dimensions.Y
+
+                        let sX = (sprintf "%f" (xOffset * xWidth)) + px
+                        let sY = (sprintf "%f" (yOffset * yWidth)) + px
+
+                        let wX = (sprintf "%f" ((1.0-xOffset*2.0) * xWidth)) + px
+                        let wY = (sprintf "%f" ((1.0-yOffset*2.0) * yWidth)) + px
 
                         yield attribute "x" sX
                         yield attribute "y" sY 
@@ -726,14 +733,18 @@ module App =
                     amap {
                         let! xOffset = m.offsetUIDrawX
                         let! yOffset = m.offsetUIDrawY
+
+                        let! dimensions = m.cutViewDim
+                        let xWidth = (float) dimensions.X
+                        let yWidth = (float) dimensions.Y
                             
-                        let heightRectValue = (100.0-yOffset*2.0)/5.0
+                        let heightRectValue = (1.0-yOffset*2.0)/5.0
 
-                        let sX = (sprintf "%f" xOffset) + percent
-                        let sY = (sprintf "%f" (yOffset + heightRectValue * order)) + percent
+                        let sX = (sprintf "%f" (xOffset * xWidth)) + px
+                        let sY = (sprintf "%f" ((yOffset + heightRectValue * order) * yWidth)) + px
 
-                        let wX = (sprintf "%f" (100.0-xOffset*2.0)) + percent
-                        let heightRectH = (sprintf "%f" ((100.0-yOffset*2.0)/5.0)) + percent
+                        let wX = (sprintf "%f" ((1.0-xOffset*2.0) * xWidth)) + px
+                        let heightRectH = (sprintf "%f" (((1.0-yOffset*2.0)/5.0) * yWidth)) + px
 
                         yield attribute "x" sX
                         yield attribute "y" sY 
@@ -752,13 +763,17 @@ module App =
 
                         let! xOffset = m.offsetUIDrawX
                         let! yOffset = m.offsetUIDrawY
-                            
-                        let heightRectH = (100.0-yOffset*2.0)/5.0
+                        
+                        let! dimensions = m.cutViewDim
+                        let xWidth = (float) dimensions.X
+                        let yWidth = (float) dimensions.Y
 
-                        let sX = (sprintf "%f" (xOffset-0.5)) + percent
-                        let sY = (sprintf "%f" (yOffset + heightRectH * order)) + percent
+                        let heightRectH = (1.0-yOffset*2.0)/5.0
 
-                        let wX = (sprintf "%f" (100.0-xOffset+0.5)) + percent
+                        let sX = (sprintf "%f" ((xOffset-0.005) * xWidth)) + px
+                        let sY = (sprintf "%f" ((yOffset + heightRectH * order) * yWidth)) + px
+
+                        let wX = (sprintf "%f" ((1.0-xOffset+0.005) * xWidth)) + px
 
                         yield attribute "x1" sX
                         yield attribute "y1" sY  
@@ -775,16 +790,20 @@ module App =
                     amap {
                         let! xOffset = m.offsetUIDrawX
                         let! yOffset = m.offsetUIDrawY
+
+                        let! dimensions = m.cutViewDim
+                        let xWidth = (float) dimensions.X
+                        let yWidth = (float) dimensions.Y
                             
                         let sX = 
                             if order = "left" then
-                                (sprintf "%f" (xOffset)) + percent
+                                (sprintf "%f" (xOffset * xWidth)) + px
                             else
-                                (sprintf "%f" (100.0-xOffset)) + percent
+                                (sprintf "%f" ((1.0-xOffset) * xWidth)) + px
 
-                        let sY = (sprintf "%f" (yOffset - 2.5)) + percent
+                        let sY = (sprintf "%f" ((yOffset - 0.025) * yWidth)) + px
 
-                        let wY = (sprintf "%f" (100.0-yOffset+2.5)) + percent
+                        let wY = (sprintf "%f" ((1.0-yOffset+0.025) * yWidth)) + px
 
                         yield attribute "x1" sX
                         yield attribute "y1" sY
@@ -798,12 +817,14 @@ module App =
 
               let containerAttribs = 
                 amap {
-                    let! zoomFactor = m.cutViewZoom 
-                    let widthValue = (sprintf "%f" (100.0+zoomFactor)) + percent
+                    let! dimensions = m.cutViewDim
+
+                    let widthValue = (sprintf "%i" (dimensions.X))
+                    let heightValue = (sprintf "%i" (dimensions.Y))
 
                     yield onWheelPrevent true (fun x -> id (Message.MouseWheel x))
                     yield clazz "mySvg"
-                    yield style ("width: " + widthValue + "; height:100%; user-select: none;")
+                    yield style ("width: " + widthValue + "px; height: 100%; user-select: none;")
                 } |> AttributeMap.ofAMap
 
               
@@ -854,47 +875,25 @@ module App =
                             yield verticalLine "left"      
 
                             //contour line (vertical height)
-                            yield verticalLine "right"
+                            yield verticalLine "right"                       
                         
-                            //Svg.text ["x" => "0%" ; "y" => "50%"; "fill" => "white"] "Height [m]"
-                        
-                            //legend
-                            //yield Incremental.Svg.rect ( 
-                            //    amap {                     
-                            //        let! xOffset = m.offsetUIDrawX
-                            //        let! yOffset = m.offsetUIDrawY
-                            
-                            //        let sX = (sprintf "%f" xOffset) + percent
-                            //        let sY = (sprintf "%f" yOffset) + percent
-
-                            //        let wX = (sprintf "%f" (100.0-xOffset*2.0)) + percent
-                            //        let wY = (sprintf "%f" (100.0-yOffset*2.0)) + percent
-
-                            //        yield attribute "position" "fixed"
-                            //        yield attribute "x" "90%"
-                            //        yield attribute "y" "10%"
-                            //        yield attribute "rx" "2px"
-                            //        yield attribute "ry" "2px" 
-                            //        yield attribute "width" "10px"
-                            //        yield attribute "height" "10px"
-                            //        yield attribute "fill" "red"
-                            //        yield attribute "stroke-width" "0px"
-                            //    } |> AttributeMap.ofAMap
-                            //)
-                        
-                            //Cut View Resize [1535, 296]
-                            yield Svg.svg [style "width:100%;height:100%;"; attribute "viewBox" "0 0 100 100";attribute "preserveAspectRatio" "none"] [      
-                                //chart line
-                                Incremental.Svg.polygon ( 
+                            //chart surface under curve
+                            yield Incremental.Svg.polygon ( 
                                     amap {
-                                        let! xOffset = m.offsetUIDrawX
-                                        let! yOffset = m.offsetUIDrawY                                   
-                            
-                                        let sX = (sprintf "%f" xOffset) 
-                                        let sY = (sprintf "%f" yOffset) 
+                                        let! xOs = m.offsetUIDrawX
+                                        let! yOs = m.offsetUIDrawY  
 
-                                        let wX = (sprintf "%f" (100.0-xOffset)) 
-                                        let wY = (sprintf "%f" (100.0-yOffset)) 
+                                        let xOffset = xOs 
+                                        let yOffset = yOs
+                                        
+                                        let! dimensions = m.cutViewDim
+                                        let xWidth = (float) dimensions.X 
+                                        let yWidth = (float) dimensions.Y
+                            
+                                        let sX = (sprintf "%f" (xOffset * xWidth)) 
+
+                                        let wX = (sprintf "%f" ((1.0-xOffset) * xWidth)) 
+                                        let wY = (sprintf "%f" ((1.0-yOffset) * yWidth))
 
                                         let space = " "
                                         let comma = ","
@@ -909,10 +908,10 @@ module App =
                                             let mutable currentPoints = ""
                                             for i = 0 to altitudeList.Length-1 do
                                                 let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
-                                                let currentY = ((altitudeList.Item(i) - minAltitude) / range) * 100.0
+                                                let currentY = (altitudeList.Item(i) - minAltitude) / range
 
-                                                let normalizeX = (sprintf "%f" (xOffset+ (currentX/100.0) * (100.0-xOffset*2.0)) )
-                                                let normalizeY = (sprintf "%f" (yOffset+ ((100.0-currentY)/100.0) * (100.0-yOffset*2.0)) )
+                                                let normalizeX = (sprintf "%f" ((xOffset+ (currentX/100.0) * (1.0-xOffset*2.0)) * xWidth) )
+                                                let normalizeY = (sprintf "%f" ((yOffset+ (1.0-currentY) * (1.0-yOffset*2.0)) * yWidth) )
                                                 currentPoints <- currentPoints + normalizeX + comma + normalizeY + space
                                             currentPoints                           
                                     
@@ -922,28 +921,24 @@ module App =
                                         yield attribute "points" finalPointsCoord
                                         yield attribute "fill" polygonColor
                                         yield attribute "opacity" polygonOpacity
-                                        yield attribute "stroke" strokeColor
                                         yield attribute "stroke-width" "0.0"
                                     } |> AttributeMap.ofAMap
                                 )
 
-                                
 
-                                //missing data
-                                Incremental.Svg.polygon ( 
+                            //chart curve
+                            yield Incremental.Svg.polyline ( 
                                     amap {
                                         let! xOffset = m.offsetUIDrawX
-                                        let! yOffset = m.offsetUIDrawY                                   
-                            
-                                        let sX = (sprintf "%f" xOffset) 
-
-                                        let wX = (sprintf "%f" (100.0-xOffset)) 
-                                        let wY = (sprintf "%f" (100.0-yOffset)) 
+                                        let! yOffset = m.offsetUIDrawY  
+                                        
+                                        let! dimensions = m.cutViewDim
+                                        let xWidth = (float) dimensions.X 
+                                        let yWidth = (float) dimensions.Y                                                                 
 
                                         let space = " "
                                         let comma = ","
 
-                                        let! errorHitList = m.errorHitList
                                         let! altitudeList = m.altitudeList
 
                                         let! maxAltitude = m.maxHeight
@@ -953,52 +948,84 @@ module App =
                                         let lineCoord = 
                                             let mutable currentPoints = ""
                                             for i = 0 to altitudeList.Length-1 do
-                                                if errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = 0 then
-                                                    let initY = (sprintf "%f" (100.0-yOffset))
+                                                let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
+                                                let currentY = (altitudeList.Item(i) - minAltitude) / range
 
-                                                    let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
-                                                    let currentY = ((altitudeList.Item(i) - minAltitude) / range) * 100.0
-                                                
-                                                    let normalizeX = (sprintf "%f" (xOffset+ (currentX/100.0) * (100.0-xOffset*2.0)) )
-                                                    let normalizeY = (sprintf "%f" (yOffset+ ((100.0-currentY)/100.0) * (100.0-yOffset*2.0)) )
-
-                                                    let initialPointsCoord = normalizeX + comma + initY + space + normalizeX + comma + normalizeY + space
-
-                                                    currentPoints <- currentPoints + initialPointsCoord
-                                                elif errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = -1 && errorHitList.Item(i+1) = -1 then
-                                                    let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
-                                                    let currentY = ((altitudeList.Item(i) - minAltitude) / range) * 100.0
-
-                                                    let normalizeX = (sprintf "%f" (xOffset+ (currentX/100.0) * (100.0-xOffset*2.0)) )
-                                                    let normalizeY = (sprintf "%f" (yOffset+ ((100.0-currentY)/100.0) * (100.0-yOffset*2.0)) )
-
-                                                    currentPoints <- currentPoints + normalizeX + comma + normalizeY + space
-                                                elif errorHitList.Item(i) = -1 && errorHitList.Item(i+1) = 0 then
-                                                    let endY = (sprintf "%f" (100.0-yOffset))
-
-                                                    let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
-                                                    let currentY = ((altitudeList.Item(i) - minAltitude) / range) * 100.0
-
-                                                    let normalizeX = (sprintf "%f" (xOffset+ (currentX/100.0) * (100.0-xOffset*2.0)) )
-                                                    let normalizeY = (sprintf "%f" (yOffset+ ((100.0-currentY)/100.0) * (100.0-yOffset*2.0)) )
-
-                                                    let endPointsCoord = normalizeX + comma + normalizeY + space + normalizeX + comma + endY + space
-
-                                                    currentPoints <- currentPoints + endPointsCoord
-                                                
+                                                let normalizeX = (sprintf "%f" ((xOffset+ (currentX/100.0) * (1.0-xOffset*2.0)) * xWidth) )
+                                                let normalizeY = (sprintf "%f" ((yOffset+ (1.0-currentY) * (1.0-yOffset*2.0)) * yWidth) )
+                                                currentPoints <- currentPoints + normalizeX + comma + normalizeY + space
                                             currentPoints                           
                                     
-                                        let initialPointsCoord = wX + comma + wY + space + sX + comma + wY + space
-                                        let finalPointsCoord = initialPointsCoord + lineCoord
+                                        let finalPointsCoord = lineCoord 
 
                                         yield attribute "points" finalPointsCoord
-                                        yield attribute "fill" "rgb(255, 0, 0)"
-                                        yield attribute "opacity" polygonOpacity
-                                        yield attribute "stroke" strokeColor
-                                        yield attribute "stroke-width" "0.0"
+                                        yield attribute "fill" "none"
+                                        yield attribute "stroke" "red"
+                                        yield attribute "stroke-width" "1.0"
                                     } |> AttributeMap.ofAMap
                                 )
-                            ]
+
+                            //missing data
+                            yield Incremental.Svg.polygon ( 
+                                amap {
+                                    let! xOffset = m.offsetUIDrawX
+                                    let! yOffset = m.offsetUIDrawY  
+                                        
+                                    let! dimensions = m.cutViewDim
+                                    let xWidth = (float) dimensions.X 
+                                    let yWidth = (float) dimensions.Y
+
+                                    let sX = (sprintf "%f" (xOffset * xWidth)) 
+
+                                    let wX = (sprintf "%f" ((1.0-xOffset) * xWidth)) 
+                                    let wY = (sprintf "%f" ((1.0-yOffset) * yWidth))
+
+                                    let space = " "
+                                    let comma = ","
+
+                                    let! errorHitList = m.errorHitList
+                                    let! altitudeList = m.altitudeList
+
+                                    let! maxAltitude = m.maxHeight
+                                    let! minAltitude = m.minHeight
+                                    let range = maxAltitude - minAltitude
+                                    
+                                    let lineCoord = 
+                                        let mutable currentPoints = ""
+                                        for i = 0 to altitudeList.Length-1 do
+
+                                            let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
+                                            let currentY = (altitudeList.Item(i) - minAltitude) / range
+
+                                            let normalizeX = (sprintf "%f" ((xOffset+ (currentX/100.0) * (1.0-xOffset*2.0)) * xWidth) )
+                                            let normalizeY = (sprintf "%f" ((yOffset+ (1.0-currentY) * (1.0-yOffset*2.0)) * yWidth) )
+
+                                            if errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = 0 then
+                                                let initY = (sprintf "%f" ((1.0-yOffset) * yWidth))
+                                                let initialPointsCoord = normalizeX + comma + initY + space + normalizeX + comma + normalizeY + space
+
+                                                currentPoints <- currentPoints + initialPointsCoord
+                                            elif errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = -1 && errorHitList.Item(i+1) = -1 then
+                                                currentPoints <- currentPoints + normalizeX + comma + normalizeY + space
+                                            elif errorHitList.Item(i) = -1 && errorHitList.Item(i+1) = 0 then
+                                                let endY = (sprintf "%f" ((1.0-yOffset) * yWidth))
+                                                let endPointsCoord = normalizeX + comma + normalizeY + space + normalizeX + comma + endY + space
+
+                                                currentPoints <- currentPoints + endPointsCoord
+                                                
+                                        currentPoints                           
+                                    
+                                    let initialPointsCoord = wX + comma + wY + space + sX + comma + wY + space
+                                    let finalPointsCoord = initialPointsCoord + lineCoord
+
+                                    yield attribute "points" finalPointsCoord
+                                    yield attribute "fill" "rgb(255, 0, 0)"
+                                    yield attribute "opacity" polygonOpacity
+                                    yield attribute "stroke" strokeColor
+                                    yield attribute "stroke-width" "0.0"
+                                } |> AttributeMap.ofAMap
+                            )
+                        
                         }
 
                     onBoot "$(window).trigger('resize')" (
@@ -1135,8 +1162,8 @@ module App =
           minHeight            = 0.0
           dropDownOptions      = HMap.ofList [P, "Perspective"; O, "Orthographic";]
           currentOption        = Some O
-          offsetUIDrawX        = 5.0
-          offsetUIDrawY        = 20.0
+          offsetUIDrawX        = 0.05
+          offsetUIDrawY        = 0.2
           pointList            = []
           altitudeList         = []
           errorHitList         = []
