@@ -12,6 +12,7 @@ open OpcViewer.Base.Picking
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 open OpenTK.Input
+open System
 
 
 
@@ -42,6 +43,8 @@ type Message =
   | SetProjection           of Option<Alternative>
   | SetSamplingRate         of Numeric.Action
   | MouseWheel              of V2d
+  | ResizeRenderView        of V2i
+  | ResizeCutView           of V2i
 
 
 
@@ -136,6 +139,8 @@ type Model =
 
         cutViewZoom          : float
 
+        renderViewDim        : V2i
+        cutViewDim           : V2i
 
     }
 

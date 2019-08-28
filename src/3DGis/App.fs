@@ -16,6 +16,31 @@ open Aardvark.Rendering.Text
 open Aardvark.UI.Primitives
 open Aardvark.UI.Trafos
 open Aardvark.Application
+
+
+[<AutoOpen>]
+module SceneGraphExtension = 
+
+    type OverrideProjTrafo(overrideTrafo : IMod<Option<Trafo3d>>, child : ISg) =
+        inherit Sg.AbstractApplicator(child)
+        member x.OverrideTrafo = overrideTrafo
+
+    [<Semantic>]
+    type OverrideProjTrafoSem() =
+        member x.ProjTrafo(o : OverrideProjTrafo) =
+            let myTrafo = 
+                Mod.map2 (fun (o : Option<Trafo3d>) (r : Trafo3d) -> 
+                    match o with
+                        | None -> r
+                        | Some o -> o
+                ) o.OverrideTrafo o?ProjTrafo
+            o.Child?ProjTrafo <- myTrafo
+
+    module Sg = 
+        let overrideProjTrafo (o : IMod<Option<Trafo3d>>) (sg : ISg) = 
+            OverrideProjTrafo(o,sg) :> ISg
+        
+
 open FShade
 open Aardvark.Base.Geometry
 open Aardvark.Geometry
@@ -26,6 +51,8 @@ open OpcViewer.Base.Picking
 open OpcViewer.Base.Attributes
 
 open Aardvark.VRVis.Opc
+
+
 
 
 module App = 
@@ -456,10 +483,20 @@ module App =
         else 
             { model with stepSampleSize = Numeric.update model.stepSampleSize f }
       | MouseWheel v ->
+        let newCutViewZoom = model.cutViewZoom + 2.0
+        let originalXDim = Math.Round ((float) model.cutViewDim.X * (100.0/(100.0+model.cutViewZoom)))
+        let newXDim = int <| Math.Round (originalXDim * ((100.0 + newCutViewZoom)/100.0))
+        
         if v = V2d(0,1) then
-            { model with cutViewZoom = model.cutViewZoom + 2.0}
+            { model with cutViewZoom = newCutViewZoom; cutViewDim = V2i(newXDim, model.cutViewDim.Y) }
         else
-            { model with cutViewZoom = model.cutViewZoom - 2.0}
+            { model with cutViewZoom = newCutViewZoom; cutViewDim = V2i(newXDim, model.cutViewDim.Y) }
+      | ResizeRenderView d ->
+        Log.line "Render View Resize %A" d
+        { model with renderViewDim = d}
+      | ResizeCutView d ->
+        Log.line "Cut View Resize %A" d
+        { model with cutViewDim = d}
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | _ -> model
@@ -475,43 +512,70 @@ module App =
             toEffect Shader.stableTrafo
             toEffect DefaultSurfaces.diffuseTexture  
             ]
-      
-      
+
       let projTrafo =
-        adaptive {
-            
-            let! t = m.persToOrthoValue
+        adaptive {           
+            let radians = 20.0 * Math.PI / 180.0
+            let ratioSizePerDepth = Math.Atan(radians) * 2.0
 
             let! camPos = m.cameraState.view
             let! opcPos = m.opcCenterPosition
 
+            let plane = Plane3d(camPos.Location, camPos.Location + camPos.Right, camPos.Location + camPos.Up)
+            let distance = (opcPos - plane.NearestPoint(opcPos)).Length
+
+            let! renderViewDim = m.renderViewDim
+            
+            let aspect = (float renderViewDim.X) / (float renderViewDim.Y)
+
+            let sizeY = ratioSizePerDepth * distance
+            let sizeX = ratioSizePerDepth * distance * aspect
+
+            let o = (Frustum.projTrafo (Frustum.ortho (Box3d(V3d(-sizeX, -sizeY, 0.0),V3d(sizeX, sizeY, 2.0*distance)))))
+            let p = (Frustum.projTrafo (Frustum.perspective 60.0 0.01 10000.0 aspect))
+            
+            let! t = m.persToOrthoValue
+            let t = t ** (1.0 / 50.0)
+
+            return Trafo3d (
+                o.Forward * t + (1.0 - t) * p.Forward,
+                o.Backward * t + (1.0 - t) * p.Backward
+            )       
+        }
+
+      let projFrustum =
+        adaptive {                       
             let radians = 20.0 * Math.PI / 180.0
             let ratioSizePerDepth = Math.Atan(radians) * 2.0
 
+            let! camPos = m.cameraState.view
+            let! opcPos = m.opcCenterPosition
+
             let plane = Plane3d(camPos.Location, camPos.Location + camPos.Right, camPos.Location + camPos.Up)
             let distance = (opcPos - plane.NearestPoint(opcPos)).Length
+
+            let! renderViewDim = m.renderViewDim
             
-            let aspect = 1.0//float(1024/768)
+            let aspect = (float renderViewDim.X) / (float renderViewDim.Y)
+
             let sizeY = ratioSizePerDepth * distance
             let sizeX = ratioSizePerDepth * distance * aspect
-            let o = (Frustum.projTrafo (Frustum.ortho (Box3d(V3d(-sizeX, -sizeY, 0.0),V3d(sizeX, sizeY, 2.0*distance)))))
-            
-            let p = (Frustum.projTrafo (Frustum.perspective 60.0 0.01 10000.0 aspect))
 
+            let o = ((Frustum.ortho (Box3d(V3d(-sizeX, -sizeY, 0.0),V3d(sizeX, sizeY, 2.0*distance)))))
+            let p = ((Frustum.perspective 60.0 0.01 10000.0 aspect))
             
-            let t = t ** (1.0 / 50.0)
-            let trafo = 
-                Trafo3d (
-                    o.Forward * t + (1.0 - t) * p.Forward,
-                    o.Backward * t + (1.0 - t) * p.Backward
-                )
+            let! t = m.persToOrthoValue
 
-            return trafo     
+            if t = 0.0 then
+                return p
+            else 
+                return o
+
         }
-
      
       let near = m.mainFrustum |> Mod.map(fun x -> x.near)
       let far = m.mainFrustum |> Mod.map(fun x -> x.far)
+      
 
       let filledPolygonSg, afterFilledPolygonRenderPass = 
         m.annotations 
@@ -524,6 +588,16 @@ module App =
         |> Sg.ofList
         |> Sg.pass afterFilledPolygonRenderPass
 
+
+      let trafo =
+        adaptive {
+            let! running = m.camViewAnimRunning
+            if running then 
+                let! t = projTrafo
+                return Some t 
+            else return None
+        }
+
       let scene = 
         [
             opcs
@@ -531,7 +605,8 @@ module App =
             afterFilledPolygonSg
         ]
         |> Sg.ofList
-        |> Sg.projTrafo projTrafo
+        |> Sg.overrideProjTrafo trafo
+        |> Sg.noEvents
         |> Sg.pass RenderPass.main
         
       let textOverlays (cv : IMod<CameraView>) = 
@@ -546,9 +621,11 @@ module App =
               ]
            ]
         ]
-      
+      let onResize (cb : V2i -> 'msg) =
+        onEvent "onresize" ["{ X: $(document).width(), Y: $(document).height()  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+
       let renderControl (state : MModel) (f : Message -> 'msg)=
-       FreeFlyController.controlledControl m.cameraState Camera m.mainFrustum 
+       FreeFlyController.controlledControl m.cameraState Camera projFrustum
 
          (AttributeMap.ofListCond [ 
            always (style "width: 100%; height:100%"; )
@@ -572,10 +649,15 @@ module App =
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
-
+          
           require Html.semui ( 
-              div [clazz "ui"; style "background: #1B1C1E"] [renderControl m id]
-              
+              body[onResize (Message.ResizeRenderView >> id)][
+                div [clazz "ui"; style "background: #1B1C1E"] [renderControl m id]
+                onBoot "$(window).trigger('resize')" (
+                        body [onResize (Message.ResizeRenderView >> id)] [
+                        ]
+                    )
+              ]
           )
           
         | Some "controls" -> 
@@ -724,10 +806,8 @@ module App =
                     yield style ("width: " + widthValue + "; height:100%; user-select: none;")
                 } |> AttributeMap.ofAMap
 
-                // [clazz "mySvg"; style "width: 120%; height:100%; user-select: none;"; ]
-
-
-              body [style "width: 100%; height:100%; background: transparent; overflow:auto "] [
+              
+              body [style "width: 100%; height: 100%; background: transparent; overflow-x: scroll "; onResize (Message.ResizeCutView >> id)] [
 
                     Incremental.Svg.svg containerAttribs <|
                         alist {
@@ -755,16 +835,16 @@ module App =
                             yield contourLine 0.0 "1.0"     
 
                             //contour line (high)
-                            yield contourLine 1.0 "0.5"                        
+                            yield contourLine 1.0 lineOpacity                       
 
                             //contour line (medium high)
-                            yield contourLine 2.0 "0.5"      
+                            yield contourLine 2.0 lineOpacity      
 
                             //contour line (medium low)
-                            yield contourLine 3.0 "0.5"      
+                            yield contourLine 3.0 lineOpacity      
 
                             //contour line (low)
-                            yield contourLine 4.0 "0.5"      
+                            yield contourLine 4.0 lineOpacity      
 
                             //contour line (very low)
                             yield contourLine 5.0 "1.0"      
@@ -778,8 +858,8 @@ module App =
                         
                             //Svg.text ["x" => "0%" ; "y" => "50%"; "fill" => "white"] "Height [m]"
                         
-                            ////legend
-                            //Incremental.Svg.rect ( 
+                            //legend
+                            //yield Incremental.Svg.rect ( 
                             //    amap {                     
                             //        let! xOffset = m.offsetUIDrawX
                             //        let! yOffset = m.offsetUIDrawY
@@ -790,6 +870,7 @@ module App =
                             //        let wX = (sprintf "%f" (100.0-xOffset*2.0)) + percent
                             //        let wY = (sprintf "%f" (100.0-yOffset*2.0)) + percent
 
+                            //        yield attribute "position" "fixed"
                             //        yield attribute "x" "90%"
                             //        yield attribute "y" "10%"
                             //        yield attribute "rx" "2px"
@@ -801,7 +882,7 @@ module App =
                             //    } |> AttributeMap.ofAMap
                             //)
                         
-                        
+                            //Cut View Resize [1535, 296]
                             yield Svg.svg [style "width:100%;height:100%;"; attribute "viewBox" "0 0 100 100";attribute "preserveAspectRatio" "none"] [      
                                 //chart line
                                 Incremental.Svg.polygon ( 
@@ -845,6 +926,8 @@ module App =
                                         yield attribute "stroke-width" "0.0"
                                     } |> AttributeMap.ofAMap
                                 )
+
+                                
 
                                 //missing data
                                 Incremental.Svg.polygon ( 
@@ -918,6 +1001,10 @@ module App =
                             ]
                         }
 
+                    onBoot "$(window).trigger('resize')" (
+                        body [onResize (Message.ResizeCutView >> id)] [
+                        ]                      
+                    ) 
               ]              
             )
         | Some other -> 
@@ -989,22 +1076,21 @@ module App =
       let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
       let camState = camState |> OpcSelectionViewer.Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
 
-
       let initialDockConfig = 
         config {
           content (
               vertical 10.0 [
-                    horizontal 8.0 [
-                      element { id "render"; title "Render View"; weight 5.5 }
+                    horizontal 7.0 [
+                      element { id "render"; title "Render View"; weight 4.5 }
                       element { id "controls"; title "Controls"; weight 2.5 } 
                     ]
-                    element { id "cutview"; title "Elevation Profile Viewer"; weight 2.0 }
+                    element { id "cutview"; title "Elevation Profile Viewer"; weight 3.0 }
               ]    
           )
           appName "OpcSelectionViewer"
           useCachedConfig true
         }
-
+     
 
       let initialModel : Model = 
         { 
@@ -1055,7 +1141,9 @@ module App =
           altitudeList         = []
           errorHitList         = []
           samplingDistance     = 0.0
-          cutViewZoom          = 1.0
+          cutViewZoom          = 0.0
+          renderViewDim        = V2i(1,1)
+          cutViewDim           = V2i(1,1)
         }
 
       {
