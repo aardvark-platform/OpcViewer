@@ -439,16 +439,29 @@ module App =
                                 do! DefaultSurfaces.vertexColor
                                 }
 
-      //main camera view frustum
+      //high resolution camera view frustum
       let view = m.rover.HighResCam.cam.camera.view
       let fr = m.rover.HighResCam.cam.frustum
-      let viewL = m.rover.HighResCam.cam.viewList
+      let viewLi = m.rover.HighResCam.cam.viewList
       let vp = (RoverModel.getViewProj view fr) 
       let frustumBox = frustumModel vp C4b.Red
+
+      //stereo cam
+      //LEFT
+      let viewL = m.rover.WACLR.camL.camera.view
+      let frL = m.rover.WACLR.camL.frustum
+      let vpL = (RoverModel.getViewProj viewL frL) 
+      let frustumBoxL = frustumModel vpL C4b.Red
+
+      //RIGHT
+      let viewR = m.rover.WACLR.camR.camera.view
+      let frR = m.rover.WACLR.camR.frustum
+      let vpR = (RoverModel.getViewProj viewR frR) 
+      let frustumBoxR = frustumModel vpR C4b.Magenta
        
       //set of frustums
       let sgFrustums = 
-            viewL 
+            viewLi 
                 |> AList.map (fun v -> 
                     let vp = (RoverModel.getViewProj (Mod.constant v) fr)    
                     frustumModel vp C4b.White
@@ -463,7 +476,7 @@ module App =
 
       
       //highlights the area of the model which is inside the rover's view frustum
-      let shading = 
+      let shading (vp:IMod<Trafo3d>) = 
         opcs
             |> Sg.cullMode (Mod.constant CullMode.Back)
             |> Sg.depthTest (Mod.constant DepthTestMode.Less)
@@ -474,7 +487,9 @@ module App =
                 do! Shading.frag
             }
 
-
+      let shadingHR = shading vp
+   
+    
       let myPlane = 
         m.planePoints
             |> Mod.map (fun n ->
@@ -513,7 +528,7 @@ module App =
                             |> Sg.dynamic
                       )
 
-      let afterSg = 
+      let fullSgHR = 
         [
           m.drawing |> DrawingApp.view
           rov
@@ -527,7 +542,15 @@ module App =
           sgFrustums
           
         ] |> Sg.ofList
-        
+      
+      let fullSgStereo = 
+        [
+          m.drawing |> DrawingApp.view
+          rov
+          target
+          frustumBoxL
+          frustumBoxR
+        ] |> Sg.ofList
     
 
       let roverCamSg = 
@@ -536,13 +559,42 @@ module App =
           points |> Sg.dynamic
           frustumBox
         ] |> Sg.ofList
-        
-
-      let fullScene = 
-        m.annotations |> AnnotationApp.viewGrouped shading RenderPass.main afterSg
+    
+      //stereo cam
+      let sceneCamL = 
+            [
+            m.drawing |> DrawingApp.view
+            points |> Sg.dynamic
+            frustumBoxL
+            ] |> Sg.ofList
       
-      let roverScene = 
-         m.annotations |> AnnotationApp.viewGrouped shading RenderPass.main roverCamSg
+      let sceneCamR = 
+            [
+            m.drawing |> DrawingApp.view
+            points |> Sg.dynamic
+            frustumBoxR
+            ] |> Sg.ofList
+
+      
+      
+      
+      //high res
+      let fullSceneHR = 
+        m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main fullSgHR
+
+      let sceneHR = 
+         m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main roverCamSg
+      
+      //stereo
+      let fullSceneStereo = 
+        m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main fullSgStereo
+
+      let sceneL = 
+         m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main sceneCamL
+      
+      let sceneR = 
+        m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main sceneCamR
+
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
@@ -568,7 +620,7 @@ module App =
            attribute "data-samples" "4"
          ]) 
             
-         (roverScene |> Sg.map PickingAction)
+         (sceneHR |> Sg.map PickingAction)
       
 
 
@@ -585,7 +637,7 @@ module App =
            onKeyDown (Action.KeyDown)
            onKeyUp (Action.KeyUp)
          ]) 
-         (fullScene |> Sg.map PickingAction) 
+         (fullSceneStereo |> Sg.map PickingAction) 
            
            
       let dependencies =   
@@ -620,7 +672,6 @@ module App =
                      ]   
 
                 h4[][text "Rover Controls"]
-      
                 p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
                 p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
                 p[][div[][text "Select Camera: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
@@ -778,7 +829,33 @@ module App =
           appName "ViewPlanner"
           useCachedConfig true
         }
-            
+          
+      //high resolution camera
+      let hrcam = 
+        let camState = {RoverModel.initial.HighResCam.cam.camera with view = roverinitialCamera.view}
+        let camVar = {RoverModel.initial.HighResCam.cam with camera = camState; position = initialRoverPos}
+        {RoverModel.initial.HighResCam with cam = camVar}
+      
+     
+      //stereo camera
+      let rightV = (forward.Normalized).Cross(box.Center.Normalized)
+      let positionCamL = initialRoverPos - rightV
+      let positionCamR = initialRoverPos + rightV
+      let forwardL = forward - rightV
+      let forwardR = forward + rightV
+      let camViewL = CameraView.look positionCamL forwardL.Normalized box.Center.Normalized
+      let camViewR = CameraView.look positionCamR forwardR.Normalized box.Center.Normalized
+      let stcam =   
+        let camStateL = {RoverModel.initial.WACLR.camL.camera with view = camViewL}
+        let camVarL = {RoverModel.initial.WACLR.camL with camera = camStateL; position = positionCamL }
+
+        let camStateR = {RoverModel.initial.WACLR.camR.camera with view = camViewR}
+        let camVarR = {RoverModel.initial.WACLR.camR with camera = camStateR; position = positionCamR }
+       
+        {RoverModel.initial.WACLR with camL = camVarL; camR = camVarR }
+
+      
+
       let initialModel : Model = 
         { 
           cameraState        = camState
@@ -795,7 +872,7 @@ module App =
           annotations        = AnnotationModel.initial
           pickedPoint        = None
           planePoints        = setPlaneForPicking
-          rover              = { RoverModel.initial with up = box.Center.Normalized; HighResCam = {RoverModel.initial.HighResCam with cam = {RoverModel.initial.HighResCam.cam with camera = roverinitialCamera}}; position = initialRoverPos; target = initialRoverTarget; projsphere = {RoverModel.initial.projsphere with position = initialRoverPos}}
+          rover              = { RoverModel.initial with up = box.Center.Normalized; HighResCam = hrcam; WACLR = stcam; position = initialRoverPos; target = initialRoverTarget; projsphere = {RoverModel.initial.projsphere with position = initialRoverPos}}
           dockConfig         = initialDockConfig        
           region             = None
           roiBboxFull        = false
