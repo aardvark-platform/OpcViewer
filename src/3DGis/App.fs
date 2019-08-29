@@ -783,7 +783,7 @@ module App =
                         yield attribute "ry" "1px" 
                         yield attribute "width" wX
                         yield attribute "height" wY
-                        yield attribute "fill" "transparent"
+                        yield attribute "fill" "url(#grad2)"
                         yield attribute "stroke" strokeColor
                         yield attribute "stroke-width" strokeWidthMainRect
                     } |> AttributeMap.ofAMap
@@ -881,7 +881,6 @@ module App =
                     let! dimensions = m.cutViewDim
 
                     let widthValue = (sprintf "%i" (dimensions.X))
-                    let heightValue = (sprintf "%i" (dimensions.Y))
 
                     yield onWheelPrevent true (fun x -> id (Message.MouseWheel x))
                     yield clazz "mySvg"
@@ -893,51 +892,68 @@ module App =
 
                     Incremental.Svg.svg containerAttribs <|
                         alist {
+                            
+                            //Gradient Color
+                            yield Incremental.Svg.defs([]|> AttributeMap.ofList)(                
+                                alist {                               
+                                    yield Incremental.Svg.linearGradient ([attribute "id" "grad2"; attribute "x1" "0%"; attribute "y1" "0%"; attribute "x2" "0%"; attribute "y2" "100%"] |> AttributeMap.ofList) ( 
+                                        alist {
+                                            yield Incremental.Svg.stop ([attribute "offset" "0%"; attribute "style" "stop-color:rgb(255,255,255);stop-opacity:1"] |> AttributeMap.ofList)
+                                            yield Incremental.Svg.stop ([attribute "offset" "100%"; attribute "style" "stop-color:rgb(0,0,0);stop-opacity:1"] |> AttributeMap.ofList)
+                                        }              
+                                    )
+                                    
+                                }           
+                                
+                            )
+                            
+                            
                             //Box
                             yield mainBoxRect
 
 
-                            // very high
-                            yield subBoxRect 0.0 "rgb( 180, 180, 180)"
+                            //// very high
+                            //yield subBoxRect 0.0 "rgb( 180, 180, 180)"
 
-                            // high
-                            yield subBoxRect 1.0 "rgb( 149, 149, 149)"                     
+                            //// high
+                            //yield subBoxRect 1.0 "rgb( 149, 149, 149)"                     
 
-                            // medium high
-                            yield subBoxRect 2.0 "rgb( 118, 118, 118)"        
+                            //// medium high
+                            //yield subBoxRect 2.0 "rgb( 118, 118, 118)"        
                             
-                            //low
-                            yield subBoxRect 3.0 "rgb(96, 96, 96)"       
+                            ////low
+                            //yield subBoxRect 3.0 "rgb(96, 96, 96)"       
                             
-                            //very low
-                            yield subBoxRect 4.0 "rgb(79,79,79)"     
+                            ////very low
+                            //yield subBoxRect 4.0 "rgb(79,79,79)"     
                            
 
-                            //contour line (very high)
-                            yield contourLine 0.0 "1.0"     
+                            ////contour line (very high)
+                            //yield contourLine 0.0 "1.0"     
 
-                            //contour line (high)
-                            yield contourLine 1.0 lineOpacity                       
+                            ////contour line (high)
+                            //yield contourLine 1.0 lineOpacity                       
 
-                            //contour line (medium high)
-                            yield contourLine 2.0 lineOpacity      
+                            ////contour line (medium high)
+                            //yield contourLine 2.0 lineOpacity      
 
-                            //contour line (medium low)
-                            yield contourLine 3.0 lineOpacity      
+                            ////contour line (medium low)
+                            //yield contourLine 3.0 lineOpacity      
 
-                            //contour line (low)
-                            yield contourLine 4.0 lineOpacity      
+                            ////contour line (low)
+                            //yield contourLine 4.0 lineOpacity      
 
-                            //contour line (very low)
-                            yield contourLine 5.0 "1.0"      
+                            ////contour line (very low)
+                            //yield contourLine 5.0 "1.0"      
 
 
-                            //contour line (vertical low)
-                            yield verticalLine "left"      
+                            ////contour line (vertical low)
+                            //yield verticalLine "left"      
 
-                            //contour line (vertical height)
-                            yield verticalLine "right"                       
+                            ////contour line (vertical height)
+                            //yield verticalLine "right"                       
                         
+                            
 
                             //chart curve 
                             yield Incremental.Svg.polyline ( 
@@ -948,7 +964,7 @@ module App =
                                     yield attribute "fill" "none"
                                     yield attribute "opacity" polygonOpacity
                                     yield attribute "stroke" "green"
-                                    yield attribute "stroke-width" "1.0"
+                                    yield attribute "stroke-width" "2.0"
                                 } |> AttributeMap.ofAMap
                             )
 
@@ -974,7 +990,9 @@ module App =
                                     yield attribute "opacity" polygonOpacity
                                     yield attribute "stroke-width" "0.0"
                                 } |> AttributeMap.ofAMap
-                            )             
+                            )    
+                            
+                            
                         
                         }
 
