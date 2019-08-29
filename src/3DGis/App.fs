@@ -178,6 +178,66 @@ module App =
       else
         model
 
+  let caluculateSVGDrawingPositions (model : Model) = 
+      let xOffset = model.offsetUIDrawX
+      let yOffset = model.offsetUIDrawY
+                                          
+      let dimensions = model.cutViewDim
+      let xWidth = (float) dimensions.X 
+      let yWidth = (float) dimensions.Y
+     
+      let space = " "
+      let comma = ","
+
+      let sX = (sprintf "%f" (xOffset * xWidth)) 
+
+      let wX = (sprintf "%f" ((1.0-xOffset) * xWidth)) 
+      let wY = (sprintf "%f" ((1.0-yOffset) * yWidth))
+     
+      let altitudeList = model.altitudeList
+      let errorHitList = model.errorHitList
+     
+      let maxAltitude = model.maxHeight
+      let minAltitude = model.minHeight
+      let range = maxAltitude - minAltitude
+                                      
+      let drawingAvailableCoord, drawingMissingCoord, drawingMissingSurfaceCoord = 
+          let mutable currentCorrectPoints = ""
+          let mutable currentErrorPoints = ""
+          let mutable currentErrorSurfacePoints = ""
+
+          for i = 0 to altitudeList.Length-1 do
+              let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
+              let currentY = (altitudeList.Item(i) - minAltitude) / range
+     
+              let normalizeX = (sprintf "%f" ((xOffset+ (currentX/100.0) * (1.0-xOffset*2.0)) * xWidth) )
+              let normalizeY = (sprintf "%f" ((yOffset+ (1.0-currentY) * (1.0-yOffset*2.0)) * yWidth) )
+              currentCorrectPoints <- currentCorrectPoints + normalizeX + comma + normalizeY + space
+
+              if errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = 0 then
+                  currentErrorPoints <- currentErrorPoints + normalizeX + comma + normalizeY + space
+                  let initY = (sprintf "%f" ((1.0-yOffset) * yWidth))
+                  let initialPointsCoord = normalizeX + comma + initY + space + normalizeX + comma + normalizeY + space
+                  currentErrorSurfacePoints <- currentErrorSurfacePoints + initialPointsCoord
+              elif errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = -1 && errorHitList.Item(i+1) = -1 then
+                  currentErrorPoints <- currentErrorPoints + normalizeX + comma + normalizeY + space
+                  currentErrorSurfacePoints <- currentErrorSurfacePoints + normalizeX + comma + normalizeY + space
+              elif errorHitList.Item(i) = -1 && errorHitList.Item(i+1) = 0 then
+                  currentErrorPoints <- currentErrorPoints + normalizeX + comma + normalizeY + space
+                  let endY = (sprintf "%f" ((1.0-yOffset) * yWidth))
+                  let endPointsCoord = normalizeX + comma + normalizeY + space + normalizeX + comma + endY + space
+                  currentErrorSurfacePoints <- currentErrorSurfacePoints + endPointsCoord
+
+          currentCorrectPoints, currentErrorPoints, currentErrorSurfacePoints                       
+                                      
+      let initialPointsCoord = wX + comma + wY + space + sX + comma + wY + space
+      let surfaceUnderLineCoord =  initialPointsCoord + drawingAvailableCoord 
+
+      { model with svgPointsCoord = drawingAvailableCoord; svgSurfaceUnderLineCoord = surfaceUnderLineCoord; svgPointsErrorCoord = drawingMissingCoord; svgSurfaceUnderLineErrorCoord = drawingMissingSurfaceCoord }
+      
+
+
+
   let getNumberOfErrors (errorHitList : int list) (index : int) = 
       let mutable keepCounting = true
       let mutable i = index
@@ -272,7 +332,7 @@ module App =
               maxHeight           = Math.Round(altitudeList.Max (altitudeList.Item(0)),2)
               accDistance         = Math.Round(accDistance (pointList.Length-1) 0.0,2)
               pointList           = pointList
-              altitudeList        = correctedAltitudeList  //altitudeList
+              altitudeList        = correctedAltitudeList  
               errorHitList        = errorHitList
       }
     
@@ -460,7 +520,8 @@ module App =
         elif model.lineSelectionActive && pickingModel.intersectionPoints.AsList.Length > 2 then
             model
         elif model.lineSelectionActive && pickingModel.intersectionPoints.AsList.Length = 2 then       
-           sampleSurfacePointsForCutView model pickingModel drawingModel
+           let newModel = sampleSurfacePointsForCutView model pickingModel drawingModel
+           caluculateSVGDrawingPositions newModel
         else
             { model with picking = pickingModel; drawing = newDrawingModel }
 
@@ -492,7 +553,7 @@ module App =
         let originalXDim = Math.Round ((float) model.cutViewDim.X * (100.0/(100.0+model.cutViewZoom)))
         let newXDim = int <| Math.Round (originalXDim * ((100.0 + newCutViewZoom)/100.0))
 
-        { model with cutViewZoom = newCutViewZoom; cutViewDim = V2i(newXDim, model.cutViewDim.Y) }
+        caluculateSVGDrawingPositions { model with cutViewZoom = newCutViewZoom; cutViewDim = V2i(newXDim, model.cutViewDim.Y) }
       | ResizeRenderView d ->
         Log.line "Render View Resize %A" d
         { model with renderViewDim = d}
@@ -877,154 +938,43 @@ module App =
                             //contour line (vertical height)
                             yield verticalLine "right"                       
                         
+
+                            //chart curve 
+                            yield Incremental.Svg.polyline ( 
+                                amap {
+                                    let! drawingCoord = m.svgPointsCoord
+
+                                    yield attribute "points" drawingCoord
+                                    yield attribute "fill" "none"
+                                    yield attribute "opacity" polygonOpacity
+                                    yield attribute "stroke" "green"
+                                    yield attribute "stroke-width" "1.0"
+                                } |> AttributeMap.ofAMap
+                            )
+
                             //chart surface under curve
                             yield Incremental.Svg.polygon ( 
-                                    amap {
-                                        let! xOs = m.offsetUIDrawX
-                                        let! yOs = m.offsetUIDrawY  
-
-                                        let xOffset = xOs 
-                                        let yOffset = yOs
-                                        
-                                        let! dimensions = m.cutViewDim
-                                        let xWidth = (float) dimensions.X 
-                                        let yWidth = (float) dimensions.Y
-                            
-                                        let sX = (sprintf "%f" (xOffset * xWidth)) 
-
-                                        let wX = (sprintf "%f" ((1.0-xOffset) * xWidth)) 
-                                        let wY = (sprintf "%f" ((1.0-yOffset) * yWidth))
-
-                                        let space = " "
-                                        let comma = ","
-
-                                        let! altitudeList = m.altitudeList
-
-                                        let! maxAltitude = m.maxHeight
-                                        let! minAltitude = m.minHeight
-                                        let range = maxAltitude - minAltitude
-                                    
-                                        let lineCoord = 
-                                            let mutable currentPoints = ""
-                                            for i = 0 to altitudeList.Length-1 do
-                                                let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
-                                                let currentY = (altitudeList.Item(i) - minAltitude) / range
-
-                                                let normalizeX = (sprintf "%f" ((xOffset+ (currentX/100.0) * (1.0-xOffset*2.0)) * xWidth) )
-                                                let normalizeY = (sprintf "%f" ((yOffset+ (1.0-currentY) * (1.0-yOffset*2.0)) * yWidth) )
-                                                currentPoints <- currentPoints + normalizeX + comma + normalizeY + space
-                                            currentPoints                           
-                                    
-                                        let initialPointsCoord = wX + comma + wY + space + sX + comma + wY + space
-                                        let finalPointsCoord = initialPointsCoord + lineCoord
-
-                                        yield attribute "points" finalPointsCoord
-                                        yield attribute "fill" polygonColor
-                                        yield attribute "opacity" polygonOpacity
-                                        yield attribute "stroke-width" "0.0"
-                                    } |> AttributeMap.ofAMap
-                                )
-
-
-                            //chart curve
-                            yield Incremental.Svg.polyline ( 
-                                    amap {
-                                        let! xOffset = m.offsetUIDrawX
-                                        let! yOffset = m.offsetUIDrawY  
-                                        
-                                        let! dimensions = m.cutViewDim
-                                        let xWidth = (float) dimensions.X 
-                                        let yWidth = (float) dimensions.Y                                                                 
-
-                                        let space = " "
-                                        let comma = ","
-
-                                        let! altitudeList = m.altitudeList
-
-                                        let! maxAltitude = m.maxHeight
-                                        let! minAltitude = m.minHeight
-                                        let range = maxAltitude - minAltitude
-                                    
-                                        let lineCoord = 
-                                            let mutable currentPoints = ""
-                                            for i = 0 to altitudeList.Length-1 do
-                                                let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
-                                                let currentY = (altitudeList.Item(i) - minAltitude) / range
-
-                                                let normalizeX = (sprintf "%f" ((xOffset+ (currentX/100.0) * (1.0-xOffset*2.0)) * xWidth) )
-                                                let normalizeY = (sprintf "%f" ((yOffset+ (1.0-currentY) * (1.0-yOffset*2.0)) * yWidth) )
-                                                currentPoints <- currentPoints + normalizeX + comma + normalizeY + space
-                                            currentPoints                           
-                                    
-                                        let finalPointsCoord = lineCoord 
-
-                                        yield attribute "points" finalPointsCoord
-                                        yield attribute "fill" "none"
-                                        yield attribute "stroke" "red"
-                                        yield attribute "stroke-width" "1.0"
-                                    } |> AttributeMap.ofAMap
-                                )
-
-                            //missing data
-                            yield Incremental.Svg.polygon ( 
                                 amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY  
-                                        
-                                    let! dimensions = m.cutViewDim
-                                    let xWidth = (float) dimensions.X 
-                                    let yWidth = (float) dimensions.Y
+                                    let! drawingCoord = m.svgSurfaceUnderLineCoord
 
-                                    let sX = (sprintf "%f" (xOffset * xWidth)) 
-
-                                    let wX = (sprintf "%f" ((1.0-xOffset) * xWidth)) 
-                                    let wY = (sprintf "%f" ((1.0-yOffset) * yWidth))
-
-                                    let space = " "
-                                    let comma = ","
-
-                                    let! errorHitList = m.errorHitList
-                                    let! altitudeList = m.altitudeList
-
-                                    let! maxAltitude = m.maxHeight
-                                    let! minAltitude = m.minHeight
-                                    let range = maxAltitude - minAltitude
-                                    
-                                    let lineCoord = 
-                                        let mutable currentPoints = ""
-                                        for i = 0 to altitudeList.Length-1 do
-
-                                            let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
-                                            let currentY = (altitudeList.Item(i) - minAltitude) / range
-
-                                            let normalizeX = (sprintf "%f" ((xOffset+ (currentX/100.0) * (1.0-xOffset*2.0)) * xWidth) )
-                                            let normalizeY = (sprintf "%f" ((yOffset+ (1.0-currentY) * (1.0-yOffset*2.0)) * yWidth) )
-
-                                            if errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = 0 then
-                                                let initY = (sprintf "%f" ((1.0-yOffset) * yWidth))
-                                                let initialPointsCoord = normalizeX + comma + initY + space + normalizeX + comma + normalizeY + space
-
-                                                currentPoints <- currentPoints + initialPointsCoord
-                                            elif errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = -1 && errorHitList.Item(i+1) = -1 then
-                                                currentPoints <- currentPoints + normalizeX + comma + normalizeY + space
-                                            elif errorHitList.Item(i) = -1 && errorHitList.Item(i+1) = 0 then
-                                                let endY = (sprintf "%f" ((1.0-yOffset) * yWidth))
-                                                let endPointsCoord = normalizeX + comma + normalizeY + space + normalizeX + comma + endY + space
-
-                                                currentPoints <- currentPoints + endPointsCoord
-                                                
-                                        currentPoints                           
-                                    
-                                    let initialPointsCoord = wX + comma + wY + space + sX + comma + wY + space
-                                    let finalPointsCoord = initialPointsCoord + lineCoord
-
-                                    yield attribute "points" finalPointsCoord
-                                    yield attribute "fill" "rgb(255, 0, 0)"
+                                    yield attribute "points" drawingCoord
+                                    yield attribute "fill" polygonColor
                                     yield attribute "opacity" polygonOpacity
-                                    yield attribute "stroke" strokeColor
                                     yield attribute "stroke-width" "0.0"
                                 } |> AttributeMap.ofAMap
                             )
+
+                            //chart surface under curve error
+                            yield Incremental.Svg.polygon ( 
+                                amap {
+                                    let! drawingCoord = m.svgSurfaceUnderLineErrorCoord
+
+                                    yield attribute "points" drawingCoord
+                                    yield attribute "fill" "rgb(255, 0, 0)"
+                                    yield attribute "opacity" polygonOpacity
+                                    yield attribute "stroke-width" "0.0"
+                                } |> AttributeMap.ofAMap
+                            )             
                         
                         }
 
@@ -1121,56 +1071,60 @@ module App =
 
       let initialModel : Model = 
         { 
-          cameraState          = camState
-          mainFrustum          = Frustum.perspective 60.0 0.01 10000.0 1.0
-          fillMode             = FillMode.Fill                    
-          patchHierarchies     = patchHierarchies          
-          axis                 = None
-          
-          threads              = FreeFlyController.threads camState |> ThreadPool.map Camera
-          boxes                = List.empty 
-      
-          pickingActive        = false
-          opcInfos             = opcInfos
-          picking              = { PickingModel.initial with pickingInfos = opcInfos }
-          drawing              = DrawingModel.initial
-          annotations          = AnnotationModel.initial
-          dockConfig           = initialDockConfig  
-          mouseDragStart       = V2i.Zero
-          zoom                 = false
-          pan                  = false
-          persToOrthoValue     = 1.0
-          camViewAnimRunning   = false
-          cameraAnimEndTime    = 0.0
-          targetPosition       = V3d.Zero        
-          perspectiveView      = false  
-          camJumpAnimRunning   = false
-          originalCamPos       = V3d.Zero
-          camCompAnimRunning   = false
-          camRetAnimRunning    = false
-          opcCenterPosition    = box.Center
-          selectedJumpPosition = V3d.Zero
-          jumpSelectionActive  = false
-          inJumpedPosition     = false
-          lineSelectionActive  = false
-          opcBox               = box
-          numSampledPoints     = 0
-          stepSampleSize       = {min = 0.01; max = 10000.0; value = 2.0; step = 0.05; format = "{0:0.00}"}
-          linearDistance       = 0.0
-          accDistance          = 0.0
-          maxHeight            = 0.0
-          minHeight            = 0.0
-          dropDownOptions      = HMap.ofList [P, "Perspective"; O, "Orthographic";]
-          currentOption        = Some O
-          offsetUIDrawX        = 0.05
-          offsetUIDrawY        = 0.2
-          pointList            = []
-          altitudeList         = []
-          errorHitList         = []
-          samplingDistance     = 0.0
-          cutViewZoom          = 0.0
-          renderViewDim        = V2i(1,1)
-          cutViewDim           = V2i(1,1)
+          cameraState                     = camState
+          mainFrustum                     = Frustum.perspective 60.0 0.01 10000.0 1.0
+          fillMode                        = FillMode.Fill                    
+          patchHierarchies                = patchHierarchies          
+          axis                            = None
+                                          
+          threads                         = FreeFlyController.threads camState |> ThreadPool.map Camera
+          boxes                           = List.empty 
+                                          
+          pickingActive                   = false
+          opcInfos                        = opcInfos
+          picking                         = { PickingModel.initial with pickingInfos = opcInfos }
+          drawing                         = DrawingModel.initial
+          annotations                     = AnnotationModel.initial
+          dockConfig                      = initialDockConfig  
+          mouseDragStart                  = V2i.Zero
+          zoom                            = false
+          pan                             = false
+          persToOrthoValue                = 1.0
+          camViewAnimRunning              = false
+          cameraAnimEndTime               = 0.0
+          targetPosition                  = V3d.Zero        
+          perspectiveView                 = false  
+          camJumpAnimRunning              = false
+          originalCamPos                  = V3d.Zero
+          camCompAnimRunning              = false
+          camRetAnimRunning               = false
+          opcCenterPosition               = box.Center
+          selectedJumpPosition            = V3d.Zero
+          jumpSelectionActive             = false
+          inJumpedPosition                = false
+          lineSelectionActive             = false
+          opcBox                          = box
+          numSampledPoints                = 0
+          stepSampleSize                  = {min = 0.01; max = 10000.0; value = 2.0; step = 0.05; format = "{0:0.00}"}
+          linearDistance                  = 0.0
+          accDistance                     = 0.0
+          maxHeight                       = 0.0
+          minHeight                       = 0.0
+          dropDownOptions                 = HMap.ofList [P, "Perspective"; O, "Orthographic";]
+          currentOption                   = Some O
+          offsetUIDrawX                   = 0.05
+          offsetUIDrawY                   = 0.2
+          pointList                       = []
+          altitudeList                    = []
+          errorHitList                    = []
+          samplingDistance                = 0.0
+          cutViewZoom                     = 0.0
+          renderViewDim                   = V2i(1,1)
+          cutViewDim                      = V2i(1,1)
+          svgPointsCoord                  = ""
+          svgPointsErrorCoord             = ""
+          svgSurfaceUnderLineCoord        = ""
+          svgSurfaceUnderLineErrorCoord   = ""
         }
 
       {
