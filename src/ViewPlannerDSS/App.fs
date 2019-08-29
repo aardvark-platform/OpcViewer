@@ -127,7 +127,7 @@ module App =
                 let d = DrawingApp.update model.drawing (DrawingAction.RemoveLastPoint)
                 let forward = t-model.rover.position
                 let cam = CameraView.look model.rover.position forward.Normalized model.rover.up
-                let r = { model.rover with target = t; camera = { model.rover.camera with view = cam }} 
+                let r = { model.rover with target = t; HighResCam = { model.rover.HighResCam with cam = { model.rover.HighResCam.cam with camera = {model.rover.HighResCam.cam.camera with view = cam}}}}
                 { model with rover = r; pickingModel = p; drawing = d}
 
 
@@ -141,7 +141,8 @@ module App =
                         | false -> l.Head
                 let p = PickingApp.update model.pickingModel (PickingAction.RemoveLastPoint)
                 let d = DrawingApp.update model.drawing (DrawingAction.RemoveLastPoint)
-                let r = { model.rover with position = (m+n); projsphere = {model.rover.projsphere with position = (m+n)}} 
+                let pos = m+n
+                let r = { model.rover with position = pos; projsphere = {model.rover.projsphere with position = pos}; HighResCam = {model.rover.HighResCam with cam = {model.rover.HighResCam.cam with position = pos}}} 
                 { model with rover = r; pickingModel = p; drawing = d}
                         
 
@@ -209,7 +210,8 @@ module App =
                         let p = PickingApp.update model.pickingModel (PickingAction.ClearPoints)
                         let d = DrawingApp.update model.drawing (DrawingAction.Clear) 
 
-                        let r = { model.rover with position = m; target = t; camera = { model.rover.camera with view = cam }; projsphere = {model.rover.projsphere with position = m}} 
+                        let hrcam = {model.rover.HighResCam with cam = { model.rover.HighResCam.cam with position = m; camera = {model.rover.HighResCam.cam.camera with view = cam}} }
+                        let r = { model.rover with position = m; target = t; HighResCam = hrcam; projsphere = {model.rover.projsphere with position = m}} 
                         { model with rover = r; pickingModel = p; drawing = d}
 
                 r
@@ -438,14 +440,17 @@ module App =
                                 }
 
       //main camera view frustum
-      let vp = (RoverModel.getViewProj m.rover.camera.view m.rover.frustum) 
+      let view = m.rover.HighResCam.cam.camera.view
+      let fr = m.rover.HighResCam.cam.frustum
+      let viewL = m.rover.HighResCam.cam.viewList
+      let vp = (RoverModel.getViewProj view fr) 
       let frustumBox = frustumModel vp C4b.Red
        
       //set of frustums
       let sgFrustums = 
-            m.rover.viewList 
+            viewL 
                 |> AList.map (fun v -> 
-                    let vp = (RoverModel.getViewProj (Mod.constant v) m.rover.frustum)    
+                    let vp = (RoverModel.getViewProj (Mod.constant v) fr)    
                     frustumModel vp C4b.White
                              )       
                 |> AList.toASet
@@ -555,7 +560,7 @@ module App =
       
       let roverCamControl = 
        
-        FreeFlyController.controlledControl  m.rover.camera Camera m.rover.frustum 
+        FreeFlyController.controlledControl  m.rover.HighResCam.cam.camera Camera m.rover.HighResCam.cam.frustum 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
            attribute "showFPS" "false";      
@@ -596,36 +601,26 @@ module App =
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
           require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
-              div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)]
-             
-               
-               
-
-
+              div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)] 
           )
         
-        | Some "roverCam" ->
+        | Some "leftCam" ->
             require Html.semui (
               div [clazz "ui"; style "background: #1B1C1E"] [roverCamControl]
           )
 
-        | Some "menuBar" ->
-            require dependencies (
-              div [ clazz "item" ] [ 
-                dropdown { placeholder = "Save..."; allowEmpty = false } [ clazz "ui simple inverted selection dropdown" ] (m.saveOptions |> AMap.map (fun k v -> text v)) m.currentSaveOption Action.SaveConfigs 
-                     ]                                                                       
-               
-            )
-            
-            
-
         | Some "controls" -> 
-          require Html.semui (
+          require dependencies (
             body [style "width: 100%; height:100%; background: transparent";] [
               div[style "color:white; margin: 5px 15px 5px 5px"][
-                h3[][text "ROVER CONTROL"]
+
+                h4[][text "Menu Options"]
+                div [ clazz "item" ] [ 
+                dropdown { placeholder = "Save..."; allowEmpty = false } [ clazz "ui simple inverted selection dropdown" ] (m.saveOptions |> AMap.map (fun k v -> text v)) m.currentSaveOption Action.SaveConfigs 
+                     ]   
+
+                h4[][text "Rover Controls"]
       
-                p[][Incremental.text (m.rover.position |> Mod.map (fun f -> f.ToString())) ]
                 p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
                 p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
                 p[][div[][text "Select Camera: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
@@ -640,10 +635,16 @@ module App =
               ]
             ]
           )
+        
+        | Some "rightCam" ->
+            body [] [
+              div [style "color: white; font-size: large; background-color: black; width: 100%; height: 100%"] [text "currently not active"]
+          ]
+          
         | Some other -> 
           let msg = sprintf "Unknown page: %A" other
           body [] [
-              div [style "color: white; font-size: large; background-color: red; width: 100%; height: 100%"] [text msg]
+              div [style "color: white; font-size: large; background-color: black; width: 100%; height: 100%"] [text msg]
           ]  
         | None -> 
           m.dockConfig
@@ -757,14 +758,20 @@ module App =
       let initialDockConfig = 
         config {
           content (
-              vertical 15.0 [
-                  element {id "menuBar"; title "Menu"; weight 2.0}
-                  element { id "render"; title "Render View"; weight 7.0 }
-                  horizontal 6.0 [
-                  element { id "roverCam"; title "Rover view"; weight 3.0 }
-                  element { id "controls"; title "Controls"; weight 3.0 }
-                  ]
-                  
+
+              horizontal 23.0 [
+                
+                vertical 17.0 [
+                element {id "render"; title "Main View"; weight 9.0}
+                horizontal 8.0[
+                element {id "leftCam"; title "HR-Cam / WACL"; weight 4.0}
+                element {id "rightCam"; title "WACR"; weight 4.0}
+                ]
+                
+                ]
+                element {id "controls"; title "Controls"; weight 6.0}
+                
+              
               ]
 
           )
@@ -788,7 +795,7 @@ module App =
           annotations        = AnnotationModel.initial
           pickedPoint        = None
           planePoints        = setPlaneForPicking
-          rover              = { RoverModel.initial with up = box.Center.Normalized; camera = roverinitialCamera; position = initialRoverPos; target = initialRoverTarget; projsphere = {RoverModel.initial.projsphere with position = initialRoverPos}}
+          rover              = { RoverModel.initial with up = box.Center.Normalized; HighResCam = {RoverModel.initial.HighResCam with cam = {RoverModel.initial.HighResCam.cam with camera = roverinitialCamera}}; position = initialRoverPos; target = initialRoverTarget; projsphere = {RoverModel.initial.projsphere with position = initialRoverPos}}
           dockConfig         = initialDockConfig        
           region             = None
           roiBboxFull        = false

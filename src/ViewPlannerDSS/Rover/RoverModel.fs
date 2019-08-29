@@ -87,12 +87,11 @@ type RoverModel =
         pan      :       CameraInput
         HighResCam   :   HighRes  //single camera
         WACLR :          Stereo  //stereo
+        camera:          CameraType
         up       :       V3d
-        //frustum  :       Frustum
-        //fov      :       float
         panOverlap  :    float     
         tiltOverlap :    float
-        currentCamType : CameraType
+        currentCamType : Option<CameraType>
         currentPanOverlap : Option<Overlap>
         currentTiltOverlap : Option<Overlap>
         cameraOptions :  hmap<CameraType, string>
@@ -102,9 +101,6 @@ type RoverModel =
         projsphere :     ProjectionSphere
         projPoints :     plist<V3d>
         thetaPhiValues : plist<V2d>
-        //samplingValues : plist<V2d>
-        //currIdx :        int
-        //viewList:        plist<CameraView>
 
 
 
@@ -114,7 +110,7 @@ type RoverAction =
     | ChangePosition of V3d     
     | ChangePan of float
     | ChangeTilt of float
-    | SwitchCamera of CameraType
+    | SwitchCamera of Option<CameraType>
     | MoveToRegion 
     | CalculateAngles
     | RotateToPoint
@@ -188,7 +184,7 @@ module RoverModel =
          }
 
         up     = initCamera.view.Up
-        //frustum = initfrustum
+        camera = HighResCam
 
 
         
@@ -223,7 +219,7 @@ module RoverModel =
 
         currentPanOverlap = Some Percent_20
         currentTiltOverlap = Some Percent_20
-        currentCamType = HighResCam
+        currentCamType = Some HighResCam
         cameraOptions = HMap.ofList [WACLR, "WACLR Stereo"; HighResCam, "High Resolution Camera"]
         panOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
         tiltOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
@@ -238,10 +234,6 @@ module RoverModel =
 
         projPoints = PList.empty
         thetaPhiValues = PList.empty
-        //samplingValues = PList.empty
-        //currIdx = 0
-        //viewList = PList.empty
-        //fov = 5.0
         panOverlap = 20.0       //at least 20% according to https://mars.nasa.gov/msl/mission/instruments/mastcam/
         tiltOverlap = 20.0
         }

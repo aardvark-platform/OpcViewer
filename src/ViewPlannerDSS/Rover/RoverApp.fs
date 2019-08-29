@@ -335,7 +335,7 @@ module RoverApp =
         
         let panOverlap = rover.panOverlap
         let tiltOverlap = rover.tiltOverlap
-        let currentCamera = rover.currentCamType
+        let currentCamera = rover.camera
    
         
 
@@ -351,15 +351,6 @@ module RoverApp =
 
       
 
-
-
-
-
-
-
-
-
-
         //let panRef = fov * (1.0 - (panOverlap/100.0))
         //let tiltRef = fov * (1.0 - (tiltOverlap/100.0))
 
@@ -371,8 +362,8 @@ module RoverApp =
         let maxPan = sortedPans.Item(sortedPans.Length - 1)
         let deltaPan = Math.Abs (maxPan - minPan)
         
-        let panningRate = int(Math.Round(deltaPan / panRef))
-        printfn "pan delta %A rate %A " deltaPan panningRate
+        //let panningRate = int(Math.Round(deltaPan / panRef))
+        //printfn "pan delta %A rate %A " deltaPan panningRate
 
         //sort tilt values
         let sortedTilts = List.sort tilts
@@ -381,8 +372,8 @@ module RoverApp =
         let deltaTilt = maxTilt - minTilt
     
     
-        let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef))) //- 1 //-1 as the camera is initially positioned at the first tilting area
-        printfn "tilt delta %A rate %A " deltaTilt tiltingRate
+        //let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef))) 
+        //printfn "tilt delta %A rate %A " deltaTilt tiltingRate
 
         //generate a sampling list with pan and tilt values
         let firstPair = V2d(minPan, maxTilt) //pair with min pan value and max tilt value (equals left bottom corner of bounding box)
@@ -434,7 +425,7 @@ module RoverApp =
     
     let rotateToPoint (rover:RoverModel) =
         
-        let currentCamera = rover.currentCamType
+        let currentCamera = rover.camera
 
         let r = 
          match currentCamera with
@@ -503,14 +494,19 @@ module RoverApp =
         //{newRover with samplingValues = samplings |> PList.ofList; viewList = viewMatrices}
         
       
-    let changeCam (rover:RoverModel) (camtype:CameraType)=
+    let changeCam (rover:RoverModel) (camtype:Option<CameraType>)=
         
         match camtype with
-            |HighResCam -> 
-                {rover with currentCamType = HighResCam}
+            | Some cam -> 
+                match cam with 
+                |HighResCam -> 
+                 {rover with currentCamType = Some HighResCam; camera = HighResCam}
 
-            |WACLR ->
-                {rover with currentCamType = WACLR}
+                |WACLR ->
+                 {rover with currentCamType = Some WACLR; camera = WACLR}
+
+            | None -> rover
+            
 
     
 
@@ -537,20 +533,20 @@ module RoverApp =
     let update (rover:RoverModel) (action:RoverAction) =
         
         match action with
-            |ChangePosition newPos -> {rover with position = newPos} 
+            | ChangePosition newPos -> {rover with position = newPos} 
 
-            |ChangePan p -> 
+            | ChangePan p -> 
                 let rover' = setPan rover p
-                panning rover' rover.currentCamType
+                panning rover' rover.camera
 
-            |ChangeTilt t -> 
+            | ChangeTilt t -> 
                 let rover' = setTilt rover t
-                tilting rover' rover.currentCamType
+                tilting rover' rover.camera
             
-            |MoveToRegion  ->
+            | MoveToRegion  ->
                 moveFrustum rover 
             
-            |SwitchCamera cam ->
+            | SwitchCamera cam ->
                 changeCam rover cam
             
             |CalculateAngles ->
