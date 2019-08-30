@@ -215,15 +215,18 @@ module App =
               currentCorrectPoints <- currentCorrectPoints + normalizeX + comma + normalizeY + space
 
               if errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = 0 then
+                  //currentCorrectPoints <- currentCorrectPoints + space
                   currentErrorPoints <- currentErrorPoints + normalizeX + comma + normalizeY + space
                   let initY = (sprintf "%f" ((1.0-yOffset) * yWidth))
                   let initialPointsCoord = normalizeX + comma + initY + space + normalizeX + comma + normalizeY + space
                   currentErrorSurfacePoints <- currentErrorSurfacePoints + initialPointsCoord
               elif errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = -1 && errorHitList.Item(i+1) = -1 then
+                  //currentCorrectPoints <- currentCorrectPoints + space
                   currentErrorPoints <- currentErrorPoints + normalizeX + comma + normalizeY + space
                   currentErrorSurfacePoints <- currentErrorSurfacePoints + normalizeX + comma + normalizeY + space
               elif errorHitList.Item(i) = -1 && errorHitList.Item(i+1) = 0 then
-                  currentErrorPoints <- currentErrorPoints + normalizeX + comma + normalizeY + space
+                  //currentCorrectPoints <- currentCorrectPoints + space
+                  currentErrorPoints <- currentErrorPoints + normalizeX + comma + normalizeY + space + space
                   let endY = (sprintf "%f" ((1.0-yOffset) * yWidth))
                   let endPointsCoord = normalizeX + comma + normalizeY + space + normalizeX + comma + endY + space
                   currentErrorSurfacePoints <- currentErrorSurfacePoints + endPointsCoord
@@ -755,8 +758,8 @@ module App =
               let strokeColor = "rgb(255,255,255)"
               let strokeWidthContorLineEdge = "1.5px"
               let lineOpacity = "0.5"
-              let polygonOpacity = "0.5"
-              let polygonColor = "rgb( 122, 239, 253 )"
+              let polygonOpacity = "0.25"
+              let polygonColor = "rgb( 132,226,255)"
               let heightRectOpacity = "0.15"
 
               let inline (=>) a b = Attributes.attribute a b
@@ -784,6 +787,7 @@ module App =
                         yield attribute "width" wX
                         yield attribute "height" wY
                         yield attribute "fill" "url(#grad2)"
+                        yield attribute "opacity" "0.25"
                         yield attribute "stroke" strokeColor
                         yield attribute "stroke-width" strokeWidthMainRect
                     } |> AttributeMap.ofAMap
@@ -898,8 +902,8 @@ module App =
                                 alist {                               
                                     yield Incremental.Svg.linearGradient ([attribute "id" "grad2"; attribute "x1" "0%"; attribute "y1" "0%"; attribute "x2" "0%"; attribute "y2" "100%"] |> AttributeMap.ofList) ( 
                                         alist {
-                                            yield Incremental.Svg.stop ([attribute "offset" "0%"; attribute "style" "stop-color:rgb(255,255,255);stop-opacity:1"] |> AttributeMap.ofList)
-                                            yield Incremental.Svg.stop ([attribute "offset" "100%"; attribute "style" "stop-color:rgb(0,0,0);stop-opacity:1"] |> AttributeMap.ofList)
+                                            yield Incremental.Svg.stop ([attribute "offset" "0%"; attribute "style" "stop-color:rgb(255,255,255);stop-opacity:1.0"] |> AttributeMap.ofList)
+                                            yield Incremental.Svg.stop ([attribute "offset" "100%"; attribute "style" "stop-color:rgb(16,16,16);stop-opacity:1.0"] |> AttributeMap.ofList)
                                         }              
                                     )
                                     
@@ -954,7 +958,7 @@ module App =
                             //yield verticalLine "right"                       
                         
                             
-
+                            
                             //chart curve 
                             yield Incremental.Svg.polyline ( 
                                 amap {
@@ -962,11 +966,27 @@ module App =
 
                                     yield attribute "points" drawingCoord
                                     yield attribute "fill" "none"
-                                    yield attribute "opacity" polygonOpacity
-                                    yield attribute "stroke" "green"
+                                    yield attribute "opacity" "0.8"
+                                    yield attribute "stroke" "rgb(50,208,255)"
                                     yield attribute "stroke-width" "2.0"
                                 } |> AttributeMap.ofAMap
                             )
+
+                            let! drawingErrorCoord = m.svgPointsErrorCoord                                  
+                            let coordArray = drawingErrorCoord.Split([|"  "|], StringSplitOptions.None)
+                            for i in 0 .. coordArray.Length - 1 do
+                                //chart curve error
+                                yield Incremental.Svg.polyline ( 
+                                    amap {
+                                        let drawingCoord = coordArray.[i]
+
+                                        yield attribute "points" drawingCoord
+                                        yield attribute "fill" "none"
+                                        yield attribute "opacity" "0.8"
+                                        yield attribute "stroke" "rgb(255,71,50)"
+                                        yield attribute "stroke-width" "2.0"
+                                    } |> AttributeMap.ofAMap
+                                )
 
                             //chart surface under curve
                             yield Incremental.Svg.polygon ( 
@@ -984,16 +1004,33 @@ module App =
                             yield Incremental.Svg.polygon ( 
                                 amap {
                                     let! drawingCoord = m.svgSurfaceUnderLineErrorCoord
-
+                                   
                                     yield attribute "points" drawingCoord
-                                    yield attribute "fill" "rgb(255, 0, 0)"
+                                    yield attribute "fill" "rgb(255,132,132)"
                                     yield attribute "opacity" polygonOpacity
                                     yield attribute "stroke-width" "0.0"
                                 } |> AttributeMap.ofAMap
                             )    
-                            
-                            
-                        
+
+                                                          
+                            let! drawingCoord = m.svgPointsCoord                                  
+                            let coordArray = drawingCoord.Split([|" "|], StringSplitOptions.None)
+                            for i in 0 .. coordArray.Length - 2 do
+                                let xy = coordArray.[i].Split([|","|], StringSplitOptions.None)
+                                if xy.Length > 1 then
+                                    let x = xy.[0]
+                                    let y = xy.[1]
+                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" "2"; attribute "stroke" "black"; attribute "stroke-width" "0.5"; attribute "fill" "rgb(50,208,255)" ] |> AttributeMap.ofList)                              
+
+                            let! drawingErrorCoord = m.svgPointsErrorCoord                                  
+                            let coordArray = drawingErrorCoord.Split([|" "|], StringSplitOptions.None)
+                            for i in 0 .. coordArray.Length - 2 do
+                                let xy = coordArray.[i].Split([|","|], StringSplitOptions.None)
+                                if xy.Length > 1 then
+                                    let x = xy.[0]
+                                    let y = xy.[1]
+                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" "2"; attribute "stroke" "black"; attribute "stroke-width" "0.5"; attribute "fill" "rgb(255,71,50)" ] |> AttributeMap.ofList)                              
+
                         }
 
                     onBoot "$(window).trigger('resize')" (
