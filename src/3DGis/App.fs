@@ -215,17 +215,14 @@ module App =
               currentCorrectPoints <- currentCorrectPoints + normalizeX + comma + normalizeY + space
 
               if errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = 0 then
-                  //currentCorrectPoints <- currentCorrectPoints + space
                   currentErrorPoints <- currentErrorPoints + normalizeX + comma + normalizeY + space
                   let initY = (sprintf "%f" ((1.0-yOffset) * yWidth))
                   let initialPointsCoord = normalizeX + comma + initY + space + normalizeX + comma + normalizeY + space
                   currentErrorSurfacePoints <- currentErrorSurfacePoints + initialPointsCoord
               elif errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = -1 && errorHitList.Item(i+1) = -1 then
-                  //currentCorrectPoints <- currentCorrectPoints + space
                   currentErrorPoints <- currentErrorPoints + normalizeX + comma + normalizeY + space
                   currentErrorSurfacePoints <- currentErrorSurfacePoints + normalizeX + comma + normalizeY + space
               elif errorHitList.Item(i) = -1 && errorHitList.Item(i+1) = 0 then
-                  //currentCorrectPoints <- currentCorrectPoints + space
                   currentErrorPoints <- currentErrorPoints + normalizeX + comma + normalizeY + space + space
                   let endY = (sprintf "%f" ((1.0-yOffset) * yWidth))
                   let endPointsCoord = normalizeX + comma + normalizeY + space + normalizeX + comma + endY + space
@@ -236,7 +233,18 @@ module App =
       let initialPointsCoord = wX + comma + wY + space + sX + comma + wY + space
       let surfaceUnderLineCoord =  initialPointsCoord + drawingAvailableCoord 
 
-      { model with svgPointsCoord = drawingAvailableCoord; svgSurfaceUnderLineCoord = surfaceUnderLineCoord; svgPointsErrorCoord = drawingMissingCoord; svgSurfaceUnderLineErrorCoord = drawingMissingSurfaceCoord }
+      let circleSize = 
+          let x1, x2 =
+              if altitudeList.Length > 2 then
+                  ((100.0/ (float) (altitudeList.Length-1)) * 1.0), ((100.0/ (float) (altitudeList.Length-1)) * 2.0)
+              else  
+                  0.0, 0.0
+          x2-x1
+      
+      Log.line "circle Size %A" circleSize 
+
+
+      { model with svgPointsCoord = drawingAvailableCoord; svgSurfaceUnderLineCoord = surfaceUnderLineCoord; svgPointsErrorCoord = drawingMissingCoord; svgSurfaceUnderLineErrorCoord = drawingMissingSurfaceCoord; svgCircleSize = circleSize }
       
 
 
@@ -283,7 +291,7 @@ module App =
       let firstPoint = pickingModel.intersectionPoints.Item(0)
       let secondPoint = pickingModel.intersectionPoints.Item(1)
       let dir = secondPoint - firstPoint
-      let samplingSize = (ceil (firstPoint-secondPoint).Length) * model.stepSampleSize.value
+      let samplingSize = ( Math.Round (firstPoint-secondPoint).Length) * model.stepSampleSize.value
       let step = dir / samplingSize
     
       let mutable pointList = []
@@ -307,12 +315,11 @@ module App =
                   DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None)) 
               | None -> 
                   errorHitList <- -1 :: errorHitList
-                  //Log.error "[Intersection] didn't hit"
                   x
               )
           |> Option.defaultValue x
                             
-      let newDraw = List.fold drawPoints drawingModel [1.0..(samplingSize - 1.0)]
+      let newDraw = List.fold drawPoints drawingModel [0.0..samplingSize]
         
       let correctedAltitudeList= correctSamplingErrors altitudeList errorHitList  
 
@@ -328,11 +335,11 @@ module App =
       { model with 
               picking             = pickingModel 
               drawing             = newDraw 
-              numSampledPoints    = int samplingSize 
+              numSampledPoints    = int samplingSize + 1 
               samplingDistance    = Math.Round(dir.Length/samplingSize,4)
               linearDistance      = Math.Round(dir.Length,2) 
-              minHeight           = Math.Round(altitudeList.Min (altitudeList.Item(0)),2)
-              maxHeight           = Math.Round(altitudeList.Max (altitudeList.Item(0)),2)
+              minHeight           = altitudeList.Min (altitudeList.Item(0))
+              maxHeight           = altitudeList.Max (altitudeList.Item(0))
               accDistance         = Math.Round(accDistance (pointList.Length-1) 0.0,2)
               pointList           = pointList
               altitudeList        = correctedAltitudeList  
@@ -674,19 +681,7 @@ module App =
         |> Sg.overrideProjTrafo trafo
         |> Sg.noEvents
         |> Sg.pass RenderPass.main
-        
-      let textOverlays (cv : IMod<CameraView>) = 
-        div [js "oncontextmenu" "event.preventDefault();"] [ 
-           let style' = "color: white; font-family:Consolas;"
-    
-           yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left" ] [          
-              yield table [] [
-                tr[][
-                    td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
-                ]
-              ]
-           ]
-        ]
+          
       let onResize (cb : V2i -> 'msg) =
         onEvent "onresize" ["{ X: $(document).width(), Y: $(document).height()  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
 
@@ -932,8 +927,8 @@ module App =
                             //yield subBoxRect 4.0 "rgb(79,79,79)"     
                            
 
-                            ////contour line (very high)
-                            //yield contourLine 0.0 "1.0"     
+                            //contour line (very high)
+                            yield contourLine 0.0 "1.0"     
 
                             ////contour line (high)
                             //yield contourLine 1.0 lineOpacity                       
@@ -947,8 +942,8 @@ module App =
                             ////contour line (low)
                             //yield contourLine 4.0 lineOpacity      
 
-                            ////contour line (very low)
-                            //yield contourLine 5.0 "1.0"      
+                            //contour line (very low)
+                            yield contourLine 5.0 "1.0"      
 
 
                             ////contour line (vertical low)
@@ -1012,15 +1007,18 @@ module App =
                                 } |> AttributeMap.ofAMap
                             )    
 
-                                                          
+                            let! circleSize = m.svgCircleSize
+                            let r = sprintf "%f" (circleSize/4.0) + "%"                              
+                            let stw = sprintf "%f" (circleSize/12.0) + "%"       
+                            
                             let! drawingCoord = m.svgPointsCoord                                  
-                            let coordArray = drawingCoord.Split([|" "|], StringSplitOptions.None)
+                            let coordArray = drawingCoord.Split([|" "|], StringSplitOptions.None)                                
                             for i in 0 .. coordArray.Length - 2 do
                                 let xy = coordArray.[i].Split([|","|], StringSplitOptions.None)
                                 if xy.Length > 1 then
                                     let x = xy.[0]
                                     let y = xy.[1]
-                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" "2"; attribute "stroke" "black"; attribute "stroke-width" "0.5"; attribute "fill" "rgb(50,208,255)" ] |> AttributeMap.ofList)                              
+                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(50,208,255)" ] |> AttributeMap.ofList)                              
 
                             let! drawingErrorCoord = m.svgPointsErrorCoord                                  
                             let coordArray = drawingErrorCoord.Split([|" "|], StringSplitOptions.None)
@@ -1029,7 +1027,7 @@ module App =
                                 if xy.Length > 1 then
                                     let x = xy.[0]
                                     let y = xy.[1]
-                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" "2"; attribute "stroke" "black"; attribute "stroke-width" "0.5"; attribute "fill" "rgb(255,71,50)" ] |> AttributeMap.ofList)                              
+                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(255,71,50)" ] |> AttributeMap.ofList)                              
 
                         }
 
@@ -1180,6 +1178,7 @@ module App =
           svgPointsErrorCoord             = ""
           svgSurfaceUnderLineCoord        = ""
           svgSurfaceUnderLineErrorCoord   = ""
+          svgCircleSize                   = 0.0
         }
 
       {

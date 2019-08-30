@@ -141,6 +141,7 @@ type Model =
         svgPointsErrorCoord            : string
         svgSurfaceUnderLineCoord       : string
         svgSurfaceUnderLineErrorCoord  : string
+        svgCircleSize                  : float
                                        
         cutViewZoom                    : float
                                        
