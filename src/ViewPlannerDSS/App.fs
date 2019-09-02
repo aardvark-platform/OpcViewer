@@ -573,6 +573,21 @@ module App =
           rightCam
         ] |> Sg.ofList
     
+      
+      let fullScene = 
+        let result = 
+            adaptive {
+            let! cam = m.rover.camera
+            let c = match cam with 
+                    | HighResCam -> fullSgHR
+                    | WACLR -> fullSgStereo
+        
+            return c
+        }
+        result |> Sg.dynamic
+
+
+
 
       let roverCamSg = 
        [
@@ -596,25 +611,41 @@ module App =
             frustumBoxR
             ] |> Sg.ofList
 
-      
-      
-      
-      //high res
-      let fullSceneHR = 
-        m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main fullSgHR
-
-      let sceneHR = 
-         m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main roverCamSg
-      
+       
+      let sceneLeft = 
+        let result = 
+            adaptive {
+            let! cam = m.rover.camera
+            let c = match cam with 
+                    | HighResCam -> roverCamSg
+                    | WACLR -> sceneCamL
+        
+            return c
+        }
+        result |> Sg.dynamic
+    
+      let sceneRight = 
+        let result = 
+            adaptive {
+            let! cam = m.rover.camera
+            let c = match cam with 
+                    | HighResCam -> Sg.empty
+                    | WACLR -> sceneCamR
+        
+            return c
+        }
+        result |> Sg.dynamic
+        
+  
       //stereo
-      let fullSceneStereo = 
-        m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main fullSgStereo
+      let fullSceneRenderView = 
+        m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main fullScene
 
       let sceneL = 
-         m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main sceneCamL
+         m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main sceneLeft
       
       let sceneR = 
-        m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main sceneCamR
+        m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main sceneRight
 
 
       let textOverlays (cv : IMod<CameraView>) = 
@@ -631,9 +662,10 @@ module App =
         ]
 
       
-      let roverCamControl = 
-       
-        FreeFlyController.controlledControl  m.rover.HighResCam.cam.camera Camera m.rover.HighResCam.cam.frustum 
+      //TODO get correct cameraview and frustum
+      let viewLeft = 
+  
+        FreeFlyController.controlledControl  m.rover.WACLR.camL.camera Camera m.rover.WACLR.camL.frustum  
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
            attribute "showFPS" "false";      
@@ -641,9 +673,19 @@ module App =
            attribute "data-samples" "4"
          ]) 
             
-         (sceneHR |> Sg.map PickingAction)
+         (sceneL |> Sg.map PickingAction)
       
-
+      let viewRight = 
+        FreeFlyController.controlledControl  m.rover.WACLR.camR.camera Camera m.rover.WACLR.camR.frustum 
+         (AttributeMap.ofList [ 
+           style "width: 100%; height:100%"; 
+           attribute "showFPS" "false";      
+           attribute "data-renderalways" "false"
+           attribute "data-samples" "4"
+         ]) 
+            
+         (sceneR |> Sg.map PickingAction)
+      
 
 
 
@@ -658,7 +700,9 @@ module App =
            onKeyDown (Action.KeyDown)
            onKeyUp (Action.KeyUp)
          ]) 
-         (fullSceneStereo |> Sg.map PickingAction) 
+         (fullSceneRenderView |> Sg.map PickingAction)
+      
+      
            
            
       let dependencies =   
@@ -673,13 +717,14 @@ module App =
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
+ 
           require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
               div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)] 
           )
         
         | Some "leftCam" ->
             require Html.semui (
-              div [clazz "ui"; style "background: #1B1C1E"] [roverCamControl]
+              div [clazz "ui"; style "background: #1B1C1E"] [viewLeft]
           )
 
         | Some "controls" -> 
@@ -709,9 +754,9 @@ module App =
           )
         
         | Some "rightCam" ->
-            body [] [
-              div [style "color: white; font-size: large; background-color: black; width: 100%; height: 100%"] [text "currently not active"]
-          ]
+            require Html.semui (
+              div [clazz "ui"; style "background: #1B1C1E"] [viewRight]
+          )
           
         | Some other -> 
           let msg = sprintf "Unknown page: %A" other
