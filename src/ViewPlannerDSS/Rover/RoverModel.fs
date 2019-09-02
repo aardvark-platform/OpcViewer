@@ -35,6 +35,7 @@ type CamVariables =
 [<DomainType>]
 type Stereo = 
  {
+    //middleCam : CameraControllerState
     camL : CamVariables
     camR : CamVariables
     currIdx : int
@@ -184,7 +185,7 @@ module RoverModel =
          }
 
         up     = initCamera.view.Up
-        camera = HighResCam
+        camera = WACLR
 
 
         
@@ -219,7 +220,7 @@ module RoverModel =
 
         currentPanOverlap = Some Percent_20
         currentTiltOverlap = Some Percent_20
-        currentCamType = Some HighResCam
+        currentCamType = Some WACLR
         cameraOptions = HMap.ofList [WACLR, "WACLR Stereo"; HighResCam, "High Resolution Camera"]
         panOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
         tiltOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]

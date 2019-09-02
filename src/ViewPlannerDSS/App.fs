@@ -276,7 +276,26 @@ module App =
                     toEffect DefaultSurfaces.vertexColor
                     ]
             |> Sg.trafo transl
-          
+      
+      let leftCamTrafo = m.rover.WACLR.camL.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
+      let leftCam = 
+           Sg.sphere 5 (Mod.constant C4b.Red) (Mod.constant 0.05)
+            |> Sg.noEvents
+            |> Sg.effect [ 
+                    toEffect Shader.stableTrafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+            |> Sg.trafo leftCamTrafo
+      
+      let rightCamTrafo = m.rover.WACLR.camR.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
+      let rightCam = 
+           Sg.sphere 5 (Mod.constant C4b.Magenta) (Mod.constant 0.05)
+            |> Sg.noEvents
+            |> Sg.effect [ 
+                    toEffect Shader.stableTrafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+            |> Sg.trafo rightCamTrafo
       
       //draw all axis
       let shiftVec = Mod.map(fun p -> Trafo3d.Translation(p)) m.rover.position
@@ -550,6 +569,8 @@ module App =
           target
           frustumBoxL
           frustumBoxR
+          leftCam
+          rightCam
         ] |> Sg.ofList
     
 
@@ -839,10 +860,11 @@ module App =
      
       //stereo camera
       let rightV = (forward.Normalized).Cross(box.Center.Normalized)
-      let positionCamL = initialRoverPos - rightV
-      let positionCamR = initialRoverPos + rightV
-      let forwardL = forward - rightV
-      let forwardR = forward + rightV
+      let shift = rightV * 0.3
+      let positionCamL = initialRoverPos - shift
+      let positionCamR = initialRoverPos + shift
+      let forwardL = forward - shift
+      let forwardR = forward + shift
       let camViewL = CameraView.look positionCamL forwardL.Normalized box.Center.Normalized
       let camViewR = CameraView.look positionCamR forwardR.Normalized box.Center.Normalized
       let stcam =   

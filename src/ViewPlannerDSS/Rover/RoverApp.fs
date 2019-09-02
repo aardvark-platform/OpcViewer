@@ -8,11 +8,18 @@ module RoverApp =
     open Aardvark.UI.Primitives
 
     let pan (r:RoverModel) (view:CameraView) (pos:V3d)=
+        
+        let roverPos = r.position
         let forward = view.Forward
         let up = r.up //rotate around global up axis
         let panRotation = Rot3d(up, r.pan.delta.RadiansFromDegrees())
-        let targetWithPan = panRotation.TransformDir(forward)
-        CameraView.look pos targetWithPan.Normalized up
+        let rotatedForward = panRotation.TransformDir(forward)
+        
+        let distanceVec = pos - roverPos
+        let rotatedDistanceV = panRotation.TransformDir(distanceVec)
+        let newPos = roverPos + rotatedDistanceV
+
+        newPos, CameraView.look newPos rotatedForward.Normalized up
   
 
     let panning (r:RoverModel) (camType:CameraType) =
@@ -22,15 +29,15 @@ module RoverApp =
             | HighResCam ->
                 let view = r.HighResCam.cam.camera.view
                 let pos = r.HighResCam.cam.position
-                let newView = pan r view pos
+                let _, newView = pan r view pos
                 {r with HighResCam = {r.HighResCam with cam = {r.HighResCam.cam with camera = {r.HighResCam.cam.camera with view = newView }}}}
 
             | WACLR -> 
                 let camL = r.WACLR.camL
                 let camR = r.WACLR.camR
-                let roverPanLeftCam = pan r camL.camera.view camL.position
-                let roverPanRightCam = pan r camR.camera.view camR.position
-                {r with WACLR = {r.WACLR with camL = {r.WACLR.camL with camera = {r.WACLR.camL.camera with view = roverPanLeftCam }}; camR = {r.WACLR.camR with camera = {r.WACLR.camR.camera with view = roverPanRightCam } } } } 
+                let newPosL, roverPanLeftCam = pan r camL.camera.view camL.position
+                let newPosR, roverPanRightCam = pan r camR.camera.view camR.position
+                {r with WACLR = {r.WACLR with camL = {r.WACLR.camL with camera = {r.WACLR.camL.camera with view = roverPanLeftCam }; position = newPosL }; camR = {r.WACLR.camR with camera = {r.WACLR.camR.camera with view = roverPanRightCam }; position = newPosR } } } 
 
         newR
 
