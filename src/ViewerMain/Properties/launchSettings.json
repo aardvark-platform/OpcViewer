@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "opc=\"C:\\Users\\othman\\Desktop\\OPC\\Stimson_HiRISE_DTM_correct\" -rotate"
+      "commandLineArgs": "opc=\"D:\\REPOS2\\OPC-DATA\\OPC\""
     }
   }
 }
