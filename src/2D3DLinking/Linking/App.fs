@@ -243,20 +243,13 @@ module LinkingApp =
             }
 
         let sgFrustum (f: IMod<LinkingFeature>) =
-            Sg.wireBox (f |> Mod.map(fun f -> f.color)) (Mod.constant(Box3d(V3d.NNN,V3d.III)))
-            |> Sg.noEvents
-            |> Sg.shader {
-                do! DefaultSurfaces.stableTrafo
-                do! DefaultSurfaces.vertexColor
-            }
-            |> Sg.trafo (f |> Mod.map(fun f -> f.trafo))
-
-        let infinitelySmall = Trafo3d.Scale 0.0
+            f |> Mod.map (fun x -> x |> sgFrustum' |> Sg.transform x.trafo)
 
         let hoverFrustum =
             m.hoveredFrustrum
-            |> Mod.map (fun f -> f |> (Option.defaultValue { LinkingFeature.initial with trafo = infinitelySmall }))
+            |> Mod.map (fun f -> f |> (Option.defaultValue { LinkingFeature.initial with trafo = Trafo3d.Scale 0.0 }))
             |> sgFrustum
+            |> Sg.dynamic
 
         let frustra =
             m.frustums
@@ -267,13 +260,13 @@ module LinkingApp =
                 |> Sg.trafo (
                     m.selectedFrustums  
                     |> ASet.contains k
-                    |> Mod.map (fun s -> if s then v.trafo else infinitelySmall) 
+                    |> Mod.map (fun s -> if s then v.trafo else Trafo3d.Scale 0.0) 
                 )
             )
             |> Sg.set
 
         let pickingIndicator =
-            Sg.sphere 3 (Mod.constant(C4b.VRVisGreen)) (Mod.constant(0.05))
+            Sg.sphere 3 (Mod.constant C4b.VRVisGreen) (Mod.constant 0.05)
             |> Sg.noEvents
             |> Sg.shader {
                 do! DefaultSurfaces.stableTrafo
@@ -289,38 +282,38 @@ module LinkingApp =
             )
 
         let defaultScene = 
-            Sg.ofArray [|
+            [|
                 frustra
                 hoverFrustum
             |]
-
-        let featureScene =
-            Sg.empty
+            |> Sg.ofArray 
 
         let commonScene =
-            Sg.ofArray [|
+            [|
                 pickingIndicator
             |]
+            |> Sg.ofArray 
 
         let scene = 
-            Sg.ofArray [|
+            [|
                 (
                     m.overlayFeature 
                     |> Mod.map(fun o ->
-                        if o = None
-                        then defaultScene
-                        else featureScene
-                    )
+                        match o with
+                        | None -> defaultScene
+                        | Some x -> Sg.empty) // featureScene
                     |> Sg.dynamic
                 )
                 commonScene
             |]
+            |> Sg.ofArray 
             |> Sg.trafo m.trafo
 
-        Sg.ofArray [|
+        [|
             scene
             MinervaApp.viewFeaturesSg m.minervaModel |> Sg.map MinervaAction
         |]
+        |> Sg.ofArray 
 
     let viewSideBar (m: MLinkingModel) =
 
@@ -330,9 +323,8 @@ module LinkingApp =
                 match od with
                 | None -> (None, None)
                 | Some(d) -> 
-                    let beforeF = d.before.TryGet (d.before.Count - 1) // get last element of before list (before f)
                     let before = 
-                        beforeF
+                        d.before.TryGet (d.before.Count - 1) // get last element of before list (before f)
                         |> Option.map (fun f -> 
                             { 
                                 before = d.before.Remove f
@@ -341,9 +333,8 @@ module LinkingApp =
                             }
                         )
 
-                    let afterF = d.after.TryGet 0 // get first element of after list (after f)
                     let after =
-                        afterF
+                        d.after.TryGet 0 // get first element of after list (after f)
                         |> Option.map (fun f -> 
                             {
                                 before = d.before.Append d.f
@@ -473,7 +464,6 @@ module LinkingApp =
             
         require dependencies dom
 
-
     let viewHorizontalBar (m: MLinkingModel) =
         
         let products =
@@ -500,7 +490,7 @@ module LinkingApp =
                 )
                 |> Mod.map(fun pp -> (prod, pp))
             )
-            |> ASet.mapM (fun p -> p)
+            |> ASet.mapM id
 
         let countStringPerInstrument =
             products
@@ -518,9 +508,10 @@ module LinkingApp =
         let filteredCount = filteredProducts |> ASet.count
         let countString =
             Mod.map2 (fun full filtered -> 
-                if full = filtered
-                then full |> string
-                else (sprintf "%d (%d)" full filtered)
+                if full = filtered then
+                    full |> string
+                else 
+                    (sprintf "%d (%d)" full filtered)
             ) fullCount filteredCount
 
         require dependencies (
@@ -562,7 +553,7 @@ module LinkingApp =
                                     f, p, (image, sensor, max)
                                 ))
                             )
-                            |> AList.chooseM (fun im -> im)
+                            |> AList.chooseM id
                             |> AList.sortBy (fun (f, p, (image, sensor, max)) ->
                                 let ratioP = p.XY * V2d(1.0, sensor.Y / sensor.X)
                                 let dist = V2d.Dot(ratioP, ratioP) // euclidean peseudo distance (w/o root)
@@ -610,17 +601,10 @@ module LinkingApp =
 
                                 let! selected = m.overlayFeature
 
-                                let defaultClassStr = "product-view"
-                                let classStr =
-                                    match selected with
-                                    | None -> defaultClassStr
-                                    | Some(d) ->
-                                        if d.f = f then
-                                            defaultClassStr + " selected"
-                                        else
-                                            defaultClassStr
+                                match selected with
+                                | Some d when d.f = f -> yield clazz "product-view selected"
+                                | _ -> yield clazz "product-view"
 
-                                yield clazz classStr
                             })) (AList.ofList [
                                 img[
                                     clazz f.id; 
