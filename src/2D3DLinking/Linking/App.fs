@@ -123,7 +123,7 @@ module LinkingApp =
 
         (linkingFeatures, originTrafo, instrumentParameter)
 
-
+    //---UPDATE
     let rec update (view: CameraView) (m: LinkingModel) (msg: LinkingAction) : LinkingModel =
 
         let minervaFrustumHit (hit: SceneHit) =
@@ -151,7 +151,6 @@ module LinkingApp =
                 |> HSet.map (fun p -> p.instrument)
                 |> HSet.mapHMap (fun _ -> true)
 
-            //let partialUpdatedM = { (m |> updateFilterProductsAndSort filterProducts) with pickingPos = Some(originP) }
             let partialUpdatedM = { m with pickingPos = Some(originP); filterProducts = filterProducts }
             update view partialUpdatedM (MinervaAction(MinervaAction.UpdateSelection (intersected |> HSet.toList)))
 
@@ -164,8 +163,6 @@ module LinkingApp =
         | OpenFrustum f -> { m with overlayFeature = Some(f) }  // also handled by upper app
         | CloseFrustum -> { m with overlayFeature = None }
         | ChangeFrustumOpacity v -> { m with frustumOpacity = v }
-        //| ChangeFrustumOpacity msg -> { m with frustumOpacity = Numeric.update m.frustumOpacity msg }
-
         | MinervaAction a ->
 
             match a with
@@ -204,11 +201,10 @@ module LinkingApp =
 
         | _ -> failwith "Not implemented yet"
 
-
-    ///// Helpers
+    //---Helpers
     let dependencies =
         Html.semui @ [
-            { kind = Stylesheet; name = "fun1.css"; url = "./resources/fun1.css" }
+            { kind = Stylesheet; name = "linkingstyle.css"; url = "./resources/linkingstyle.css" }
         ]
     
     let cssColor (c: C4b) =
@@ -235,9 +231,7 @@ module LinkingApp =
     let svgLine' (p1: V2d) (p2: V2d) (color: C4b) (storkeWidth: float) =
         svgLine (p1.X, p1.Y) (p2.X, p2.Y) (color |> cssColor) storkeWidth
 
-    /////
-
-
+    //---VIEWS
     let view (m: MLinkingModel) =
 
         let sgFrustum' (f: LinkingFeature) =
@@ -293,7 +287,6 @@ module LinkingApp =
                     |> Option.defaultValue (Trafo3d.Scale 0.0)
                 )
             )
-
 
         let defaultScene = 
             Sg.ofArray [|
@@ -364,14 +357,10 @@ module LinkingApp =
 
         require dependencies (
             div [][
-        
                 div [clazz "inverted fluid ui vertical buttons"] [
                     button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.UpdateSelection(m.frustums |> AMap.keys |> ASet.toList)))][text "Select All"]         
                     button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.ClearSelection))][text "Clear Selection"]                 
                 ]
-
-                //Numeric.view m.frustumOpacity |> UI.map ChangeFrustumOpacity
-
                 Incremental.div 
                     (AttributeMap.ofAMap (amap { 
                         let! d = m.overlayFeature
@@ -379,23 +368,13 @@ module LinkingApp =
                             yield style "display: none;"
                     }))
                     (AList.ofList [
-               
                         slider 
                             {min = 0.0; max = 1.0; step = 0.01} 
                             [clazz "ui blue slider"]
                             m.frustumOpacity
                             ChangeFrustumOpacity
 
-                        //input [
-                        //    attribute "type" "range"
-                        //    attribute "min" "0"
-                        //    attribute "max" "1"
-                        //    attribute "step" "any"
-                        //    js "oninput" "parent.$('iframe').contents().find('#frustum-overlay-image').css('opacity',this.value);"
-                        //]
-                
                         div [clazz "inverted fluid ui buttons"] [
-
                             Incremental.button (AttributeMap.ofAMap (amap {
                                 let classString = "inverted labeled ui icon button"
                                 
@@ -410,7 +389,6 @@ module LinkingApp =
                                 i [clazz "caret left icon"][]
                                 text "Previous"
                             ])
-
                             Incremental.button (AttributeMap.ofAMap (amap {
                                 let classString = "inverted right labeled ui icon button"
                                                            
@@ -613,6 +591,7 @@ module LinkingApp =
                             
                         neighborList
                         |> AList.map (fun (before, (f, p, (image, sensor, max)), after) -> 
+                        
                             let webSrc = imageSrc f
                             
                             let (w, h) = (f.imageDimensions.X, f.imageDimensions.Y)
@@ -625,11 +604,24 @@ module LinkingApp =
 
                             let rc = cc * V2d(invRatio, 1.0)
 
-                            div[
-                                clazz "product-view"
-                                style (sprintf "border-color: %s" (instrumentColor f.instrument))
-                                onClick (fun _ -> OpenFrustum { before = before; f = f; after = after })
-                            ][
+                            Incremental.div (AttributeMap.ofAMap (amap {
+                                yield style (sprintf "border-color: %s" (instrumentColor f.instrument))
+                                yield onClick (fun _ -> OpenFrustum { before = before; f = f; after = after })
+
+                                let! selected = m.overlayFeature
+
+                                let defaultClassStr = "product-view"
+                                let classStr =
+                                    match selected with
+                                    | None -> defaultClassStr
+                                    | Some(d) ->
+                                        if d.f = f then
+                                            defaultClassStr + " selected"
+                                        else
+                                            defaultClassStr
+
+                                yield clazz classStr
+                            })) (AList.ofList [
                                 img[
                                     clazz f.id; 
                                     attribute "alt" f.id; 
@@ -653,7 +645,7 @@ module LinkingApp =
                                 div [clazz "product-indexed"; style "position: absolute; bottom: 1.2em"][
      (* ༼つಠ益ಠ༽つ ─=≡ΣO) *)        text (string (before.Count + 1)) // geologists probably start their indices at 1
                                 ]
-                            ]
+                            ])
                         )
                     )
                 ]

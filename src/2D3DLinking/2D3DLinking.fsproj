@@ -15,7 +15,7 @@
     <EmbeddedResource Include="resources\testsvg.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
-    <EmbeddedResource Include="resources\fun1.css">
+    <EmbeddedResource Include="resources\linkingstyle.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>

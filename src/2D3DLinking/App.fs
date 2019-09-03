@@ -70,9 +70,6 @@ module App =
         match msg with
         | Camera m when model.pickingActive = false -> 
             { model with cameraState = FreeFlyController.update model.cameraState m; }
-        
-        //| PickPoint pos -> 
-        //    { model with pickedPoint = pos}
 
         | Action.KeyDown m ->
          match m with
@@ -109,19 +106,10 @@ module App =
             let pickingModel, drawingModel, linkingModel =
               match msg with
               | HitSurface (a,b) -> //,_) -> 
-                //match model.axis with
-                //| Some axis -> 
-                //  let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
-                //  PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
-                //| None -> PickingApp.update model.picking msg
                 let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
                 let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
 
                 let updatedDrawM = model.drawing // DISABLING DRAWING
-                //let updatedDrawM =
-                //    match lastPick with
-                //    | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
-                //    | None -> model.drawing
 
                 let updatedLinkingM = 
                     match lastPick with
@@ -158,16 +146,6 @@ module App =
     //---
 
     //---VIEW
-    //let viewFeaturesSg (model : MMinervaModel) =
-    //    let pointSize = Mod.constant 10.0 //model.featureProperties.pointSize.value
-
-    //    Sg.ofList [
-    //        // Drawing.featureMousePick model.kdTreeBounds
-    //        Drawing.drawFeaturePoints model.sgFeatures pointSize
-    //        Drawing.drawSelectedFeaturePoints model.selectedSgFeatures pointSize
-    //        Drawing.drawHoveredFeaturePoint model.hoveredProduct pointSize model.sgFeatures.trafo
-    //    ]
-
     let view (m : MModel) =
                                
         let opcs = 
@@ -180,27 +158,13 @@ module App =
                     Shader.OPCFilter.EffectOPCFilter
                 ]
 
-        let pos = V3d [|-2486735.62;2289118.43;-276194.91|]
-        let trafo = Mod.constant (Trafo3d.Translation pos)
-        let radius = Mod.constant 0.1
-        let debug = 
-            Sg.sphere 4 (Mod.constant C4b.Cyan) radius
-            |> Sg.trafo trafo
-            |> Sg.uniform "WorldPos" (trafo |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
-            //|> Sg.uniform "Size" radius // 5.0
-            |> Sg.effect [
-                //Shader.ScreenSpaceScale.Effect
-                Shader.StableTrafo.Effect
-                toEffect DefaultSurfaces.vertexColor
-            ]
-
         let near = m.mainFrustum |> Mod.map(fun x -> x.near)
         let far = m.mainFrustum |> Mod.map(fun x -> x.far)
 
 
         let filledPolygonSg, afterFilledPolygonRenderPass = 
-          m.annotations 
-          |> AnnotationApp.viewGrouped near far (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
+            m.annotations 
+            |> AnnotationApp.viewGrouped near far (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
 
         let afterFilledPolygonSg = 
             [
@@ -211,12 +175,12 @@ module App =
             |> Sg.pass afterFilledPolygonRenderPass
 
         let scene = 
-          [
-              opcs |> Sg.map PickingAction
-              filledPolygonSg |> Sg.map AnnotationAction
-              afterFilledPolygonSg
-          ]
-          |> Sg.ofList
+            [
+                opcs |> Sg.map PickingAction
+                filledPolygonSg |> Sg.map AnnotationAction
+                afterFilledPolygonSg
+            ]
+            |> Sg.ofList
 
         let textOverlays (cv : IMod<CameraView>) = 
             div [js "oncontextmenu" "event.preventDefault();"] [ 
@@ -224,12 +188,9 @@ module App =
 
                 yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left; z-index: 20" ] [          
                     yield table [] [
-                    tr[][
-                        td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
-                    ]
-                    //tr[][ 
-                    //    td[style style'][Incremental.text(points |> Mod.map(fun x -> x |> Array.map (fun e -> e.ToString("0.00")) |> String.concat ", "))]
-                    //]
+                        tr[][
+                            td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
+                        ]
                     ]
                 ]
             ]
@@ -246,9 +207,7 @@ module App =
                     onKeyDown (Action.KeyDown)
                     onKeyUp (Action.KeyUp)
                 ]) 
-                (scene) 
-            //(scene |> Sg.map PickingAction) 
-            
+                (scene)
  
         page (fun request -> 
         match Map.tryFind "page" request.queryParams with
@@ -269,13 +228,6 @@ module App =
 
                     LinkingApp.viewSideBar m.linkingModel |> UI.map LinkingAction
 
-                    //p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.pickingModel.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.pickingModel.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
-                    //p[][checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
-                    //p[][checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.useGrouping PickingAction.UseGrouping "Use Grouping"] |> UI.map PickingAction
-                    //p[][checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.showOutline PickingAction.ShowOutline "Show Outline"] |> UI.map PickingAction
-                    //p[][checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.showDetailOutline PickingAction.ShowOutlineDetail "Show Outline Detail"] |> UI.map PickingAction
-                    //p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.pickingModel.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
-                    //p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.pickingModel.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
                     ]
                 ]
             )
