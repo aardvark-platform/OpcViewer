@@ -311,26 +311,32 @@ module RoverApp =
 
     
     //takes pan and tilt values and calculates a view matrix for frustum visualisation
-    let calculateViewMatrix (rover : RoverModel) (pan : float) (tilt : float) (cam:CameraControllerState) =
+    let calculateViewMatrix (rover : RoverModel) (pan : float) (tilt : float) (cam:CamVariables) =
         
         let panCurr = rover.pan.current
         let panDelta = panCurr - pan
         let tiltCurr = rover.tilt.current
         let tiltDelta = tiltCurr - tilt
 
-        let forward = cam.view.Forward
+        let forward = cam.camera.view.Forward
         let up = rover.up 
-        let right = cam.view.Right
+        let right = cam.camera.view.Right
 
         //panning
         let panRotation = Rot3d(up, panDelta.RadiansFromDegrees())
         let targetWithPan = panRotation.TransformDir(forward)
 
+        let pos = cam.position
+        let roverPos = rover.position
+        let distanceVec = pos - roverPos
+        let rotatedDistanceV = panRotation.TransformDir(distanceVec)
+        let newPos = roverPos + rotatedDistanceV
+
         //tilting
         let tiltRotation = Rot3d(right, tiltDelta.RadiansFromDegrees())
         let targetWithTilt = tiltRotation.TransformDir(targetWithPan)
 
-        let view = CameraView.look rover.position targetWithTilt.Normalized up
+        let view = CameraView.look newPos targetWithTilt.Normalized up
 
         view
 
@@ -399,13 +405,35 @@ module RoverApp =
                 let sv = values |> PList.ofList
 
                 //for visualising footprints
-                let viewMatrices = values |> List.map(fun m -> calculateViewMatrix rover m.X m.Y camera.cam.camera) |> PList.ofList
+                let viewMatrices = values |> List.map(fun m -> calculateViewMatrix rover m.X m.Y camera.cam) |> PList.ofList
 
                 {rover with HighResCam = {rover.HighResCam with cam = { rover.HighResCam.cam with samplingValues = sv; viewList = viewMatrices }} }
 
             | WACLR -> 
-                //TODO
-                rover
+                let camera = rover.WACLR
+                let fov = camera.camL.frustum |> Frustum.horizontalFieldOfViewInDegrees //equal for both left and right cams
+                let ol = camera.overlapBetweenCams
+                let panRef = ((fov+fov) - ol) * (1.0 - (panOverlap/100.0))
+                let tiltRef = fov * (1.0 - (tiltOverlap/100.0))
+                let panningRate = int(Math.Round(deltaPan / panRef))
+                let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef)))
+                let values = buildList samplingValues panningRate tiltingRate tiltingRate panRef -tiltRef
+                let sv = values |> PList.ofList
+
+                let viewMatricesLeft = values |> List.map(fun m -> calculateViewMatrix rover m.X m.Y camera.camL) |> PList.ofList
+                let viewMatricesRight = values |> List.map(fun m -> calculateViewMatrix rover m.X m.Y camera.camR) |> PList.ofList
+
+
+                //leftcam
+                let cL = {rover.WACLR.camL with samplingValues = sv; viewList = viewMatricesLeft }
+                //rightcam
+                let cR = {rover.WACLR.camR with samplingValues = sv; viewList = viewMatricesRight }
+
+                let st = {rover.WACLR with camL = cL; camR = cR}
+
+                {rover with WACLR = st}
+
+
                 
         newRover
 
@@ -445,7 +473,7 @@ module RoverApp =
 
            let panned = setPan rover pair.X
            let pannedRover = panning panned currentCamera
-           let tilted = setTilt pannedRover (pair.Y)
+           let tilted = setTilt pannedRover pair.Y
            let ro = tilting tilted currentCamera
 
            let lastIdx = li.Length - 1
@@ -454,8 +482,25 @@ module RoverApp =
            
            {ro with HighResCam = { ro.HighResCam with currIdx = newIdx}}
 
-         | WACLR -> //TODO 
-            rover
+         | WACLR ->  
+            let c = rover.WACLR.camL
+            let values = c.samplingValues
+            let li = values |> PList.toList
+            let idx = rover.WACLR.currIdx
+            let pair = values.Item(idx)
+
+            let panned = setPan rover pair.X
+            let pannedRover = panning panned currentCamera
+            let tilted = setTilt pannedRover pair.Y
+            let ro = tilting tilted currentCamera
+
+            let lastIdx = li.Length - 1
+            let newIdx = 
+             if idx = lastIdx then 0 else (idx+1)
+           
+            {ro with WACLR = { ro.WACLR with currIdx = newIdx}}
+
+
         
         r
 

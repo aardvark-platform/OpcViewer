@@ -458,12 +458,24 @@ module App =
                                 do! DefaultSurfaces.vertexColor
                                 }
 
-      //high resolution camera view frustum
+      
+      //set of frustums
+      let sgFrustums (list:alist<CameraView>) (fr:IMod<Frustum>)= 
+            list 
+                |> AList.map (fun v -> 
+                    let vp = (RoverModel.getViewProj (Mod.constant v) fr)    
+                    frustumModel vp C4b.White
+                             )       
+                |> AList.toASet
+                |> Sg.set
+
+      //hr camera 
       let view = m.rover.HighResCam.cam.camera.view
       let fr = m.rover.HighResCam.cam.frustum
       let viewLi = m.rover.HighResCam.cam.viewList
       let vp = (RoverModel.getViewProj view fr) 
       let frustumBox = frustumModel vp C4b.Red
+      let frustumsHR = sgFrustums viewLi fr
 
       //stereo cam
       //LEFT
@@ -471,28 +483,15 @@ module App =
       let frL = m.rover.WACLR.camL.frustum
       let vpL = (RoverModel.getViewProj viewL frL) 
       let frustumBoxL = frustumModel vpL C4b.Red
+      let frustumsLeft = sgFrustums m.rover.WACLR.camL.viewList m.rover.WACLR.camL.frustum
 
       //RIGHT
       let viewR = m.rover.WACLR.camR.camera.view
       let frR = m.rover.WACLR.camR.frustum
       let vpR = (RoverModel.getViewProj viewR frR) 
       let frustumBoxR = frustumModel vpR C4b.Magenta
-       
-      //set of frustums
-      let sgFrustums = 
-            viewLi 
-                |> AList.map (fun v -> 
-                    let vp = (RoverModel.getViewProj (Mod.constant v) fr)    
-                    frustumModel vp C4b.White
-                             )       
-                |> AList.toASet
-                |> Sg.set
+      let frustumsRight = sgFrustums m.rover.WACLR.camR.viewList m.rover.WACLR.camR.frustum
     
-      
-        
-
-   
-
       
       //highlights the area of the model which is inside the rover's view frustum
       let shading (vp:IMod<Trafo3d>) = 
@@ -558,7 +557,7 @@ module App =
           right |> Sg.dynamic
           camForw |> Sg.dynamic
           points |> Sg.dynamic
-          sgFrustums
+          frustumsHR
           
         ] |> Sg.ofList
       
@@ -571,6 +570,9 @@ module App =
           frustumBoxR
           leftCam
           rightCam
+          frustumsLeft
+          frustumsRight
+          points |> Sg.dynamic
         ] |> Sg.ofList
     
       
@@ -634,6 +636,7 @@ module App =
         
             return c
         }
+
         result |> Sg.dynamic
         
   
@@ -647,7 +650,7 @@ module App =
       let sceneR = 
         m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main sceneRight
 
-
+      
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
            let style' = "color: white; font-family:Consolas;"
@@ -664,8 +667,14 @@ module App =
       
       //TODO get correct cameraview and frustum
       let viewLeft = 
-  
-        FreeFlyController.controlledControl  m.rover.WACLR.camL.camera Camera m.rover.WACLR.camL.frustum  
+        
+        //let camState = 
+        //    if sceneRight = Sg.empty then m.rover.HighResCam.cam.camera else m.rover.WACLR.camL.camera
+       
+        //let fr =
+        //    if sceneRight = Sg.empty then m.rover.HighResCam.cam.frustum else m.rover.WACLR.camL.frustum   
+
+        FreeFlyController.controlledControl  m.rover.HighResCam.cam.camera Camera m.rover.HighResCam.cam.frustum  
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
            attribute "showFPS" "false";      
@@ -726,6 +735,18 @@ module App =
             require Html.semui (
               div [clazz "ui"; style "background: #1B1C1E"] [viewLeft]
           )
+        
+         | Some "rightCam" ->
+
+            if sceneRight = Sg.empty then 
+                body [] [
+              div [style "color: white; font-size: large; background-color: black; width: 100%; height: 100%"] [text "currently not active"]
+                        ] 
+               else
+
+                require Html.semui (
+                 div [clazz "ui"; style "background: #1B1C1E"] [viewRight]
+                )
 
         | Some "controls" -> 
           require dependencies (
@@ -753,10 +774,7 @@ module App =
             ]
           )
         
-        | Some "rightCam" ->
-            require Html.semui (
-              div [clazz "ui"; style "background: #1B1C1E"] [viewRight]
-          )
+       
           
         | Some other -> 
           let msg = sprintf "Unknown page: %A" other

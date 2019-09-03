@@ -12,9 +12,16 @@ type CameraInput =
     delta : float
     }
 
+
+type CameraType =
+    | HighResCam   
+    | WACLR  
+
+
 [<DomainType>]
 type CamVariables = 
     {
+    name: CameraType
     camera : CameraControllerState
     position : V3d
     frustum : Frustum
@@ -23,22 +30,14 @@ type CamVariables =
 
     }
 
-//type Cam =
-//    {
-//    camera1 : CamVariables
-//    camera2 : Option<CamVariables>
-   
-//    }
-
-
 //PanCam; both cameras with equal FOV
 [<DomainType>]
 type Stereo = 
  {
-    //middleCam : CameraControllerState
     camL : CamVariables
     camR : CamVariables
     currIdx : int
+    overlapBetweenCams : float
  }
 
 [<DomainType>]
@@ -48,9 +47,7 @@ type HighRes =
     currIdx : int
     }
 
-type CameraType =
-    | HighResCam   
-    | WACLR     
+   
 
  type Overlap =
     | Percent_20
@@ -69,13 +66,6 @@ type ProjectionSphere =
     {
     coordinates : plist<V3d>
     }
-
-//[<DomainType>]
-//type CameraVariant =
-//    {
-//    cam : CameraControllerState
-//    frustum : Frustum
-//    }
 
 
 [<DomainType; ReferenceEquality>]
@@ -131,14 +121,15 @@ module RoverModel =
     let initfrustum = Frustum.perspective 5.0 0.1 20.0 1.0
 
     //Stereo camera //PanCam FOV 37.0°
+    //currently at 10 for testing
     let camL = {
                     FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
                 }
     let camR = {
                     FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 6.0) V3d.OOO V3d.OOI
                 }
-    let frustumL = Frustum.perspective 37.0 0.1 20.0 1.0
-    let frustumR = Frustum.perspective 37.0 0.1 20.0 1.0
+    let frustumL = Frustum.perspective 10.0 0.1 20.0 1.0
+    let frustumR = Frustum.perspective 10.0 0.1 20.0 1.0
     
     let initial = 
         {
@@ -164,6 +155,7 @@ module RoverModel =
          
            cam = 
             {
+            name = HighResCam
             camera = 
              {
               FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
@@ -192,8 +184,10 @@ module RoverModel =
 
         WACLR = 
          {      
+
                 camL = 
                     {
+                    name = WACLR
                     camera = camL
                     position = V3d.III
                     frustum = frustumL
@@ -205,6 +199,7 @@ module RoverModel =
                 camR = 
                 
                     {
+                    name = WACLR
                     camera = camR
                     position = V3d.III
                     frustum = frustumR
@@ -214,6 +209,8 @@ module RoverModel =
                     }
 
                 currIdx = 0
+                overlapBetweenCams = 5.0
+                
                 
    
          }
