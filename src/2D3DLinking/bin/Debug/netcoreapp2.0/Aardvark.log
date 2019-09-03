@@ -1,0 +1,383 @@
+ 0: using cache dir: C:\Users\Dominik\AppData\Roaming\Aardvark\cache
+ 0: [cache miss] 2D3DLinking, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] FSharp.Core, Version=4.6.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
+ 0: [cache hit ] Suave, Version=2.2.1.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Base.FSharp, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51
+ 0: [cache hit ] Aardvark.Base, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] DevILSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Base.Telemetry, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] FsPickler, Version=5.2.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Base.TypeProviders, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] OPCViewer.Base, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Base.Incremental, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.SceneGraph.Opc, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Base.Rendering, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] FShade.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] FShade.Imperative, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] FShade.GLSL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Base.Essentials, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.SceneGraph, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Service, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Rendering.Vulkan, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] GLSLangSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.GPGPU, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Rendering.GL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Base.Runtime, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] FsPickler.Json, Version=5.2.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed
+ 0: [cache hit ] Aardvark.UI.Primitives, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Compiler.DomainTypes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Rendering.Text, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] CommonMark, Version=0.1.0.0, Culture=neutral, PublicKeyToken=001ef8810438905d
+ 0: [cache hit ] Unofficial.Typography, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] LibTessDotNet, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Uncodium.Eigensystems, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Geometry.Intersection, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Base.IO, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] LegacyCode, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] FSharp.Data, Version=3.1.1.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardvark.Application.Slim.GL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] Aardium, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: [cache hit ] ViewerMain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: initializing aardvark ........................................................................
+ 0:   System Information:
+ 0:     OSVersion: Microsoft Windows NT 6.2.9200.0
+ 0:     SystemArchitecture: 64-bit
+ 0:     Environment.Version: 4.0.30319.42000
+ 0:   Unpacking native dependencies ..............................................................
+ 0:     Unpacking native dependencies for Aardvark.Rendering.GL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     Unpacking native dependencies for Aardvark.Service, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     Unpacking native dependencies for DevILSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     Unpacking native dependencies for Aardvark.Rendering.Vulkan, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     Unpacking native dependencies for GLSLangSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   Unpacking native dependencies ...................................................... 0.097 s
+ 0:   Loading plugins ............................................................................
+ 0:     [LoadPlugins] Using plugin cache file name: C:\Users\Dominik\AppData\Roaming\Aardvark\cache\2D3DLinking_plugins.bin
+ 0:     [ReadCacheFile] loaded cache file: C:\Users\Dominik\AppData\Roaming\Aardvark\cache\2D3DLinking_plugins.bin
+ 0:     [GetPluginAssemblyPaths] retrying to load because not in cache C:\Users\Dominik\Desktop\Praktikum\OpcViewer\src\2D3DLinking\bin\Debug\netcoreapp2.0\2D3DLinking.dll
+ 0:     [cache miss] 2D3DLinking, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [GetPluginAssemblyPaths] cache found for: C:\Users\Dominik\Desktop\Praktikum\OpcViewer\src\2D3DLinking\bin\Debug\netcoreapp2.0\DevIL.dll
+ 0:     [GetPluginAssemblyPaths] cache found for: C:\Users\Dominik\Desktop\Praktikum\OpcViewer\src\2D3DLinking\bin\Debug\netcoreapp2.0\GLSLangNative.dll
+ 0:     [GetPluginAssemblyPaths] cache found for: C:\Users\Dominik\Desktop\Praktikum\OpcViewer\src\2D3DLinking\bin\Debug\netcoreapp2.0\glvm.dll
+ 0:     [GetPluginAssemblyPaths] cache found for: C:\Users\Dominik\Desktop\Praktikum\OpcViewer\src\2D3DLinking\bin\Debug\netcoreapp2.0\ILU.dll
+ 0:     [GetPluginAssemblyPaths] cache found for: C:\Users\Dominik\Desktop\Praktikum\OpcViewer\src\2D3DLinking\bin\Debug\netcoreapp2.0\ILUT.dll
+ 0:     [GetPluginAssemblyPaths] cache found for: C:\Users\Dominik\Desktop\Praktikum\OpcViewer\src\2D3DLinking\bin\Debug\netcoreapp2.0\LegacyCode.dll
+ 0:     [GetPluginAssemblyPaths] cache found for: C:\Users\Dominik\Desktop\Praktikum\OpcViewer\src\2D3DLinking\bin\Debug\netcoreapp2.0\OPCViewer.Base.dll
+ 0:     [GetPluginAssemblyPaths] cache found for: C:\Users\Dominik\Desktop\Praktikum\OpcViewer\src\2D3DLinking\bin\Debug\netcoreapp2.0\turbojpeg.dll
+ 0:     [GetPluginAssemblyPaths] cache found for: C:\Users\Dominik\Desktop\Praktikum\OpcViewer\src\2D3DLinking\bin\Debug\netcoreapp2.0\ViewerMain.dll
+ 0:     [GetPluginAssemblyPaths] cache found for: C:\Users\Dominik\Desktop\Praktikum\OpcViewer\src\2D3DLinking\bin\Debug\netcoreapp2.0\vkvm.dll
+ 0:   Loading plugins .................................................................... 0.073 s
+ 0:   [cache hit ] 2D3DLinking, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] FSharp.Core, Version=4.6.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
+ 0:   [cache hit ] Suave, Version=2.2.1.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Base.FSharp, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   initializing NewAg .........................................................................
+ 0:     [cache miss] 2D3DLinking, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FSharp.Core, Version=4.6.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
+ 0:     [cache hit ] Suave, Version=2.2.1.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.FSharp, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51
+ 0:     [cache hit ] Aardvark.Base, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] DevILSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Telemetry, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FsPickler, Version=5.2.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.TypeProviders, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] OPCViewer.Base, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Incremental, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.SceneGraph.Opc, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Rendering, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FShade.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FShade.Imperative, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FShade.GLSL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Essentials, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.SceneGraph, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Service, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Rendering.Vulkan, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] GLSLangSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.GPGPU, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Rendering.GL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Runtime, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FsPickler.Json, Version=5.2.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed
+ 0:     [cache hit ] Aardvark.UI.Primitives, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Compiler.DomainTypes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Rendering.Text, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] CommonMark, Version=0.1.0.0, Culture=neutral, PublicKeyToken=001ef8810438905d
+ 0:     [cache hit ] Unofficial.Typography, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] LibTessDotNet, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Uncodium.Eigensystems, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Geometry.Intersection, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.IO, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] LegacyCode, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FSharp.Data, Version=3.1.1.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Application.Slim.GL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardium, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] ViewerMain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   initializing NewAg ................................................................. 0.034 s
+ 0:   initializing Ag .................................................................... 0.000 s
+ 0:   [cache hit ] netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51
+ 0:   [cache hit ] Aardvark.Base, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   initializing PixImageDevil ......................................................... 0.023 s
+ 0:   [cache hit ] DevILSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Base.Telemetry, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] FsPickler, Version=5.2.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Base.TypeProviders, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] OPCViewer.Base, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Base.Incremental, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   initializing ModModule .....................................................................
+ 0:     initializing mod system .......................................................... 0.000 s
+ 0:   initializing ModModule ............................................................. 0.000 s
+ 0:   [cache hit ] Aardvark.SceneGraph.Opc, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Base.Rendering, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] FShade.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] FShade.Imperative, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] FShade.GLSL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Base.Essentials, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.SceneGraph, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   initializing SceneGraphCompletenessCheck ...................................................
+ 0:     [cache miss] 2D3DLinking, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FSharp.Core, Version=4.6.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
+ 0:     [cache hit ] Suave, Version=2.2.1.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.FSharp, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51
+ 0:     [cache hit ] Aardvark.Base, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] DevILSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Telemetry, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FsPickler, Version=5.2.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.TypeProviders, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] OPCViewer.Base, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Incremental, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.SceneGraph.Opc, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Rendering, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FShade.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FShade.Imperative, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FShade.GLSL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Essentials, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.SceneGraph, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Service, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Rendering.Vulkan, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] GLSLangSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.GPGPU, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Rendering.GL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Runtime, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FsPickler.Json, Version=5.2.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed
+ 0:     [cache hit ] Aardvark.UI.Primitives, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Compiler.DomainTypes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Rendering.Text, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] CommonMark, Version=0.1.0.0, Culture=neutral, PublicKeyToken=001ef8810438905d
+ 0:     [cache hit ] Unofficial.Typography, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] LibTessDotNet, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Uncodium.Eigensystems, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Geometry.Intersection, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.IO, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] LegacyCode, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FSharp.Data, Version=3.1.1.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Application.Slim.GL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardium, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] ViewerMain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] 2D3DLinking, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FSharp.Core, Version=4.6.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
+ 0:     [cache hit ] Suave, Version=2.2.1.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.FSharp, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51
+ 0:     [cache hit ] Aardvark.Base, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] DevILSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Telemetry, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FsPickler, Version=5.2.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.TypeProviders, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] OPCViewer.Base, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Incremental, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.SceneGraph.Opc, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Rendering, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FShade.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FShade.Imperative, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FShade.GLSL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Essentials, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.SceneGraph, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Service, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Rendering.Vulkan, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] GLSLangSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.GPGPU, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Rendering.GL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Runtime, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FsPickler.Json, Version=5.2.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed
+ 0:     [cache hit ] Aardvark.UI.Primitives, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Compiler.DomainTypes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Rendering.Text, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] CommonMark, Version=0.1.0.0, Culture=neutral, PublicKeyToken=001ef8810438905d
+ 0:     [cache hit ] Unofficial.Typography, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] LibTessDotNet, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Uncodium.Eigensystems, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Geometry.Intersection, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.IO, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] LegacyCode, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FSharp.Data, Version=3.1.1.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Application.Slim.GL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardium, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] ViewerMain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] 2D3DLinking, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FSharp.Core, Version=4.6.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
+ 0:     [cache hit ] Suave, Version=2.2.1.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.FSharp, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51
+ 0:     [cache hit ] Aardvark.Base, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] DevILSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Telemetry, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FsPickler, Version=5.2.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.TypeProviders, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] OPCViewer.Base, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Incremental, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.SceneGraph.Opc, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Rendering, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FShade.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FShade.Imperative, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FShade.GLSL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Essentials, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.SceneGraph, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Service, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Rendering.Vulkan, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] GLSLangSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.GPGPU, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Rendering.GL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.Runtime, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FsPickler.Json, Version=5.2.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed
+ 0:     [cache hit ] Aardvark.UI.Primitives, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Compiler.DomainTypes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Rendering.Text, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] CommonMark, Version=0.1.0.0, Culture=neutral, PublicKeyToken=001ef8810438905d
+ 0:     [cache hit ] Unofficial.Typography, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] LibTessDotNet, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Uncodium.Eigensystems, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Geometry.Intersection, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Base.IO, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] LegacyCode, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] FSharp.Data, Version=3.1.1.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardvark.Application.Slim.GL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] Aardium, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:     [cache hit ] ViewerMain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   initializing SceneGraphCompletenessCheck ........................................... 0.170 s
+ 0:   [cache hit ] Aardvark.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Service, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Rendering.Vulkan, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] GLSLangSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.GPGPU, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Rendering.GL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Base.Runtime, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] FsPickler.Json, Version=5.2.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed
+ 0:   [cache hit ] Aardvark.UI.Primitives, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Compiler.DomainTypes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Rendering.Text, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] CommonMark, Version=0.1.0.0, Culture=neutral, PublicKeyToken=001ef8810438905d
+ 0:   [cache hit ] Unofficial.Typography, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] LibTessDotNet, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Uncodium.Eigensystems, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Geometry.Intersection, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Base.IO, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] LegacyCode, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] FSharp.Data, Version=3.1.1.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardvark.Application.Slim.GL, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] Aardium, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0:   [cache hit ] ViewerMain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+ 0: initializing aardvark ................................................................ 0.442 s
+ 0: initializing OpenGL runtime ..................................................................
+ 0:   vendor:   "ATI Technologies Inc."
+ 0:   renderer: "Radeon RX Vega M GL Graphics"
+ 0:   version:  OpenGL 4.3.13543 / GLSL 4.6
+ 0: initializing OpenGL runtime .......................................................... 0.379 s
+ 0: loading from cache file .............................................................. 0.246 s
+ 0: Found lazy kdtree cache
+ 0: [App] restoring camstate
+ 0: WARNING: [aardvark.media] currently ThreadPool.MinThreads is (8,8)
+ 0: WARNING: [aardvark.media] unfortunately, currently we need to adjust this to at least (12,12) due to an open issue https://github.com/aardvark-platform/aardvark.media/issues/19
+ 0: Aardvark.Service serves aardvark.js
+ 0: Aardvark.Service serves rgbcolor.js
+ 0: Aardvark.Service serves docking.js
+ 0: Aardvark.Service serves semantic.js
+ 0: Aardvark.Service serves jquery-3-3-1.js
+ 0: Aardvark.Service serves touchstick.js
+ 0: Aardvark.Service serves aardfs.js
+ 0: Aardvark.Service serves essentialstuff.js
+ 0: Aardvark.Service serves aardvark.css
+ 0: Aardvark.Service serves docking.css
+ 0: Aardvark.Service serves semantic.css
+ 0: Aardvark.Service serves aardfs.css
+ 0: Aardvark.Service serves semantic-overrides.css
+ 0: Aardvark.Service serves fonts.css
+ 0: Aardvark.Service serves index.html
+ 0: Aardvark.Service serves stats.html
+ 0: Aardvark.Service serves aardvark-light.svg
+ 0: Aardvark.Service serves aardvark.svg
+ 0: Aardvark.Service serves brand-icons.woff2
+ 0: Aardvark.Service serves outline-icons.woff2
+ 0: Aardvark.Service serves icons.woff2
+ 0: Aardvark.Service serves S6u8w4BMUTPHjxsAUi-qJCY.woff2
+ 0: Aardvark.Service serves S6u8w4BMUTPHjxsAXC-q.woff2
+ 0: Aardvark.Service serves S6u9w4BMUTPHh6UVSwaPGR_p.woff2
+ 0: Aardvark.Service serves S6u9w4BMUTPHh6UVSwiPGQ.woff2
+ 0: Aardvark.Service serves S6uyw4BMUTPHjx4wXg.woff2
+ 0: Aardvark.Service serves S6uyw4BMUTPHjxAwXjeu.woff2
+ 0: Aardvark.Service serves S6u_w4BMUTPHjxsI5wq_FQft1dw.woff2
+ 0: Aardvark.Service serves S6u_w4BMUTPHjxsI5wq_Gwft.woff2
+ 0: Aardvark.UI serves template.html
+ 0: Aardvark.UI serves favicon.ico
+ 0: WARNING: [23488:0808/151641.045:INFO:CONSOLE(18)] "(node:1928) Warning: N-API is an experimental feature and could change at any time.", source: internal/process/warning.js (18)
+ 0: WARNING: [23488:0808/151641.182:INFO:CONSOLE(48)] "[Aardvark] creating aardvark-channels", source: http://localhost:4321/rendering/aardvark.js (48)
+ 0: WARNING: [23488:0808/151641.182:INFO:CONSOLE(53)] "[Aardvark] creating aardvark-script-references", source: http://localhost:4321/rendering/aardvark.js (53)
+ 0: WARNING: [23488:0808/151641.182:INFO:CONSOLE(58)] "[Aardvark] creating aardvark-stylesheet-references", source: http://localhost:4321/rendering/aardvark.js (58)
+ 0: WARNING: [23488:0808/151641.182:INFO:CONSOLE(65)] "[Aardvark] creating aardvark-event-processor", source: http://localhost:4321/rendering/aardvark.js (65)
+ 0: WARNING: [23488:0808/151641.182:INFO:CONSOLE(96)] "[Aardvark] self-url: http://localhost:4321/rendering/", source: http://localhost:4321/rendering/aardvark.js (96)
+ 0: WARNING: [23488:0808/151641.199:INFO:CONSOLE(117)] "ws://localhost:4321/events?session=742b87d3-2191-cf2d-4434-4968aa6457da", source: http://localhost:4321/rendering/aardvark.js (117)
+ 0: WARNING: [23488:0808/151641.755:INFO:CONSOLE(886)] "[Aardvark] referenced stylesheet "docking-js-style" (./rendering/docking.css)", source: http://localhost:4321/rendering/aardvark.js (886)
+ 0: WARNING: [23488:0808/151641.762:INFO:CONSOLE(864)] "[Aardvark] referenced script "docking-js" (./rendering/docking.js)", source: http://localhost:4321/rendering/aardvark.js (864)
+ 0: WARNING: [23488:0808/151641.789:INFO:CONSOLE(688)] "[Docking] create render", source: http://localhost:4321/rendering/docking.js (688)
+ 0: WARNING: [23488:0808/151641.792:INFO:CONSOLE(688)] "[Docking] create controls", source: http://localhost:4321/rendering/docking.js (688)
+ 0: WARNING: [23488:0808/151641.889:INFO:CONSOLE(5)] "[Aardvark] creating aardvark-value", source: http://localhost:4321/rendering/aardvark.js (5)
+ 0: WARNING: [23488:0808/151641.889:INFO:CONSOLE(48)] "[Aardvark] creating aardvark-channels", source: http://localhost:4321/rendering/aardvark.js (48)
+ 0: WARNING: [23488:0808/151641.889:INFO:CONSOLE(53)] "[Aardvark] creating aardvark-script-references", source: http://localhost:4321/rendering/aardvark.js (53)
+ 0: WARNING: [23488:0808/151641.889:INFO:CONSOLE(58)] "[Aardvark] creating aardvark-stylesheet-references", source: http://localhost:4321/rendering/aardvark.js (58)
+ 0: WARNING: [23488:0808/151641.889:INFO:CONSOLE(65)] "[Aardvark] creating aardvark-event-processor", source: http://localhost:4321/rendering/aardvark.js (65)
+ 0: WARNING: [23488:0808/151641.890:INFO:CONSOLE(96)] "[Aardvark] self-url: http://localhost:4321/rendering/", source: http://localhost:4321/rendering/aardvark.js (96)
+ 0: WARNING: [23488:0808/151641.899:INFO:CONSOLE(117)] "ws://localhost:4321/events?session=742b87d3-2191-cf2d-4434-4968aa6457da&page=render", source: http://localhost:4321/rendering/aardvark.js (117)
+ 0: WARNING: [23488:0808/151641.945:INFO:CONSOLE(5)] "[Aardvark] creating aardvark-value", source: http://localhost:4321/rendering/aardvark.js (5)
+ 0: WARNING: [23488:0808/151641.945:INFO:CONSOLE(48)] "[Aardvark] creating aardvark-channels", source: http://localhost:4321/rendering/aardvark.js (48)
+ 0: WARNING: [23488:0808/151641.945:INFO:CONSOLE(53)] "[Aardvark] creating aardvark-script-references", source: http://localhost:4321/rendering/aardvark.js (53)
+ 0: WARNING: [23488:0808/151641.945:INFO:CONSOLE(58)] "[Aardvark] creating aardvark-stylesheet-references", source: http://localhost:4321/rendering/aardvark.js (58)
+ 0: WARNING: [23488:0808/151641.945:INFO:CONSOLE(65)] "[Aardvark] creating aardvark-event-processor", source: http://localhost:4321/rendering/aardvark.js (65)
+ 0: WARNING: [23488:0808/151641.945:INFO:CONSOLE(96)] "[Aardvark] self-url: http://localhost:4321/rendering/", source: http://localhost:4321/rendering/aardvark.js (96)
+ 0: WARNING: [23488:0808/151641.952:INFO:CONSOLE(117)] "ws://localhost:4321/events?session=742b87d3-2191-cf2d-4434-4968aa6457da&page=controls", source: http://localhost:4321/rendering/aardvark.js (117)
+ 0: WARNING: [23488:0808/151642.391:INFO:CONSOLE(864)] "[Aardvark] referenced script "touchstick.js" (./rendering/touchstick.js)", source: http://localhost:4321/rendering/aardvark.js (864)
+ 0: WARNING: [23488:0808/151642.450:INFO:CONSOLE(886)] "[Aardvark] referenced stylesheet "semui" (./rendering/semantic.css)", source: http://localhost:4321/rendering/aardvark.js (886)
+ 0: WARNING: [23488:0808/151642.512:INFO:CONSOLE(886)] "[Aardvark] referenced stylesheet "semui-overrides" (./rendering/semantic-overrides.css)", source: http://localhost:4321/rendering/aardvark.js (886)
+ 0: WARNING: [23488:0808/151642.526:INFO:CONSOLE(886)] "[Aardvark] referenced stylesheet "semui" (./rendering/semantic.css)", source: http://localhost:4321/rendering/aardvark.js (886)
+ 0: WARNING: [23488:0808/151642.530:INFO:CONSOLE(886)] "[Aardvark] referenced stylesheet "semui-overrides" (./rendering/semantic-overrides.css)", source: http://localhost:4321/rendering/aardvark.js (886)
+ 0: WARNING: [23488:0808/151642.605:INFO:CONSOLE(864)] "[Aardvark] referenced script "semui" (./rendering/semantic.js)", source: http://localhost:4321/rendering/aardvark.js (864)
+ 0: WARNING: [23488:0808/151642.619:INFO:CONSOLE(864)] "[Aardvark] referenced script "semui" (./rendering/semantic.js)", source: http://localhost:4321/rendering/aardvark.js (864)
+ 0: WARNING: [23488:0808/151642.620:INFO:CONSOLE(864)] "[Aardvark] referenced script "essential" (./rendering/essentialstuff.js)", source: http://localhost:4321/rendering/aardvark.js (864)
+ 0: WARNING: [23488:0808/151642.624:INFO:CONSOLE(418)] "installing fullscreen capturer", source: http://localhost:4321/rendering/aardvark.js (418)
+ 0: WARNING: [23488:0808/151642.639:INFO:CONSOLE(864)] "[Aardvark] referenced script "essential" (./rendering/essentialstuff.js)", source: http://localhost:4321/rendering/aardvark.js (864)
+ 1: [Server] created client for (742b87d3-2191-cf2d-4434-4968aa6457da/n3), mapping enabled
+ 1: [Client] 1: running n3
+ 2: [Scene] n3: created
+ 2: WARNING: [GL] no sorting
+ 2: [GL] RenderObjects: +253/-0
+ 2: using optimized native program
+ 2: using optimized native program
+ 2: using optimized native program
+ 0: WARNING: [23488:0808/151649.941:INFO:CONSOLE(632)] "[Aardvark] initialized renderControl n3", source: http://localhost:4321/rendering/aardvark.js (632)
+ 3: [Client] 1: stopped

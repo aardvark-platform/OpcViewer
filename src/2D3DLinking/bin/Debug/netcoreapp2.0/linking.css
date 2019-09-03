@@ -1,0 +1,18 @@
+﻿.product-view {
+    display: inline-block;
+    position: relative;
+    margin: 0 5px;
+}
+
+.product-view img {
+    height: 100%;
+    display: inline-block
+}
+
+.product-view svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: inline-block;
+    height: 100%
+}
