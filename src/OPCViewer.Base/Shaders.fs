@@ -589,3 +589,25 @@ module Shader =
 
         let EffectLines =
             toEffect lines
+
+    module OPCFilter =
+        type UniformScope with
+            member x.DiffuseColorTexture : ShaderTextureHandle = uniform?DiffuseColorTexture
+
+        let private diffuseSampler =
+            sampler2d {
+                texture uniform.DiffuseColorTexture          
+                filter Filter.Anisotropic
+                maxAnisotropy 16
+                addressU WrapMode.Wrap
+                addressV WrapMode.Wrap
+            }
+
+        let improvedDiffuseTexture (v : Effects.Vertex) =
+            fragment {
+                let texColor = diffuseSampler.Sample(v.tc,-1.0)
+                return texColor
+            }
+
+        let EffectOPCFilter =
+            toEffect improvedDiffuseTexture

@@ -60,11 +60,36 @@ let main argv =
     
     let instance =  LinkingView.App.app opcDir rotate dumpFile cacheFile access |> App.start 
 
-    WebPart.startServerLocalhost 4321 [ 
+    Log.line ">>>> %s" (System.IO.Path.GetFullPath("./resources"))
+
+    //let resourcesFolder = IO.Path.Combine(IO.Directory.GetCurrentDirectory(), "resources") 
+    let resourcesFolder = IO.Directory.GetCurrentDirectory()
+
+    let webPart = choose [
+        Suave.Files.browse resourcesFolder
+        //Suave.Files.browseHome
         MutableApp.toWebPart' app.Runtime false instance
-        Reflection.assemblyWebPart typeof<EmbeddedRessource>.Assembly
+    ]
+
+    //let bindings = [ HttpBinding.createSimple Protocol.HTTP "127.0.0.1" 4321 ]
+    //let config = { Web.defaultConfig with bindings = bindings}
+
+    //tartWebServer config webPart |> ignore
+
+    //Aardium.run {
+    //    url "http://127.0.0.1:4321/"
+    //    width 1024
+    //    height 768
+    //    debug true
+    //}
+
+    // let config = { Suave.Web.defaultConfig with homeFolder = Some @"blablabla"
+    WebPart.startServerLocalhost 4321 [ 
+        webPart
+        
+        //Reflection.assemblyWebPart typeof<EmbeddedRessource>.Assembly
         //Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
-        Suave.Files.browseHome
+        
     ] |> ignore
 
     Aardium.run {

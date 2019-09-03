@@ -38,26 +38,33 @@ module LinkingApp =
             //r3 - r2 |> toPlane  // far
         |]
 
-    let loadFrustums (features: plist<Feature>) : hmap<string, LinkingFeature> * Trafo3d =
+    let loadFrustums (features: plist<Feature>) : hmap<string, LinkingFeature> * Trafo3d * hmap<Instrument, InstrumentParameter> =
+
+        // sensor sizes
+        let mastcamRLSensor = V2i(1600, 1200)
+
+        let instrumentParameter = hmap.OfList [
+            (Instrument.MastcamL, { horizontalFoV = 15.0; sensorSize = mastcamRLSensor }) //34 mm
+            (Instrument.MastcamR, { horizontalFoV = 5.1; sensorSize = mastcamRLSensor }) // 100 mm
+        ]
         
         // only interested in MastcamL and MastcamR products
-        let reducedFeatures = features.Filter (fun _ f -> 
-            match f.instrument with
-            | Instrument.MastcamL | Instrument.MastcamR -> true
-            | Instrument.Mastcam -> false // TODO: dunno?
-            | _ -> false
-        )
+        let reducedFeatures = features.Filter (fun _ f -> instrumentParameter.ContainsKey f.instrument)
 
         // creating frustums by specifying fov
-        let createFrustumProj (fov : float) =
-            let aspectRatio = 1.3333333333333333333 // 1600:1200
+        let createFrustumProj (p: InstrumentParameter) =
+            let aspectRatio = (float p.sensorSize.X) / (float p.sensorSize.Y)
+            let fov = p.horizontalFoV * aspectRatio
             let frustum = Frustum.perspective fov 0.01 15.0 aspectRatio
             let fullFrustum = Frustum.perspective fov 0.01 1000.0 aspectRatio
             let proj = Frustum.projTrafo(frustum)
             (proj, proj.Inverse, fullFrustum)
 
-        let cam34Frustum, cam34Inv, fullFrustum34 = createFrustumProj 16.370
-        let cam100Frustum, cam100Inv, fullFrustum100 = createFrustumProj 5.67
+        let frustumData =
+            instrumentParameter
+            |> HMap.map (fun _ v ->
+                createFrustumProj(v)
+            )
 
         let angleToRad = V3d(Math.PI / 180.0) * V3d(1.0,1.0,2.0)
         
@@ -67,9 +74,6 @@ module LinkingApp =
             | None -> Trafo3d.Identity
 
         let originTrafoInv = originTrafo.Backward
-        
-        //|> Mod.map2 (fun (t: Trafo3d) x -> 
-        //    x |> Array.map(fun p -> (t.Backward.TransformPos(p)) |> V3f)) trafo
 
         // map minerva features to linking features
         let linkingFeatures : hmap<string, LinkingFeature> = 
@@ -83,13 +87,11 @@ module LinkingApp =
                 let (w, h) = f.dimensions
                 let dimensions = V2i(w, h)
 
-                let frustumTrafo, frustumTrafoInv, fullFrustum =
-                    match f.instrument with
-                    | Instrument.MastcamL -> cam34Frustum, cam34Inv, fullFrustum34
-                    | Instrument.MastcamR -> cam100Frustum, cam100Inv, fullFrustum100
-                    | Instrument.Mastcam -> (Trafo3d.Scale 0.0), (Trafo3d.Scale 0.0), (Frustum.ofTrafo Trafo3d.Identity)  // TODO: dunno?
-                    | _ -> (Trafo3d.Scale 0.0), (Trafo3d.Scale 0.0), (Frustum.ofTrafo Trafo3d.Identity) // TODO: discard!
-
+                let frustumTrafo, frustumTrafoInv, fullFrustum = 
+                    frustumData
+                    |> HMap.tryFind f.instrument
+                    |> Option.defaultValue (Trafo3d.Scale 0.0, Trafo3d.Scale 0.0, Frustum.ofTrafo Trafo3d.Identity) // ignored
+             
                 let rotation = Rot3d.FromAngleAxis(angles * angleToRad)
                 let translation = Trafo3d.Translation position
 
@@ -113,12 +115,13 @@ module LinkingApp =
                     color = color
                     instrument = f.instrument
                     imageDimensions = dimensions
+                    imageOffset = V2i(305 + 48, 385) // ATTENTION/TODO hardcoded data value, replace with database!
                 })
             )
             |> PList.toList
             |> HMap.ofList
 
-        (linkingFeatures, originTrafo)
+        (linkingFeatures, originTrafo, instrumentParameter)
 
 
     let rec update (view: CameraView) (m: LinkingModel) (msg: LinkingAction) : LinkingModel =
@@ -133,7 +136,6 @@ module LinkingApp =
                 let closestID = m.minervaModel.selection.flatID.[index]
                 (m.frustums.TryFind closestID)
             
-
         match msg with
         | CheckPoint p ->
             let originP = m.trafo.Backward.TransformPos p
@@ -149,22 +151,20 @@ module LinkingApp =
                 |> HSet.map (fun p -> p.instrument)
                 |> HSet.mapHMap (fun _ -> true)
 
+            //let partialUpdatedM = { (m |> updateFilterProductsAndSort filterProducts) with pickingPos = Some(originP) }
             let partialUpdatedM = { m with pickingPos = Some(originP); filterProducts = filterProducts }
             update view partialUpdatedM (MinervaAction(MinervaAction.UpdateSelection (intersected |> HSet.toList)))
 
         | ToggleView i ->
-            let filterProducts = 
-                match m.filterProducts.TryFind i with
-                | Some b -> m.filterProducts.Add (i, not b)
-                | None -> m.filterProducts
-            { m with filterProducts = filterProducts }
+            match m.filterProducts.TryFind i with
+            | Some b -> 
+                { m with filterProducts = m.filterProducts.Add (i, not b) }
+            | None -> m
 
-        | OpenFrustum f ->
-            // also handled by upper app
-            { m with overlayFeature = Some(f) }
-            
-        | CloseFrustum ->
-            { m with overlayFeature = None }
+        | OpenFrustum f -> { m with overlayFeature = Some(f) }  // also handled by upper app
+        | CloseFrustum -> { m with overlayFeature = None }
+        | ChangeFrustumOpacity v -> { m with frustumOpacity = v }
+        //| ChangeFrustumOpacity msg -> { m with frustumOpacity = Numeric.update m.frustumOpacity msg }
 
         | MinervaAction a ->
 
@@ -172,8 +172,8 @@ module LinkingApp =
 
             | MinervaAction.LoadProducts _ -> 
                 let minervaModel = MinervaApp.update view m.minervaModel a
-                let (frustums, trafo) = loadFrustums minervaModel.data.features
-                { m with minervaModel = minervaModel; frustums = frustums; trafo = trafo }
+                let (frustums, trafo, instrumentParameter) = loadFrustums minervaModel.data.features
+                { m with minervaModel = minervaModel; frustums = frustums; trafo = trafo; instrumentParameter = instrumentParameter }
 
             | MinervaAction.HoverProducts hit ->
                 { m with 
@@ -204,12 +204,39 @@ module LinkingApp =
 
         | _ -> failwith "Not implemented yet"
 
+
+    ///// Helpers
+    let dependencies =
+        Html.semui @ [
+            { kind = Stylesheet; name = "fun1.css"; url = "./resources/fun1.css" }
+        ]
     
     let cssColor (c: C4b) =
         sprintf "rgba(%d, %d, %d, %f)" c.R c.G c.B c.Opacity
 
     let instrumentColor (i: Instrument) =
         i |> MinervaModel.instrumentColor |> cssColor
+
+    let imageSrc (f: LinkingFeature) =
+        sprintf "MinervaData/%s.png" (f.id.ToLower())
+
+    let svgLine (p1: float * float) (p2: float * float) (color: string) (storkeWidth: float) =
+        let (x1, y1) = p1
+        let (x2, y2) = p2
+        Svg.line[
+            attribute "x1" (string x1)
+            attribute "y1" (string y1)
+            attribute "x2" (string x2)
+            attribute "y2" (string y2)
+            attribute "stroke" color
+            attribute "stroke-width" (string storkeWidth)
+        ]
+        
+    let svgLine' (p1: V2d) (p2: V2d) (color: C4b) (storkeWidth: float) =
+        svgLine (p1.X, p1.Y) (p2.X, p2.Y) (color |> cssColor) storkeWidth
+
+    /////
+
 
     let view (m: MLinkingModel) =
 
@@ -303,99 +330,174 @@ module LinkingApp =
         |]
 
     let viewSideBar (m: MLinkingModel) =
-        div [clazz "ui buttons"] [
-            //button [clazz "ui button"; onClick (fun _ -> LoadProducts)][text "Load"]
-            button [clazz "ui button inverted"; onClick (fun _ -> MinervaAction(MinervaAction.UpdateSelection(m.frustums |> AMap.keys |> ASet.toList)))][text "Select All"]         
-            button [clazz "ui button inverted"; onClick (fun _ -> MinervaAction(MinervaAction.ClearSelection))][text "Clear Selection"]         
-            //button [clazz "ui button"; onClick (fun _ -> ApplyFilters)][text "Filter"]         
-        ]
 
-    let sceneOverlay (v: IMod<CameraView>) (m: MLinkingModel) =
+        let modD = 
+            m.overlayFeature
+            |> Mod.map (fun od -> 
+                match od with
+                | None -> (None, None)
+                | Some(d) -> 
+                    let beforeF = d.before.TryGet (d.before.Count - 1) // get last element of before list (before f)
+                    let before = 
+                        beforeF
+                        |> Option.map (fun f -> 
+                            { 
+                                before = d.before.Remove f
+                                f = f
+                                after = d.after.Prepend d.f
+                            }
+                        )
 
-        // 75% = aspect ratio 4:3
-        let styleTag = 
-            DomNode.Text("style", None, AttributeMap.Empty, (Mod.constant("
-                 .scene-overlay {
-                     position: absolute;
-                     margin: 0;
-                     top: 0;
-                     z-index: 10;
-                     width: 100%;
-                     height: 100%;
-                     text-align: center;
-                 }
+                    let afterF = d.after.TryGet 0 // get first element of after list (after f)
+                    let after =
+                        afterF
+                        |> Option.map (fun f -> 
+                            {
+                                before = d.before.Append d.f
+                                f = f
+                                after = d.after.Remove f
+                            }
+                        )
 
-                 .frustum-svg {
-                    height: 100%;
-                    border: 2px solid white;
-                 }
-                ")))
+                    (before, after)
+            )
 
-        let overlayDom (f: LinkingFeature) : DomNode<LinkingAction> =
-            
-            let fullRect = [
-                attribute "x" "0"
-                attribute "y" "0"
-                attribute "width" "1600"
-                attribute "height" "1200"
+        require dependencies (
+            div [][
+        
+                div [clazz "inverted fluid ui vertical buttons"] [
+                    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.UpdateSelection(m.frustums |> AMap.keys |> ASet.toList)))][text "Select All"]         
+                    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.ClearSelection))][text "Clear Selection"]                 
+                ]
+
+                //Numeric.view m.frustumOpacity |> UI.map ChangeFrustumOpacity
+
+                Incremental.div 
+                    (AttributeMap.ofAMap (amap { 
+                        let! d = m.overlayFeature
+                        if d.IsNone then
+                            yield style "display: none;"
+                    }))
+                    (AList.ofList [
+               
+                        slider 
+                            {min = 0.0; max = 1.0; step = 0.01} 
+                            [clazz "ui blue slider"]
+                            m.frustumOpacity
+                            ChangeFrustumOpacity
+
+                        //input [
+                        //    attribute "type" "range"
+                        //    attribute "min" "0"
+                        //    attribute "max" "1"
+                        //    attribute "step" "any"
+                        //    js "oninput" "parent.$('iframe').contents().find('#frustum-overlay-image').css('opacity',this.value);"
+                        //]
+                
+                        div [clazz "inverted fluid ui buttons"] [
+
+                            Incremental.button (AttributeMap.ofAMap (amap {
+                                let classString = "inverted labeled ui icon button"
+                                
+                                let! (before, _) = modD
+                                match before with
+                                | Some(d) -> 
+                                    yield onClick (fun _ -> (LinkingAction.OpenFrustum d))
+                                    yield clazz classString
+                                | None -> yield clazz (classString + " disabled")
+
+                            })) (AList.ofList [
+                                i [clazz "caret left icon"][]
+                                text "Previous"
+                            ])
+
+                            Incremental.button (AttributeMap.ofAMap (amap {
+                                let classString = "inverted right labeled ui icon button"
+                                                           
+                                let! (_, after) = modD
+                                match after with
+                                | Some(d) -> 
+                                    yield onClick (fun _ -> (LinkingAction.OpenFrustum d))
+                                    yield clazz classString
+                                | None -> yield clazz (classString + " disabled")
+
+                            })) (AList.ofList [
+                                i [clazz "caret right icon"][]
+                                text "Next"
+                            ])
+                        ]
+
+                        button [clazz "fluid inverted ui button"; onClick (fun _ -> LinkingAction.CloseFrustum)][
+                            i [clazz "close icon"][]
+                            text "Close"
+                        ]
+                    ])
             ]
+        )
 
-            let dim = V2d(1600.0, 1200.0)
-            let border = (dim - V2d(f.imageDimensions)) * 0.5
+    let sceneOverlay (v: IMod<CameraView>) (m: MLinkingModel) : DomNode<LinkingAction> =
+
+        let overlayDom (f: LinkingFeature, dim: V2i) : DomNode<LinkingAction> =
+
+            let offset = f.imageOffset //let border = (dim - V2d(f.imageDimensions)) * 0.5
 
             let frustumRect = [
-                attribute "x" (sprintf "%f" border.X)
-                attribute "y" (sprintf "%f" border.Y)
+                attribute "x" (string offset.X) //border.x
+                attribute "y" (string offset.Y) // border.y
                 attribute "width" (string f.imageDimensions.X)
                 attribute "height" (string f.imageDimensions.Y)
             ]
 
             div [clazz "ui scene-overlay"] [
-                Svg.svg[
+                Svg.svg [
                     clazz "frustum-svg"
+                    attribute "id" "frustum-overlay-svg"
                     attribute "viewBox" "0 0 1600 1200"
                     style (sprintf "border-color: %s" (instrumentColor f.instrument))
                 ][
-                    (DomNode.Element ("mask", None, (AttributeMap.ofList [
-                        attribute "id" "frustumMask"
-                    ]), AList.ofList [
-                        Svg.rect (fullRect @ [
-                            attribute "fill" "white"
-                        ])
-                        Svg.rect (frustumRect @ [
-                            attribute "fill" "black"
-                        ])
-                    ]))
-                    Svg.rect (fullRect @ [
+                    Svg.path [
                         attribute "fill" "rgba(0,0,0,0.5)"
-                        attribute "mask" "url(#frustumMask)"
-                    ])
-                    
+                        attribute "d" (sprintf "M0 0 h%d v%d h-%dz M%d %d v%d h%d v-%dz"
+                            dim.X dim.Y dim.X offset.X offset.Y f.imageDimensions.Y f.imageDimensions.X f.imageDimensions.Y)
+                    ]
+                    DomNode.Node ("g", "http://www.w3.org/2000/svg",
+                        AttributeMap.ofAMap (amap {
+                            let! a = m.frustumOpacity
+                            yield attribute "opacity" (string a)
+                        }),
+                        AList.ofList [
+                            Svg.image (frustumRect @ [
+                                attribute "href" (imageSrc f)
+                            ])
+                        ]
+                    )
                 ]
             ]
 
         let dom =
-            m.overlayFeature 
-            |> Mod.map(fun f ->
-                match f with
+            m.overlayFeature
+            |> Mod.bind (fun op -> 
+                op 
+                |> Option.map (fun d -> 
+                    m.instrumentParameter 
+                    |> AMap.tryFind d.f.instrument
+                    |> Mod.map (fun ip -> (d.f, ip))
+                )
+                |> Option.defaultValue (Mod.constant (LinkingFeature.initial, None))
+            )
+            |> Mod.map(fun (f: LinkingFeature, s: Option<InstrumentParameter>) ->
+                match s with
                 | None -> div[][] // DomNode.empty requires unit?
-                | Some(o) -> overlayDom o
+                | Some(o) -> overlayDom (f, o.sensorSize)
             )
             |> AList.ofModSingle
             |> Incremental.div AttributeMap.empty
             
-        div[][
-            styleTag
-            dom
-        ]
+        require dependencies dom
+
 
     let viewHorizontalBar (m: MLinkingModel) =
         
-        //<div class="ui checkbox">
-        //    <input type="checkbox" name="example">
-        //    <label>Make my profile visible</label>
-        //</div>
-
         let products =
             m.selectedFrustums
             |> ASet.chooseM (fun k -> AMap.tryFind k m.frustums)
@@ -434,67 +536,6 @@ module LinkingApp =
                 (i, Mod.constant s)
             )
 
-        let dependencies =
-            Html.semui @ [
-                { kind = Stylesheet; name = "linking.css"; url = "resources/linking.css" }
-            ]
-
-        let styleTag = 
-           DomNode.Text("style", None, AttributeMap.Empty, (Mod.constant("
-                .product-view {
-                    display: inline-block;
-                    position: relative;
-                    margin: 0 5px;
-                    border-top: 2px solid white;
-                    border-radius: 2px;
-                    cursor: pointer;
-                }
-
-                .product-view img {
-                    height: 100%;
-                    display: inline-block
-                }
-
-                .product-view svg {
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    display: inline-block;
-                    height: 100%;
-                }
-                
-                .product-view span {
-                    position: absolute;
-                    z-index: 5;
-                    left: 0;
-                    padding: 0.5em;
-                    line-height: 1em;
-                    font-size: 0.55em;
-                    background-color: rgba(0,0,0,0.5);
-                }
-
-                .noselect {
-                    cursor: default;
-                    -webkit-touch-callout: none;
-                    -webkit-user-select: none;
-                    -khtml-user-select: none;
-                    -moz-user-select: none;
-                    -ms-user-select: none;
-                    user-select: none;
-                }
-                ")))
-           
-        //let scriptTag =
-        //   DomNode.Text("script", None, AttributeMap.Empty, (Mod.constant("
-
-        //        function productLoad(elem) {
-        //            var h = $(this).height();
-        //            var w = $(this).width();
-        //        }
-
-        //   ")))
-
         let fullCount = products |> ASet.count 
         let filteredCount = filteredProducts |> ASet.count
         let countString =
@@ -504,11 +545,8 @@ module LinkingApp =
                 else (sprintf "%d (%d)" full filtered)
             ) fullCount filteredCount
 
-
         require dependencies (
-            body [style "width: 100%; height:100%; background: transparent;"] [
-                styleTag
-                //scriptTag
+            body [style "width: 100%; height:100%; background: transparent; min-width: 0; min-height: 0"] [
                 div[clazz "noselect"; style "color:white; padding: 5px; width: 100%; height: 100%; position: absolute;"][
                     div[style "padding: 5px; position: fixed"][
                         span[clazz "ui label inverted"; style "margin-right: 10px; width: 10em; position: relative;"][
@@ -518,52 +556,66 @@ module LinkingApp =
                         Incremental.span AttributeMap.Empty (
                             countStringPerInstrument
                             |> AList.map (fun (i, s) ->
-                            
-                                //Incremental.li (AttributeMap.ofList([style "display: inline-block;";])) (AList.ofModSingle (Mod.constant (Incremental.text m)))
-                                
                                 let o = AMap.tryFind i m.filterProducts |> Mod.map (fun b -> b |> Option.defaultValue false)
-                                //checkbox [clazz "ui inverted checkbox"] o (ToggleView i) s
-                                //span[clazz "spectrum-Label spectrum-Label--grey";
                                 span[clazz "ui inverted label";
                                     style (sprintf "background-color: %s;" (instrumentColor i))][
-                                    Html.SemUi.iconCheckBox o (ToggleView i)
+                                    Html.SemUi.iconCheckBox o (ToggleView i) //checkbox [clazz "ui inverted checkbox"] o (ToggleView i) s
                                     Incremental.text s
-                                    //checkbox [clazz "ui inverted checkbox"] o (ToggleView i) s
                                 ]
                             )
                         )
-                        //checkbox [clazz "ui inverted toggle checkbox"] m.pickingModel.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"
-                    ]
+                        ]
 
                     Incremental.div (AttributeMap.ofList[style "overflow-x: scroll; overflow-y: hidden; white-space: nowrap; height: 100%; padding-top: 2.8em;"]) (
-                        productsAndPoints
-                        |> ASet.toAList
-                        |> AList.map (fun (f, p) ->
-                            // check if inside image!
-                            let (sensorW, sensorH) = (1600, 1200)
+                        let sortedProducts = 
+                            productsAndPoints
+                            |> ASet.toAList
+                            |> AList.map (fun (f, p) ->
+                                // check if inside image!
+                                m.instrumentParameter 
+                                |> AMap.tryFind f.instrument 
+                                |> Mod.map (Option.map (fun par ->
 
-                            let sensor = V2d(sensorW, sensorH)
-                            let image = V2d(f.imageDimensions)
+                                    let sensor = V2d(par.sensorSize)
+                                    let image = V2d(f.imageDimensions)
 
-                            let max = image / sensor // ratio is inside
+                                    let max = image / sensor // ratio is inside
+                                        
+                                    f, p, (image, sensor, max)
+                                ))
+                            )
+                            |> AList.chooseM (fun im -> im)
+                            |> AList.sortBy (fun (f, p, (image, sensor, max)) ->
+                                let ratioP = p.XY * V2d(1.0, sensor.Y / sensor.X)
+                                let dist = V2d.Dot(ratioP, ratioP) // euclidean peseudo distance (w/o root)
 
-                            (f, p, (image, sensor, max))
-                        )
-                        |> AList.sortBy (fun (f, p, (image, sensor, max)) ->
-                            let ratioP = p.XY * V2d(1.0, sensor.Y / sensor.X)
-                            let dist = V2d.Dot(ratioP, ratioP) // euclidean peseudo distance (w/o root)
-
-                            if abs(p.X) > max.X || abs(p.Y) > max.Y
-                            then infinity
-                            else dist
-                        )
-                        |> AList.map (fun (f, p, (image, sensor, max)) -> 
-                            let fileName = sprintf "MinervaData\%s.png" (f.id.ToLower())
-                            let imgSrc = System.IO.Path.GetFullPath(System.IO.Path.Combine(Environment.CurrentDirectory, fileName))
-                            let webSrc = "file:///" + imgSrc.Replace("\\", "/")
+                                if abs(p.X) > max.X || abs(p.Y) > max.Y
+                                then infinity
+                                else dist
+                            )
+                        
+                        // if you have a cleaner way of doing this I would be so happy to know it
+                        let neighborList =
+                            sortedProducts 
+                            |> AList.toMod
+                            |> Mod.map (fun l -> 
+                                l
+                                |> PList.mapi (fun i e -> 
+                                    let onlyFrustra = l |> PList.map(fun a -> 
+                                        let (f, _, _) = a
+                                        f
+                                    )
+                                    let before, w, after = PList.split i onlyFrustra // TODO find out what is w
+                                    (before, e, after)                             
+                                )
+                            )
+                            |> AList.ofMod
+                            
+                        neighborList
+                        |> AList.map (fun (before, (f, p, (image, sensor, max)), after) -> 
+                            let webSrc = imageSrc f
                             
                             let (w, h) = (f.imageDimensions.X, f.imageDimensions.Y)
-                            //let c = ((p.XY * V2d(1.0, -1.0)) + 1.0) * 0.5 // transform [-1, 1] to [0, 1]
                             let c = (p.XY * V2d(1.0, -1.0)) // flip y
 
                             let cc = c / max // correct for max
@@ -573,60 +625,34 @@ module LinkingApp =
 
                             let rc = cc * V2d(invRatio, 1.0)
 
-                            //div[style "display: inline-block; position: relative; margin: 0 5px";
                             div[
                                 clazz "product-view"
                                 style (sprintf "border-color: %s" (instrumentColor f.instrument))
-                                onClick (fun _ -> OpenFrustum f)
+                                onClick (fun _ -> OpenFrustum { before = before; f = f; after = after })
                             ][
                                 img[
                                     clazz f.id; 
                                     attribute "alt" f.id; 
                                     attribute "src" webSrc;
-                                    //attribute "onload" "productLoad(this);"
-                                    //style "height: 100%; display: inline-block"
                                 ]
                                 Svg.svg[attribute "viewBox" (sprintf "%f -1 %f 2" (-invRatio) (invRatio * 2.0))
-                                //style "position: absolute; top: 0; left: 0; display: inline-block; height: 100%"
                                 ][
                                     Svg.circle[
                                         attribute "cx" (sprintf "%f" rc.X)
                                         attribute "cy" (sprintf "%f" rc.Y)
                                         attribute "r" "1.0"
-                                        //attribute "fill" (C4b.VRVisGreen |> cssColor)
                                         attribute "fill" "transparent"
                                         attribute "stroke" (C4b.VRVisGreen |> cssColor)
                                         attribute "stroke-width" "0.03"
                                     ]
-                                    // vertical line
-                                    Svg.line[
-                                        attribute "x1" "0"
-                                        attribute "y1" "-1"
-                                        attribute "x2" "0"
-                                        attribute "y2" "1"
-                                        attribute "stroke" "black"
-                                        attribute "stroke-width" "0.01"
-                                    ]
-                                    // horizontal line
-                                    Svg.line[
-                                        attribute "x1" (sprintf "%f" -invRatio)
-                                        attribute "y1" "0"
-                                        attribute "x2" (sprintf "%f" invRatio)
-                                        attribute "y2" "0"
-                                        attribute "stroke" "black"
-                                        attribute "stroke-width" "0.01"
-                                    ]
-                                    Svg.line[
-                                        attribute "x1" "0"
-                                        attribute "y1" "0"
-                                        attribute "x2" (sprintf "%f" rc.X)
-                                        attribute "y2" (sprintf "%f" rc.Y)
-                                        attribute "stroke" "black"
-                                        attribute "stroke-width" "0.01"
-                                    ]
+                                    svgLine (0.0, -1.0) (0.0, 1.0) "black" 0.01 // vertical line
+                                    svgLine (-invRatio, 0.0) (invRatio, 0.0) "black" 0.01 // horizontal line
+                                    svgLine (0.0, 0.0) (rc.X, rc.Y) "black" 0.01 // direction line
                                 ]
-                                //text (sprintf "%s" (cc.ToString("0.00")))
                                 text f.id
+                                div [clazz "product-indexed"; style "position: absolute; bottom: 1.2em"][
+     (* ༼つಠ益ಠ༽つ ─=≡ΣO) *)        text (string (before.Count + 1)) // geologists probably start their indices at 1
+                                ]
                             ]
                         )
                     )

@@ -100,10 +100,6 @@ module App =
                 let dir = Direction (model.drawing.points |> PList.toSeq |> fun x -> PlaneFitting.planeFit x).Normal
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some dir))
                 { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
-            
-            | Keys.B ->
-                let updatedLinking = LinkingApp.update model.cameraState.view model.linkingModel CloseFrustum
-                { model with overlayFrustum = None; linkingModel = updatedLinking }
 
             | _ -> model
 
@@ -145,10 +141,13 @@ module App =
         | LinkingAction msg ->
             
             match msg with
-            | OpenFrustum f ->
+            | OpenFrustum d ->
                 let updatedLinking = LinkingApp.update model.cameraState.view model.linkingModel msg
-                let newCamState = { model.cameraState with view = CameraView.ofTrafo f.camTrafo }
-                { model with cameraState = newCamState; overlayFrustum = Some(f.camFrustum); linkingModel = updatedLinking }
+                let newCamState = { model.cameraState with view = CameraView.ofTrafo d.f.camTrafo }
+                { model with cameraState = newCamState; overlayFrustum = Some(d.f.camFrustum); linkingModel = updatedLinking }
+            | CloseFrustum ->
+                let updatedLinking = LinkingApp.update model.cameraState.view model.linkingModel CloseFrustum
+                { model with overlayFrustum = None; linkingModel = updatedLinking }
             | _ -> 
                 { model with linkingModel = LinkingApp.update model.cameraState.view model.linkingModel msg }
 
@@ -178,7 +177,7 @@ module App =
                 |> Sg.set
                 |> Sg.effect [ 
                     toEffect Shader.stableTrafo
-                    toEffect DefaultSurfaces.diffuseTexture       
+                    Shader.OPCFilter.EffectOPCFilter
                 ]
 
         let pos = V3d [|-2486735.62;2289118.43;-276194.91|]
@@ -263,8 +262,8 @@ module App =
             )
         | Some "controls" -> 
             require Html.semui (
-                body [style "width: 100%; height:100%; background: transparent";] [
-                    div[style "color:white; margin: 5px 15px 5px 5px"][
+                body [style "width: 100%; height:100%; background: transparent; min-width: 0; min-height: 0";] [
+                    div[style "color:white; padding: 5px 15px 5px 5px"][
                     h3[][text "2D/3D Linking"]
                     p[][text "Hold Ctrl-Left to Pick Point"]
 
@@ -372,9 +371,9 @@ module App =
         let initialDockConfig = 
             config {
                 content (
-                    horizontal 10.0 [
-                        vertical 7.0 [
-                        element { id "render"; title "Render View"; weight 5.0 }
+                    horizontal 8.0 [
+                        vertical 8.0 [
+                        element { id "render"; title "Render View"; weight 6.0 }
                         element { id "products"; title "Product View"; weight 2.0 }
                         ]
                         element { id "controls"; title "Controls"; weight 3.0 }                         

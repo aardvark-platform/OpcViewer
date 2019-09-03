@@ -148,7 +148,7 @@ module Files =
                 client.DownloadFile(path, imagePath) |> ignore
                 let targetPath = @".\MinervaData\" + featureId.ToLower() + ".png"
                 PixImage.Create(imagePath).ToPixImage<byte>().SaveAsImage(targetPath)
-            with e -> Log.line "[Minerva] error: %A" e
+            with e -> ()//Log.line "[Minerva] error: %A" e
             
 module Shader = 
 
