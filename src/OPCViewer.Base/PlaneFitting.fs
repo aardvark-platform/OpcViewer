@@ -5,7 +5,7 @@ open Aardvark.Base
 module PlaneFitting =
     open Uncodium
 
-    let planeFit (points: seq<V3d>) : Plane3d =
+    let private calculateEigenVector (points: seq<V3d>) = 
         let length = points |> Seq.length |> float
 
         let c = 
@@ -34,4 +34,12 @@ module PlaneFitting =
             else if w.Y < w.Z then q.C1
             else q.C2
 
+        (n,c)
+
+    let planeFit (points: seq<V3d>) : Plane3d =
+        let n,c = points |> calculateEigenVector 
         Plane3d(n, c)
+
+    let lineFit (points: seq<V3d>) : Line3d =
+        let n,c = points |> calculateEigenVector 
+        Line3d(c - n, c + n)

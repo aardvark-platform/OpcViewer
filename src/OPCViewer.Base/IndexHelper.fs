@@ -59,3 +59,16 @@ module IndexHelper =
                     Report.Line(5, "Invalid faces found: {0}", counter)
 
         indexArray
+
+    let isOversizedTriangle (points: V3f[]) (index0: int) (index1: int) (index2: int) (maxTriangleSize: float32) : bool =
+
+        let point0 = points.[index0]
+        let point1 = points.[index1]
+        let point2 = points.[index2]
+ 
+        [|
+            V3f.Distance(point0, point1)
+            V3f.Distance(point0, point2)
+            V3f.Distance(point1, point2)
+        |] 
+        |> Array.exists (fun d -> d > maxTriangleSize)
