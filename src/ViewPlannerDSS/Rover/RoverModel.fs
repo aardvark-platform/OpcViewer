@@ -93,6 +93,25 @@ type RoverModel =
         projPoints :     plist<V3d>
         thetaPhiValues : plist<V2d>
 
+        //variables
+        //! currently dummy values for test purposes
+        energy : float
+        bandwidth : float
+        time : float        //how long should the rover be in its current place
+
+        //requirements
+        //how much energy and time is needed to perform a pan or tilt
+        //! currently dummy values for test purposes
+        energyForPanTilt : float
+        timeForPanTilt: float
+
+        //output values
+        numberOfSamples : int
+        energyRequired: float
+        timeRequired: float
+        bandwidthRequired: float
+
+
 
 
     }
@@ -234,6 +253,23 @@ module RoverModel =
         thetaPhiValues = PList.empty
         panOverlap = 20.0       //at least 20% according to https://mars.nasa.gov/msl/mission/instruments/mastcam/
         tiltOverlap = 20.0
+
+        energy = 100.0 //percent
+        bandwidth = 120.0 //mbit
+        time = 10.0 //hours
+
+        energyForPanTilt = 0.2 //percent for 1°
+        timeForPanTilt = 0.1 //0.1 sec for 1°
+
+        //output
+        numberOfSamples = 0
+        energyRequired = 0.0
+        timeRequired = 0.0
+        bandwidthRequired = 0.0
+
+
+
+
         }
 
     let getViewProj (cam : IMod<CameraView>) (frustum:IMod<Frustum>) =

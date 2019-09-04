@@ -310,6 +310,30 @@ module RoverApp =
 
 
     
+    //calculate the required energy and time for performing the pans/tilts for sampling
+    let rec calculateOutputVars (rover : RoverModel) (values:List<V2d>) (counter:int) (sum:float) (cost:float)  = 
+
+        match counter with 
+
+        | 0 -> 
+            let currPan = rover.pan.current
+            let currTilt = rover.tilt.current
+            let next = values.Item(0)
+            let deltaPan = Math.Abs(next.X - currPan)
+            let deltaTilt = Math.Abs(next.Y - currTilt)
+            let e = deltaPan * cost + deltaTilt * cost
+            (sum + e)
+        
+        | _ -> 
+            let curr = values.Item(counter)
+            let prev = values.Item(counter-1)
+            let deltaPan = Math.Abs(curr.X - prev.X)
+            let deltaTilt = Math.Abs(curr.Y - prev.Y)
+            let e = deltaPan * cost + deltaTilt * cost
+            calculateOutputVars rover values (counter-1) (sum+e) cost 
+
+       
+
     //takes pan and tilt values and calculates a view matrix for frustum visualisation
     let calculateViewMatrix (rover : RoverModel) (pan : float) (tilt : float) (cam:CamVariables) =
         
@@ -407,7 +431,22 @@ module RoverApp =
                 //for visualising footprints
                 let viewMatrices = values |> List.map(fun m -> calculateViewMatrix rover m.X m.Y camera.cam) |> PList.ofList
 
-                {rover with HighResCam = {rover.HighResCam with cam = { rover.HighResCam.cam with samplingValues = sv; viewList = viewMatrices }} }
+                //output values
+                let numberOfSamples = values.Length
+                let energy = 
+                    let res = calculateOutputVars rover values 0 0.0 rover.energyForPanTilt 
+                    Math.Round(res, 2)
+
+                let time = 
+                    let res = calculateOutputVars rover values 0 0.0 rover.timeForPanTilt
+                    Math.Round(res,2)
+                    
+
+                
+
+                let HR = {rover.HighResCam with cam = { rover.HighResCam.cam with samplingValues = sv; viewList = viewMatrices }}
+
+                {rover with HighResCam = HR; numberOfSamples = numberOfSamples; energyRequired = energy; timeRequired = time}
 
             | WACLR -> 
                 let camera = rover.WACLR

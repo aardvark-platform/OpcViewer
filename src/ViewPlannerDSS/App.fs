@@ -27,10 +27,7 @@ open Rabbyte.Drawing
 open Rabbyte.Annotation
 
 module App = 
-    open Aardvark.Base
-    open Aardvark.Base.MultimethodTest
-    open DevILSharp
-    
+
     let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
         let s' = cam.freeFlyConfig.moveSensitivity + incr
         Log.line "[App] sensitivity: %A" s'
@@ -604,13 +601,16 @@ module App =
             m.drawing |> DrawingApp.view
             points |> Sg.dynamic
             frustumBoxL
+            frustumBoxR
             ] |> Sg.ofList
       
       let sceneCamR = 
             [
+            shadingHR
             m.drawing |> DrawingApp.view
             points |> Sg.dynamic
             frustumBoxR
+            frustumBoxL
             ] |> Sg.ofList
 
        
@@ -648,7 +648,7 @@ module App =
          m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main sceneLeft
       
       let sceneR = 
-        m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main sceneRight
+        m.annotations |> AnnotationApp.viewGrouped sceneRight RenderPass.main sceneRight
 
       
       let textOverlays (cv : IMod<CameraView>) = 
@@ -684,6 +684,8 @@ module App =
             
          (sceneL |> Sg.map PickingAction)
       
+
+
       let viewRight = 
         FreeFlyController.controlledControl  m.rover.WACLR.camR.camera Camera m.rover.WACLR.camR.frustum 
          (AttributeMap.ofList [ 
@@ -702,7 +704,7 @@ module App =
        FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
-           attribute "showFPS" "true";       // optional, default is false
+           attribute "showFPS" "true";       
            attribute "useMapping" "true"
            attribute "data-renderalways" "false"
            attribute "data-samples" "4"
@@ -720,9 +722,12 @@ module App =
           { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
           ]
 
+      
+      let n = m.rover.numberOfSamples 
+      let energy = m.rover.energyRequired 
+      let time = m.rover.timeRequired 
+      
 
-
-   
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
@@ -738,15 +743,9 @@ module App =
         
          | Some "rightCam" ->
 
-            if sceneRight = Sg.empty then 
-                body [] [
-              div [style "color: white; font-size: large; background-color: black; width: 100%; height: 100%"] [text "currently not active"]
-                        ] 
-               else
-
-                require Html.semui (
-                 div [clazz "ui"; style "background: #1B1C1E"] [viewRight]
-                )
+            require Html.semui (
+               div [clazz "ui"; style "background: #1B1C1E"] [viewRight]
+            )
 
         | Some "controls" -> 
           require dependencies (
@@ -761,14 +760,50 @@ module App =
                 h4[][text "Rover Controls"]
                 p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
                 p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
-                p[][div[][text "Select Camera: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
-                p[][div[][text "Select Pan Overlap: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.panOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentPanOverlap RoverAction.ChangePanOverlap ]] |> UI.map RoverAction
-                p[][div[][text "Select Tilt Overlap: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.tiltOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentTiltOverlap RoverAction.ChangeTiltOverlap ]] |> UI.map RoverAction
+                
+                
+                h4[][text "Input Parameters"]
+                p[][div[][text "Instrument: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
+                p[][div[][text "pan overlap: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.panOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentPanOverlap RoverAction.ChangePanOverlap ]] |> UI.map RoverAction
+                p[][div[][text "tilt overlap: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.tiltOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentTiltOverlap RoverAction.ChangeTiltOverlap ]] |> UI.map RoverAction
+                
+                button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.CalculateAngles)]  [
+                i [clazz "icon camera"] []
+                text "sample"] |> UI.map RoverAction
+                
+                button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.RotateToPoint)]  [
+                    i [clazz "icon play"] []
+                    text "walk through" 
+                    ] |> UI.map RoverAction
+                
 
 
-                //button [onClick (fun _ -> RoverAction.MoveToRegion)]  [text "Move to region"] |> UI.map RoverAction
-                button [onClick (fun _ -> RoverAction.CalculateAngles)]  [text "calculate values"] |> UI.map RoverAction
-                button [onClick (fun _ -> RoverAction.RotateToPoint)]  [text "rotate to points"] |> UI.map RoverAction
+              
+
+                h4[][text "Output"]
+                table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
+                            tr [] [
+                               td [] [text "# of samples"]
+                               td [] [Incremental.text (n |> Mod.map (fun f -> "" + f.ToString()))]
+                            ]
+                            tr [] [
+                                td [] [text "required energy"]
+                                td [] [Incremental.text (energy |> Mod.map (fun f -> f.ToString() + " %"))]
+                            ]
+
+                            tr [] [
+                                td [] [text "required time"]
+                                td [] [Incremental.text (time |> Mod.map (fun f -> f.ToString() + " sec")) ]
+                            ]
+
+                            tr [] [
+                                td [] [text "required bandwidth"]
+                            ]
+                        ]
+
+
+
+
 
               ]
             ]
@@ -898,13 +933,13 @@ module App =
                 
                 vertical 17.0 [
                 element {id "render"; title "Main View"; weight 9.0}
-                horizontal 8.0[
+                horizontal 6.0[
                 element {id "leftCam"; title "HR-Cam / WACL"; weight 4.0}
                 element {id "rightCam"; title "WACR"; weight 4.0}
                 ]
                 
                 ]
-                element {id "controls"; title "Controls"; weight 6.0}
+                element {id "controls"; title "Controls"; weight 8.0}
                 
               
               ]
