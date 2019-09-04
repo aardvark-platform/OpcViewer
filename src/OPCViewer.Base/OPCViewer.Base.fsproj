@@ -10,6 +10,7 @@
     <OutputPath>..\..\bin\Debug</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="IndexHelper.fs" />
     <Compile Include="PlaneFitting.fs" />
     <Compile Include="KdTrees.fs" />
     <Compile Include="Shaders.fs" />
@@ -23,11 +24,7 @@
     <Compile Include="OPCAttributes-Model.fs" />
     <Compile Include="OpcAttributes.fs" />
     <Compile Include="Sg.fs" />
-    <Compile Include="Library.fs" />
     <None Include="paket.references" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\LegacyCode\LegacyCode.csproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -5,21 +5,21 @@ open Aardvark.Base
 module PlaneFitting =
     open Uncodium
 
-    let planeFit (points:seq<V3d>) : Plane3d =
+    let planeFit (points: seq<V3d>) : Plane3d =
         let length = points |> Seq.length |> float
 
         let c = 
             let sum = points |> Seq.reduce (fun x y -> V3d.Add(x,y))
             sum / length
 
-        let pDiffAvg = points |> Seq.map(fun x -> x - c)
+        let pDiffAvg = points |> Seq.map (fun x -> x - c)
         
         //let mutable matrix = M33d.Zero
         //pDiffAvg |> Seq.iter(fun x -> matrix.AddOuterProduct(&x))
         let mutable matrix = M33d.Zero
         pDiffAvg |> Seq.iter(fun x -> 
-          let mutable y = x //.ToV3f()
-          (matrix).AddOuterProduct(&y))
+            let mutable y = x //.ToV3f()
+            matrix.AddOuterProduct(&y))
 
         matrix <- matrix / length
          
