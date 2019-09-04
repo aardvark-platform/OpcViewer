@@ -13,61 +13,61 @@ open Aardvark.VRVis.Opc
 open Aardvark.VRVis.Opc.KdTrees 
 open OpcViewer.Base.Picking
 
-//module legacy =
-  //let computeIndexArray(size:V2i) (invalidPoints:seq<int>) : int[] =
+module legacy =
+  let computeIndexArray(size:V2i) (invalidPoints:seq<int>) : int[] =
 
-  //  let indexArray = Array.zeroCreate ((size.X - 1) * (size.Y - 1) * 6)
+    let indexArray = Array.zeroCreate ((size.X - 1) * (size.Y - 1) * 6)
 
-  //  let mutable k = 0;
+    let mutable k = 0;
 
-  //  match invalidPoints.IsEmptyOrNull() with
-  //  | true -> 
-  //    for y in 0 .. (size.Y-2) do
-  //      for x in 0..(size.X-2) do
-  //        indexArray.[k] <- y * size.X + x
-  //        indexArray.[k + 1] <- (y + 1) * size.X + x
-  //        indexArray.[k + 2] <- y * size.X + x + 1
+    match invalidPoints.IsEmptyOrNull() with
+    | true -> 
+      for y in 0 .. (size.Y-2) do
+        for x in 0..(size.X-2) do
+          indexArray.[k] <- y * size.X + x
+          indexArray.[k + 1] <- (y + 1) * size.X + x
+          indexArray.[k + 2] <- y * size.X + x + 1
 
-  //        indexArray.[k + 3] <- y * size.X + x + 1
-  //        indexArray.[k + 4] <- (y + 1) * size.X + x
-  //        indexArray.[k + 5] <- (y + 1) * size.X + x + 1
+          indexArray.[k + 3] <- y * size.X + x + 1
+          indexArray.[k + 4] <- (y + 1) * size.X + x
+          indexArray.[k + 5] <- (y + 1) * size.X + x + 1
 
-  //        k <- k + 6;
-  //  | false ->
-  //    let invalidDict = invalidPoints |> HashSet.ofSeq
-  //    let mutable counter = 0
+          k <- k + 6;
+    | false ->
+      let invalidDict = invalidPoints |> HashSet.ofSeq
+      let mutable counter = 0
 
-  //    for y in 0 .. (size.Y-2) do
-  //      for x in 0..(size.X-2) do
-  //        let a1 = y * size.X + x
-  //        let b1 = (y + 1) * size.X + x
-  //        let c1 = y * size.X + x + 1
+      for y in 0 .. (size.Y-2) do
+        for x in 0..(size.X-2) do
+          let a1 = y * size.X + x
+          let b1 = (y + 1) * size.X + x
+          let c1 = y * size.X + x + 1
 
-  //        let a2 = y * size.X + x + 1
-  //        let b2 = (y + 1) * size.X + x
-  //        let c2 = (y + 1) * size.X + x + 1
+          let a2 = y * size.X + x + 1
+          let b2 = (y + 1) * size.X + x
+          let c2 = (y + 1) * size.X + x + 1
 
-  //        let indices = [a1; b1; c1; a2; b2; c2]
+          let indices = [a1; b1; c1; a2; b2; c2]
 
-  //        let invalidFace = indices |> List.filter(fun x -> invalidDict.Contains(x)) |> List.length > 0
+          let invalidFace = indices |> List.filter(fun x -> invalidDict.Contains(x)) |> List.length > 0
 
-  //        if invalidFace then
-  //            counter <- counter + 1
-  //        else 
-  //          indexArray.[k] <- a1
-  //          indexArray.[k + 1] <- b1
-  //          indexArray.[k + 2] <- c1
+          if invalidFace then
+              counter <- counter + 1
+          else 
+            indexArray.[k] <- a1
+            indexArray.[k + 1] <- b1
+            indexArray.[k + 2] <- c1
 
-  //          indexArray.[k + 3] <- a2
-  //          indexArray.[k + 4] <- b2
-  //          indexArray.[k + 5] <- c2
+            indexArray.[k + 3] <- a2
+            indexArray.[k + 4] <- b2
+            indexArray.[k + 5] <- c2
 
-  //        k <- k + 6
+          k <- k + 6
 
-  //    if (counter > 0) then
-  //        Report.Line(5, "Invalid faces found: {0}", counter)
+      if (counter > 0) then
+          Report.Line(5, "Invalid faces found: {0}", counter)
 
-  //  indexArray
+    indexArray
 
 module IntersectionController =   
 
@@ -78,7 +78,7 @@ module IntersectionController =
       positions.Data |> Array.map (fun x ->  x.ToV3d() |> matrix.TransformPos)
  
     let invalidIndices = getInvalidIndices data
-    let index = LegacyCode.Class1.ComputeIndexArray(positions.Size.XY.ToV2i(), invalidIndices)
+    let index = legacy.computeIndexArray (positions.Size.XY.ToV2i()) invalidIndices
         
     let triangleIndices = 
       index
@@ -101,7 +101,7 @@ module IntersectionController =
       t.P0.AnyNaN || t.P1.AnyNaN || t.P2.AnyNaN
    
   let loadTriangles (kd : LazyKdTree) = 
-    let indexing = (fun size invalidIndices -> LegacyCode.Class1.ComputeIndexArray(size, invalidIndices))
+    let indexing = (fun size invalidIndices -> legacy.computeIndexArray size invalidIndices)
     loadTrianglesFromFile' kd.objectSetPath indexing kd.affine.Forward
     
   let loadTriangleSet (kd : LazyKdTree) =
@@ -209,7 +209,7 @@ module Intersect =
             
     let invalidIndices = getInvalidIndices3f positions.Data |> List.toArray
     let size = positions.Size.XY.ToV2i()
-    let indices = LegacyCode.Class1.ComputeIndexArray(size,invalidIndices)
+    let indices = legacy.computeIndexArray size invalidIndices
                    
     positions.Data 
       |> Array.map (fun x ->  x.ToV3d() |> kd.affine.Forward.TransformPos) 
