@@ -58,7 +58,7 @@ module App =
     //---saving and restoring plane state
     let toPlaneCoords (coords : plist<V3d>): PlaneCoordinates =
         {
-        points = coords
+        points = coords 
         }
 
     let fromPlaneCoords (c : PlaneCoordinates) : plist<V3d> =
@@ -228,348 +228,63 @@ module App =
           |> AMap.toASet
           |> ASet.map(fun info -> Sg.createSingleOpcSg (Mod.constant None) m.pickingActive m.cameraState.view info)
           |> Sg.set
+          |> Sg.effect [ 
+            toEffect Shader.stableTrafo
+            toEffect DefaultSurfaces.diffuseTexture 
+            ]
 
-  
        //projection points on sphere
-  
-      let ps =
-        m.rover.projPoints  //REVIEW
-            |> AList.toMod
-            |> Mod.map(fun li -> 
-                
-                let list = li |> PList.toList
-                let shift = //REVIEW
-                    match list.IsEmpty with
-                        | true -> V3d.OOO
-                        | false -> list.Head
-                
-                let shifted = list |> List.map(fun p -> p - shift)
-                let arr = shifted |> List.toArray |> Mod.constant
-                let shiftV = Trafo3d.Translation(shift)
-            
-                Sg.draw IndexedGeometryMode.PointList 
-                    |> Sg.vertexAttribute DefaultSemantic.Positions arr
-                    |> Sg.trafo (Mod.constant shiftV)
-                    |> Sg.effect [
-                        toEffect DefaultSurfaces.stableTrafo
-                        toEffect (DefaultSurfaces.constantColor C4f.Red)
-                        Shader.PointSprite.Effect
-                        ]
-            
-                    |> Sg.uniform "PointSize" (Mod.constant 10.0)
-
-
-            )
-      
-      let points = ps|> Mod.map(fun cast -> (cast:ISg<PickingAction>)) 
-
-
-      let transl = m.rover.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
-      let rov = 
-           Sg.sphere 5 (Mod.constant C4b.Yellow) (Mod.constant 0.1)
-            |> Sg.noEvents
-            |> Sg.effect [ 
-                    toEffect Shader.stableTrafo
-                    toEffect DefaultSurfaces.vertexColor
-                    ]
-            |> Sg.trafo transl
-      
-      let leftCamTrafo = m.rover.WACLR.camL.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
-      let leftCam = 
-           Sg.sphere 5 (Mod.constant C4b.Red) (Mod.constant 0.05)
-            |> Sg.noEvents
-            |> Sg.effect [ 
-                    toEffect Shader.stableTrafo
-                    toEffect DefaultSurfaces.vertexColor
-                    ]
-            |> Sg.trafo leftCamTrafo
-      
-      let rightCamTrafo = m.rover.WACLR.camR.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
-      let rightCam = 
-           Sg.sphere 5 (Mod.constant C4b.Magenta) (Mod.constant 0.05)
-            |> Sg.noEvents
-            |> Sg.effect [ 
-                    toEffect Shader.stableTrafo
-                    toEffect DefaultSurfaces.vertexColor
-                    ]
-            |> Sg.trafo rightCamTrafo
-      
-      //draw all axis
-      let shiftVec = Mod.map(fun p -> Trafo3d.Translation(p)) m.rover.position
-
-      //up axis
-      let upAxis = 
-        alist {
-            let! p = m.rover.position
-            let! up = m.rover.up
-            let upP = p+(up * 2.0)
-
-
-            //shift the points
-            let shiftedPos = p - p
-            let shiftedUp = upP - p
-            yield shiftedPos
-            yield shiftedUp
-        }
-    
-      let upAxisLine = 
-        upAxis
-            |> AList.toMod
-            |> Mod.map (fun m -> 
-                let upArr = m |> PList.toArray
-                        
-                Sg.draw IndexedGeometryMode.LineList
-                |> Sg.trafo shiftVec
-                |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant upArr) 
-                |> Sg.uniform "Color" (Mod.constant C4b.Blue)
-                |> Sg.uniform "LineWidth" (Mod.constant 2.0)
-                |> Sg.effect [
-                    toEffect DefaultSurfaces.stableTrafo
-                    toEffect DefaultSurfaces.thickLine
-                    toEffect DefaultSurfaces.sgColor
-                        ]
-            )
-       
-      let up = upAxisLine|> Mod.map(fun cast -> (cast:ISg<PickingAction>))
-    
-      let forwardAxis = 
-         alist {
-            let! p = m.rover.position
-            let! t = m.rover.target
-            let tp = t
-            //shift points
-            let shiftedPos = p - p
-            let shiftedF = tp - p
-            yield shiftedPos
-            yield shiftedF
-        }
-      
-      let forwardAxisLine = 
-        forwardAxis
-            |> AList.toMod
-            |> Mod.map (fun m -> 
-                let fArr = m |> PList.toArray
-                        
-                Sg.draw IndexedGeometryMode.LineList  
-                |> Sg.trafo shiftVec
-                |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant fArr) 
-                |> Sg.uniform "Color" (Mod.constant C4b.Green)
-                |> Sg.uniform "LineWidth" (Mod.constant 2.0)
-                |> Sg.effect [
-                    toEffect DefaultSurfaces.stableTrafo
-                    toEffect DefaultSurfaces.thickLine
-                    toEffect DefaultSurfaces.sgColor
-                        ]
-            )
-      
-      let forward = forwardAxisLine|> Mod.map(fun cast -> (cast:ISg<PickingAction>))
-    
-      let rightAxis =
-       alist {
-            let! p = m.rover.position
-            let! up = m.rover.up
-            let! target = m.rover.target
-
-            let forw = (target-p).Normalized
-            let r = forw.Cross(up)
-            let rp = p+r
-            //shift
-            let shiftedPos = p-p
-            let shiftedR = rp - p
-            yield shiftedPos
-            yield shiftedR
-        }
-      
-      let rightAxisLine = 
-        rightAxis
-            |> AList.toMod
-            |> Mod.map (fun m -> 
-                let rArr = m |> PList.toArray
-                        
-                Sg.draw IndexedGeometryMode.LineList
-                |> Sg.trafo shiftVec
-                |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant rArr) 
-                |> Sg.uniform "Color" (Mod.constant C4b.White)
-                |> Sg.uniform "LineWidth" (Mod.constant 2.0)
-                |> Sg.effect [
-                    toEffect DefaultSurfaces.stableTrafo
-                    toEffect DefaultSurfaces.thickLine
-                    toEffect DefaultSurfaces.sgColor
-                        ]
-            )
-      
-      let right = rightAxisLine|> Mod.map(fun cast -> (cast:ISg<PickingAction>))
-      
-      //camera forward axis
-      let camForward = 
-         alist {
-            let! p = m.rover.position
-            let! view = m.rover.HighResCam.cam.camera.view
-            let f = (view.Forward*10.0)
-            //shift points
-            let shiftedPos = p - p
-            let shiftedF = f - p
-            yield shiftedPos
-            yield (p+shiftedF)
-        }
-      
-      let camForwardLine = 
-        camForward
-            |> AList.toMod
-            |> Mod.map (fun m -> 
-                let fArr = m |> PList.toArray
-                        
-                Sg.draw IndexedGeometryMode.LineList
-                |> Sg.trafo shiftVec
-                |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant fArr) 
-                |> Sg.uniform "Color" (Mod.constant C4b.DarkGreen)
-                |> Sg.uniform "LineWidth" (Mod.constant 2.0)
-                |> Sg.effect [
-                    toEffect DefaultSurfaces.stableTrafo
-                    toEffect DefaultSurfaces.thickLine
-                    toEffect DefaultSurfaces.sgColor
-                        ]
-            )
-      
-      let camForw = camForwardLine|> Mod.map(fun cast -> (cast:ISg<PickingAction>))
-
-
-
-      let targettrafo = m.rover.target |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
-      let target = 
-           Sg.sphere 5 (Mod.constant C4b.DarkMagenta) (Mod.constant 0.2)
-            |> Sg.noEvents
-            |> Sg.effect [ 
-                    toEffect Shader.stableTrafo
-                    toEffect DefaultSurfaces.vertexColor
-                    ]
-            |> Sg.trafo targettrafo
-      
-      
-      let frustumModel (vp:IMod<Trafo3d>) (col:C4b)= 
-        Sg.wireBox' col (Box3d(V3d.NNN,V3d.III))
-                            |> Sg.noEvents
-                            |> Sg.trafo (vp |> Mod.map (fun vp -> vp.Inverse))
-                            |> Sg.shader {
-                                do! DefaultSurfaces.stableTrafo
-                                do! DefaultSurfaces.vertexColor
-                                }
-
-      
-      //set of frustums
-      let sgFrustums (list:alist<CameraView>) (fr:IMod<Frustum>)= 
-            list 
-                |> AList.map (fun v -> 
-                    let vp = (RoverModel.getViewProj (Mod.constant v) fr)    
-                    frustumModel vp C4b.White
-                             )       
-                |> AList.toASet
-                |> Sg.set
-
-      //hr camera 
-      let view = m.rover.HighResCam.cam.camera.view
-      let fr = m.rover.HighResCam.cam.frustum
-      let viewLi = m.rover.HighResCam.cam.viewList
-      let vp = (RoverModel.getViewProj view fr) 
-      let frustumBox = frustumModel vp C4b.Red
-      let frustumsHR = sgFrustums viewLi fr
-
-      //stereo cam
-      //LEFT
-      let viewL = m.rover.WACLR.camL.camera.view
-      let frL = m.rover.WACLR.camL.frustum
-      let vpL = (RoverModel.getViewProj viewL frL) 
-      let frustumBoxL = frustumModel vpL C4b.Red
-      let frustumsLeft = sgFrustums m.rover.WACLR.camL.viewList m.rover.WACLR.camL.frustum
-
-      //RIGHT
-      let viewR = m.rover.WACLR.camR.camera.view
-      let frR = m.rover.WACLR.camR.frustum
-      let vpR = (RoverModel.getViewProj viewR frR) 
-      let frustumBoxR = frustumModel vpR C4b.Magenta
-      let frustumsRight = sgFrustums m.rover.WACLR.camR.viewList m.rover.WACLR.camR.frustum
-    
-      
-      //highlights the area of the model which is inside the rover's view frustum
-      let shading (vp:IMod<Trafo3d>) = 
-        opcs
-            |> Sg.cullMode (Mod.constant CullMode.Back)
-            |> Sg.depthTest (Mod.constant DepthTestMode.Less)
-            |> Sg.uniform "FootprintMVP" vp
-            |> Sg.shader {
-                do! DefaultSurfaces.diffuseTexture
-                do! Shading.vert
-                do! Shading.frag
-            }
-
-      let shadingHR = shading vp
+      let ps = Sg.projectionPoints m.rover.projPoints
    
-    
-      let myPlane = 
-        m.planePoints
-            |> Mod.map (fun n ->
-                match n with
-                    | None -> Sg.empty
-                    | Some points -> 
-                        points 
-                            |> AList.toMod
-                            |> Mod.map (fun p ->
-                                p
-                                    |> PList.toSeq
-                                    |> PlaneFitting.planeFit
-                                    |> fun t ->
-                                         let box = Aardvark.SceneGraph.SgPrimitives.Sg.box' C4b.Cyan (Box3d(V3d.NNN, V3d.III))
-                                         let scaleT = Trafo3d.Scale(10.0, 20.0, 0.2)
-                                         let sum = p.Sum()
-                                         let c = p |> PList.count
-                                         let average = sum / (float c)
-                                         let pos = V3d(average.X, average.Y-0.5, average.Z)
-                            
-                                         let trafo = scaleT * Trafo3d.RotateInto(V3d.OOI, t.Normal) * Trafo3d.Translation(pos)
-                                         box
-                                            |> Aardvark.SceneGraph.``Sg Picking Extensions``.Sg.requirePicking
-                                            |> Sg.noEvents
-                                            |> Sg.withEvents [
-                                                SceneEventKind.DoubleClick, (fun sh -> 
-                                                true, Seq.ofList [(PickingAction.PickPointOnPlane (Some sh.globalPosition))]
-                                                                            )
-                                                              ]
-                                            |> Sg.trafo (Mod.constant(trafo)) 
-                                    |> Sg.effect [
-                                            toEffect DefaultSurfaces.stableTrafo
-                                            toEffect (DefaultSurfaces.constantColor C4f.DarkRed)
-                                                 ]  
-                                           )
-                            |> Sg.dynamic
-                      )
-
-      let fullSgHR = 
+      //positions
+      let transl = m.rover.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
+      let rov = Sg.sphereVisualisation C4b.Yellow 0.1 transl
+          
+      let leftCamTrafo = m.rover.WACLR.camL.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
+      let leftCam = Sg.sphereVisualisation C4b.Red 0.05 leftCamTrafo
+         
+      let rightCamTrafo = m.rover.WACLR.camR.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
+      let rightCam = Sg.sphereVisualisation C4b.Magenta 0.05 rightCamTrafo
+      
+      let targettrafo = m.rover.target |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
+      let target = Sg.sphereVisualisation C4b.DarkMagenta 0.2 targettrafo
+      
+      //camera axes
+      let axesHRcam = Sg.cameraAxes  m.rover.HighResCam.cam.camera.view m.rover
+      let axesWACL = Sg.cameraAxes  m.rover.WACLR.camL.camera.view m.rover
+      let axesWACR = Sg.cameraAxes  m.rover.WACLR.camR.camera.view m.rover
+     
+      //frustum visualisation
+      let HRFrustums = Sg.sgFrustums m.rover.HighResCam.cam.viewList m.rover.HighResCam.cam.frustum m.rover.HighResCam.cam.camera.view
+      let WACLFrustums = Sg.sgFrustums m.rover.WACLR.camL.viewList m.rover.WACLR.camL.frustum m.rover.WACLR.camL.camera.view
+      let WACRFrustums = Sg.sgFrustums m.rover.WACLR.camR.viewList m.rover.WACLR.camR.frustum m.rover.WACLR.camR.camera.view
+   
+      
+      //views
+      let baseSg = 
         [
           m.drawing |> DrawingApp.view
           rov
           target
-          frustumBox
-          up |> Sg.dynamic
-          forward |> Sg.dynamic
-          right |> Sg.dynamic
-          camForw |> Sg.dynamic
-          points |> Sg.dynamic
-          frustumsHR
-          
+          ps
+        ] |> Sg.ofList
+
+      let fullSgHR = 
+        [
+          baseSg
+          HRFrustums
+          axesHRcam
         ] |> Sg.ofList
       
       let fullSgStereo = 
         [
-          m.drawing |> DrawingApp.view
-          rov
-          target
-          frustumBoxL
-          frustumBoxR
+          baseSg
+          WACLFrustums
+          WACRFrustums
+          axesWACL
+          axesWACR
           leftCam
           rightCam
-          frustumsLeft
-          frustumsRight
-          points |> Sg.dynamic
         ] |> Sg.ofList
     
       
@@ -584,73 +299,19 @@ module App =
             return c
         }
         result |> Sg.dynamic
-
-
-
-
-      let roverCamSg = 
+    
+      let rovercamScene = 
        [
           m.drawing |> DrawingApp.view
-          points |> Sg.dynamic
-          frustumBox
-        ] |> Sg.ofList
-    
-      //stereo cam
-      let sceneCamL = 
-            [
-            m.drawing |> DrawingApp.view
-            points |> Sg.dynamic
-            frustumBoxL
-            frustumBoxR
-            ] |> Sg.ofList
-      
-      let sceneCamR = 
-            [
-            shadingHR
-            m.drawing |> DrawingApp.view
-            points |> Sg.dynamic
-            frustumBoxR
-            frustumBoxL
-            ] |> Sg.ofList
+          ps
+       ] |> Sg.ofList
 
-       
-      let sceneLeft = 
-        let result = 
-            adaptive {
-            let! cam = m.rover.camera
-            let c = match cam with 
-                    | HighResCam -> roverCamSg
-                    | WACLR -> sceneCamL
-        
-            return c
-        }
-        result |> Sg.dynamic
-    
-      let sceneRight = 
-        let result = 
-            adaptive {
-            let! cam = m.rover.camera
-            let c = match cam with 
-                    | HighResCam -> Sg.empty
-                    | WACLR -> sceneCamR
-        
-            return c
-        }
-
-        result |> Sg.dynamic
-        
-  
-      //stereo
       let fullSceneRenderView = 
-        m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main fullScene
-
-      let sceneL = 
-         m.annotations |> AnnotationApp.viewGrouped shadingHR RenderPass.main sceneLeft
-      
-      let sceneR = 
-        m.annotations |> AnnotationApp.viewGrouped sceneRight RenderPass.main sceneRight
-
-      
+        m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main fullScene
+    
+      let camSceneRenderView = 
+         m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main rovercamScene
+   
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
            let style' = "color: white; font-family:Consolas;"
@@ -664,40 +325,55 @@ module App =
            ]
         ]
 
-      
-      //TODO get correct cameraview and frustum
-      let viewLeft = 
-        
-        //let camState = 
-        //    if sceneRight = Sg.empty then m.rover.HighResCam.cam.camera else m.rover.WACLR.camL.camera
        
-        //let fr =
-        //    if sceneRight = Sg.empty then m.rover.HighResCam.cam.frustum else m.rover.WACLR.camL.frustum   
-
-        FreeFlyController.controlledControl  m.rover.HighResCam.cam.camera Camera m.rover.HighResCam.cam.frustum  
-         (AttributeMap.ofList [ 
-           style "width: 100%; height:100%"; 
-           attribute "showFPS" "false";      
-           attribute "data-renderalways" "false"
-           attribute "data-samples" "4"
-         ]) 
-            
-         (sceneL |> Sg.map PickingAction)
+      //let sceneRight = 
+      // let r = 
+      //  adaptive {
+      //      let! cam = m.rover.camera 
+      //      let result = 
+      //          match cam with
+      //          | HighResCam -> Sg.empty
+      //          | WACLR -> camSceneRenderView
+      //      return result
+      //      }
+      // r |> Sg.dynamic
+        
       
 
-
-      let viewRight = 
-        FreeFlyController.controlledControl  m.rover.WACLR.camR.camera Camera m.rover.WACLR.camR.frustum 
-         (AttributeMap.ofList [ 
-           style "width: 100%; height:100%"; 
-           attribute "showFPS" "false";      
-           attribute "data-renderalways" "false"
-           attribute "data-samples" "4"
-         ]) 
-            
-         (sceneR |> Sg.map PickingAction)
+  
+      //let c = 
+      //  let result = 
+      //      adaptive {
+      //      let! cam = m.rover.camera
+      //      let! viewHR = m.rover.HighResCam.cam.camera.view
+      //      let! frHR = m.rover.HighResCam.cam.frustum
+      //      let! viewWL = m.rover.WACLR.camL.camera.view
+      //      let! frWL = m.rover.WACLR.camL.frustum 
+      //      let c = match cam with 
+      //              | HighResCam -> Camera.create viewHR frHR 
+      //              | WACLR -> Camera.create viewWL frWL
+        
+      //      return c
+      //  }
+      //  result
+       
       
-
+      let roverViews = Sg.createView (camSceneRenderView |> Sg.map PickingAction) m.rover.camera
+      
+      //let viewLeft = 
+      //  let sgL = (camSceneRenderView |> Sg.map PickingAction)
+      //  Sg.createView att sgL c
+     
+      
+      //let viewRight = 
+      //  let cam = 
+      //      adaptive {
+      //      let! viewWR = m.rover.WACLR.camR.camera.view
+      //      let! frWR = m.rover.WACLR.camR.frustum 
+      //      return Camera.create viewWR frWR
+      //  } 
+      //  let sgR = sceneRight |> Sg.map PickingAction
+      //  Sg.createView att sgR c
 
 
       let renderControl =
@@ -736,16 +412,15 @@ module App =
               div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)] 
           )
         
-        | Some "leftCam" ->
-            require Html.semui (
-              div [clazz "ui"; style "background: #1B1C1E"] [viewLeft]
-          )
+        //| Some "leftCam" ->
+        //    require Html.semui (
+        //      div [clazz "ui"; style "background: #1B1C1E"] [viewLeft]
+        //  )
         
-         | Some "rightCam" ->
-
-            require Html.semui (
-               div [clazz "ui"; style "background: #1B1C1E"] [viewRight]
-            )
+        // | Some "rightCam" ->
+        //    require Html.semui (
+        //       div [clazz "ui"; style "background: #1B1C1E"] [viewRight]
+        //    )
 
         | Some "controls" -> 
           require dependencies (
@@ -762,11 +437,29 @@ module App =
                 p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
                 
                 
-                h4[][text "Input Parameters"]
-                p[][div[][text "Instrument: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
-                p[][div[][text "pan overlap: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.panOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentPanOverlap RoverAction.ChangePanOverlap ]] |> UI.map RoverAction
-                p[][div[][text "tilt overlap: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.tiltOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentTiltOverlap RoverAction.ChangeTiltOverlap ]] |> UI.map RoverAction
                 
+                //p[][div[][text "Instrument: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
+                //p[][div[][text "pan overlap: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.panOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentPanOverlap RoverAction.ChangePanOverlap ]] |> UI.map RoverAction
+                //p[][div[][text "tilt overlap: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.tiltOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentTiltOverlap RoverAction.ChangeTiltOverlap ]] |> UI.map RoverAction
+                
+                h4[][text "Input Parameters"]
+                table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
+                            tr [] [
+                               td [] [text "Instrument"]
+                               td [] [dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera]|> UI.map RoverAction
+                            ]
+                            tr [] [
+                                td [] [text "pan overlap"]
+                                td [] [dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.panOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentPanOverlap RoverAction.ChangePanOverlap] |> UI.map RoverAction
+                            ]
+
+                            tr [] [
+                                td [] [text "tilt overlap"]
+                                td [] [dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.tiltOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentTiltOverlap RoverAction.ChangeTiltOverlap ] |> UI.map RoverAction
+                            ]
+                        ]
+
+
                 button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.CalculateAngles)]  [
                 i [clazz "icon camera"] []
                 text "sample"] |> UI.map RoverAction
@@ -775,10 +468,7 @@ module App =
                     i [clazz "icon play"] []
                     text "walk through" 
                     ] |> UI.map RoverAction
-                
-
-
-              
+     
 
                 h4[][text "Output"]
                 table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [

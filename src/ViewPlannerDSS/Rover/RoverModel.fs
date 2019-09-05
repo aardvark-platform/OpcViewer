@@ -259,7 +259,7 @@ module RoverModel =
         time = 10.0 //hours
 
         energyForPanTilt = 0.2 //percent for 1°
-        timeForPanTilt = 0.1 //0.1 sec for 1°
+        timeForPanTilt = 0.5 //0.5 sec for 1°
 
         //output
         numberOfSamples = 0

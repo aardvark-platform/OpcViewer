@@ -440,9 +440,6 @@ module RoverApp =
                 let time = 
                     let res = calculateOutputVars rover values 0 0.0 rover.timeForPanTilt
                     Math.Round(res,2)
-                    
-
-                
 
                 let HR = {rover.HighResCam with cam = { rover.HighResCam.cam with samplingValues = sv; viewList = viewMatrices }}
 
