@@ -310,7 +310,8 @@ module App =
                   altitudeList <- pointHeight.altitude :: altitudeList
                   errorHitList <- 0 :: errorHitList
     
-                  x
+                  DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None)) 
+                  //x
               | None -> 
                   errorHitList <- -1 :: errorHitList
                   x
@@ -320,7 +321,7 @@ module App =
       let newDraw = List.fold drawPoints drawingModel [0.0..samplingSize]
         
       let correctedAltitudeList= correctSamplingErrors altitudeList errorHitList  
-
+      Log.line "Altitudes: %A" correctedAltitudeList
       let rec accDistance i acc= 
           if i >= 1 then
               let A = pointList.Item(i)
@@ -362,9 +363,10 @@ module App =
                 else
                     { model with jumpSelectionActive = false; pickingActive = false }
           | Keys.LeftShift -> 
-            let p = { model.picking with intersectionPoints = plist.Empty }
-           
-            { model with pickingActive = true; lineSelectionActive = true; picking = p; drawing = DrawingModel.initial; annotations = AnnotationModel.initial; numSampledPoints = 0; stepSampleSize = {min = 0.01; max = 10000.0; value = model.stepSampleSize.value; step = 0.05; format = "{0:0.00}"}; linearDistance = 0.0; minHeight = 0.0; maxHeight = 0.0; accDistance = 0.0 }
+            let p = { model.picking with intersectionPoints = plist.Empty }             
+            let clearedDrawingModel = { DrawingModel.initial with style = { DrawingModel.initial.style with thickness = 0.0; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } } 
+
+            { model with pickingActive = true; lineSelectionActive = true; picking = p; drawing = clearedDrawingModel; annotations = AnnotationModel.initial; numSampledPoints = 0; stepSampleSize = {min = 0.01; max = 10000.0; value = model.stepSampleSize.value; step = 0.05; format = "{0:0.00}"}; linearDistance = 0.0; minHeight = 0.0; maxHeight = 0.0; accDistance = 0.0 }
           | _ -> model
       | Message.KeyUp m ->
         match m with
@@ -517,7 +519,8 @@ module App =
             updatePickM, updatedDrawM
           | _ -> PickingApp.update model.picking msg, model.drawing
         
-        let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 3.5; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } } 
+        //let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 3.5; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } } 
+        let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 0.0; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } } 
 
         if model.jumpSelectionActive && not model.camViewAnimRunning then
             update { model with selectedJumpPosition = pickingModel.intersectionPoints.Item(0); jumpSelectionActive = false; inJumpedPosition = true } Message.AnimateCameraJump            
@@ -545,7 +548,7 @@ module App =
             { model with currentOption = a }
       | SetSamplingRate f -> 
         if model.picking.intersectionPoints.AsList.Length >= 2 then 
-            caluculateSVGDrawingPositions <| sampleSurfacePointsForCutView { model with stepSampleSize = Numeric.update model.stepSampleSize f } model.picking DrawingModel.initial
+            caluculateSVGDrawingPositions <| sampleSurfacePointsForCutView { model with stepSampleSize = Numeric.update model.stepSampleSize f } model.picking { DrawingModel.initial with style = { DrawingModel.initial.style with thickness = 0.0; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } }
         else 
             { model with stepSampleSize = Numeric.update model.stepSampleSize f }
       | MouseWheel v ->       
@@ -970,33 +973,32 @@ module App =
 
                             let! circleSize = m.svgCircleSize
                             let r = sprintf "%f" (circleSize/4.0) + "%"                              
-                            let rH = sprintf "%f" (circleSize/2.0) + "%"                              
-                            let stw = sprintf "%f" (circleSize/20.0) + "%"       
+                            let stw = sprintf "%f" (circleSize/12.0) + "%"       
                             
                             let! drawingCoord = m.svgPointsCoord                                  
-                            let correctCoordArray = drawingCoord.Split([|" "|], StringSplitOptions.None)                                
-                            for i in 0 .. correctCoordArray.Length - 2 do
-                                let xy = correctCoordArray.[i].Split([|","|], StringSplitOptions.None)
+                            let coordArray = drawingCoord.Split([|" "|], StringSplitOptions.None)                                
+                            for i in 0 .. coordArray.Length - 2 do
+                                let xy = coordArray.[i].Split([|","|], StringSplitOptions.None)
                                 if xy.Length > 1 then
                                     let x = xy.[0]
                                     let y = xy.[1]
-                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(50,208,255)"; onMouseEnter (fun _ -> HovereCircleEnter i) ] |> AttributeMap.ofList)                              
+                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(50,208,255)"; onMouseEnter (fun _ -> HovereCircleEnter i); onMouseLeave (fun _ -> HovereCircleLeave) ] |> AttributeMap.ofList)                              
 
-                            for i in 0 .. errorCoordArray.Length - 2 do
-                                let xy = errorCoordArray.[i].Split([|","|], StringSplitOptions.None)
+                            let! drawingErrorCoord = m.svgPointsErrorCoord                                  
+                            let coordArray = drawingErrorCoord.Split([|" "|], StringSplitOptions.None)
+                            for i in 0 .. coordArray.Length - 2 do
+                                let xy = coordArray.[i].Split([|","|], StringSplitOptions.None)
                                 if xy.Length > 1 then
                                     let x = xy.[0]
                                     let y = xy.[1]
                                     yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(255,71,50)" ] |> AttributeMap.ofList)                              
 
-
                             let! hoverCircle = m.hoveredCircleIndex
-                            if hoverCircle.IsSome then
-                                let xy = correctCoordArray.[hoverCircle.Value].Split([|","|], StringSplitOptions.None)
-                                let x = xy.[0]
-                                let y = xy.[1]
-                                yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" rH; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(255,255,255)"; onMouseLeave (fun _ -> HovereCircleLeave) ] |> AttributeMap.ofList)    
-
+                            
+                            if hoverCircle.IsSome then 
+                                let! aL = m.altitudeList
+                                Log.line "altitudeList Length:  %A " aL.Length
+                                yield Svg.text ([ attribute "x" "250px"; attribute "y" "250px"; attribute "font-size" "50"; attribute "fill" "#ffffff"]) (sprintf "%f" (aL.Item(hoverCircle.Value)))
                         }
 
                     onBoot "$(window).trigger('resize')" (
