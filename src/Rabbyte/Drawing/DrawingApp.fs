@@ -197,17 +197,18 @@ module DrawingApp =
 
         AList.append allButLast lastPoint
 
-    let drawContour (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: IMod<float>) (far: IMod<float>) =  
+
+    let drawContourWithPointSize (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: IMod<float>) (far: IMod<float>) (pointSize: IMod<float>) =  
 
         let pointsSg = 
             points 
-            |> SgUtilities.drawPointList style.primary.c (Mod.constant 10.0) (Mod.constant 0.1) near far
+            |> SgUtilities.drawPointList style.primary.c pointSize (Mod.constant 0.1) near far
 
         let pointsInnerSg = 
             segments
             |> AList.map (fun x -> x.innerPoints |> AList.ofPList) 
             |> AList.concat 
-            |> SgUtilities.drawPointList (style.primary.c |> Mod.map (fun c -> SgUtilities.createSecondaryColor c)) (Mod.constant 8.0) (Mod.constant 0.1) near far
+            |> SgUtilities.drawPointList (style.primary.c |> Mod.map (fun c -> SgUtilities.createSecondaryColor c)) (pointSize |> Mod.map (fun x -> x * 0.8)) (Mod.constant 0.1) near far
 
         let edgesSg = 
             let lineWidth = style.thickness |> Mod.map (fun x -> x * 1.1)
@@ -226,8 +227,14 @@ module DrawingApp =
         
         [edgesSg; edgesDirectSg; pointsSg; pointsInnerSg] |> Sg.group
 
+    let drawContour (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: IMod<float>) (far: IMod<float>) =  
+        drawContourWithPointSize points segments style near far (Mod.constant 10.0)
+
     let view (near: IMod<float>) (far: IMod<float>) (model: MDrawingModel) = 
-        drawContour model.points model.segments model.style near far |> Sg.noEvents
+        drawContourWithPointSize model.points model.segments model.style near far (Mod.constant 10.0) |> Sg.noEvents
+
+    let viewPointSize (near: IMod<float>) (far: IMod<float>) (pointSize: IMod<float>) (model: MDrawingModel) = 
+        drawContourWithPointSize model.points model.segments model.style near far pointSize |> Sg.noEvents
 
     let viewGui (model: MDrawingModel) = 
         

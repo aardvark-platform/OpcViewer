@@ -241,8 +241,6 @@ module App =
                   0.0, 0.0
           x2-x1
       
-      Log.line "circle Size %A" circleSize 
-
 
       { model with svgPointsCoord = drawingAvailableCoord; svgSurfaceUnderLineCoord = surfaceUnderLineCoord; svgPointsErrorCoord = drawingMissingCoord; svgSurfaceUnderLineErrorCoord = drawingMissingSurfaceCoord; svgCircleSize = circleSize }
       
@@ -312,7 +310,7 @@ module App =
                   altitudeList <- pointHeight.altitude :: altitudeList
                   errorHitList <- 0 :: errorHitList
     
-                  DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None)) 
+                  x
               | None -> 
                   errorHitList <- -1 :: errorHitList
                   x
@@ -355,8 +353,6 @@ module App =
             model 
       | Message.KeyDown m ->
         match m with
-          | Keys.LeftCtrl -> 
-            { model with pickingActive = true }
           | Keys.LeftAlt ->
             if not model.perspectiveView then
                 update { model with jumpSelectionActive = true; pickingActive = true } Message.AnimateCameraViewSwitch       
@@ -367,13 +363,11 @@ module App =
                     { model with jumpSelectionActive = false; pickingActive = false }
           | Keys.LeftShift -> 
             let p = { model.picking with intersectionPoints = plist.Empty }
-            
+           
             { model with pickingActive = true; lineSelectionActive = true; picking = p; drawing = DrawingModel.initial; annotations = AnnotationModel.initial; numSampledPoints = 0; stepSampleSize = {min = 0.01; max = 10000.0; value = model.stepSampleSize.value; step = 0.05; format = "{0:0.00}"}; linearDistance = 0.0; minHeight = 0.0; maxHeight = 0.0; accDistance = 0.0 }
           | _ -> model
       | Message.KeyUp m ->
         match m with
-          | Keys.LeftCtrl -> 
-            { model with pickingActive = false }
           | Keys.LeftAlt ->           
             if model.perspectiveView && model.jumpSelectionActive && not model.camJumpAnimRunning then 
                 update { model with jumpSelectionActive = false; pickingActive = false } Message.AnimateCameraViewSwitch            
@@ -519,19 +513,20 @@ module App =
                 match lastPick with
                 | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
                 | None -> model.drawing
+
             updatePickM, updatedDrawM
           | _ -> PickingApp.update model.picking msg, model.drawing
         
-        let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 1.5; primary = { c = C4b.VRVisGreen } } } 
-
+        let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 3.5; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } } 
 
         if model.jumpSelectionActive && not model.camViewAnimRunning then
             update { model with selectedJumpPosition = pickingModel.intersectionPoints.Item(0); jumpSelectionActive = false; inJumpedPosition = true } Message.AnimateCameraJump            
-        elif model.lineSelectionActive && pickingModel.intersectionPoints.AsList.Length > 2 then
+        elif model.camViewAnimRunning then
+            model
+        elif pickingModel.intersectionPoints.AsList.Length > 2 then
             model
         elif model.lineSelectionActive && pickingModel.intersectionPoints.AsList.Length = 2 then       
-           let newModel = sampleSurfacePointsForCutView model pickingModel drawingModel
-           caluculateSVGDrawingPositions newModel
+           caluculateSVGDrawingPositions <| sampleSurfacePointsForCutView model pickingModel newDrawingModel
         else
             { model with picking = pickingModel; drawing = newDrawingModel }
 
@@ -550,7 +545,7 @@ module App =
             { model with currentOption = a }
       | SetSamplingRate f -> 
         if model.picking.intersectionPoints.AsList.Length >= 2 then 
-            sampleSurfacePointsForCutView { model with stepSampleSize = Numeric.update model.stepSampleSize f } model.picking DrawingModel.initial
+            caluculateSVGDrawingPositions <| sampleSurfacePointsForCutView { model with stepSampleSize = Numeric.update model.stepSampleSize f } model.picking DrawingModel.initial
         else 
             { model with stepSampleSize = Numeric.update model.stepSampleSize f }
       | MouseWheel v ->       
@@ -565,11 +560,21 @@ module App =
 
         caluculateSVGDrawingPositions { model with cutViewZoom = newCutViewZoom; cutViewDim = V2i(newXDim, model.cutViewDim.Y) }
       | ResizeRenderView d ->
-        Log.line "Render View Resize %A" d
         { model with renderViewDim = d}
       | ResizeCutView d ->
-        Log.line "Cut View Resize %A" d
         { model with cutViewDim = d}
+      | HovereCircleEnter id -> 
+        match model.hoveredCircleIndex with 
+        | None -> 
+            { model with hoveredCircleIndex = Some id} 
+        | Some oldID when not (id = oldID) -> 
+            { model with hoveredCircleIndex = Some id}
+        | _ -> model
+      | HovereCircleLeave -> 
+        if model.hoveredCircleIndex.IsSome then
+            { model with hoveredCircleIndex = None }
+        else
+            model
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | _ -> model
@@ -656,7 +661,7 @@ module App =
 
       let afterFilledPolygonSg = 
         [
-          m.drawing |> DrawingApp.view near far
+          m.drawing |> DrawingApp.viewPointSize near far (Mod.constant 2.0)
         ] 
         |> Sg.ofList
         |> Sg.pass afterFilledPolygonRenderPass
@@ -706,6 +711,11 @@ module App =
       
       let dropDownValues = m.dropDownOptions |> AMap.map (fun k v -> text v)
       
+      let dependencies = 
+         Html.semui @ 
+         [ 
+            { kind = Stylesheet; name = "CutView3.css"; url = "CutView3.css" }
+         ]  
 
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
@@ -738,21 +748,21 @@ module App =
                                 Html.row "Accumulated Distance:" [Incremental.text (m.accDistance |> Mod.map (fun f -> f.ToString())) ]
                                 Html.row "Sampling Rate:"  [Numeric.view m.stepSampleSize |> UI.map Message.SetSamplingRate]                             
                                 Html.row "Sampling Distance:" [Incremental.text (m.samplingDistance |> Mod.map (fun f -> f.ToString())) ]
-                                Html.row "Min Height:" [Incremental.text (m.minHeight |> Mod.map (fun f -> f.ToString())) ]
-                                Html.row "Max Height:" [Incremental.text (m.maxHeight |> Mod.map (fun f -> f.ToString())) ]                                         
+                                Html.row "Min Height:" [Incremental.text (m.minHeight |> Mod.map (fun f -> Math.Round(f,2).ToString())) ]
+                                Html.row "Max Height:" [Incremental.text (m.maxHeight |> Mod.map (fun f -> Math.Round(f,2).ToString())) ]                                         
                             ]                       
                         ]
                   ]
               ]       
         | Some "cutview" ->
-            require Html.semui ( 
+            require dependencies ( 
 
               let percent = "%"
               let px = "px"
               let strokeWidthMainRect = "0.1px"
               let strokeColor = "rgb(255,255,255)"
               let strokeWidthContorLineEdge = "1.5px"
-              let lineOpacity = "0.5"
+              let lineOpacity = "0.15"
               let polygonOpacity = "0.25"
               let polygonColor = "rgb( 132,226,255)"
               let heightRectOpacity = "0.15"
@@ -787,35 +797,7 @@ module App =
                         yield attribute "stroke-width" strokeWidthMainRect
                     } |> AttributeMap.ofAMap
                  )
-
-              let subBoxRect (order : float) (color : string) =
-                  Incremental.Svg.rect ( 
-                    amap {
-                        let! xOffset = m.offsetUIDrawX
-                        let! yOffset = m.offsetUIDrawY
-
-                        let! dimensions = m.cutViewDim
-                        let xWidth = (float) dimensions.X
-                        let yWidth = (float) dimensions.Y
-                            
-                        let heightRectValue = (1.0-yOffset*2.0)/5.0
-
-                        let sX = (sprintf "%f" (xOffset * xWidth)) + px
-                        let sY = (sprintf "%f" ((yOffset + heightRectValue * order) * yWidth)) + px
-
-                        let wX = (sprintf "%f" ((1.0-xOffset*2.0) * xWidth)) + px
-                        let heightRectH = (sprintf "%f" (((1.0-yOffset*2.0)/5.0) * yWidth)) + px
-
-                        yield attribute "x" sX
-                        yield attribute "y" sY 
-                        yield attribute "width" wX
-                        yield attribute "height" heightRectH
-                        yield attribute "opacity" heightRectOpacity
-                        yield attribute "fill" color
-                        yield attribute "stroke" strokeColor
-                        yield attribute "stroke-width" "0.0"
-                    } |> AttributeMap.ofAMap
-                  )
+    
 
               let contourLine (order : float) (opacity : string) =
                   Incremental.Svg.line ( 
@@ -887,60 +869,39 @@ module App =
                 } |> AttributeMap.ofAMap
 
               
-              body [style "width: 100%; height: 100%; background: transparent; overflow-x: scroll "; onResize (Message.ResizeCutView >> id)] [
 
+              body [style "width: 100%; height: 100%; background: transparent; overflow-x: scroll "; onResize (Message.ResizeCutView >> id)] [
+                    
                     Incremental.Svg.svg containerAttribs <|
                         alist {
                             
                             //Gradient Color
-                            yield Incremental.Svg.defs([]|> AttributeMap.ofList)(                
-                                alist {                               
-                                    yield Incremental.Svg.linearGradient ([attribute "id" "grad2"; attribute "x1" "0%"; attribute "y1" "0%"; attribute "x2" "0%"; attribute "y2" "100%"] |> AttributeMap.ofList) ( 
-                                        alist {
-                                            yield Incremental.Svg.stop ([attribute "offset" "0%"; attribute "style" "stop-color:rgb(255,255,255);stop-opacity:1.0"] |> AttributeMap.ofList)
-                                            yield Incremental.Svg.stop ([attribute "offset" "100%"; attribute "style" "stop-color:rgb(16,16,16);stop-opacity:1.0"] |> AttributeMap.ofList)
-                                        }              
-                                    )
-                                    
-                                }           
-                                
-                            )
+                            yield Svg.defs[][                
+                                Svg.linearGradient [attribute "id" "grad2"; attribute "x1" "0%"; attribute "y1" "0%"; attribute "x2" "0%"; attribute "y2" "100%"]   [
+                                    Svg.stop [attribute "offset" "0%"; attribute "style" "stop-color:rgb(255,255,255);stop-opacity:1.0" ]
+                                    Svg.stop [attribute "offset" "100%"; attribute "style" "stop-color:rgb(16,16,16);stop-opacity:1.0"] 
+                                ]
+                            ]
                             
                             
                             //Box
                             yield mainBoxRect
-
-
-                            //// very high
-                            //yield subBoxRect 0.0 "rgb( 180, 180, 180)"
-
-                            //// high
-                            //yield subBoxRect 1.0 "rgb( 149, 149, 149)"                     
-
-                            //// medium high
-                            //yield subBoxRect 2.0 "rgb( 118, 118, 118)"        
-                            
-                            ////low
-                            //yield subBoxRect 3.0 "rgb(96, 96, 96)"       
-                            
-                            ////very low
-                            //yield subBoxRect 4.0 "rgb(79,79,79)"     
                            
 
                             //contour line (very high)
                             yield contourLine 0.0 "1.0"     
 
-                            ////contour line (high)
-                            //yield contourLine 1.0 lineOpacity                       
+                            //contour line (high)
+                            yield contourLine 1.0 lineOpacity                       
 
-                            ////contour line (medium high)
-                            //yield contourLine 2.0 lineOpacity      
+                            //contour line (medium high)
+                            yield contourLine 2.0 lineOpacity      
 
-                            ////contour line (medium low)
-                            //yield contourLine 3.0 lineOpacity      
+                            //contour line (medium low)
+                            yield contourLine 3.0 lineOpacity      
 
-                            ////contour line (low)
-                            //yield contourLine 4.0 lineOpacity      
+                            //contour line (low)
+                            yield contourLine 4.0 lineOpacity      
 
                             //contour line (very low)
                             yield contourLine 5.0 "1.0"      
@@ -968,12 +929,12 @@ module App =
                             )
 
                             let! drawingErrorCoord = m.svgPointsErrorCoord                                  
-                            let coordArray = drawingErrorCoord.Split([|"  "|], StringSplitOptions.None)
-                            for i in 0 .. coordArray.Length - 1 do
+                            let errorCoordArray = drawingErrorCoord.Split([|"  "|], StringSplitOptions.None)
+                            for i in 0 .. errorCoordArray.Length - 1 do
                                 //chart curve error
                                 yield Incremental.Svg.polyline ( 
                                     amap {
-                                        let drawingCoord = coordArray.[i]
+                                        let drawingCoord = errorCoordArray.[i]
 
                                         yield attribute "points" drawingCoord
                                         yield attribute "fill" "none"
@@ -1009,25 +970,32 @@ module App =
 
                             let! circleSize = m.svgCircleSize
                             let r = sprintf "%f" (circleSize/4.0) + "%"                              
-                            let stw = sprintf "%f" (circleSize/12.0) + "%"       
+                            let rH = sprintf "%f" (circleSize/2.0) + "%"                              
+                            let stw = sprintf "%f" (circleSize/20.0) + "%"       
                             
                             let! drawingCoord = m.svgPointsCoord                                  
-                            let coordArray = drawingCoord.Split([|" "|], StringSplitOptions.None)                                
-                            for i in 0 .. coordArray.Length - 2 do
-                                let xy = coordArray.[i].Split([|","|], StringSplitOptions.None)
+                            let correctCoordArray = drawingCoord.Split([|" "|], StringSplitOptions.None)                                
+                            for i in 0 .. correctCoordArray.Length - 2 do
+                                let xy = correctCoordArray.[i].Split([|","|], StringSplitOptions.None)
                                 if xy.Length > 1 then
                                     let x = xy.[0]
                                     let y = xy.[1]
-                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(50,208,255)" ] |> AttributeMap.ofList)                              
+                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(50,208,255)"; onMouseEnter (fun _ -> HovereCircleEnter i) ] |> AttributeMap.ofList)                              
 
-                            let! drawingErrorCoord = m.svgPointsErrorCoord                                  
-                            let coordArray = drawingErrorCoord.Split([|" "|], StringSplitOptions.None)
-                            for i in 0 .. coordArray.Length - 2 do
-                                let xy = coordArray.[i].Split([|","|], StringSplitOptions.None)
+                            for i in 0 .. errorCoordArray.Length - 2 do
+                                let xy = errorCoordArray.[i].Split([|","|], StringSplitOptions.None)
                                 if xy.Length > 1 then
                                     let x = xy.[0]
                                     let y = xy.[1]
                                     yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(255,71,50)" ] |> AttributeMap.ofList)                              
+
+
+                            let! hoverCircle = m.hoveredCircleIndex
+                            if hoverCircle.IsSome then
+                                let xy = correctCoordArray.[hoverCircle.Value].Split([|","|], StringSplitOptions.None)
+                                let x = xy.[0]
+                                let y = xy.[1]
+                                yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" rH; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(255,255,255)"; onMouseLeave (fun _ -> HovereCircleLeave) ] |> AttributeMap.ofList)    
 
                         }
 
@@ -1179,6 +1147,7 @@ module App =
           svgSurfaceUnderLineCoord        = ""
           svgSurfaceUnderLineErrorCoord   = ""
           svgCircleSize                   = 0.0
+          hoveredCircleIndex              = None
         }
 
       {

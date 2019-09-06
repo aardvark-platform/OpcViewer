@@ -38,7 +38,10 @@ let main argv =
     
     let instance =  ElevationProfileViewer.App.app opcDir axisFile rotate |> App.start 
 
-    WebPart.startServerLocalhost 4321 [ 
+    let resourcesFolder = IO.Directory.GetCurrentDirectory()
+
+    WebPart.startServerLocalhost 4321 [
+        Suave.Files.browse resourcesFolder
         MutableApp.toWebPart' app.Runtime false instance
         Reflection.assemblyWebPart typeof<EmbeddedRessource>.Assembly
         Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly

@@ -45,6 +45,8 @@ type Message =
   | MouseWheel              of V2d
   | ResizeRenderView        of V2i
   | ResizeCutView           of V2i
+  | HovereCircleEnter       of int
+  | HovereCircleLeave       
 
 
 
@@ -148,6 +150,7 @@ type Model =
         renderViewDim                  : V2i
         cutViewDim                     : V2i
 
+        hoveredCircleIndex             : Option<int>
     }
 
    
