@@ -337,8 +337,8 @@ module App =
               drawing             = newDraw 
               //drawing2             = newDraw2 
               numSampledPoints    = int samplingSize + 1 
-              samplingDistance    = Math.Round(dir.Length/samplingSize,4)
-              linearDistance      = Math.Round(dir.Length,2) 
+              samplingDistance    = dir.Length/samplingSize
+              linearDistance      = dir.Length
               minHeight           = altitudeList.Min (altitudeList.Item(0))
               maxHeight           = altitudeList.Max (altitudeList.Item(0))
               accDistance         = Math.Round(accDistance (pointList.Length-1) 0.0,2)
@@ -660,7 +660,7 @@ module App =
                 return o
 
         }
-     
+      
       let near = m.mainFrustum |> Mod.map(fun x -> x.near)
       let far = m.mainFrustum |> Mod.map(fun x -> x.far)
       
@@ -762,10 +762,10 @@ module App =
                         Html.SemUi.accordion "Elevation Info" "map" true [     
                             Html.table [  
                                 Html.row "Number of Points:" [Incremental.text (m.numSampledPoints |> Mod.map (fun f -> f.ToString())) ]
-                                Html.row "Linear Distance:" [Incremental.text (m.linearDistance |> Mod.map (fun f -> f.ToString())) ]
+                                Html.row "Linear Distance:" [Incremental.text (m.linearDistance |> Mod.map (fun f -> Math.Round(f,2).ToString())) ]
                                 Html.row "Accumulated Distance:" [Incremental.text (m.accDistance |> Mod.map (fun f -> f.ToString())) ]
                                 Html.row "Sampling Rate:"  [Numeric.view m.stepSampleSize |> UI.map Message.SetSamplingRate]                             
-                                Html.row "Sampling Distance:" [Incremental.text (m.samplingDistance |> Mod.map (fun f -> f.ToString())) ]
+                                Html.row "Sampling Distance:" [Incremental.text (m.samplingDistance |> Mod.map (fun f -> Math.Round(f,4).ToString())) ]
                                 Html.row "Min Height:" [Incremental.text (m.minHeight |> Mod.map (fun f -> Math.Round(f,2).ToString())) ]
                                 Html.row "Max Height:" [Incremental.text (m.maxHeight |> Mod.map (fun f -> Math.Round(f,2).ToString())) ]                                         
                             ]                       
@@ -779,7 +779,7 @@ module App =
               let px = "px"
               let strokeWidthMainRect = "0.1px"
               let strokeColor = "rgb(255,255,255)"
-              let strokeWidthContorLineEdge = "1.5px"
+              //let strokeWidthContorLineEdge = "1.5px"
               let lineOpacity = "0.15"
               let polygonOpacity = "0.25"
               let polygonColor = "rgb( 132,226,255)"
@@ -817,7 +817,7 @@ module App =
                  )
     
 
-              let contourLine (order : float) (opacity : string) =
+              let contourLine (order : float) (strokeWidth : float) (opacity : string) =
                   Incremental.Svg.line ( 
                     amap {
 
@@ -840,40 +840,10 @@ module App =
                         yield attribute "x2" wX
                         yield attribute "y2" sY 
                         yield attribute "stroke" strokeColor
-                        yield attribute "stroke-width" strokeWidthContorLineEdge
+                        yield attribute "stroke-width" (sprintf "%f" strokeWidth)
                         yield attribute "stroke-opacity" opacity
                     } |> AttributeMap.ofAMap
                 )
-
-              let verticalLine (order : string) =
-                  Incremental.Svg.line ( 
-                    amap {
-                        let! xOffset = m.offsetUIDrawX
-                        let! yOffset = m.offsetUIDrawY
-
-                        let! dimensions = m.cutViewDim
-                        let xWidth = (float) dimensions.X
-                        let yWidth = (float) dimensions.Y
-                            
-                        let sX = 
-                            if order = "left" then
-                                (sprintf "%f" (xOffset * xWidth)) + px
-                            else
-                                (sprintf "%f" ((1.0-xOffset) * xWidth)) + px
-
-                        let sY = (sprintf "%f" ((yOffset - 0.025) * yWidth)) + px
-
-                        let wY = (sprintf "%f" ((1.0-yOffset+0.025) * yWidth)) + px
-
-                        yield attribute "x1" sX
-                        yield attribute "y1" sY
-                        yield attribute "x2" sX
-                        yield attribute "y2" wY
-                        yield attribute "stroke" strokeColor
-                        yield attribute "stroke-width" strokeWidthContorLineEdge
-                    } |> AttributeMap.ofAMap
-                 )
-                
 
               let containerAttribs = 
                 amap {
@@ -907,22 +877,22 @@ module App =
                            
 
                             //contour line (very high)
-                            yield contourLine 0.0 "1.0"     
+                            yield contourLine 0.0 2.5 "1.0"     
 
                             //contour line (high)
-                            yield contourLine 1.0 lineOpacity                       
+                            yield contourLine 1.0 1.5 lineOpacity                       
 
                             //contour line (medium high)
-                            yield contourLine 2.0 lineOpacity      
+                            yield contourLine 2.0 1.5 lineOpacity      
 
                             //contour line (medium low)
-                            yield contourLine 3.0 lineOpacity      
+                            yield contourLine 3.0 1.5 lineOpacity      
 
                             //contour line (low)
-                            yield contourLine 4.0 lineOpacity      
+                            yield contourLine 4.0 1.5 lineOpacity      
 
                             //contour line (very low)
-                            yield contourLine 5.0 "1.0"      
+                            yield contourLine 5.0 2.5 "1.0"      
 
 
                             ////contour line (vertical low)
@@ -987,9 +957,11 @@ module App =
                             )    
 
                             let! circleSize = m.svgCircleSize
-                            let r = sprintf "%f" (circleSize/4.0) + "%"                              
-                            let stw = sprintf "%f" (circleSize/12.0) + "%"       
+                            let! dim = m.cutViewDim
                             
+                            let r = sprintf "%f" (Math.Min(circleSize/4.0 * float dim.X/100.0, 6.8)) + "px"                              
+                            let stw = sprintf "%f" (Math.Min(circleSize/12.0 * float dim.X/100.0, 2.25) |> (fun x -> if x >= 1.0 then x else 0.0)) + "px"       
+
                             let! drawingCoord = m.svgPointsCoord                                  
                             let coordArray = drawingCoord.Split([|" "|], StringSplitOptions.None)                                
                             for i in 0 .. coordArray.Length - 2 do
@@ -1019,8 +991,10 @@ module App =
                                 let yWidth = (float) dimensions.Y
 
                                 let! aL = m.altitudeList
+
+                                let! samplingDistance = m.samplingDistance
                                
-                                yield Svg.text ([ attribute "x" (sprintf "%f" (xOffset * xWidth) + px); attribute "y" (sprintf "%f" (yOffset * yWidth) + px); attribute "font-size" "20"; attribute "fill" "#ffffff"; clazz "UIText"]) (sprintf "%f" (aL.Item(hoverCircle.Value)))
+                                yield Svg.text ([ attribute "x" (sprintf "%f" (xOffset * xWidth) + px); attribute "y" (sprintf "%f" (yOffset * yWidth - 2.0) + px); attribute "font-size" "16"; attribute "fill" "#ffffff"; clazz "UIText"]) ( "Altitude: " + sprintf "%.2f" (aL.Item(hoverCircle.Value)) + " m; Distance: " + sprintf "%.2f" (samplingDistance * float hoverCircle.Value) + " m") 
                         }
 
                     onBoot "$(window).trigger('resize')" (
