@@ -28,19 +28,19 @@ module Sg =
             attribute "data-samples" "4"
         ]) 
 
-    alist {
-         let! c = cam
-         match c with 
+    
+    let cams = 
+     adaptive {
+        let! c = cam
+        let left, right = 
+            match c with 
                 | HighResCam -> 
                     let cameraMod = rover.HighResCam.cam.Current |> Mod.map (fun x -> 
                         let viewHR = x.camera.view
                         let frHR = x.frustum
                         Camera.create viewHR frHR)
-
-                    let domL = DomNode.RenderControl (att, cameraMod, sg, RenderControlConfig.standard, None)
-                    let domR = DomNode.RenderControl (att, cameraMod, Sg.empty, RenderControlConfig.standard, None)
-                    yield domL
-                    yield domR
+                        
+                    (cameraMod, cameraMod)
 
                 | WACLR -> 
                     
@@ -55,18 +55,33 @@ module Sg =
                         let frLeft = x.frustum
                         Camera.create viewLeft frLeft
                         )
+                    (camLMod, camRMod)
+          
+        return left,right
 
-                    let domL = DomNode.RenderControl (att, camLMod, sg, RenderControlConfig.standard, None)
-                    let domR = DomNode.RenderControl (att, camRMod, sg, RenderControlConfig.standard, None)
-                    yield domL
-                    yield domR
-     
+         }
+    
+    let l = cams |> Mod.bind (fun f -> fst f)
+    let r = cams |> Mod.bind (fun f -> snd f)
 
-        }
+    let sgR = 
+       let r = 
+        adaptive {
+            let! cam = cam 
+            let result = 
+                match cam with
+                | HighResCam -> Sg.empty
+                | WACLR -> sg
+            return result
+            }
+       r |> Sg.dynamic
 
+    let domL = DomNode.RenderControl(att, l, sg, RenderControlConfig.standard, None)
+    let domR = DomNode.RenderControl(att, r, sgR, RenderControlConfig.standard, None)
 
-
-    //    adaptive {
+    (domL, domR)
+    //let r = 
+    // adaptive {
     //        let! c = cam
     //        let left, right = 
     //            match c with 
@@ -77,7 +92,9 @@ module Sg =
     //                    Camera.create viewHR frHR)
 
     //                let domL = DomNode.RenderControl (att, cameraMod, sg, RenderControlConfig.standard, None)
-    //                (domL, None)
+    //                let domR = DomNode.RenderControl (att, cameraMod, Sg.empty, RenderControlConfig.standard, None)
+    //                (domL, domR)
+    //                //(domL, None)
 
     //            | WACLR -> 
                     
@@ -95,11 +112,13 @@ module Sg =
 
     //                let domL = DomNode.RenderControl (att, camLMod, sg, RenderControlConfig.standard, None)
     //                let domR = DomNode.RenderControl (att, camRMod, sg, RenderControlConfig.standard, None)
-    //                (domL, Some domR)
+                    
+    //                (domL, domR)
+                    
 
     //    return left,right
 
-    //}
+    //       }
     //r
 
   //visualisation tools
@@ -185,7 +204,7 @@ module Sg =
 
   let cameraAxes  (view:IMod<CameraView>) (rover:MRoverModel) = 
    
-    let pos = rover.position
+    let pos = Mod.map (fun (c:CameraView) -> c.Location) view
     let up = rover.up
     let forward = Mod.map (fun (c:CameraView) -> c.Forward) view
     let right = Mod.map (fun (c:CameraView) -> c.Right) view      

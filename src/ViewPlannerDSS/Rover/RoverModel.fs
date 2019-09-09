@@ -67,6 +67,19 @@ type ProjectionSphere =
     coordinates : plist<V3d>
     }
 
+ [<DomainType>]
+ type ViewPlan = 
+    {
+    rover_position:   V3d
+    rover_target:     V3d
+    active_camera:     CameraType
+    thetaPhiValues : plist<V2d>
+    panTiltOverlap: V2d
+
+    
+    
+    }
+
 
 [<DomainType; ReferenceEquality>]
 type RoverModel =
@@ -92,6 +105,7 @@ type RoverModel =
         projsphere :     ProjectionSphere
         projPoints :     plist<V3d>
         thetaPhiValues : plist<V2d>
+        positionsList : plist<V2d> //position + target
 
         //variables
         //! currently dummy values for test purposes
@@ -241,6 +255,7 @@ module RoverModel =
         panOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
         tiltOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
         
+
         reg = None
 
         projsphere =
@@ -251,6 +266,7 @@ module RoverModel =
 
         projPoints = PList.empty
         thetaPhiValues = PList.empty
+        positionsList = PList.empty
         panOverlap = 20.0       //at least 20% according to https://mars.nasa.gov/msl/mission/instruments/mastcam/
         tiltOverlap = 20.0
 

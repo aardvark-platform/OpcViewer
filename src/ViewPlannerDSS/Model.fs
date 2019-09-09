@@ -13,10 +13,11 @@ open Rabbyte.Drawing
 open Rabbyte.Annotation
 open System.Xml.Linq
 
-type SaveOption =
-    | CameraState   
-    | RoverState   
-    | PlaneState
+type MenuOption =
+    | SaveCameraState   
+    | SaveRoverState   
+    | SavePlaneState
+    | PlaceRover
 
 
 type Action =
@@ -26,7 +27,7 @@ type Action =
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
   | RoverAction      of RoverAction
-  | SaveConfigs      of Option<SaveOption>
+  | SaveConfigs      of Option<MenuOption>
 
 
 
@@ -55,6 +56,13 @@ type CameraStateLean =
     points : plist<V3d>
     }
 
+  type PlacementInfo = 
+    {
+    active : bool
+    counter : int
+    max : int
+    }
+
   
 [<DomainType>]
 type Model =
@@ -77,8 +85,9 @@ type Model =
         rover                : RoverModel
         region               : Option<plist<V3d>>
         roiBboxFull          : bool
-        saveOptions          : hmap<SaveOption, string>
-        currentSaveOption    : Option<SaveOption>
+        roverPlacement       : PlacementInfo
+        menuOptions          : hmap<MenuOption, string>
+        currentMenuOption    : Option<MenuOption>
 
     }
 

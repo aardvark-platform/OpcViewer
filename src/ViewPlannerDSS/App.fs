@@ -159,7 +159,7 @@ module App =
         | PickingAction msg -> 
             let pickingModel, drawingModel =
                 match msg with
-                    | HitSurface (a,b) -> //,_) -> 
+                    | HitSurface (a,b) -> 
                         let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
                         let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
                         let updatedDrawM =
@@ -180,15 +180,15 @@ module App =
                     
         | SaveConfigs msg ->
             match msg with 
-            | Some CameraState -> 
+            | Some SaveCameraState -> 
                 Log.line "[App] saving camstate"
                 model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camerastate" |> ignore 
                 model
-            | Some PlaneState ->
+            | Some SavePlaneState ->
                 Log.line "[App] saving plane points"
                 model.pickingModel.intersectionPoints |> toPlaneCoords |> OpcSelectionViewer.Serialization.save ".\planestate" |> ignore
                 model
-            | Some RoverState ->
+            | Some SaveRoverState ->
                 let intersect = model.pickingModel.intersectionPoints |> PList.toList
                 let r =
                     if intersect |> List.isEmpty then model
@@ -212,6 +212,10 @@ module App =
                         { model with rover = r; pickingModel = p; drawing = d}
 
                 r
+            | Some PlaceRover ->
+              let placementActive = not model.roverPlacement.active
+              {model with roverPlacement = {model.roverPlacement with active = placementActive} }
+
             | None -> model
 
 
@@ -325,56 +329,11 @@ module App =
            ]
         ]
 
-       
-      //let sceneRight = 
-      // let r = 
-      //  adaptive {
-      //      let! cam = m.rover.camera 
-      //      let result = 
-      //          match cam with
-      //          | HighResCam -> Sg.empty
-      //          | WACLR -> camSceneRenderView
-      //      return result
-      //      }
-      // r |> Sg.dynamic
-        
-      
-
-  
-      //let c = 
-      //  let result = 
-      //      adaptive {
-      //      let! cam = m.rover.camera
-      //      let! viewHR = m.rover.HighResCam.cam.camera.view
-      //      let! frHR = m.rover.HighResCam.cam.frustum
-      //      let! viewWL = m.rover.WACLR.camL.camera.view
-      //      let! frWL = m.rover.WACLR.camL.frustum 
-      //      let c = match cam with 
-      //              | HighResCam -> Camera.create viewHR frHR 
-      //              | WACLR -> Camera.create viewWL frWL
-        
-      //      return c
-      //  }
-      //  result
-       
-      
-      let roverViews = Sg.createView (camSceneRenderView |> Sg.map PickingAction) m.rover.camera
-      
-      //let viewLeft = 
-      //  let sgL = (camSceneRenderView |> Sg.map PickingAction)
-      //  Sg.createView att sgL c
+    
+      let roverViews = Sg.createView (camSceneRenderView |> Sg.map PickingAction) m.rover.camera m.rover
+      let viewLeft = fst roverViews 
+      let viewRight = snd roverViews
      
-      
-      //let viewRight = 
-      //  let cam = 
-      //      adaptive {
-      //      let! viewWR = m.rover.WACLR.camR.camera.view
-      //      let! frWR = m.rover.WACLR.camR.frustum 
-      //      return Camera.create viewWR frWR
-      //  } 
-      //  let sgR = sceneRight |> Sg.map PickingAction
-      //  Sg.createView att sgR c
-
 
       let renderControl =
        FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
@@ -389,9 +348,7 @@ module App =
          ]) 
          (fullSceneRenderView |> Sg.map PickingAction)
       
-      
-           
-           
+     
       let dependencies =   
         Html.semui @ [        
           { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
@@ -412,15 +369,15 @@ module App =
               div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)] 
           )
         
-        //| Some "leftCam" ->
-        //    require Html.semui (
-        //      div [clazz "ui"; style "background: #1B1C1E"] [viewLeft]
-        //  )
+        | Some "leftCam" ->
+            require Html.semui (
+              div [clazz "ui"; style "background: #1B1C1E"] [viewLeft]
+          )
         
-        // | Some "rightCam" ->
-        //    require Html.semui (
-        //       div [clazz "ui"; style "background: #1B1C1E"] [viewRight]
-        //    )
+         | Some "rightCam" ->
+            require Html.semui (
+               div [clazz "ui"; style "background: #1B1C1E"] [viewRight]
+            )
 
         | Some "controls" -> 
           require dependencies (
@@ -429,7 +386,7 @@ module App =
 
                 h4[][text "Menu Options"]
                 div [ clazz "item" ] [ 
-                dropdown { placeholder = "Save..."; allowEmpty = false } [ clazz "ui simple inverted selection dropdown" ] (m.saveOptions |> AMap.map (fun k v -> text v)) m.currentSaveOption Action.SaveConfigs 
+                dropdown { placeholder = "Save..."; allowEmpty = false } [ clazz "ui simple inverted selection dropdown" ] (m.menuOptions |> AMap.map (fun k v -> text v)) m.currentMenuOption Action.SaveConfigs 
                      ]   
 
                 h4[][text "Rover Controls"]
@@ -686,8 +643,14 @@ module App =
           dockConfig         = initialDockConfig        
           region             = None
           roiBboxFull        = false
-          saveOptions        = HMap.ofList [CameraState, "CameraState"; RoverState, "RoverState"; PlaneState, "PlaneState"]
-          currentSaveOption  = None
+          roverPlacement     = 
+            {
+            active = false
+            counter = 0
+            max = 3
+            }
+          menuOptions        = HMap.ofList [SaveCameraState, "Save camera state"; SaveRoverState, "Save rover state"; SavePlaneState, "Save plane state"; PlaceRover, "place the rover"]
+          currentMenuOption  = None
         }
 
       {
