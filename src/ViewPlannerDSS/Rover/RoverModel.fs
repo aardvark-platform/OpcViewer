@@ -75,10 +75,14 @@ type ProjectionSphere =
     active_camera:     CameraType
     thetaPhiValues : plist<V2d>
     panTiltOverlap: V2d
-
-    
-    
     }
+
+  [<DomainType>]
+  type Placement = {
+    id          : int
+    position    : V3d
+    target      : V3d
+  }
 
 
 [<DomainType; ReferenceEquality>]
@@ -105,7 +109,7 @@ type RoverModel =
         projsphere :     ProjectionSphere
         projPoints :     plist<V3d>
         thetaPhiValues : plist<V2d>
-        positionsList : plist<V2d> //position + target
+        positionsList : plist<Placement> 
 
         //variables
         //! currently dummy values for test purposes
@@ -140,6 +144,7 @@ type RoverAction =
     | RotateToPoint
     | ChangePanOverlap of Option<Overlap>
     | ChangeTiltOverlap of Option<Overlap>
+    | SetRoverPosAndTarget of int
 
 
 

@@ -157,20 +157,69 @@ module App =
             | _ -> model
 
         | PickingAction msg -> 
-            let pickingModel, drawingModel =
-                match msg with
-                    | HitSurface (a,b) -> 
-                        let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
-                        let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
-                        let updatedDrawM =
-                            match lastPick with
-                            | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
-                            | None -> model.drawing
-                        updatePickM, updatedDrawM
-                    | PickPointOnPlane p ->
-                        PickingApp.update model.pickingModel (PickPointOnPlane p), model.drawing
-                    | _ -> PickingApp.update model.pickingModel msg, model.drawing
-            { model with pickingModel = pickingModel; drawing = drawingModel }
+            match msg with
+            | HitSurface (a,b) ->
+                //check if roverplacement is active
+                let placement = model.roverPlacement
+                let active = placement.active
+                let counterMax = placement.counterToMax
+                let counter = placement.counter
+                let max = placement.max
+                let reachedMax = (counterMax = max)
+                match active,reachedMax with
+                | true, false -> //placement is active, new rovers can be placed
+                    
+                    match counter with 
+                    | 0 -> //position
+                       let pm = PickingApp.update model.pickingModel (HitSurface (a,b))
+                       let lastPick = pm.intersectionPoints |> PList.tryFirst
+                            
+                       match lastPick with
+                       | Some pick -> 
+                           let rover = {model.rover with position = pick}
+                           let updatedRp = {model.roverPlacement with counter = (counter + 1)}
+                           {model with rover = rover; roverPlacement = updatedRp; pickingModel = pm}
+
+                       | None -> model
+
+                    | 1 -> //target
+                        let pm = PickingApp.update model.pickingModel (HitSurface (a,b))
+                        let intersecPoints = pm.intersectionPoints |> PList.toList
+                        let pos = intersecPoints.Item(1)
+                        let target = intersecPoints.Item(0)
+                        let newPlacement = 
+                            { 
+                            id = counterMax + 1
+                            position = pos
+                            target = target
+                            }
+                        let newList = model.rover.positionsList.Append newPlacement
+                        
+                        let rover = {model.rover with position = pos; target = target; positionsList = newList}
+                        let updatedRp = {model.roverPlacement with counter = 0; counterToMax = (counterMax + 1)}
+                        
+                        let pmReset = PickingApp.update pm ClearPoints
+                        { model with rover = rover; roverPlacement = updatedRp; pickingModel = pmReset;}
+
+                | true, true -> //placement is active, maximum number of rovers has been reached
+                    { model with pickingModel = model.pickingModel; drawing = model.drawing }
+
+                | false, _  -> 
+                            let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
+                            let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
+                            let updatedDrawM =
+                                match lastPick with
+                                | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
+                                | None -> model.drawing
+                            { model with pickingModel = updatePickM; drawing = updatedDrawM }
+
+            | PickPointOnPlane p ->
+                        let pm = PickingApp.update model.pickingModel (PickPointOnPlane p) 
+                        { model with pickingModel = pm; drawing = model.drawing }
+
+            | _ -> { model with pickingModel = model.pickingModel; drawing = model.drawing }
+
+            
         | UpdateDockConfig cfg ->
             { model with dockConfig = cfg }
 
@@ -184,10 +233,10 @@ module App =
                 Log.line "[App] saving camstate"
                 model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camerastate" |> ignore 
                 model
-            | Some SavePlaneState ->
-                Log.line "[App] saving plane points"
-                model.pickingModel.intersectionPoints |> toPlaneCoords |> OpcSelectionViewer.Serialization.save ".\planestate" |> ignore
-                model
+            //| Some SavePlaneState ->
+            //    Log.line "[App] saving plane points"
+            //    model.pickingModel.intersectionPoints |> toPlaneCoords |> OpcSelectionViewer.Serialization.save ".\planestate" |> ignore
+            //    model
             | Some SaveRoverState ->
                 let intersect = model.pickingModel.intersectionPoints |> PList.toList
                 let r =
@@ -213,8 +262,8 @@ module App =
 
                 r
             | Some PlaceRover ->
-              let placementActive = not model.roverPlacement.active
-              {model with roverPlacement = {model.roverPlacement with active = placementActive} }
+                let placementActive = not model.roverPlacement.active
+                {model with roverPlacement = {model.roverPlacement with active = placementActive} }
 
             | None -> model
 
@@ -386,19 +435,14 @@ module App =
 
                 h4[][text "Menu Options"]
                 div [ clazz "item" ] [ 
-                dropdown { placeholder = "Save..."; allowEmpty = false } [ clazz "ui simple inverted selection dropdown" ] (m.menuOptions |> AMap.map (fun k v -> text v)) m.currentMenuOption Action.SaveConfigs 
+                dropdown { placeholder = "Choose..."; allowEmpty = false } [ clazz "ui simple inverted selection dropdown" ] (m.menuOptions |> AMap.map (fun k v -> text v)) m.currentMenuOption Action.SaveConfigs 
                      ]   
 
                 h4[][text "Rover Controls"]
                 p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
                 p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
                 
-                
-                
-                //p[][div[][text "Instrument: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera ]] |> UI.map RoverAction
-                //p[][div[][text "pan overlap: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.panOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentPanOverlap RoverAction.ChangePanOverlap ]] |> UI.map RoverAction
-                //p[][div[][text "tilt overlap: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.tiltOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentTiltOverlap RoverAction.ChangeTiltOverlap ]] |> UI.map RoverAction
-                
+       
                 h4[][text "Input Parameters"]
                 table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
                             tr [] [
@@ -414,7 +458,24 @@ module App =
                                 td [] [text "tilt overlap"]
                                 td [] [dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.tiltOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentTiltOverlap RoverAction.ChangeTiltOverlap ] |> UI.map RoverAction
                             ]
+
+                            tr [] [
+                                td [] [text "positions"]
+                                td [] [
+                                 Html.SemUi.accordion "Rover positions" "map pin" true [
+                                    ViewUtilities.accordionContent m.rover |> UI.map RoverAction
+                                    ]  
+                                ]
+                            ]
+
+
+
                         ]
+                 
+                //accordion
+                //Html.SemUi.accordion "Rover positions" "map marker" true [
+                //    ViewUtilities.accordionContent m.rover
+                //]  
 
 
                 button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.CalculateAngles)]  [
@@ -647,9 +708,10 @@ module App =
             {
             active = false
             counter = 0
+            counterToMax = 0
             max = 3
             }
-          menuOptions        = HMap.ofList [SaveCameraState, "Save camera state"; SaveRoverState, "Save rover state"; SavePlaneState, "Save plane state"; PlaceRover, "place the rover"]
+          menuOptions        = HMap.ofList [SaveCameraState, "Save camera state"; SaveRoverState, "Save plane state"; PlaceRover, "place the rover"] //HMap.ofList [SaveCameraState, "Save camera state"; SaveRoverState, "Save rover state"; SavePlaneState, "Save plane state"; PlaceRover, "place the rover"]
           currentMenuOption  = None
         }
 

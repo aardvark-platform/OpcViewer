@@ -20,6 +20,7 @@
     <Compile Include="Rover\RoverApp.fs" />
     <Compile Include="Shading.fs" />
     <Compile Include="Model.fs" />
+    <Compile Include="ViewUtilities.fs" />
     <Compile Include="Sg.fs" />
     <Compile Include="Utilities.fs" />
     <Compile Include="App.fs" />

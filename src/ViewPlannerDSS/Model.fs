@@ -11,12 +11,11 @@ open OpcViewer.Base.Picking
 open ViewPlanner.Rover
 open Rabbyte.Drawing
 open Rabbyte.Annotation
-open System.Xml.Linq
 
 type MenuOption =
     | SaveCameraState   
     | SaveRoverState   
-    | SavePlaneState
+    //| SavePlaneState
     | PlaceRover
 
 
@@ -59,6 +58,7 @@ type CameraStateLean =
   type PlacementInfo = 
     {
     active : bool
+    counterToMax : int
     counter : int
     max : int
     }

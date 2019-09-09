@@ -616,6 +616,18 @@ module RoverApp =
          | Some Percent_50 -> {rover with tiltOverlap = 50.0; currentTiltOverlap = Some Percent_50}
          | None -> rover
 
+     
+
+    let setRoverPosAndTarget (rover:RoverModel) (id:int) = 
+        let positions = rover.positionsList
+        let selectedLoc = positions |> Seq.tryFind (fun place -> place.id = id)
+
+        match selectedLoc with
+        | Some placement -> {rover with position = placement.position; target = placement.target}
+        | None -> rover
+
+
+
 
 
     let update (rover:RoverModel) (action:RoverAction) =
@@ -648,6 +660,10 @@ module RoverApp =
             
             | ChangeTiltOverlap o ->
                 changeTiltOverlap rover o
+            
+            | SetRoverPosAndTarget id ->
+                setRoverPosAndTarget rover id
+                
                 
                 
               
