@@ -26,6 +26,23 @@ open Aardvark.VRVis.Opc
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 
+
+[<AutoOpen>]
+module RoverMvp = 
+    open Aardvark.Base.Ag
+    open Aardvark.SceneGraph.Semantics
+
+    type StableTrafo(sg : ISg) = 
+        inherit Sg.AbstractApplicator(sg)
+
+    [<Aardvark.Base.Ag.Semantic>]
+    type StableTrafoSem() = 
+        member x.FootprintMVP(s : StableTrafo) =
+            s.Child?FootprintMVP <- Mod.map2 (fun (m : Trafo3d) (vp : Trafo3d) -> m * vp) s.ModelTrafo s?FootprintVP
+
+    module Sg = 
+        let applyStableTrafo (s : ISg) : ISg = StableTrafo(s) :> ISg
+
 module App = 
 
     let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
@@ -227,7 +244,7 @@ module App =
         m.opcInfos
           |> AMap.toASet
           |> ASet.map(fun info -> Sg.createSingleOpcSg (Mod.constant None) m.pickingActive m.cameraState.view info)
-          |> Sg.set
+          //|> Sg.set
 
   
        //projection points on sphere
@@ -491,11 +508,14 @@ module App =
     
       
       //highlights the area of the model which is inside the rover's view frustum
+      let stableOpcs = 
+        opcs |> ASet.map (Sg.noEvents << Sg.applyStableTrafo) |> Sg.set
+
       let shading (vp:IMod<Trafo3d>) = 
-        opcs
+        stableOpcs
             |> Sg.cullMode (Mod.constant CullMode.Back)
             |> Sg.depthTest (Mod.constant DepthTestMode.Less)
-            |> Sg.uniform "FootprintMVP" vp
+            |> Sg.uniform "FootprintVP" vp
             |> Sg.shader {
                 do! DefaultSurfaces.diffuseTexture
                 do! Shading.vert

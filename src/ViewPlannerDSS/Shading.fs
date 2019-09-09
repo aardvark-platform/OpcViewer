@@ -22,13 +22,10 @@ module Shading =
      let vert (v:Vertex) =
         
         vertex {
-            let mvp : M44d = uniform.FootprintMVP
-            let model = uniform.ModelTrafo
-            let wp = model * v.pos
+            let roverMVP : M44d = uniform.FootprintMVP
 
-            let m = uniform.ModelViewProjTrafo
-            let position = m * v.pos
-            let t = mvp * wp
+            let position = uniform.ModelViewProjTrafo * v.pos
+            let t = roverMVP * v.pos
 
             return 
                 { v 
