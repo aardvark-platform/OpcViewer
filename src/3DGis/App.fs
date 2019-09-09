@@ -313,15 +313,16 @@ module App =
                   DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None)) 
                   //x
               | None -> 
+                  pointList <- pointList.Head :: pointList
                   errorHitList <- -1 :: errorHitList
                   x
               )
           |> Option.defaultValue x
                             
       let newDraw = List.fold drawPoints drawingModel [0.0..samplingSize]
-        
+    
       let correctedAltitudeList= correctSamplingErrors altitudeList errorHitList  
-      Log.line "Altitudes: %A" correctedAltitudeList
+      
       let rec accDistance i acc= 
           if i >= 1 then
               let A = pointList.Item(i)
@@ -334,6 +335,7 @@ module App =
       { model with 
               picking             = pickingModel 
               drawing             = newDraw 
+              //drawing2             = newDraw2 
               numSampledPoints    = int samplingSize + 1 
               samplingDistance    = Math.Round(dir.Length/samplingSize,4)
               linearDistance      = Math.Round(dir.Length,2) 
@@ -561,7 +563,10 @@ module App =
         let originalXDim = Math.Round ((float) model.cutViewDim.X * (100.0/(100.0+model.cutViewZoom)))
         let newXDim = int <| Math.Round (originalXDim * ((100.0 + newCutViewZoom)/100.0))
 
-        caluculateSVGDrawingPositions { model with cutViewZoom = newCutViewZoom; cutViewDim = V2i(newXDim, model.cutViewDim.Y) }
+        let orignalOffset = model.offsetUIDrawX * (float) model.cutViewDim.X / originalXDim
+        let newXOffset = (orignalOffset * float originalXDim) / float newXDim
+         
+        caluculateSVGDrawingPositions { model with cutViewZoom = newCutViewZoom; cutViewDim = V2i(newXDim, model.cutViewDim.Y); offsetUIDrawX = newXOffset }
       | ResizeRenderView d ->
         { model with renderViewDim = d}
       | ResizeCutView d ->
@@ -569,15 +574,17 @@ module App =
       | HovereCircleEnter id -> 
         match model.hoveredCircleIndex with 
         | None -> 
-            { model with hoveredCircleIndex = Some id} 
-        | Some oldID when not (id = oldID) -> 
-            { model with hoveredCircleIndex = Some id}
+            update { model with hoveredCircleIndex = Some id} Message.HighlightIn3DView
+        //| Some oldID when not (id = oldID) -> 
+          //  { model with hoveredCircleIndex = Some id}
         | _ -> model
       | HovereCircleLeave -> 
         if model.hoveredCircleIndex.IsSome then
-            { model with hoveredCircleIndex = None }
+            { model with hoveredCircleIndex = None; drawing2 = DrawingModel.initial }
         else
             model
+      | HighlightIn3DView ->       
+        { model with drawing2 =  DrawingApp.update model.drawing2 (DrawingAction.AddPoint (model.pointList.Item(model.hoveredCircleIndex.Value), None))}
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | _ -> model
@@ -668,6 +675,13 @@ module App =
         ] 
         |> Sg.ofList
         |> Sg.pass afterFilledPolygonRenderPass
+        
+      let afterFilledPolygonSg2 = 
+        [
+          m.drawing2 |> DrawingApp.viewPointSize near far (Mod.constant 10.0)
+        ] 
+        |> Sg.ofList
+        |> Sg.pass afterFilledPolygonRenderPass
 
 
       let trafo =
@@ -684,6 +698,7 @@ module App =
             opcs
             filledPolygonSg
             afterFilledPolygonSg
+            afterFilledPolygonSg2
         ]
         |> Sg.ofList
         |> Sg.overrideProjTrafo trafo
@@ -717,7 +732,7 @@ module App =
       let dependencies = 
          Html.semui @ 
          [ 
-            { kind = Stylesheet; name = "CutView3.css"; url = "CutView3.css" }
+            { kind = Stylesheet; name = "CutView4.css"; url = "CutView4.css" }
          ]  
 
       page (fun request -> 
@@ -815,10 +830,10 @@ module App =
 
                         let heightRectH = (1.0-yOffset*2.0)/5.0
 
-                        let sX = (sprintf "%f" ((xOffset-0.005) * xWidth)) + px
+                        let sX = (sprintf "%f" ((xOffset) * xWidth-5.0)) + px
                         let sY = (sprintf "%f" ((yOffset + heightRectH * order) * yWidth)) + px
 
-                        let wX = (sprintf "%f" ((1.0-xOffset+0.005) * xWidth)) + px
+                        let wX = (sprintf "%f" ((1.0-xOffset) * xWidth+5.0)) + px
 
                         yield attribute "x1" sX
                         yield attribute "y1" sY  
@@ -996,9 +1011,16 @@ module App =
                             let! hoverCircle = m.hoveredCircleIndex
                             
                             if hoverCircle.IsSome then 
+                                let! xOffset = m.offsetUIDrawX
+                                let! yOffset = m.offsetUIDrawY
+
+                                let! dimensions = m.cutViewDim
+                                let xWidth = (float) dimensions.X
+                                let yWidth = (float) dimensions.Y
+
                                 let! aL = m.altitudeList
-                                Log.line "altitudeList Length:  %A " aL.Length
-                                yield Svg.text ([ attribute "x" "250px"; attribute "y" "250px"; attribute "font-size" "50"; attribute "fill" "#ffffff"]) (sprintf "%f" (aL.Item(hoverCircle.Value)))
+                               
+                                yield Svg.text ([ attribute "x" (sprintf "%f" (xOffset * xWidth) + px); attribute "y" (sprintf "%f" (yOffset * yWidth) + px); attribute "font-size" "20"; attribute "fill" "#ffffff"; clazz "UIText"]) (sprintf "%f" (aL.Item(hoverCircle.Value)))
                         }
 
                     onBoot "$(window).trigger('resize')" (
@@ -1107,6 +1129,7 @@ module App =
           opcInfos                        = opcInfos
           picking                         = { PickingModel.initial with pickingInfos = opcInfos }
           drawing                         = DrawingModel.initial
+          drawing2                        = DrawingModel.initial
           annotations                     = AnnotationModel.initial
           dockConfig                      = initialDockConfig  
           mouseDragStart                  = V2i.Zero

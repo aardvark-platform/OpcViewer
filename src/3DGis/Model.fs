@@ -47,6 +47,7 @@ type Message =
   | ResizeCutView           of V2i
   | HovereCircleEnter       of int
   | HovereCircleLeave       
+  | HighlightIn3DView            
 
 
 
@@ -95,6 +96,7 @@ type Model =
         dockConfig                     : DockConfig
         picking                        : PickingModel
         drawing                        : DrawingModel
+        drawing2                       : DrawingModel
         annotations                    : AnnotationModel
         pickingActive                  : bool
                                        
