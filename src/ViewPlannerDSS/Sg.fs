@@ -80,46 +80,7 @@ module Sg =
     let domR = DomNode.RenderControl(att, r, sgR, RenderControlConfig.standard, None)
 
     (domL, domR)
-    //let r = 
-    // adaptive {
-    //        let! c = cam
-    //        let left, right = 
-    //            match c with 
-    //            | HighResCam -> 
-    //                let cameraMod = rover.HighResCam.cam.Current |> Mod.map (fun x -> 
-    //                    let viewHR = x.camera.view
-    //                    let frHR = x.frustum
-    //                    Camera.create viewHR frHR)
-
-    //                let domL = DomNode.RenderControl (att, cameraMod, sg, RenderControlConfig.standard, None)
-    //                let domR = DomNode.RenderControl (att, cameraMod, Sg.empty, RenderControlConfig.standard, None)
-    //                (domL, domR)
-    //                //(domL, None)
-
-    //            | WACLR -> 
-                    
-    //                let camLMod = rover.WACLR.camL.Current |> Mod.map (fun x ->
-    //                    let viewLeft = x.camera.view
-    //                    let frLeft = x.frustum
-    //                    Camera.create viewLeft frLeft
-    //                    )
-                    
-    //                let camRMod = rover.WACLR.camR.Current |> Mod.map (fun x ->
-    //                    let viewLeft = x.camera.view
-    //                    let frLeft = x.frustum
-    //                    Camera.create viewLeft frLeft
-    //                    )
-
-    //                let domL = DomNode.RenderControl (att, camLMod, sg, RenderControlConfig.standard, None)
-    //                let domR = DomNode.RenderControl (att, camRMod, sg, RenderControlConfig.standard, None)
-                    
-    //                (domL, domR)
-                    
-
-    //    return left,right
-
-    //       }
-    //r
+    
 
   //visualisation tools
 
@@ -187,11 +148,11 @@ module Sg =
         list
             |> AList.toMod
             |> Mod.map (fun m -> 
-                let upArr = m |> PList.toArray
+                let arr = m |> PList.toArray
                         
                 Sg.draw IndexedGeometryMode.LineList
                 |> Sg.trafo shift
-                |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant upArr) 
+                |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant arr) 
                 |> Sg.uniform "Color" (Mod.constant color)
                 |> Sg.uniform "LineWidth" (Mod.constant 2.0)
                 |> Sg.effect [

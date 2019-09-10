@@ -55,6 +55,7 @@ type CameraStateLean =
     points : plist<V3d>
     }
 
+  [<DomainType>]
   type PlacementInfo = 
     {
     active : bool

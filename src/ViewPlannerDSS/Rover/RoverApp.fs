@@ -550,7 +550,6 @@ module RoverApp =
          match region with
             | None -> rover
             | Some reg -> 
-                let cameratype = rover.currentCamType
                 let spherePos = rover.projsphere.position
                 let l = reg |> PList.toList
                 let shiftedPoints = l  |> List.map (fun p -> (p - spherePos).Normalized)
@@ -616,14 +615,60 @@ module RoverApp =
          | Some Percent_50 -> {rover with tiltOverlap = 50.0; currentTiltOverlap = Some Percent_50}
          | None -> rover
 
-     
+    
+    //create new cameraviews for stereo cam
+    let updateStereoCam (forward:V3d) (pos:V3d) (r:RoverModel)=
+
+      let rightV = (forward.Normalized).Cross(r.up)
+      let shift = rightV * 0.3
+      let positionCamL = pos - shift
+      let positionCamR = pos + shift
+      let forwardL = forward - shift
+      let forwardR = forward + shift
+      let camViewL = CameraView.look positionCamL forwardL.Normalized r.up
+      let camViewR = CameraView.look positionCamR forwardR.Normalized r.up
+   
+      let camStateL = {r.WACLR.camL.camera with view = camViewL}
+      let camVarL = {r.WACLR.camL with camera = camStateL; position = positionCamL }
+
+      let camStateR = {r.WACLR.camR.camera with view = camViewR}
+      let camVarR = {r.WACLR.camR with camera = camStateR; position = positionCamR }
+       
+      (camVarL, camVarR)
+
+
 
     let setRoverPosAndTarget (rover:RoverModel) (id:int) = 
+        
+        let currentCam = rover.camera
+        let up = rover.up
         let positions = rover.positionsList
         let selectedLoc = positions |> Seq.tryFind (fun place -> place.id = id)
 
         match selectedLoc with
-        | Some placement -> {rover with position = placement.position; target = placement.target}
+        | Some placement -> 
+            let pos = (placement.position + up)
+            let tar = placement.target
+
+            match currentCam with
+            | HighResCam -> 
+                let forward = tar - pos
+                let cam = CameraView.look pos forward.Normalized up
+                let view = {rover.HighResCam.cam.camera with view = cam}
+                let vars = {rover.HighResCam.cam with position = pos; camera = view}
+                let hr = {rover.HighResCam with cam = vars}
+                let projSphere = {rover.projsphere with position = pos}
+                {rover with position = pos; target = tar; HighResCam = hr; projsphere = projSphere; selectedPosition = Some placement}
+
+            | WACLR -> 
+                let forward = (tar - pos)
+                let projSphere = {rover.projsphere with position = pos}
+                let vars = updateStereoCam forward pos rover
+                let camL = fst vars
+                let camR = snd vars
+                let stc = {rover.WACLR with camL = camL; camR = camR}
+                {rover with position = pos; target = tar; WACLR = stc; projsphere = projSphere; selectedPosition = Some placement}
+
         | None -> rover
 
 

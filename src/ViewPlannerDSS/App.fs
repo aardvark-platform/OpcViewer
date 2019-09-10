@@ -202,7 +202,8 @@ module App =
                         { model with rover = rover; roverPlacement = updatedRp; pickingModel = pmReset;}
 
                 | true, true -> //placement is active, maximum number of rovers has been reached
-                    { model with pickingModel = model.pickingModel; drawing = model.drawing }
+                    let updatedRp = {model.roverPlacement with active = false}
+                    { model with pickingModel = model.pickingModel; drawing = model.drawing; roverPlacement = updatedRp}
 
                 | false, _  -> 
                             let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
@@ -365,18 +366,29 @@ module App =
       let camSceneRenderView = 
          m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main rovercamScene
    
-      let textOverlays (cv : IMod<CameraView>) = 
-        div [js "oncontextmenu" "event.preventDefault();"] [ 
-           let style' = "color: white; font-family:Consolas;"
+      //let textOverlays (cv : IMod<CameraView>) = 
+      //  div [js "oncontextmenu" "event.preventDefault();"] [ 
+      //     let style' = "color: white; font-family:Consolas;"
     
-           yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left" ] [          
-              yield table [] [
-                tr[][
-                    td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
-                ]
-              ]
-           ]
-        ]
+      //     yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left" ] [          
+      //        yield table [] [
+      //          tr[][
+      //              td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
+      //          ]
+      //        ]
+      //     ]
+      //  ]
+    
+      let roverPlacementActive = 
+        let active = m.roverPlacement.active
+        let text = 
+            active |> Mod.map(fun a -> 
+            match a with
+            | true -> "Rover placement active"
+            | false -> ""
+            )
+        ViewUtilities.overlayText text
+        
 
     
       let roverViews = Sg.createView (camSceneRenderView |> Sg.map PickingAction) m.rover.camera m.rover
@@ -415,7 +427,7 @@ module App =
         | Some "render" ->
  
           require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
-              div [clazz "ui"; style "background: #1B1C1E"] [renderControl; textOverlays (m.cameraState.view)] 
+              div [clazz "ui"; style "background: #1B1C1E"] [renderControl; roverPlacementActive] 
           )
         
         | Some "leftCam" ->
@@ -460,8 +472,7 @@ module App =
                             ]
 
                             tr [] [
-                                td [] [text "positions"]
-                                td [] [
+                                td [attribute "colspan" "2"] [
                                  Html.SemUi.accordion "Rover positions" "map pin" true [
                                     ViewUtilities.accordionContent m.rover |> UI.map RoverAction
                                     ]  
