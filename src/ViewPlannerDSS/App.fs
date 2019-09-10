@@ -228,43 +228,46 @@ module App =
             let r = RoverApp.update model.rover msg
             {model with rover = r}
                     
-        | SaveConfigs msg ->
+        | Configs msg ->
             match msg with 
-            | Some SaveCameraState -> 
-                Log.line "[App] saving camstate"
-                model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camerastate" |> ignore 
-                model
+            //| Some SaveCameraState -> 
+            //    Log.line "[App] saving camstate"
+            //    model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camerastate" |> ignore 
+            //    model
             //| Some SavePlaneState ->
             //    Log.line "[App] saving plane points"
             //    model.pickingModel.intersectionPoints |> toPlaneCoords |> OpcSelectionViewer.Serialization.save ".\planestate" |> ignore
             //    model
-            | Some SaveRoverState ->
-                let intersect = model.pickingModel.intersectionPoints |> PList.toList
-                let r =
-                    if intersect |> List.isEmpty then model
-                    elif intersect.Length < 2 then model
-                    else
-                        Log.line "[App] saving rover position and target"
-                        let n = model.rover.up
-                        let m = (intersect |> List.item (1)) + n
-                        let t = intersect |> List.item (0)
-                        let adaptedList = [m;t] |> PList.ofList
-                        adaptedList |> toRoverCoords |> OpcSelectionViewer.Serialization.save ".\Roverstate" |> ignore
+            //| Some SaveRoverState ->
+            //    let intersect = model.pickingModel.intersectionPoints |> PList.toList
+            //    let r =
+            //        if intersect |> List.isEmpty then model
+            //        elif intersect.Length < 2 then model
+            //        else
+            //            Log.line "[App] saving rover position and target"
+            //            let n = model.rover.up
+            //            let m = (intersect |> List.item (1)) + n
+            //            let t = intersect |> List.item (0)
+            //            let adaptedList = [m;t] |> PList.ofList
+            //            adaptedList |> toRoverCoords |> OpcSelectionViewer.Serialization.save ".\Roverstate" |> ignore
                      
-                        let forward = t-m
-                        let cam = CameraView.look model.rover.position forward.Normalized model.rover.up
+            //            let forward = t-m
+            //            let cam = CameraView.look model.rover.position forward.Normalized model.rover.up
 
-                        let p = PickingApp.update model.pickingModel (PickingAction.ClearPoints)
-                        let d = DrawingApp.update model.drawing (DrawingAction.Clear) 
+            //            let p = PickingApp.update model.pickingModel (PickingAction.ClearPoints)
+            //            let d = DrawingApp.update model.drawing (DrawingAction.Clear) 
 
-                        let hrcam = {model.rover.HighResCam with cam = { model.rover.HighResCam.cam with position = m; camera = {model.rover.HighResCam.cam.camera with view = cam}} }
-                        let r = { model.rover with position = m; target = t; HighResCam = hrcam; projsphere = {model.rover.projsphere with position = m}} 
-                        { model with rover = r; pickingModel = p; drawing = d}
+            //            let hrcam = {model.rover.HighResCam with cam = { model.rover.HighResCam.cam with position = m; camera = {model.rover.HighResCam.cam.camera with view = cam}} }
+            //            let r = { model.rover with position = m; target = t; HighResCam = hrcam; projsphere = {model.rover.projsphere with position = m}} 
+            //            { model with rover = r; pickingModel = p; drawing = d}
 
-                r
-            | Some PlaceRover ->
-                let placementActive = not model.roverPlacement.active
-                {model with roverPlacement = {model.roverPlacement with active = placementActive} }
+            //    r
+            | Some RoverPlacementMode ->
+                //let placementActive = not model.roverPlacement.active
+                {model with roverPlacement = {model.roverPlacement with active = true} }
+            
+            | Some StandardMode ->
+                {model with roverPlacement = {model.roverPlacement with active = false} }
 
             | None -> model
 
@@ -389,7 +392,18 @@ module App =
             )
         ViewUtilities.overlayText text
         
-
+    
+      //show sample button or not
+      let criteria = 
+            adaptive {
+                let! pos = m.rover.selectedPosition
+                let! reg = m.rover.reg
+                let crit = 
+                   match pos,reg with
+                   | Some p, Some r -> true
+                   | _ -> false
+                return crit
+            }
     
       let roverViews = Sg.createView (camSceneRenderView |> Sg.map PickingAction) m.rover.camera m.rover
       let viewLeft = fst roverViews 
@@ -417,9 +431,9 @@ module App =
           ]
 
       
-      let n = m.rover.numberOfSamples 
-      let energy = m.rover.energyRequired 
-      let time = m.rover.timeRequired 
+      //let n = m.rover.numberOfSamples 
+      //let energy = m.rover.energyRequired 
+      //let time = m.rover.timeRequired 
       
 
       page (fun request -> 
@@ -447,7 +461,7 @@ module App =
 
                 h4[][text "Menu Options"]
                 div [ clazz "item" ] [ 
-                dropdown { placeholder = "Choose..."; allowEmpty = false } [ clazz "ui simple inverted selection dropdown" ] (m.menuOptions |> AMap.map (fun k v -> text v)) m.currentMenuOption Action.SaveConfigs 
+                dropdown { placeholder = ""; allowEmpty = false } [ clazz "ui simple inverted selection dropdown" ] (m.menuOptions |> AMap.map (fun k v -> text v)) m.currentMenuOption Action.Configs 
                      ]   
 
                 h4[][text "Rover Controls"]
@@ -474,7 +488,7 @@ module App =
                             tr [] [
                                 td [attribute "colspan" "2"] [
                                  Html.SemUi.accordion "Rover positions" "map pin" true [
-                                    ViewUtilities.accordionContent m.rover |> UI.map RoverAction
+                                    ViewUtilities.accordionContentPositions m.rover |> UI.map RoverAction
                                     ]  
                                 ]
                             ]
@@ -488,7 +502,8 @@ module App =
                 //    ViewUtilities.accordionContent m.rover
                 //]  
 
-
+                
+                //ViewUtilities.visibleButton criteria (fun _ -> RoverAction.CalculateAngles) "ui inverted labeled basic icon button" "icon camera" "sample" |> UI.map RoverAction
                 button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.CalculateAngles)]  [
                 i [clazz "icon camera"] []
                 text "sample"] |> UI.map RoverAction
@@ -498,27 +513,34 @@ module App =
                     text "walk through" 
                     ] |> UI.map RoverAction
      
+                
+                Html.SemUi.accordion "ViewPlans" "bookmark" true [
+                       ViewUtilities.accordionContentViewPlans m.rover |> UI.map RoverAction
+                       ]  
+                
 
-                h4[][text "Output"]
-                table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
-                            tr [] [
-                               td [] [text "# of samples"]
-                               td [] [Incremental.text (n |> Mod.map (fun f -> "" + f.ToString()))]
-                            ]
-                            tr [] [
-                                td [] [text "required energy"]
-                                td [] [Incremental.text (energy |> Mod.map (fun f -> f.ToString() + " %"))]
-                            ]
 
-                            tr [] [
-                                td [] [text "required time"]
-                                td [] [Incremental.text (time |> Mod.map (fun f -> f.ToString() + " sec")) ]
-                            ]
 
-                            tr [] [
-                                td [] [text "required bandwidth"]
-                            ]
-                        ]
+                //h4[][text "Output"]
+                //table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
+                //            tr [] [
+                //               td [] [text "# of samples"]
+                //               td [] [Incremental.text (n |> Mod.map (fun f -> "" + f.ToString()))]
+                //            ]
+                //            tr [] [
+                //                td [] [text "required energy"]
+                //                td [] [Incremental.text (energy |> Mod.map (fun f -> f.ToString() + " %"))]
+                //            ]
+
+                //            tr [] [
+                //                td [] [text "required time"]
+                //                td [] [Incremental.text (time |> Mod.map (fun f -> f.ToString() + " sec")) ]
+                //            ]
+
+                //            tr [] [
+                //                td [] [text "required bandwidth"]
+                //            ]
+                //        ]
 
 
 
@@ -722,7 +744,8 @@ module App =
             counterToMax = 0
             max = 3
             }
-          menuOptions        = HMap.ofList [SaveCameraState, "Save camera state"; SaveRoverState, "Save plane state"; PlaceRover, "place the rover"] //HMap.ofList [SaveCameraState, "Save camera state"; SaveRoverState, "Save rover state"; SavePlaneState, "Save plane state"; PlaceRover, "place the rover"]
+          //menuOptions        = HMap.ofList [SaveCameraState, "Save camera state"; SaveRoverState, "Save plane state"; RoverPlacementMode, "rover placement mode"; StandardMode, "standard mode"]
+          menuOptions        = HMap.ofList [RoverPlacementMode, "rover placement mode"; StandardMode, "standard mode"] 
           currentMenuOption  = None
         }
 

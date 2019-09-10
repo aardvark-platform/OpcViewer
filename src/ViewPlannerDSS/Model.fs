@@ -13,10 +13,11 @@ open Rabbyte.Drawing
 open Rabbyte.Annotation
 
 type MenuOption =
-    | SaveCameraState   
-    | SaveRoverState   
+    //| SaveCameraState   
+    //| SaveRoverState   
     //| SavePlaneState
-    | PlaceRover
+    | RoverPlacementMode
+    | StandardMode
 
 
 type Action =
@@ -26,7 +27,7 @@ type Action =
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
   | RoverAction      of RoverAction
-  | SaveConfigs      of Option<MenuOption>
+  | Configs          of Option<MenuOption>
 
 
 

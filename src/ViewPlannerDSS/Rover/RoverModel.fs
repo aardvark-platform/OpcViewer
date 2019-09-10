@@ -74,14 +74,24 @@ type ProjectionSphere =
     target      : V3d
   }
 
+  [<DomainType>]
+  type OutputVars = {
+    numberOfSamples     : int
+    energyRequired      : float
+    timeRequired        : float
+    bandwidthRequired   : float
+  }
+
  [<DomainType>]
  type ViewPlan = 
     {
-    placement :         Placement
-    active_camera:      CameraType
-    thetaPhiValues :    plist<V2d>
-    panOverlap:         float
-    tiltOverlap:        float
+    id                  : int
+    placement           : Placement
+    cameraVariables     : plist<CamVariables>
+    thetaPhiValues      : plist<V2d>
+    panOverlap          : float
+    tiltOverlap         : float
+    outputParams        : OutputVars
     }
 
 
@@ -130,10 +140,10 @@ type RoverModel =
         timeForPanTilt: float
 
         //output values
-        numberOfSamples : int
-        energyRequired: float
-        timeRequired: float
-        bandwidthRequired: float
+        //numberOfSamples : int
+        //energyRequired: float
+        //timeRequired: float
+        //bandwidthRequired: float
 
 
 
@@ -151,6 +161,7 @@ type RoverAction =
     | ChangePanOverlap of Option<Overlap>
     | ChangeTiltOverlap of Option<Overlap>
     | SetRoverPosAndTarget of int
+    | ShowViewPlan of int
 
 
 
@@ -295,10 +306,10 @@ module RoverModel =
         timeForPanTilt = 0.5 //0.5 sec for 1°
 
         //output
-        numberOfSamples = 0
-        energyRequired = 0.0
-        timeRequired = 0.0
-        bandwidthRequired = 0.0
+        //numberOfSamples = 0
+        //energyRequired = 0.0
+        //timeRequired = 0.0
+        //bandwidthRequired = 0.0
 
 
 

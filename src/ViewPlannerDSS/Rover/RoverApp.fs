@@ -364,17 +364,54 @@ module RoverApp =
 
         view
 
+    
+    let createNewViewPlan (camvars:plist<CamVariables>) (p:Placement) (rover:RoverModel) =
+
+        let output = 
+                let cam = camvars |> PList.first
+                let values = cam.samplingValues |> PList.toList
+                let numSamples = values.Length
+                let energy = 
+                    let res = calculateOutputVars rover values 0 0.0 rover.energyForPanTilt 
+                    Math.Round(res, 2)
+
+                let time = 
+                    let res = calculateOutputVars rover values 0 0.0 rover.timeForPanTilt
+                    Math.Round(res,2)
+                
+                {
+                numberOfSamples = numSamples
+                energyRequired = energy
+                timeRequired = time
+                bandwidthRequired = 0.0
+                }
+
+        let id = 
+            let plans = rover.viewplans |> PList.toList
+            plans.Length + 1
+
+        let vp = 
+            {
+            id = id
+            placement = p
+            cameraVariables = camvars
+            thetaPhiValues = rover.thetaPhiValues
+            panOverlap = rover.panOverlap
+            tiltOverlap = rover.tiltOverlap
+            outputParams = output
+            }
+
+        vp
 
 
 
+    
 
-    let sampling (rover : RoverModel) = 
+    let sampling (p : Placement) (rover : RoverModel) = 
         
         let panOverlap = rover.panOverlap
         let tiltOverlap = rover.tiltOverlap
         let currentCamera = rover.camera
-   
-        
 
         //let fov = rover.fov
         let values = rover.thetaPhiValues
@@ -431,19 +468,13 @@ module RoverApp =
                 //for visualising footprints
                 let viewMatrices = values |> List.map(fun m -> calculateViewMatrix rover m.X m.Y camera.cam) |> PList.ofList
 
-                //output values
-                let numberOfSamples = values.Length
-                let energy = 
-                    let res = calculateOutputVars rover values 0 0.0 rover.energyForPanTilt 
-                    Math.Round(res, 2)
-
-                let time = 
-                    let res = calculateOutputVars rover values 0 0.0 rover.timeForPanTilt
-                    Math.Round(res,2)
-
                 let HR = {rover.HighResCam with cam = { rover.HighResCam.cam with samplingValues = sv; viewList = viewMatrices }}
 
-                {rover with HighResCam = HR; numberOfSamples = numberOfSamples; energyRequired = energy; timeRequired = time}
+                let camVars = PList.ofList [HR.cam]
+                let newVP = createNewViewPlan camVars p rover
+                let newViewPlanList = rover.viewplans.Append newVP
+
+                {rover with HighResCam = HR; viewplans = newViewPlanList} //numberOfSamples = numberOfSamples; energyRequired = energy; timeRequired = time}
 
             | WACLR -> 
                 let camera = rover.WACLR
@@ -546,10 +577,10 @@ module RoverApp =
     let calculateValues (rover:RoverModel) =
         
         let region = rover.reg
+        let selectedPos = rover.selectedPosition
         let newRover = 
-         match region with
-            | None -> rover
-            | Some reg -> 
+         match region,selectedPos with
+            | Some reg, Some p -> 
                 let spherePos = rover.projsphere.position
                 let l = reg |> PList.toList
                 let shiftedPoints = l  |> List.map (fun p -> (p - spherePos).Normalized)
@@ -573,12 +604,14 @@ module RoverApp =
                 let setR = initializePan rover thetaPhi.X
                 let setR2 = initializeTilt setR thetaPhi.Y
 
-                {setR2 with thetaPhiValues = plist; projPoints = projectionPoints}
+                let r = {setR2 with thetaPhiValues = plist; projPoints = projectionPoints}
+                sampling p r
+
+             | _ -> rover
         
-        let sampling = sampling newRover
-       // let viewMatrices = samplings |> List.map(fun m -> calculateViewMatrix newRover m.X m.Y) |> PList.ofList
-        sampling
-        //{newRover with samplingValues = samplings |> PList.ofList; viewList = viewMatrices}
+        newRover
+        //let roverWithSampling = sampling newRover
+        //roverWithSampling
         
       
     let changeCam (rover:RoverModel) (camtype:Option<CameraType>)=
@@ -616,6 +649,7 @@ module RoverApp =
          | None -> rover
 
     
+
     //create new cameraviews for stereo cam
     let updateStereoCam (forward:V3d) (pos:V3d) (r:RoverModel)=
 
@@ -638,7 +672,7 @@ module RoverApp =
 
 
 
-    let setRoverPosAndTarget (rover:RoverModel) (id:int) = 
+    let setRoverPosAndTarget (id:int) (rover:RoverModel) = 
         
         let currentCam = rover.camera
         let up = rover.up
@@ -671,7 +705,10 @@ module RoverApp =
 
         | None -> rover
 
-
+    
+    //TODO
+    let showViewPlan (id:int) (rover:RoverModel) = 
+        rover
 
 
 
@@ -707,7 +744,11 @@ module RoverApp =
                 changeTiltOverlap rover o
             
             | SetRoverPosAndTarget id ->
-                setRoverPosAndTarget rover id
+                setRoverPosAndTarget id rover
+            
+            | ShowViewPlan id ->
+                showViewPlan id rover
+                
                 
                 
                 
