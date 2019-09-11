@@ -320,7 +320,8 @@ module App =
           |> Option.defaultValue x
                             
       let newDraw = List.fold drawPoints drawingModel [0.0..samplingSize]
-    
+      let v = drawingModel.points.Item(0)
+
       let correctedAltitudeList= correctSamplingErrors altitudeList errorHitList  
       
       let rec accDistance i acc= 
@@ -345,6 +346,7 @@ module App =
               pointList           = pointList
               altitudeList        = correctedAltitudeList  
               errorHitList        = errorHitList
+              hoverBox            = Box3d(firstPoint, secondPoint)
       }
     
   let rec update (model : Model) (msg : Message) =   
@@ -506,7 +508,7 @@ module App =
         else 
             model
       
-      | PickingAction msg ->         
+      | PickingAction msg ->    
         let pickingModel, drawingModel =
           match msg with
           | HitSurface (a,b) -> 
@@ -521,7 +523,6 @@ module App =
             updatePickM, updatedDrawM
           | _ -> PickingApp.update model.picking msg, model.drawing
         
-        //let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 3.5; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } } 
         let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 0.0; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } } 
 
         if model.jumpSelectionActive && not model.camViewAnimRunning then
@@ -585,6 +586,11 @@ module App =
             model
       | HighlightIn3DView ->       
         { model with drawing2 =  DrawingApp.update model.drawing2 (DrawingAction.AddPoint (model.pointList.Item(model.hoveredCircleIndex.Value), None))}
+      
+      | EnterBox v ->
+        Log.line "VVVVVV: %A " v
+        model
+
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | _ -> model
@@ -692,13 +698,50 @@ module App =
                 return Some t 
             else return None
         }
+      
+        //[[-2487582.90079051, 2289040.10787687, -276703.761609814], [-2486805.61263659, 2289840.32681678, -275815.855011422]]
+      //let hoverBox = Sg.box (Mod.constant (C4b(1.0,1.0,1.0,0.0))) m.hoverBox
+      //               |> Sg.shader {
+      //                       do! DefaultSurfaces.trafo
+      //                       //do! DefaultSurfaces.vertexColor
+      //                       //do! DefaultSurfaces.simpleLighting
+      //                       }              
+      //               |> Sg.requirePicking
+      //               |> Sg.noEvents
+      //               |> Sg.withEvents[ 
+      //                   Sg.onEnter (fun x -> EnterBox x)   
+      //                  ] 
+      //let unboxed (f : Aardvark.SceneGraph.ISg -> Aardvark.SceneGraph.ISg) (inner : ISg<'msg>) =
+      //      match inner with
+      //          | :? Sg.Adapter<'msg> as a ->
+      //              a.Child |> Mod.force |> f |> Sg.Adapter :> ISg<'msg>
+      //          | _ ->
+      //              inner |> unbox |> f |> Sg.Adapter :> ISg<'msg>
+
+      //let pickable' (p : IMod<PickShape>) (sg : ISg<'msg>) =
+      //      sg |>  unboxed (fun s -> new Sg.PickableApplicator(Mod.map Pickable.ofShape p, Mod.constant s) :> ISg)
+
+      //let pickable =  pickable' ( m.hoverBox |> Mod.map(fun x ->  (PickShape.Box (x))))
+
+      let pickable = m.hoverBox |> Mod.map ( fun s -> { shape = PickShape.Box (s); trafo = Trafo3d.Identity } )
+
+      let hoverBox = Sg.empty 
+                     |> Sg.pickable' pickable
+                     |> Sg.requirePicking
+                     |> Sg.noEvents
+                     //|> pickable 
+                     |> Sg.withEvents[ 
+                         Sg.onEnter (fun x -> EnterBox x)   
+                        ] 
+      
 
       let scene = 
         [
-            opcs
-            filledPolygonSg
-            afterFilledPolygonSg
-            afterFilledPolygonSg2
+            opcs |> Sg.map PickingAction
+            filledPolygonSg |> Sg.map PickingAction
+            afterFilledPolygonSg |> Sg.map PickingAction
+            afterFilledPolygonSg2 |> Sg.map PickingAction
+            hoverBox 
         ]
         |> Sg.ofList
         |> Sg.overrideProjTrafo trafo
@@ -723,8 +766,9 @@ module App =
            always (onMouseUp (fun b p -> f (Message.Up(b))))
            onlyWhen state.zoom (onMouseMove (Message.Zoom >> f))
            onlyWhen state.pan (onMouseMove (Message.Pan >> f))
-         ]) 
-         (scene |> Sg.map PickingAction) 
+         ])
+         scene 
+         
 
       
       let dropDownValues = m.dropDownOptions |> AMap.map (fun k v -> text v)
@@ -1147,6 +1191,7 @@ module App =
           svgSurfaceUnderLineErrorCoord   = ""
           svgCircleSize                   = 0.0
           hoveredCircleIndex              = None
+          hoverBox                        = Box3d(V3d.Zero,V3d.Zero)
         }
 
       {

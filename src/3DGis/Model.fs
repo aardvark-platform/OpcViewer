@@ -49,6 +49,8 @@ type Message =
   | HovereCircleLeave       
   | HighlightIn3DView            
 
+  | EnterBox                of V3d
+
 
 
 
@@ -70,6 +72,7 @@ type CameraStateLean =
       position              : V3d
       stationing            : Stationing
   }
+
 
 [<DomainType>]
 type Axis = {
@@ -153,6 +156,8 @@ type Model =
         cutViewDim                     : V2i
 
         hoveredCircleIndex             : Option<int>
+        hoverBox                       : Box3d
+
     }
 
    
