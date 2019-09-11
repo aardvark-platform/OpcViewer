@@ -82,6 +82,8 @@ module Sg =
     (domL, domR)
     
 
+
+
   //visualisation tools
 
   //---POSITION VISUALISATION
@@ -129,6 +131,50 @@ module Sg =
 
 
   //---
+
+  
+  let roverPlacementModeScene (placements: alist<MPlacement>) = 
+    
+    let sgs = 
+        alist{
+    
+        for p in placements do
+     
+        let pos = p.position
+        let tar = p.target
+        let trafo1 = pos |> Mod.map (fun p -> Trafo3d.Translation(p))
+        let trafo2 = tar |> Mod.map (fun t -> Trafo3d.Translation(t))
+
+        let p1 = sphereVisualisation C4b.Yellow 0.2 trafo1
+        let p2 = sphereVisualisation C4b.Magenta 0.2 trafo2
+
+        yield p1
+        yield p2
+    
+        }
+    
+    sgs |> AList.toList |> Sg.ofList
+  
+
+  //let sampleModeScene ()
+
+
+  let setRenderViewScene (curr:IMod<Option<ModeOption>>) (m:MModel) = 
+    
+    let isg = curr |> Mod.map (fun f -> 
+        
+                    match f with
+                    //| Some StandardMode -> standardModeMenu  
+                    | Some RoverPlacementMode -> roverPlacementModeScene  m.rover.positionsList
+                    //| Some ViewPlanMode -> viewPlanModeMenu  m
+                    //| Some SampleMode -> sampleModeMenu  m
+                    //| None -> standardModeMenu  
+                )
+    isg |> Sg.dynamic
+    
+
+
+
   
   //---AXIS VISUALISATION---
   let lineList (pos:IMod<V3d>) (axis:IMod<V3d>) (offset:float) = 

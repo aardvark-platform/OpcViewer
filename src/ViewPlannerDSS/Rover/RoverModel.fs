@@ -3,6 +3,7 @@
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.UI.Primitives
+open PRo3D.Minerva
 
 [<DomainType>]
 type CameraInput = 
@@ -86,6 +87,7 @@ type ProjectionSphere =
  type ViewPlan = 
     {
     id                  : int
+    instrument          : string
     placement           : Placement
     cameraVariables     : plist<CamVariables>
     thetaPhiValues      : plist<V2d>
@@ -232,7 +234,7 @@ module RoverModel =
          }
 
         up     = initCamera.view.Up
-        camera = WACLR
+        camera = HighResCam
 
 
         
@@ -272,7 +274,7 @@ module RoverModel =
 
         currentPanOverlap = Some Percent_20
         currentTiltOverlap = Some Percent_20
-        currentCamType = Some WACLR
+        currentCamType = Some HighResCam
         cameraOptions = HMap.ofList [WACLR, "WACLR Stereo"; HighResCam, "High Resolution Camera"]
         panOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
         tiltOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]

@@ -165,9 +165,8 @@ module ViewUtilities =
              
    
             
-     //Control Menus für different modes
-
-    let RPModeMenu (m:MModel) =
+    //---CONTROL MENUS---
+    let rPModeMenu (m:MModel) =
         
               div[style "color:white; margin: 5px 15px 5px 5px"][
 
@@ -182,7 +181,7 @@ module ViewUtilities =
             
     
 
-    let SampleModeMenu (m:MModel) = 
+    let sampleModeMenu (m:MModel) = 
         
               div[style "color:white; margin: 5px 15px 5px 5px"][
 
@@ -225,71 +224,134 @@ module ViewUtilities =
               ]
             
     
+    let viewPlanDetails (vp:IMod<Option<MViewPlan>>)  =
 
-    let ViewPlanModeMenu  (m:MModel) = 
+        Incremental.div AttributeMap.Empty (
+        
+            alist{
+        
+                let! d = vp |> Mod.map (fun plan -> 
+ 
+                    match plan with
+                    | Some p -> 
          
-              div[style "color:white; margin: 5px 15px 5px 5px"][
-
-                Html.SemUi.accordion "ViewPlans" "bookmark" true [
-                       accordionContentViewPlans m.rover |> UI.map RoverAction
-                       ]   
-                
-                button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.RotateToPoint)]  [
-                    i [clazz "icon play"] []
-                    text "walk through" 
-                    ] |> UI.map RoverAction
-                                
-              ] 
-            
-     
-    let standardModeMenu (m:MModel) = 
-         
-              div[style "color:white; margin: 5px 15px 5px 5px"][
-
-                h4[][text "How to use"]
-
-                table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
-                            tr [] [
-                               td [] [i [clazz "icon map marker alternate"][]]
-                               td [] [text "Step 1: Rover Placement Mode - pick rover positions"]
-                            ]
-
-                            tr [] [
-                               td [] [i [clazz "icon camera"][]]
-                               td [] [text "Step 2: Sample Mode - choose input parameters,set region of interest and sample"]
-                            ]
-
-                            tr [] [
-                               td [] [i [clazz "icon bookmark"][]]
-                               td [] [text "Step 3: ViewPlan Mode - select a viewplan"]
-                            ]
+                        let outputvars = p.outputParams
+                        let instrument = p.instrument.ToString()
+                        let pan = "" + (p.panOverlap).ToString() + "°"
+                        let tilt = "" + (p.tiltOverlap).ToString() + "°"
+                        let numsamples = "" + outputvars.numberOfSamples.ToString()
+                        let energy = "" + outputvars.energyRequired.ToString() + "%"
+                        let time = "" + outputvars.timeRequired.ToString() + "sec"
+                        let bandwidth = "" + outputvars.bandwidthRequired.ToString()
                          
-                ]
+                        table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
+                            tr [] [
+                               td [] [text "Instrument"]
+                               td [] [text instrument]
+                                ]
+                            
+                            tr [] [
+                               td [] [text "pan overlap"]
+                               td [] [text pan]
+                                ]
+                            
+                            tr [] [
+                               td [] [text "tilt overlap"]
+                               td [] [text tilt]
+                                ]
+                            
+                            tr [] [
+                               td [] [text "# of samples"]
+                               td [] [text numsamples]
+                                ]
+                            
+                            tr [] [
+                               td [] [text "required energy"]
+                               td [] [text energy]
+                                ]
 
-                    
-              ]
+                            tr [] [
+                               td [] [text "required time"]
+                               td [] [text time]
+                                ]
+
+                            tr [] [
+                               td [] [text "required bandwidth"]
+                               td [] [text bandwidth]
+                                ]
+                          ]
+                         
+                    | None -> h5[][text "Select a viewplan to view its details"]
+                  
+                )
+
+            yield d
+
+            }
+        )
+
+
+    let viewPlanModeMenu (m: MModel) = 
+         
+        div[style "color:white; margin: 5px 15px 5px 5px"][
+
+            Html.SemUi.accordion "ViewPlans" "bookmark" true [
+                accordionContentViewPlans m.rover |> UI.map RoverAction
+            ]  
+                
+            br[]
+            viewPlanDetails m.rover.selectedViewPlan
+                
+            br[]
+
+            button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.RotateToPoint)]  [
+                i [clazz "icon play"] []
+                text "walk through" 
+            ] |> UI.map RoverAction
+                                
+        ] 
+    
+
+    let standardModeMenu  = 
+         
+        div[style "color:white; margin: 5px 15px 5px 5px"][
+
+            h4[][text "How to use"]
+
+            table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
+                    tr [] [
+                        td [] [i [clazz "icon map marker alternate"][]]
+                        td [] [text "Step 1: Rover Placement Mode - pick rover positions"]
+                    ]
+
+                    tr [] [
+                        td [] [i [clazz "icon camera"][]]
+                        td [] [text "Step 2: Sample Mode - choose input parameters,set region of interest and sample"]
+                    ]
+
+                    tr [] [
+                        td [] [i [clazz "icon bookmark"][]]
+                        td [] [text "Step 3: ViewPlan Mode - select a viewplan"]
+                    ]   
+                ]   
+            ]
             
 
-
-
-
-    
     let selectMode (curr:IMod<Option<ModeOption>>) (m:MModel) =
         
         Incremental.div AttributeMap.Empty (
         
             alist{
         
-                //let mo = m.currentModeOption
                 let! d = curr |> Mod.map (fun f -> 
         
        
                     match f with
-                    | Some StandardMode -> standardModeMenu  m
-                    | Some RoverPlacementMode -> RPModeMenu  m
-                    | Some ViewPlanMode -> ViewPlanModeMenu  m
-                    | Some SampleMode -> SampleModeMenu  m
-                    | None -> standardModeMenu  m
+                    | Some StandardMode -> standardModeMenu  
+                    | Some RoverPlacementMode -> rPModeMenu  m
+                    | Some ViewPlanMode -> viewPlanModeMenu  m
+                    | Some SampleMode -> sampleModeMenu  m
+                    | None -> standardModeMenu  
 
                 )
 
@@ -297,12 +359,5 @@ module ViewUtilities =
 
             }
         )
-           
-     
-        
-        
-     
-        
-        
-
-
+    
+    //---

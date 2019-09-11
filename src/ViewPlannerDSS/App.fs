@@ -310,6 +310,9 @@ module App =
    
       
       //views
+
+
+
       let baseSg = 
         [
           m.drawing |> DrawingApp.view
@@ -317,6 +320,28 @@ module App =
           target
           ps
         ] |> Sg.ofList
+
+      let roverModeSg = 
+        [
+        m.drawing |> DrawingApp.view
+        Sg.roverPlacementModeScene m.rover.positionsList
+        ]|> Sg.ofList
+
+      let sampleModeSg = 
+        [
+        baseSg
+
+        
+        
+        
+        ] |> Sg.ofList
+
+      let viewPlanModeSg = 
+        [
+        baseSg
+        
+        
+        ]
 
       let fullSgHR = 
         [
@@ -461,73 +486,7 @@ module App =
             ]
           )
             
-
-          //require dependencies (
-          //  body [style "width: 100%; height:100%; background: transparent";] [
-          //    div[style "color:white; margin: 5px 15px 5px 5px"][
-
-          //      h4[][text "Menu Options"]
-          //      div [ clazz "item" ] [ 
-          //      dropdown { placeholder = ""; allowEmpty = false } [ clazz "ui simple inverted selection dropdown" ] (m.modeOptions |> AMap.map (fun k v -> text v)) m.currentModeOption Action.Configs 
-          //           ]   
-
-          //      h4[][text "Rover Controls"]
-          //      p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
-          //      p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
-                
-       
-          //      h4[][text "Input Parameters"]
-          //      table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
-          //                  tr [] [
-          //                     td [] [text "Instrument"]
-          //                     td [] [dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera]|> UI.map RoverAction
-          //                  ]
-          //                  tr [] [
-          //                      td [] [text "pan overlap"]
-          //                      td [] [dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.panOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentPanOverlap RoverAction.ChangePanOverlap] |> UI.map RoverAction
-          //                  ]
-
-          //                  tr [] [
-          //                      td [] [text "tilt overlap"]
-          //                      td [] [dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.tiltOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentTiltOverlap RoverAction.ChangeTiltOverlap ] |> UI.map RoverAction
-          //                  ]
-
-          //                  tr [] [
-          //                      td [attribute "colspan" "2"] [
-          //                       Html.SemUi.accordion "Rover positions" "map pin" true [
-          //                          ViewUtilities.accordionContentPositions m.rover |> UI.map RoverAction
-          //                          ]  
-          //                      ]
-          //                  ]
-
-
-
-          //              ]
-                 
-          //      //accordion
-          //      //Html.SemUi.accordion "Rover positions" "map marker" true [
-          //      //    ViewUtilities.accordionContent m.rover
-          //      //]  
-
-                
-          //      //ViewUtilities.visibleButton criteria (fun _ -> RoverAction.CalculateAngles) "ui inverted labeled basic icon button" "icon camera" "sample" |> UI.map RoverAction
-          //      button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.CalculateAngles)]  [
-          //      i [clazz "icon camera"] []
-          //      text "sample"] |> UI.map RoverAction
-                
-          //      button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.RotateToPoint)]  [
-          //          i [clazz "icon play"] []
-          //          text "walk through" 
-          //          ] |> UI.map RoverAction
-     
-                
-          //      Html.SemUi.accordion "ViewPlans" "bookmark" true [
-          //             ViewUtilities.accordionContentViewPlans m.rover |> UI.map RoverAction
-          //             ]  
-                
-
-
-
+ 
           //      //h4[][text "Output"]
           //      //table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
           //      //            tr [] [
@@ -753,7 +712,7 @@ module App =
             }
           //menuOptions        = HMap.ofList [SaveCameraState, "Save camera state"; SaveRoverState, "Save plane state"; RoverPlacementMode, "rover placement mode"; StandardMode, "standard mode"]
           modeOptions        = HMap.ofList [StandardMode, "standard mode"; RoverPlacementMode, "rover placement mode"; SampleMode, "sample mode" ; ViewPlanMode, "view plan mode"] 
-          currentModeOption  = None
+          currentModeOption  = Some StandardMode
         }
 
       {

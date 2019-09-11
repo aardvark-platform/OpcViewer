@@ -365,7 +365,7 @@ module RoverApp =
         view
 
     
-    let createNewViewPlan (camvars:plist<CamVariables>) (p:Placement) (rover:RoverModel) =
+    let createNewViewPlan (camvars:plist<CamVariables>) (p:Placement) (camtype: string) (rover:RoverModel) =
 
         let output = 
                 let cam = camvars |> PList.first
@@ -393,6 +393,7 @@ module RoverApp =
         let vp = 
             {
             id = id
+            instrument = camtype
             placement = p
             cameraVariables = camvars
             thetaPhiValues = rover.thetaPhiValues
@@ -471,7 +472,7 @@ module RoverApp =
                 let HR = {rover.HighResCam with cam = { rover.HighResCam.cam with samplingValues = sv; viewList = viewMatrices }}
 
                 let camVars = PList.ofList [HR.cam]
-                let newVP = createNewViewPlan camVars p rover
+                let newVP = createNewViewPlan camVars p "High Resolution Camera" rover
                 let newViewPlanList = rover.viewplans.Append newVP
 
                 {rover with HighResCam = HR; viewplans = newViewPlanList} //numberOfSamples = numberOfSamples; energyRequired = energy; timeRequired = time}
@@ -715,11 +716,14 @@ module RoverApp =
         match selectedVP with 
         | Some viewplan ->
             
-            let camVars = viewplan.cameraVariables
-            let size = camVars |> PList.toList |> List.length
-            let camtype = if size = 1 then HighResCam else WACLR
-            let placement = viewplan.placement
-            rover
+            //let camVars = viewplan.cameraVariables
+            //let size = camVars |> PList.toList |> List.length
+            //let camtype = if size = 1 then HighResCam else WACLR
+            //let placement = viewplan.placement
+
+            //TODO
+            {rover with selectedViewPlan = Some viewplan}
+
 
 
 
