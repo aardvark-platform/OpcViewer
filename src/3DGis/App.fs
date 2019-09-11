@@ -310,8 +310,8 @@ module App =
                   altitudeList <- pointHeight.altitude :: altitudeList
                   errorHitList <- 0 :: errorHitList
     
-                  DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None)) 
-                  //x
+                  //DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None)) 
+                  x
               | None -> 
                   pointList <- pointList.Head :: pointList
                   errorHitList <- -1 :: errorHitList
@@ -320,11 +320,10 @@ module App =
           |> Option.defaultValue x
                             
       let newDraw = List.fold drawPoints drawingModel [0.0..samplingSize]
-      let v = drawingModel.points.Item(0)
 
       let correctedAltitudeList= correctSamplingErrors altitudeList errorHitList  
       
-      let rec accDistance i acc= 
+      let rec accDistance i acc = 
           if i >= 1 then
               let A = pointList.Item(i)
               let B = pointList.Item(i-1)
@@ -336,7 +335,7 @@ module App =
       { model with 
               picking             = pickingModel 
               drawing             = newDraw 
-              //drawing2             = newDraw2 
+              //drawing2            = newDraw2 
               numSampledPoints    = int samplingSize + 1 
               samplingDistance    = dir.Length/samplingSize
               linearDistance      = dir.Length
@@ -346,7 +345,7 @@ module App =
               pointList           = pointList
               altitudeList        = correctedAltitudeList  
               errorHitList        = errorHitList
-              hoverBox            = Box3d(firstPoint, secondPoint)
+              hoverBox            = Cylinder3d(firstPoint, secondPoint, altitudeList.Max (altitudeList.Item(0)) - altitudeList.Min (altitudeList.Item(0)))
       }
     
   let rec update (model : Model) (msg : Message) =   
@@ -366,11 +365,26 @@ module App =
                     { model with jumpSelectionActive = true; pickingActive = true }
                 else
                     { model with jumpSelectionActive = false; pickingActive = false }
+          | Keys.LeftCtrl -> 
+            { model with hover3dActive = true }
           | Keys.LeftShift -> 
             let p = { model.picking with intersectionPoints = plist.Empty }             
             let clearedDrawingModel = { DrawingModel.initial with style = { DrawingModel.initial.style with thickness = 0.0; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } } 
 
-            { model with pickingActive = true; lineSelectionActive = true; picking = p; drawing = clearedDrawingModel; annotations = AnnotationModel.initial; numSampledPoints = 0; stepSampleSize = {min = 0.01; max = 10000.0; value = model.stepSampleSize.value; step = 0.05; format = "{0:0.00}"}; linearDistance = 0.0; minHeight = 0.0; maxHeight = 0.0; accDistance = 0.0 }
+            { model with 
+                pickingActive = true; 
+                lineSelectionActive = true; 
+                picking = p; 
+                drawing = clearedDrawingModel; 
+                annotations = AnnotationModel.initial; 
+                numSampledPoints = 0; 
+                stepSampleSize = {min = 0.01; max = 10000.0; value = model.stepSampleSize.value; step = 0.05; format = "{0:0.00}"}; 
+                linearDistance = 0.0; 
+                minHeight = 0.0; 
+                maxHeight = 0.0; 
+                accDistance = 0.0; 
+                hoverBox = Cylinder3d(V3d.Zero,V3d.Zero,0.0,0.0) 
+            }
           | _ -> model
       | Message.KeyUp m ->
         match m with
@@ -381,6 +395,8 @@ module App =
                 { model with jumpSelectionActive = false; pickingActive = false }
           | Keys.LeftShift -> 
             { model with pickingActive = false; lineSelectionActive = false }
+          | Keys.LeftCtrl -> 
+            { model with hover3dActive = false }
           | Keys.Delete ->            
             { model with picking = PickingApp.update model.picking (PickingAction.ClearPoints) }
           | Keys.Back ->
@@ -523,7 +539,7 @@ module App =
             updatePickM, updatedDrawM
           | _ -> PickingApp.update model.picking msg, model.drawing
         
-        let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 0.0; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } } 
+        let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 2.0; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } } 
 
         if model.jumpSelectionActive && not model.camViewAnimRunning then
             update { model with selectedJumpPosition = pickingModel.intersectionPoints.Item(0); jumpSelectionActive = false; inJumpedPosition = true } Message.AnimateCameraJump            
@@ -576,21 +592,36 @@ module App =
         match model.hoveredCircleIndex with 
         | None -> 
             update { model with hoveredCircleIndex = Some id} Message.HighlightIn3DView
-        //| Some oldID when not (id = oldID) -> 
-          //  { model with hoveredCircleIndex = Some id}
+        | Some oldID when not (id = oldID) -> 
+            update { (update model HovereCircleLeave) with hoveredCircleIndex = Some id} Message.HighlightIn3DView
         | _ -> model
       | HovereCircleLeave -> 
         if model.hoveredCircleIndex.IsSome then
             { model with hoveredCircleIndex = None; drawing2 = DrawingModel.initial }
         else
             model
-      | HighlightIn3DView ->       
+      | HighlightIn3DView ->
         { model with drawing2 =  DrawingApp.update model.drawing2 (DrawingAction.AddPoint (model.pointList.Item(model.hoveredCircleIndex.Value), None))}
       
       | EnterBox v ->
-        Log.line "VVVVVV: %A " v
-        model
+        if model.hover3dActive then
+            let pointList = model.pointList
+        
+            let minElementIndex = 
+                let rec indexofMin i currMinDist index =
+                    if i = pointList.Length - 1 then indexofMin (i-1) (pointList.Item(i) - v).Length i 
+                    elif i > 0 then 
+                        let dist = (pointList.Item(i) - v).Length
+                        if currMinDist > dist then indexofMin (i-1) dist i else indexofMin (i-1) currMinDist index
+                    else
+                        index
+                indexofMin (pointList.Length-1) -1.0 -1
 
+            update model (HovereCircleEnter minElementIndex)
+        else
+            //let fray = FastRay3d(V3d.Zero, V3d.OOI)
+            //let i = fray.Ray.Intersect (Plane3d(V3d.OOI,V3d.OII))
+            model
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | _ -> model
@@ -699,39 +730,16 @@ module App =
             else return None
         }
       
-        //[[-2487582.90079051, 2289040.10787687, -276703.761609814], [-2486805.61263659, 2289840.32681678, -275815.855011422]]
-      //let hoverBox = Sg.box (Mod.constant (C4b(1.0,1.0,1.0,0.0))) m.hoverBox
-      //               |> Sg.shader {
-      //                       do! DefaultSurfaces.trafo
-      //                       //do! DefaultSurfaces.vertexColor
-      //                       //do! DefaultSurfaces.simpleLighting
-      //                       }              
-      //               |> Sg.requirePicking
-      //               |> Sg.noEvents
-      //               |> Sg.withEvents[ 
-      //                   Sg.onEnter (fun x -> EnterBox x)   
-      //                  ] 
-      //let unboxed (f : Aardvark.SceneGraph.ISg -> Aardvark.SceneGraph.ISg) (inner : ISg<'msg>) =
-      //      match inner with
-      //          | :? Sg.Adapter<'msg> as a ->
-      //              a.Child |> Mod.force |> f |> Sg.Adapter :> ISg<'msg>
-      //          | _ ->
-      //              inner |> unbox |> f |> Sg.Adapter :> ISg<'msg>
+      
 
-      //let pickable' (p : IMod<PickShape>) (sg : ISg<'msg>) =
-      //      sg |>  unboxed (fun s -> new Sg.PickableApplicator(Mod.map Pickable.ofShape p, Mod.constant s) :> ISg)
-
-      //let pickable =  pickable' ( m.hoverBox |> Mod.map(fun x ->  (PickShape.Box (x))))
-
-      let pickable = m.hoverBox |> Mod.map ( fun s -> { shape = PickShape.Box (s); trafo = Trafo3d.Identity } )
-
+      //let cy= Cylinder3d
       let hoverBox = Sg.empty 
-                     |> Sg.pickable' pickable
+                     |> Sg.pickable' (m.hoverBox |> Mod.map ( fun s -> { shape = PickShape.Cylinder (s); trafo = Trafo3d.Identity } ))
                      |> Sg.requirePicking
                      |> Sg.noEvents
-                     //|> pickable 
                      |> Sg.withEvents[ 
-                         Sg.onEnter (fun x -> EnterBox x)   
+                         Sg.onEnter (fun x -> EnterBox x) 
+                         Sg.onLeave (fun _ -> HovereCircleLeave)   
                         ] 
       
 
@@ -776,7 +784,7 @@ module App =
       let dependencies = 
          Html.semui @ 
          [ 
-            { kind = Stylesheet; name = "CutView4.css"; url = "CutView4.css" }
+            { kind = Stylesheet; name = "CutView5.css"; url = "CutView5.css" }
          ]  
 
       page (fun request -> 
@@ -857,6 +865,7 @@ module App =
                         yield attribute "opacity" "0.25"
                         yield attribute "stroke" strokeColor
                         yield attribute "stroke-width" strokeWidthMainRect
+                        yield onMouseLeave (fun _ -> HovereCircleLeave)
                     } |> AttributeMap.ofAMap
                  )
     
@@ -1003,7 +1012,7 @@ module App =
                             let! circleSize = m.svgCircleSize
                             let! dim = m.cutViewDim
                             
-                            let r = sprintf "%f" (Math.Min(circleSize/4.0 * float dim.X/100.0, 6.8)) + "px"                              
+                            let r = sprintf "%f" (Math.Min(circleSize/4.0 * float dim.X/100.0, 6.8))                              
                             let stw = sprintf "%f" (Math.Min(circleSize/12.0 * float dim.X/100.0, 2.25) |> (fun x -> if x >= 1.0 then x else 0.0)) + "px"       
 
                             let! drawingCoord = m.svgPointsCoord                                  
@@ -1013,7 +1022,21 @@ module App =
                                 if xy.Length > 1 then
                                     let x = xy.[0]
                                     let y = xy.[1]
-                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(50,208,255)"; onMouseEnter (fun _ -> HovereCircleEnter i); onMouseLeave (fun _ -> HovereCircleLeave) ] |> AttributeMap.ofList)                              
+                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(50,208,255)"; onMouseEnter (fun _ -> HovereCircleEnter i) ] |> AttributeMap.ofList)      
+
+                                    let boxX = x |> float
+                                    
+                                    let boxR = r |> float
+                                    let! yOffset = m.offsetUIDrawY
+                                    let! dimensions = m.cutViewDim
+                                    let yWidth = (float) dimensions.Y
+
+                                    let sY = (sprintf "%f" (yOffset * yWidth)) + px
+
+                                    let wY = (sprintf "%f" ((1.0-yOffset*2.0) * yWidth)) + px
+
+                                    yield Incremental.Svg.rect ([attribute "x" (sprintf "%f" (boxX-boxR)); attribute "y" sY; attribute "width" (sprintf "%f" (boxR * 2.0)); attribute "height" wY; attribute "stroke-width" "0"; attribute "fill" "rgba(50,208,255,0)"; clazz "hoverRect" ;onMouseEnter (fun _ -> HovereCircleEnter i);] |> AttributeMap.ofList)      
+
 
                             let! drawingErrorCoord = m.svgPointsErrorCoord                                  
                             let coordArray = drawingErrorCoord.Split([|" "|], StringSplitOptions.None)
@@ -1027,7 +1050,6 @@ module App =
                             let! hoverCircle = m.hoveredCircleIndex
                             
                             if hoverCircle.IsSome then 
-                                let! xOffset = m.offsetUIDrawX
                                 let! yOffset = m.offsetUIDrawY
 
                                 let! dimensions = m.cutViewDim
@@ -1037,8 +1059,30 @@ module App =
                                 let! aL = m.altitudeList
 
                                 let! samplingDistance = m.samplingDistance
-                               
-                                yield Svg.text ([ attribute "x" (sprintf "%f" (xOffset * xWidth) + px); attribute "y" (sprintf "%f" (yOffset * yWidth - 2.0) + px); attribute "font-size" "16"; attribute "fill" "#ffffff"; clazz "UIText"]) ( "Altitude: " + sprintf "%.2f" (aL.Item(hoverCircle.Value)) + " m; Distance: " + sprintf "%.2f" (samplingDistance * float hoverCircle.Value) + " m") 
+
+                                let coordArray = drawingCoord.Split([|" "|], StringSplitOptions.None) 
+                                let xy = coordArray.[hoverCircle.Value].Split([|","|], StringSplitOptions.None)
+                                if xy.Length > 1 then
+                                    let x = xy.[0]
+                                    let y = xy.[1]
+                                    
+                                    let boxR = r |> float
+                                    let sY = (sprintf "%f" (yOffset * yWidth)) + px
+                                    let wY = (sprintf "%f" ((1.0-yOffset*2.0) * yWidth)) + px
+                                    yield Incremental.Svg.rect ([attribute "x" (sprintf "%f" ((x |> float)-boxR)); attribute "y" sY; attribute "width" (sprintf "%f" (boxR * 2.0)); attribute "height" wY; attribute "stroke-width" "0"; attribute "fill" "rgba(237,55,66,0.9)";  ] |> AttributeMap.ofList)      
+                                    
+                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(225,225,225)"; onMouseLeave (fun _ -> HovereCircleLeave) ] |> AttributeMap.ofList)                              
+                                    
+                                    let textAnchor = 
+                                        let textPosition = (x |> float) / xWidth
+                                        if textPosition < 0.15 then
+                                            "begin"
+                                        elif textPosition < 0.85 then
+                                            "middle"
+                                        else
+                                            "end"
+
+                                    yield Svg.text ([ attribute "x" x; attribute "y" (sprintf "%f" (yOffset * yWidth - 10.0) + px); attribute "font-size" "16"; attribute "fill" "#ffffff"; clazz "UIText"; attribute "text-anchor" textAnchor]) ( "Altitude: " + sprintf "%.2f" (aL.Item(hoverCircle.Value)) + " m; Distance: " + sprintf "%.2f" (samplingDistance * float hoverCircle.Value) + " m") 
                         }
 
                     onBoot "$(window).trigger('resize')" (
@@ -1177,7 +1221,7 @@ module App =
           dropDownOptions                 = HMap.ofList [P, "Perspective"; O, "Orthographic";]
           currentOption                   = Some O
           offsetUIDrawX                   = 0.05
-          offsetUIDrawY                   = 0.2
+          offsetUIDrawY                   = 0.15
           pointList                       = []
           altitudeList                    = []
           errorHitList                    = []
@@ -1191,7 +1235,8 @@ module App =
           svgSurfaceUnderLineErrorCoord   = ""
           svgCircleSize                   = 0.0
           hoveredCircleIndex              = None
-          hoverBox                        = Box3d(V3d.Zero,V3d.Zero)
+          hoverBox                        = Cylinder3d(V3d.Zero,V3d.Zero,0.0,0.0)
+          hover3dActive                   = false
         }
 
       {

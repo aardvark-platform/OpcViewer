@@ -156,7 +156,8 @@ type Model =
         cutViewDim                     : V2i
 
         hoveredCircleIndex             : Option<int>
-        hoverBox                       : Box3d
+        hover3dActive                  : bool
+        hoverBox                       : Cylinder3d
 
     }
 
