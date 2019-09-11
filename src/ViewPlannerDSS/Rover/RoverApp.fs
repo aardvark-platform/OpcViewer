@@ -708,7 +708,33 @@ module RoverApp =
     
     //TODO
     let showViewPlan (id:int) (rover:RoverModel) = 
-        rover
+        
+        let viewplans = rover.viewplans
+        let selectedVP = viewplans |> Seq.tryFind (fun place -> place.id = id)
+
+        match selectedVP with 
+        | Some viewplan ->
+            
+            let camVars = viewplan.cameraVariables
+            let size = camVars |> PList.toList |> List.length
+            let camtype = if size = 1 then HighResCam else WACLR
+            let placement = viewplan.placement
+            rover
+
+
+
+
+        | None -> rover
+
+
+
+
+        
+
+
+
+
+
 
 
 

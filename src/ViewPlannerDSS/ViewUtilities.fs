@@ -165,7 +165,140 @@ module ViewUtilities =
              
    
             
+     //Control Menus für different modes
+
+    let RPModeMenu (m:MModel) =
+        
+              div[style "color:white; margin: 5px 15px 5px 5px"][
+
+                h5[] [text "Press Strg + left click to pick a point"]
+                h5[] [text "First hit = rover position; second hit = rover target"]
+
+                Html.SemUi.accordion "Rover positions" "map pin" true [
+                      accordionContentPositions m.rover |> UI.map RoverAction
+                      ]  
+                                
+              ]
+            
+    
+
+    let SampleModeMenu (m:MModel) = 
+        
+              div[style "color:white; margin: 5px 15px 5px 5px"][
+
+                h4[][text "Rover Controls"]
+                p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
+                p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
+                
+                h4[][text "Input Parameters"]
+                table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
+                            tr [] [
+                               td [] [text "Instrument"]
+                               td [] [dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.cameraOptions |> AMap.map (fun k v -> text v)) m.rover.currentCamType RoverAction.SwitchCamera]|> UI.map RoverAction
+                            ]
+                            tr [] [
+                                td [] [text "pan overlap"]
+                                td [] [dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.panOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentPanOverlap RoverAction.ChangePanOverlap] |> UI.map RoverAction
+                            ]
+
+                            tr [] [
+                                td [] [text "tilt overlap"]
+                                td [] [dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.rover.tiltOverlapOptions |> AMap.map (fun k v -> text v)) m.rover.currentTiltOverlap RoverAction.ChangeTiltOverlap ] |> UI.map RoverAction
+                            ]
+
+                            tr [] [
+                                td [attribute "colspan" "2"] [
+                                 Html.SemUi.accordion "Rover positions" "map pin" true [
+                                    accordionContentPositions m.rover |> UI.map RoverAction
+                                    ]  
+                                ]
+                            ]
+
+
+
+                ]
+
+                button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.CalculateAngles)]  [
+                i [clazz "icon camera"] []
+                text "sample"] |> UI.map RoverAction
+                                
+              ]
+            
+    
+
+    let ViewPlanModeMenu  (m:MModel) = 
+         
+              div[style "color:white; margin: 5px 15px 5px 5px"][
+
+                Html.SemUi.accordion "ViewPlans" "bookmark" true [
+                       accordionContentViewPlans m.rover |> UI.map RoverAction
+                       ]   
+                
+                button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.RotateToPoint)]  [
+                    i [clazz "icon play"] []
+                    text "walk through" 
+                    ] |> UI.map RoverAction
+                                
+              ] 
+            
+     
+    let standardModeMenu (m:MModel) = 
+         
+              div[style "color:white; margin: 5px 15px 5px 5px"][
+
+                h4[][text "How to use"]
+
+                table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
+                            tr [] [
+                               td [] [i [clazz "icon map marker alternate"][]]
+                               td [] [text "Step 1: Rover Placement Mode - pick rover positions"]
+                            ]
+
+                            tr [] [
+                               td [] [i [clazz "icon camera"][]]
+                               td [] [text "Step 2: Sample Mode - choose input parameters,set region of interest and sample"]
+                            ]
+
+                            tr [] [
+                               td [] [i [clazz "icon bookmark"][]]
+                               td [] [text "Step 3: ViewPlan Mode - select a viewplan"]
+                            ]
+                         
+                ]
+
+                    
+              ]
+            
+
+
+
+
+    
+    let selectMode (curr:IMod<Option<ModeOption>>) (m:MModel) =
+        
+        Incremental.div AttributeMap.Empty (
+        
+            alist{
+        
+                //let mo = m.currentModeOption
+                let! d = curr |> Mod.map (fun f -> 
+        
        
+                    match f with
+                    | Some StandardMode -> standardModeMenu  m
+                    | Some RoverPlacementMode -> RPModeMenu  m
+                    | Some ViewPlanMode -> ViewPlanModeMenu  m
+                    | Some SampleMode -> SampleModeMenu  m
+                    | None -> standardModeMenu  m
+
+                )
+
+            yield d
+
+            }
+        )
+           
+     
         
         
      

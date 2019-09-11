@@ -12,12 +12,14 @@ open ViewPlanner.Rover
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 
-type MenuOption =
+type ModeOption =
     //| SaveCameraState   
     //| SaveRoverState   
     //| SavePlaneState
+    | StandardMode 
     | RoverPlacementMode
-    | StandardMode
+    | SampleMode
+    | ViewPlanMode
 
 
 type Action =
@@ -27,7 +29,7 @@ type Action =
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
   | RoverAction      of RoverAction
-  | Configs          of Option<MenuOption>
+  | Configs          of Option<ModeOption>
 
 
 
@@ -88,8 +90,8 @@ type Model =
         region               : Option<plist<V3d>>
         roiBboxFull          : bool
         roverPlacement       : PlacementInfo
-        menuOptions          : hmap<MenuOption, string>
-        currentMenuOption    : Option<MenuOption>
+        modeOptions          : hmap<ModeOption, string>
+        currentModeOption    : Option<ModeOption>
 
     }
 
