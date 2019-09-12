@@ -10,6 +10,7 @@ open Aardvark.UI.Primitives
 open ViewPlanner.Rover
 
 module ViewUtilities = 
+    open System.Reactive.Joins
     
 
     let accordionContentPositions (r:MRoverModel) = 
@@ -229,63 +230,83 @@ module ViewUtilities =
         Incremental.div AttributeMap.Empty (
         
             alist{
-        
-                let! d = vp |> Mod.map (fun plan -> 
- 
-                    match plan with
-                    | Some p -> 
-         
-                        let outputvars = p.outputParams
-                        let instrument = p.instrument.ToString()
-                        let pan = "" + (p.panOverlap).ToString() + "°"
-                        let tilt = "" + (p.tiltOverlap).ToString() + "°"
-                        let numsamples = "" + outputvars.numberOfSamples.ToString()
-                        let energy = "" + outputvars.energyRequired.ToString() + "%"
-                        let time = "" + outputvars.timeRequired.ToString() + "sec"
-                        let bandwidth = "" + outputvars.bandwidthRequired.ToString()
+                
+                let! v = vp
+               
+                match v with
+                    | Some plan -> 
+                        
+                        let outputvars = plan.outputParams
+                        let! instrument = plan.instrument
+                        let! pan = plan.panOverlap
+                        let! tilt = plan.tiltOverlap
+                        let! numsamples = outputvars.numberOfSamples
+                        let! energy = outputvars.energyRequired
+                        let! time = outputvars.timeRequired
+                        let! bandwidth = outputvars.bandwidthRequired
+
+                        //text
+                        let ins = instrument.ToString()
+                        let p = "" + pan.ToString() + " °"
+                        let t = "" + tilt.ToString() + " °"
+                        let samples = "" + numsamples.ToString()
+                        let e = "" + energy.ToString() + " %"
+                        let ti = "" + time.ToString() + " sec"
+                        let bw = "" + bandwidth.ToString()
                          
-                        table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
+                        yield table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
+                            
+                            tr [] [
+                                td [attribute "colspan" "2"] [
+                                   text "Input parameters"
+                                ]
+                            ]
+
                             tr [] [
                                td [] [text "Instrument"]
-                               td [] [text instrument]
+                               td [] [text ins]
                                 ]
                             
                             tr [] [
                                td [] [text "pan overlap"]
-                               td [] [text pan]
+                               td [] [text p]
                                 ]
                             
                             tr [] [
                                td [] [text "tilt overlap"]
-                               td [] [text tilt]
+                               td [] [text t]
                                 ]
                             
                             tr [] [
+                                td [attribute "colspan" "2"] [
+                                   text "Output parameters"
+                                ]
+                            ]
+
+                            tr [] [
                                td [] [text "# of samples"]
-                               td [] [text numsamples]
+                               td [] [text samples]
                                 ]
                             
                             tr [] [
                                td [] [text "required energy"]
-                               td [] [text energy]
+                               td [] [text e]
                                 ]
 
                             tr [] [
                                td [] [text "required time"]
-                               td [] [text time]
+                               td [] [text ti]
                                 ]
 
                             tr [] [
                                td [] [text "required bandwidth"]
-                               td [] [text bandwidth]
+                               td [] [text bw]
                                 ]
                           ]
-                         
-                    | None -> h5[][text "Select a viewplan to view its details"]
-                  
-                )
 
-            yield d
+
+                 
+                    | None -> yield h5[][text "Select a viewplan to view its details"]
 
             }
         )

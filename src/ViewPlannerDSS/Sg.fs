@@ -13,6 +13,8 @@ open Aardvark.UI.Trafos
 open OpcViewer.Base
 open OpcViewer.Base.Picking
 
+open Rabbyte.Drawing
+
 open ViewPlanner.Rover
 
 module Sg =
@@ -87,7 +89,9 @@ module Sg =
   //visualisation tools
 
   //---POSITION VISUALISATION
-  let sphereVisualisation (color:C4b) (radius:float) (trafo:IMod<Trafo3d>) =
+  let sphereVisualisation (color:C4b) (radius:float) (pos:IMod<V3d>) =
+    
+     let trafo = pos |> Mod.map(fun p -> Trafo3d.Translation(p))
      Sg.sphere 5 (Mod.constant color) (Mod.constant radius)
             |> Sg.noEvents
             |> Sg.effect [ 
@@ -96,7 +100,7 @@ module Sg =
                     ]
             |> Sg.trafo trafo
 
-
+    
   let projectionPoints (list:alist<V3d>) = 
             
           let sg:ISg<PickingAction> = 
@@ -133,49 +137,7 @@ module Sg =
   //---
 
   
-  let roverPlacementModeScene (placements: alist<MPlacement>) = 
-    
-    let sgs = 
-        alist{
-    
-        for p in placements do
-     
-        let pos = p.position
-        let tar = p.target
-        let trafo1 = pos |> Mod.map (fun p -> Trafo3d.Translation(p))
-        let trafo2 = tar |> Mod.map (fun t -> Trafo3d.Translation(t))
-
-        let p1 = sphereVisualisation C4b.Yellow 0.2 trafo1
-        let p2 = sphereVisualisation C4b.Magenta 0.2 trafo2
-
-        yield p1
-        yield p2
-    
-        }
-    
-    sgs |> AList.toList |> Sg.ofList
-  
-
-  //let sampleModeScene ()
-
-
-  let setRenderViewScene (curr:IMod<Option<ModeOption>>) (m:MModel) = 
-    
-    let isg = curr |> Mod.map (fun f -> 
-        
-                    match f with
-                    //| Some StandardMode -> standardModeMenu  
-                    | Some RoverPlacementMode -> roverPlacementModeScene  m.rover.positionsList
-                    //| Some ViewPlanMode -> viewPlanModeMenu  m
-                    //| Some SampleMode -> sampleModeMenu  m
-                    //| None -> standardModeMenu  
-                )
-    isg |> Sg.dynamic
-    
-
-
-
-  
+ 
   //---AXIS VISUALISATION---
   let lineList (pos:IMod<V3d>) (axis:IMod<V3d>) (offset:float) = 
      alist {
@@ -188,6 +150,20 @@ module Sg =
             yield shiftedPos
             yield (p+shiftedAxis)
         }
+
+  let lineBetweenPoints (points:V3d[]) (color:C4b) (lineWidth:float) (shift:IMod<Trafo3d>)= 
+
+    Sg.draw IndexedGeometryMode.LineList
+                |> Sg.trafo shift
+                |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant points) 
+                |> Sg.uniform "Color" (Mod.constant color)
+                |> Sg.uniform "LineWidth" (Mod.constant lineWidth)
+                |> Sg.effect [
+                    toEffect DefaultSurfaces.stableTrafo
+                    toEffect DefaultSurfaces.thickLine
+                    toEffect DefaultSurfaces.sgColor
+                        ]
+    
    
    
   let axisVisualisation (list:alist<V3d>) (color:C4b) (shift:IMod<Trafo3d>) =
@@ -195,17 +171,8 @@ module Sg =
             |> AList.toMod
             |> Mod.map (fun m -> 
                 let arr = m |> PList.toArray
-                        
-                Sg.draw IndexedGeometryMode.LineList
-                |> Sg.trafo shift
-                |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant arr) 
-                |> Sg.uniform "Color" (Mod.constant color)
-                |> Sg.uniform "LineWidth" (Mod.constant 2.0)
-                |> Sg.effect [
-                    toEffect DefaultSurfaces.stableTrafo
-                    toEffect DefaultSurfaces.thickLine
-                    toEffect DefaultSurfaces.sgColor
-                        ]
+                 
+                lineBetweenPoints arr color 2.0 shift
             )
 
 
@@ -269,7 +236,146 @@ module Sg =
       
       ] |> Sg.ofList
 
- 
+  
+
+  let visualizeViewPlan (vp:MViewPlan) (r:MRoverModel)= 
+
+    alist {
+   
+    let placement = vp.placement
+    let target = sphereVisualisation C4b.Magenta 0.2 placement.target
+
+    let cam = vp.cameraVariables
+    let axes = cam |> AList.map (fun a -> cameraAxes a.camera.view r)
+    let frustums = cam |> AList.map (fun f -> sgFrustums f.viewList f.frustum f.camera.view)
+    let positions = cam |> AList.map (fun p -> sphereVisualisation C4b.Red 0.2 p.position)
+    let projPoints = vp.projPoints |> AList.map (fun pr -> sphereVisualisation C4b.DarkYellow 0.1 (Mod.constant pr) )
+
+    for a in axes do
+      yield a
+
+    for f in frustums do
+      yield f
+    
+    for p in positions do
+      yield p
+    
+    for pr in projPoints do
+     yield pr
+
+    yield target
+
+  
+
+    } |> AList.toASet |> Sg.set
+
+
+
+  let roverPlacementModeScene (m:MModel) = 
+
+    let rover = m.rover
+    let placements = rover.positionsList
+    
+    let sgs = 
+        alist{
+    
+        for p in placements do
+     
+        let p1 = sphereVisualisation C4b.Red 0.2 p.position
+        let p2 = sphereVisualisation C4b.Magenta 0.2 p.target
+
+        let! po = p.position
+        let! t = p.target
+        let arr = [|(po-po); (t-po)|]
+
+        let trafo = p.position |> Mod.map(fun p -> Trafo3d.Translation(p))
+        let line = lineBetweenPoints arr C4b.DarkGreen 1.0 trafo
+
+        yield p1
+        yield p2
+        yield line
+    
+        }
+    
+    sgs |> AList.toASet |> Sg.set
+  
+
+  //show the last view plan in the viewplan list; 
+  let sampleModeScene (m:MModel) = 
+    
+    alist {
+        
+        let! selectedPos = m.rover.selectedPosition
+        let draw = m.drawing |> DrawingApp.view
+        let plans = m.rover.viewplans
+        let! p = plans.Content
+
+        match p.IsEmpty(), selectedPos with 
+        | true, None -> yield draw
+        | true, Some placement -> 
+            
+            let p1 = sphereVisualisation C4b.Red 0.2 placement.position
+            let p2 = sphereVisualisation C4b.Magenta 0.2 placement.target
+
+            yield p1
+            yield p2
+            yield draw
+
+        | false, _ -> 
+            let vp = p.Item(p.MaxIndex)
+            yield draw
+            yield visualizeViewPlan vp m.rover
+
+    }|> AList.toASet |> Sg.set
+    
+
+
+    
+
+  //show the selected viewplan
+  let viewplanModeScene (m:MModel) = 
+    
+    alist {
+    
+       let! selected = m.rover.selectedViewPlan
+       let draw = m.drawing |> DrawingApp.view
+
+       match selected with
+       | Some vp ->
+            
+            let vis = visualizeViewPlan vp m.rover
+            yield vis
+            yield draw
+     
+       | None -> yield draw
+
+    } |> AList.toASet |> Sg.set
+
+
+  let setRenderViewScene (curr:IMod<Option<ModeOption>>) (m:MModel) = 
+    
+    let isg = curr |> Mod.map (fun f -> 
+        
+                    match f with
+                    | Some StandardMode -> Sg.empty  
+                    | Some RoverPlacementMode -> roverPlacementModeScene m
+                    | Some ViewPlanMode -> viewplanModeScene  m
+                    | Some SampleMode -> sampleModeScene m
+                    | None -> Sg.empty  
+                )
+    isg |> Sg.dynamic
+
+
+
+
+
+
+
+
+
+
+
+    
 
 //---OTHER
 

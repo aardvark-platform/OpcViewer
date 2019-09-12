@@ -91,6 +91,7 @@ type ProjectionSphere =
     placement           : Placement
     cameraVariables     : plist<CamVariables>
     thetaPhiValues      : plist<V2d>
+    projPoints          : plist<V3d>
     panOverlap          : float
     tiltOverlap         : float
     outputParams        : OutputVars

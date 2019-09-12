@@ -174,10 +174,11 @@ module App =
                     | 0 -> //position
                        let pm = PickingApp.update model.pickingModel (HitSurface (a,b))
                        let lastPick = pm.intersectionPoints |> PList.tryFirst
-                            
+                       
                        match lastPick with
                        | Some pick -> 
-                           let rover = {model.rover with position = pick}
+                           let up = model.rover.up
+                           let rover = {model.rover with position = (pick+up)}
                            let updatedRp = {model.roverPlacement with counter = (counter + 1)}
                            {model with rover = rover; roverPlacement = updatedRp; pickingModel = pm}
 
@@ -186,7 +187,7 @@ module App =
                     | 1 -> //target
                         let pm = PickingApp.update model.pickingModel (HitSurface (a,b))
                         let intersecPoints = pm.intersectionPoints |> PList.toList
-                        let pos = intersecPoints.Item(1)
+                        let pos = intersecPoints.Item(1) + model.rover.up
                         let target = intersecPoints.Item(0)
                         let newPlacement = 
                             { 
@@ -285,95 +286,11 @@ module App =
        //projection points on sphere
       let ps = Sg.projectionPoints m.rover.projPoints
    
-      //positions
-      let transl = m.rover.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
-      let rov = Sg.sphereVisualisation C4b.Yellow 0.1 transl
-          
-      let leftCamTrafo = m.rover.WACLR.camL.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
-      let leftCam = Sg.sphereVisualisation C4b.Red 0.05 leftCamTrafo
-         
-      let rightCamTrafo = m.rover.WACLR.camR.position |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
-      let rightCam = Sg.sphereVisualisation C4b.Magenta 0.05 rightCamTrafo
-      
-      let targettrafo = m.rover.target |> Mod.map (fun pos -> Trafo3d.Translation(pos.X, pos.Y, pos.Z))
-      let target = Sg.sphereVisualisation C4b.DarkMagenta 0.2 targettrafo
-      
-      //camera axes
-      let axesHRcam = Sg.cameraAxes  m.rover.HighResCam.cam.camera.view m.rover
-      let axesWACL = Sg.cameraAxes  m.rover.WACLR.camL.camera.view m.rover
-      let axesWACR = Sg.cameraAxes  m.rover.WACLR.camR.camera.view m.rover
      
-      //frustum visualisation
-      let HRFrustums = Sg.sgFrustums m.rover.HighResCam.cam.viewList m.rover.HighResCam.cam.frustum m.rover.HighResCam.cam.camera.view
-      let WACLFrustums = Sg.sgFrustums m.rover.WACLR.camL.viewList m.rover.WACLR.camL.frustum m.rover.WACLR.camL.camera.view
-      let WACRFrustums = Sg.sgFrustums m.rover.WACLR.camR.viewList m.rover.WACLR.camR.frustum m.rover.WACLR.camR.camera.view
-   
-      
       //views
 
+      let renderViewSg = Sg.setRenderViewScene m.currentModeOption m
 
-
-      let baseSg = 
-        [
-          m.drawing |> DrawingApp.view
-          rov
-          target
-          ps
-        ] |> Sg.ofList
-
-      let roverModeSg = 
-        [
-        m.drawing |> DrawingApp.view
-        Sg.roverPlacementModeScene m.rover.positionsList
-        ]|> Sg.ofList
-
-      let sampleModeSg = 
-        [
-        baseSg
-
-        
-        
-        
-        ] |> Sg.ofList
-
-      let viewPlanModeSg = 
-        [
-        baseSg
-        
-        
-        ]
-
-      let fullSgHR = 
-        [
-          baseSg
-          HRFrustums
-          axesHRcam
-        ] |> Sg.ofList
-      
-      let fullSgStereo = 
-        [
-          baseSg
-          WACLFrustums
-          WACRFrustums
-          axesWACL
-          axesWACR
-          leftCam
-          rightCam
-        ] |> Sg.ofList
-    
-      
-      let fullScene = 
-        let result = 
-            adaptive {
-            let! cam = m.rover.camera
-            let c = match cam with 
-                    | HighResCam -> fullSgHR
-                    | WACLR -> fullSgStereo
-        
-            return c
-        }
-        result |> Sg.dynamic
-    
       let rovercamScene = 
        [
           m.drawing |> DrawingApp.view
@@ -381,24 +298,12 @@ module App =
        ] |> Sg.ofList
 
       let fullSceneRenderView = 
-        m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main fullScene
+        m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main renderViewSg
     
       let camSceneRenderView = 
          m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main rovercamScene
    
-      //let textOverlays (cv : IMod<CameraView>) = 
-      //  div [js "oncontextmenu" "event.preventDefault();"] [ 
-      //     let style' = "color: white; font-family:Consolas;"
-    
-      //     yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left" ] [          
-      //        yield table [] [
-      //          tr[][
-      //              td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
-      //          ]
-      //        ]
-      //     ]
-      //  ]
-    
+     
       let roverPlacementActive = 
         let active = m.roverPlacement.active
         let text = 
