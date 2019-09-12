@@ -753,7 +753,17 @@ module App =
       
       
 
-      //let cy= Cylinder3d
+      let marker = Sg.cone 32 (Mod.constant C4b.Red) (Mod.constant 400.0) (Mod.constant 400.0)
+                   |> Sg.shader {
+                           do! DefaultSurfaces.trafo
+                           do! DefaultSurfaces.vertexColor
+                           do! DefaultSurfaces.simpleLighting
+                           }  
+                   |> Sg.noEvents
+                   |> Sg.translate -2487194.25671355 2289440.21734682 -276259.808310618
+
+
+
       let hoverBox = Sg.empty 
                      |> Sg.pickable' (m.hoverBox |> Mod.map ( fun s -> { shape = PickShape.Cylinder (s); trafo = Trafo3d.Identity } ))
                      |> Sg.requirePicking
@@ -771,6 +781,7 @@ module App =
             afterFilledPolygonSg |> Sg.map PickingAction
             afterFilledPolygonSg2 |> Sg.map PickingAction
             hoverBox 
+            marker
         ]
         |> Sg.ofList
         |> Sg.overrideProjTrafo trafo
@@ -1166,7 +1177,7 @@ module App =
       let sky = box.Center.Normalized
       let r = Trafo3d.RotateInto(V3d.OOI, sky)
       let camPos = V3d(box.Center.X,box.Center.Y,box.Center.Z)+r.Forward.TransformPos(V3d(0.0,0.0,10.0*2.0*100.0))
-      
+      Log.line "box centereeeeeeeeee %A" box.Center
       let restoreCamState : CameraControllerState =
         if File.Exists ".\camstate" then          
           Log.line "[App] restoring camstate"
