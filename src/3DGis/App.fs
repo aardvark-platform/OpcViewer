@@ -597,60 +597,43 @@ module App =
         | _ -> model
       | HovereCircleLeave -> 
         if model.hoveredCircleIndex.IsSome then
-            { model with hoveredCircleIndex = None; drawing2 = DrawingModel.initial }
+            { model with hoveredCircleIndex = None; drawing2 = DrawingModel.initial}
         else
             model
       | HighlightIn3DView ->
-        Log.line "drawn point : %A" (model.pointList.Item(model.hoveredCircleIndex.Value))
         { model with drawing2 =  DrawingApp.update model.drawing2 (DrawingAction.AddPoint (model.pointList.Item(model.hoveredCircleIndex.Value), None))}
       
       | EnterBox v ->
-
-       ////Get heading
-       // Vector2 heading = (end - origin);
-       // float magnitudeMax = heading.magnitude;
-       // heading.Normalize();
-
-       // //Do projection from the point but clamp it
-       // Vector2 lhs = point - origin;
-       // float dotP = Vector2.Dot(lhs, heading);
-       // dotP = Mathf.Clamp(dotP, 0f, magnitudeMax);
-       // return origin + heading * dotP;
-
-
-        let pL = model.pointList
-        let lineOrigin = pL.Item(0)
-        let lineEnd = pL.Item(pL.Length-1)
-        let line = (lineEnd-lineOrigin)
-        let lineLength = line.Length
-        
-        let entryToOrigin = v - lineOrigin
-        let projection = Math.Clamp(V3d.Dot(entryToOrigin, line), 0.0 , lineLength)
-        Log.line "projection %A" projection
-        Log.line "line Length %A" lineLength
-        Log.line "entry Length %A" entryToOrigin.Length
-       // let closestPointOnLine = lineOrigin + line * projection
-        
-        let closestPointOnLine =  lineOrigin + line * (((V3d.Dot( entryToOrigin,line)/(lineLength*lineLength)) * line)/lineLength).Length
-        Log.line "closestPointOnLine %A" closestPointOnLine.Length
-        
-        //let lineCameraVec = (model.cameraState.view.Location - pL.Item(0))
-        ////let intersectionPlane = Plane3d(lineDir, V3d.Cross(lineDir,V3d.OOI ))
-        //let camPos = model.cameraState.view
-        //let intersectionPlane = Plane3d(pL.Item(0), pL.Item(pL.Length-1), pL.Item(0) + V3d.Cross(pL.Item(0),lineDir ))
-
         if model.hover3dActive then
-            //let fray = FastRay3d(V3d.Zero, v.Normalized)
-            //let intersectionPoint = fray.Ray.Intersect (intersectionPlane)
-            //Log.line "iiii %A" intersectionPoint
-
             let pointList = model.pointList
-        
+
+            let lineOrigin = pointList.Item(0)
+            let lineEnd = pointList.Item(pointList.Length-1)
+            let line = lineEnd-lineOrigin       
+            let lineCameraVec = (model.cameraState.view.Location - lineOrigin)
+
+            let intersectionPlane = Plane3d(lineOrigin, lineEnd, lineOrigin + V3d.Cross(line,lineCameraVec))
+
+            let fray = FastRay3d(model.cameraState.view.Location, (v-model.cameraState.view.Location).Normalized)
+            let intersectionPoint = fray.Ray.Intersect (intersectionPlane)
+
+            let fray = FastRay3d(V3d.Zero, intersectionPoint.Normalized)   
+            let hitpoint=
+                model.picking.pickingInfos 
+                |> HMap.tryFind model.opcBox
+                |> Option.map (fun opcData -> 
+                    match OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some opcData.kdTree) fray with
+                    | Some t -> 
+                        fray.Ray.GetPointOnRay t 
+                    | None -> 
+                        intersectionPoint
+                    )
+
             let minElementIndex = 
                 let rec indexofMin i currMinDist index =
-                    if i = pointList.Length - 1 then indexofMin (i-1) (pointList.Item(i) - closestPointOnLine).Length i 
+                    if i = pointList.Length - 1 then indexofMin (i-1) (pointList.Item(i) - hitpoint.Value).Length i 
                     elif i > 0 then 
-                        let dist = (pointList.Item(i) - closestPointOnLine).Length
+                        let dist = (pointList.Item(i) - hitpoint.Value).Length
                         if currMinDist > dist then indexofMin (i-1) dist i else indexofMin (i-1) currMinDist index
                     else
                         index
@@ -756,6 +739,7 @@ module App =
         ] 
         |> Sg.ofList
         |> Sg.pass afterFilledPolygonRenderPass
+        
 
 
       let trafo =
@@ -1274,6 +1258,7 @@ module App =
           hoveredCircleIndex              = None
           hoverBox                        = Cylinder3d(V3d.Zero,V3d.Zero,0.0,0.0)
           hover3dActive                   = false
+   
         }
 
       {
