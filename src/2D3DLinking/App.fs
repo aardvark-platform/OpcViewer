@@ -1,4 +1,4 @@
-﻿namespace LinkingView
+﻿namespace LinkingTestApp
 
 open System.IO
 
@@ -19,12 +19,13 @@ open Aardvark.UI.Trafos
 
 open OpcViewer.Base
 open OpcViewer.Base.Picking
-open PRo3D.Minerva
 open Aardvark.VRVis.Opc
+open PRo3D.Base
+open PRo3D.Minerva
+open PRo3D.Linking
+
 open Rabbyte.Annotation
 open Rabbyte.Drawing
-open Linking
-
 
 module App = 
     
@@ -88,56 +89,55 @@ module App =
                 { model with cameraState = model.cameraState |>  updateFreeFlyConfig +0.5 }
             | Keys.PageDown ->             
                 { model with cameraState = model.cameraState |>  updateFreeFlyConfig -0.5 }
-            | Keys.Space ->    
-                Log.line "[App] saving camstate"
-                model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camerastate" |> ignore
-                model
             | Keys.Enter ->
-                let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
-                let dir = Direction (model.drawing.points |> PList.toSeq |> fun x -> PlaneFitting.planeFit x).Normal
-                let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some dir))
-                { finished with annotations = newAnnotation; drawing = DrawingModel.initial} // clear drawingApp
-
+                let finished = { model with drawingModel = DrawingApp.update model.drawingModel (DrawingAction.FinishClose None) } // TODO add dummy-hitF
+                let dir = Direction (model.drawingModel.points |> PList.toSeq |> fun x -> PlaneFitting.planeFit x).Normal
+                let newAnnotation = AnnotationApp.update finished.annotationModel (AnnotationAction.AddAnnotation (finished.drawingModel, Some dir))
+                { finished with annotationModel = newAnnotation; drawingModel = DrawingModel.initial} // clear drawingApp
             | _ -> model
 
+        | DrawingAction msg ->
+                 { model with drawingModel = DrawingApp.update model.drawingModel msg }
+
+        | AnnotationAction msg ->
+                { model with annotationModel = AnnotationApp.update model.annotationModel msg }
 
         | PickingAction msg ->
             // TODO...refactor this!
-            let pickingModel, drawingModel, linkingModel =
+            let pickingModel, linkingModel, minervaModel =
               match msg with
               | HitSurface (a,b) -> //,_) -> 
                 let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
                 let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
 
-                let updatedDrawM = model.drawing // DISABLING DRAWING
-
-                let updatedLinkingM = 
+                let updatedLinkingM, updatedMinervaM = 
                     match lastPick with
-                    | Some p -> LinkingApp.update model.cameraState.view model.linkingModel (LinkingAction.CheckPoint(p))
-                    | None -> model.linkingModel
+                    | Some p -> 
+                        let filtered = model.minervaModel.session.filteredFeatures |> PList.map (fun f -> f.id) |> PList.toList |> HSet.ofList
+                        let linkingAction, minervaAction = LinkingApp.checkPoint p filtered model.linkingModel
+                        let minerva' = MinervaApp.update model.cameraState.view model.mainFrustum model.minervaModel minervaAction
+                        let linking' = LinkingApp.update model.linkingModel linkingAction
+                        (linking', minerva')
+                    | None -> (model.linkingModel, model.minervaModel)
 
-                updatePickM, updatedDrawM, updatedLinkingM
-              | _ -> PickingApp.update model.pickingModel msg, model.drawing, model.linkingModel
-            { model with pickingModel = pickingModel; drawing = drawingModel; linkingModel = linkingModel }
-        
-        | DrawingAction msg ->
-            { model with drawing = DrawingApp.update model.drawing msg }
+                updatePickM, updatedLinkingM, updatedMinervaM
+              | _ -> (PickingApp.update model.pickingModel msg), model.linkingModel, model.minervaModel
+            { model with pickingModel = pickingModel; linkingModel = linkingModel; minervaModel = minervaModel }
 
-        | AnnotationAction msg ->
-            { model with annotations = AnnotationApp.update model.annotations msg }
+        | MinervaAction msg ->
+            { model with minervaModel = MinervaApp.update model.cameraState.view model.mainFrustum model.minervaModel msg }
 
         | LinkingAction msg ->
-            
             match msg with
             | OpenFrustum d ->
-                let updatedLinking = LinkingApp.update model.cameraState.view model.linkingModel msg
+                let updatedLinking = LinkingApp.update model.linkingModel msg
                 let newCamState = { model.cameraState with view = CameraView.ofTrafo d.f.camTrafo }
                 { model with cameraState = newCamState; overlayFrustum = Some(d.f.camFrustum); linkingModel = updatedLinking }
             | CloseFrustum ->
-                let updatedLinking = LinkingApp.update model.cameraState.view model.linkingModel CloseFrustum
+                let updatedLinking = LinkingApp.update model.linkingModel CloseFrustum
                 { model with overlayFrustum = None; linkingModel = updatedLinking }
             | _ -> 
-                { model with linkingModel = LinkingApp.update model.cameraState.view model.linkingModel msg }
+                { model with linkingModel = LinkingApp.update model.linkingModel msg }
 
         | UpdateDockConfig cfg ->
             { model with dockConfig = cfg }
@@ -161,24 +161,11 @@ module App =
         let near = m.mainFrustum |> Mod.map(fun x -> x.near)
         let far = m.mainFrustum |> Mod.map(fun x -> x.far)
 
-
-        let filledPolygonSg, afterFilledPolygonRenderPass = 
-            m.annotations 
-            |> AnnotationApp.viewGrouped near far (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
-
-        let afterFilledPolygonSg = 
-            [
-                LinkingApp.view m.linkingModel |> Sg.map LinkingAction
-                DrawingApp.view near far (* whereever you are ♫ *) m.drawing |> Sg.map DrawingAction
-            ] 
-            |> Sg.ofList
-            |> Sg.pass afterFilledPolygonRenderPass
-
         let scene = 
             [
                 opcs |> Sg.map PickingAction
-                filledPolygonSg |> Sg.map AnnotationAction
-                afterFilledPolygonSg
+                LinkingApp.view m.minervaModel.hoveredProduct m.minervaModel.session.selection.selectedProducts m.linkingModel |> Sg.map LinkingAction
+                MinervaApp.viewFeaturesSg m.minervaModel |> Sg.map MinervaAction
             ]
             |> Sg.ofList
 
@@ -216,7 +203,7 @@ module App =
                 div [clazz "ui"; style "background: #1B1C1E"] [
                     renderControl
                     textOverlays (m.cameraState.view)
-                    LinkingApp.sceneOverlay m.cameraState.view m.linkingModel |> UI.map LinkingAction
+                    LinkingApp.sceneOverlay m.linkingModel |> UI.map LinkingAction
                 ]
             )
         | Some "controls" -> 
@@ -231,7 +218,7 @@ module App =
                     ]
                 ]
             )
-        | Some "products" -> LinkingApp.viewHorizontalBar m.linkingModel |> UI.map LinkingAction
+        | Some "products" -> LinkingApp.viewHorizontalBar m.minervaModel.session.selection.selectedProducts m.linkingModel |> UI.map LinkingAction
         | Some other -> 
             let msg = sprintf "Unknown page: %A" other
             body [] [
@@ -249,7 +236,7 @@ module App =
 
 
     let app dir (rotate : bool) dumpFile cacheFile access =
-        OpcSelectionViewer.Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
+        Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
         let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
 
@@ -258,8 +245,8 @@ module App =
             [ 
             for h in phDirs do
                 yield PatchHierarchy.load 
-                    OpcSelectionViewer.Serialization.binarySerializer.Pickle 
-                    OpcSelectionViewer.Serialization.binarySerializer.UnPickle 
+                    Serialization.binarySerializer.Pickle 
+                    Serialization.binarySerializer.UnPickle 
                     (h |> OpcPaths)
             ]    
 
@@ -277,7 +264,7 @@ module App =
 
                     yield {
                         patchHierarchy = h
-                        kdTree         = Aardvark.VRVis.Opc.KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath (KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ OpcSelectionViewer.Serialization.binarySerializer)
+                        kdTree         = Aardvark.VRVis.Opc.KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath (KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer)
                         localBB        = rootTree.info.LocalBoundingBox 
                         globalBB       = rootTree.info.GlobalBoundingBox
                         neighborMap    = HMap.empty
@@ -291,7 +278,7 @@ module App =
         let restoreCamState : CameraControllerState =
             if File.Exists ".\camerastate" then          
                 Log.line "[App] restoring camstate"
-                let csLight : CameraStateLean = OpcSelectionViewer.Serialization.loadAs ".\camerastate"
+                let csLight : CameraStateLean = Serialization.loadAs ".\camerastate"
                 { FreeFlyController.initial with view = csLight |> fromCameraStateLean }
             else 
                 { FreeFlyController.initial with view = CameraView.lookAt (box.Max) box.Center up; }                    
@@ -301,7 +288,7 @@ module App =
         let restorePlane =
             if File.Exists ".\planestate" then
                 Log.line "[App] restoring planestate"
-                let p : PlaneCoordinates = OpcSelectionViewer.Serialization.loadAs ".\planestate"
+                let p : PlaneCoordinates = Serialization.loadAs ".\planestate"
                 p |> fromPlaneCoords
             else
                 PList.empty
@@ -324,27 +311,67 @@ module App =
             config {
                 content (
                     horizontal 8.0 [
-                        vertical 8.0 [
-                        element { id "render"; title "Render View"; weight 6.0 }
-                        element { id "products"; title "Product View"; weight 2.0 }
+                        vertical 2.0 [
+                            element { id "render"; title "Render View"; weight 3.0 }
+                            element { id "products"; title "Product View"; weight 1.0 }
                         ]
-                        element { id "controls"; title "Controls"; weight 3.0 }                         
+                        element { id "controls"; title "Controls"; weight 1.0 }                         
                     ]
                 )
                 appName "2D3D Linking"
                 useCachedConfig true
             }
 
-        let linkingUpdate = LinkingApp.update camState.view
-        let initialLinkingModel : LinkingModel = 
-            linkingUpdate (
-                linkingUpdate LinkingModel.initial (MinervaAction(LoadProducts(dumpFile, cacheFile)))
-            ) (MinervaAction(LoadTifs(access)))
+        let initFrustum = Frustum.perspective 60.0 0.01 1000.0 1.0
+
+        let loadMinerva dumpFile cacheFile view frustum (m: MinervaModel) =
+            
+            let m' = 
+                PRo3D.Minerva.MinervaApp.update
+                    view
+                    frustum
+                    m
+                    MinervaAction.Load
+                    
+            let data = MinervaModel.loadDumpCSV dumpFile cacheFile 
+
+            let whiteListFile = Path.ChangeExtension(dumpFile, "white")
+            let whiteListIds =
+                if whiteListFile |> File.Exists then
+                    File.readAllLines whiteListFile |> HSet.ofArray
+                else 
+                    data.features |> PList.map(fun x -> x.id) |> PList.toList |> HSet.ofList
+                
+            let validFeatures = data.features |> PList.filter (fun x -> whiteListIds |> HSet.contains x.id)
+            let data = { data with features = validFeatures }
+
+            let minerva = 
+                { m' with data = data }
+                    |> PRo3D.Minerva.MinervaApp.updateProducts data
+                    |> PRo3D.Minerva.MinervaApp.loadTifs1087 // load tifs for linking TODO hardcoded sol value (subset)
+
+            //refactor ... make chain
+            let filtered = 
+                PRo3D.Minerva.QueryApp.applyFilterQueries 
+                    minerva.data.features 
+                    minerva.session.queryFilter
+
+            { minerva with 
+                session = { 
+                    minerva.session with
+                        filteredFeatures = filtered 
+                } 
+            } 
+            |> MinervaApp.updateFeaturesForRendering    
+            |> MinervaApp.loadTifs
+        
+        let minervaModel       = MinervaModel.initial |> loadMinerva dumpFile cacheFile camState.view initFrustum
+        let linkingModel       = LinkingModel.initial |> LinkingApp.initFeatures minervaModel.data.features
       
         let initialModel : Model = 
             { 
                 cameraState        = camState
-                mainFrustum        = Frustum.perspective 60.0 0.01 1000.0 1.0
+                mainFrustum        = initFrustum
                 overlayFrustum     = None
                 fillMode           = FillMode.Fill                    
                 patchHierarchies   = patchHierarchies          
@@ -355,12 +382,14 @@ module App =
                 pickingActive      = false
                 opcInfos           = opcInfos
                 pickingModel       = { PickingModel.initial with pickingInfos = opcInfos }
-                annotations        = AnnotationModel.initial
-                drawing            = DrawingModel.initial
                 pickedPoint        = None
                 planePoints        = setPlaneForPicking
                 dockConfig         = initialDockConfig   
-                linkingModel       = initialLinkingModel}
+                linkingModel       = linkingModel
+                minervaModel       = minervaModel
+                drawingModel       = DrawingModel.initial
+                annotationModel    = AnnotationModel.initial
+            }
 
         {
             initial = initialModel             

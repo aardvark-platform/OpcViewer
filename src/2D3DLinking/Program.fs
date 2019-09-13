@@ -1,15 +1,14 @@
-﻿
-open System
+﻿open System
+
 open Aardvark.Base
-open Aardvark.Application.Slim
 open Aardvark.UI
+open Aardvark.Application.Slim
 open Aardium
 
 open Suave
-open PRo3D.Minerva
 open PRo3D.Base
 
-open LinkingView
+open LinkingTestApp
 
 type EmbeddedRessource = EmbeddedRessource
 
@@ -58,7 +57,7 @@ let main argv =
 
     let rotate = argsList.Contains("-rotate")
     
-    let instance =  LinkingView.App.app opcDir rotate dumpFile cacheFile access |> App.start 
+    let instance = App.start (LinkingTestApp.App.app opcDir rotate dumpFile cacheFile access)
 
     Log.line ">>>> %s" (System.IO.Path.GetFullPath("./resources"))
 
@@ -71,25 +70,8 @@ let main argv =
         MutableApp.toWebPart' app.Runtime false instance
     ]
 
-    //let bindings = [ HttpBinding.createSimple Protocol.HTTP "127.0.0.1" 4321 ]
-    //let config = { Web.defaultConfig with bindings = bindings}
-
-    //tartWebServer config webPart |> ignore
-
-    //Aardium.run {
-    //    url "http://127.0.0.1:4321/"
-    //    width 1024
-    //    height 768
-    //    debug true
-    //}
-
-    // let config = { Suave.Web.defaultConfig with homeFolder = Some @"blablabla"
     WebPart.startServerLocalhost 4321 [ 
         webPart
-        
-        //Reflection.assemblyWebPart typeof<EmbeddedRessource>.Assembly
-        //Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
-        
     ] |> ignore
 
     Aardium.run {

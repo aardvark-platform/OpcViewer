@@ -1,6 +1,6 @@
-﻿namespace LinkingView
+﻿namespace LinkingTestApp
 
-open Linking
+open PRo3D.Linking
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
@@ -11,6 +11,7 @@ open Aardvark.Application
 
 open OpcViewer.Base.Picking
 open PRo3D.Minerva
+
 open Rabbyte.Annotation
 open Rabbyte.Drawing
 
@@ -20,10 +21,11 @@ type Action =
   | KeyDown          of key : Keys  
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
+  | LinkingAction    of LinkingAction
+  | MinervaAction    of MinervaAction
+  | PickPoint        of V3d
   | DrawingAction    of DrawingAction
   | AnnotationAction of AnnotationAction
-  | LinkingAction    of LinkingAction
-  | PickPoint        of V3d
 
 type CameraStateLean = 
   { 
@@ -63,14 +65,11 @@ type Model =
         threads              : ThreadPool<Action>
         dockConfig           : DockConfig
         pickingModel         : PickingModel
-        annotations          : AnnotationModel
-        drawing              : DrawingModel
         pickedPoint          : Option<V3d>
         planePoints          : Option<plist<V3d>>
         pickingActive        : bool
         linkingModel         : LinkingModel
-        //minervaModel         : MinervaModel
+        minervaModel         : MinervaModel
+        drawingModel         : DrawingModel
+        annotationModel      : AnnotationModel
     }
-
-   
-

@@ -4,7 +4,22 @@
     margin: 0 5px;
     border-top: 2px solid white;
     border-radius: 2px;
+    cursor: pointer !important;
+}
+
+.product-view * {
     cursor: pointer;
+}
+
+.instrument-toggle * {
+    cursor: pointer;
+}
+
+.instrument-toggle {
+    cursor: pointer !important;
+    margin-left: 4px;
+    margin-right: 4px;
+    display: inline-block;
 }
 
 body {

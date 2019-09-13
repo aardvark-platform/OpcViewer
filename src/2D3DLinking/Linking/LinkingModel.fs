@@ -1,4 +1,4 @@
-﻿namespace Linking
+﻿namespace PRo3D.Linking
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
@@ -29,8 +29,9 @@ type LinkingFeatureDisplay =
     }
 
 type LinkingAction =
-    | MinervaAction of MinervaAction
-    | CheckPoint of V3d
+    //| MinervaAction of MinervaAction
+    | UpdatePickingPoint of Option<V3d> * hmap<Instrument, bool>
+    //| CheckPoint of V3d
     | ToggleView of Instrument
     | OpenFrustum of LinkingFeatureDisplay
     | ChangeFrustumOpacity of float
@@ -70,10 +71,9 @@ type LinkingModel =
     {
         frustums:               hmap<string,LinkingFeature>
         instrumentParameter:    hmap<Instrument, InstrumentParameter>
-        selectedFrustums:       hset<string>
-        hoveredFrustrum:        Option<LinkingFeature>
+        //selectedFrustums:       hset<string>
+        //hoveredFrustrum:        Option<LinkingFeature>
         trafo:                  Trafo3d
-        minervaModel:           MinervaModel
         pickingPos:             Option<V3d>
         filterProducts:         hmap<Instrument, bool>
         overlayFeature:         Option<LinkingFeatureDisplay>
@@ -85,10 +85,9 @@ module LinkingModel =
     let initial = {
         frustums            = hmap.Empty
         instrumentParameter = hmap.Empty
-        selectedFrustums    = hset.Empty
-        hoveredFrustrum     = None
+        //selectedFrustums    = hset.Empty
+        //hoveredFrustrum     = None
         trafo               = Trafo3d.Identity
-        minervaModel        = Initial.model
         pickingPos          = None
         filterProducts      = hmap.Empty
         overlayFeature      = None

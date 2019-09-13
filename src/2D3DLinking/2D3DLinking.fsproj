@@ -20,13 +20,14 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Products\KdTreeFinds.fs" />
     <Compile Include="Products\Serialization.fs" />
-    <Compile Include="Products\Model.fs" />
+    <Compile Include="Products\KdTreeFinds.fs" />
+    <Compile Include="Products\MinervaModel.fs" />
+    <Compile Include="Products\QueryApp.fs" />
     <Compile Include="Products\Utilities.fs" />
-    <Compile Include="Products\App.fs" />
-    <Compile Include="Linking\Model.fs" />
-    <Compile Include="Linking\App.fs" />
+    <Compile Include="Products\MinervaApp.fs" />
+    <Compile Include="Linking\LinkingModel.fs" />
+    <Compile Include="Linking\LinkingApp.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />

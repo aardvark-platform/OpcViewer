@@ -1,4 +1,4 @@
-﻿namespace Linking
+﻿namespace PRo3D.Linking
 
 open Aardvark.Base
 
@@ -38,27 +38,46 @@ module LinkingApp =
             //r3 - r2 |> toPlane  // far
         |]
 
-    let loadFrustums (features: plist<Feature>) : hmap<string, LinkingFeature> * Trafo3d * hmap<Instrument, InstrumentParameter> =
+    // only called once at initialization time
+    let initFeatures (features: plist<Feature>) (m: LinkingModel) : LinkingModel =
 
         // sensor sizes
         let mastcamRLSensor = V2i(1600, 1200)
 
         let instrumentParameter = hmap.OfList [
+            // https://msl-scicorner.jpl.nasa.gov/Instruments/Mastcam/
             (Instrument.MastcamL, { horizontalFoV = 15.0; sensorSize = mastcamRLSensor }) //34 mm
             (Instrument.MastcamR, { horizontalFoV = 5.1; sensorSize = mastcamRLSensor }) // 100 mm
+
+            // https://msl-scicorner.jpl.nasa.gov/Instruments/ChemCam/
+            (Instrument.ChemLib, { horizontalFoV = 0.000000001; sensorSize = V2i.One})
+            (Instrument.ChemRmi, { horizontalFoV = 0.005729578; sensorSize = V2i(1024, 1024)})
+            // The detector is a 1024 x 1024 pixel CCD. The RMI has a field of view of 19 milliradians. 
+            // Due to optimization of the telescope for LIBS, the RMI resolution is not pixel-limited, and is approximately 100 microradians. 
+            
+            // https://msl-scicorner.jpl.nasa.gov/Instruments/MAHLI/
+            (Instrument.MAHLI, { horizontalFoV = 34.0; sensorSize = V2i(1600, 1200)}) // f/9.8 and 34° to f/8.5 and 39.4°
+
+            // https://msl-scicorner.jpl.nasa.gov/Instruments/APXS/
+            (Instrument.APXS, { horizontalFoV = 0.000000001; sensorSize = V2i.One})
+
+            // https://an.rsl.wustl.edu/mer/help/Content/About%20the%20mission/MSL/Instruments/MSL%20Hazcam.htm
+            (Instrument.FrontHazcamL, { horizontalFoV = 124.0; sensorSize = V2i(1024, 1024)}) // 124 degree x 124 degree
+            (Instrument.FrontHazcamR, { horizontalFoV = 124.0; sensorSize = V2i(1024, 1024)}) // 1024 x 1024
+
         ]
         
         // only interested in MastcamL and MastcamR products
         let reducedFeatures = features.Filter (fun _ f -> instrumentParameter.ContainsKey f.instrument)
 
-        // creating frustums by specifying fov
+        // creating frustums by specifying fov 
         let createFrustumProj (p: InstrumentParameter) =
             let aspectRatio = (float p.sensorSize.X) / (float p.sensorSize.Y)
             let fov = p.horizontalFoV * aspectRatio
             let frustum = Frustum.perspective fov 0.01 15.0 aspectRatio
             let fullFrustum = Frustum.perspective fov 0.01 1000.0 aspectRatio
             let proj = Frustum.projTrafo(frustum)
-            (proj, proj.Inverse, fullFrustum)
+            (proj, proj.Inverse, fullFrustum, p.sensorSize)
 
         let frustumData =
             instrumentParameter
@@ -84,13 +103,10 @@ module LinkingApp =
 
                 let color = f.instrument |> MinervaModel.instrumentColor
 
-                let (w, h) = f.dimensions
-                let dimensions = V2i(w, h)
-
-                let frustumTrafo, frustumTrafoInv, fullFrustum = 
+                let frustumTrafo, frustumTrafoInv, fullFrustum, sensorSize = 
                     frustumData
                     |> HMap.tryFind f.instrument
-                    |> Option.defaultValue (Trafo3d.Scale 0.0, Trafo3d.Scale 0.0, Frustum.ofTrafo Trafo3d.Identity) // ignored
+                    |> Option.defaultValue (Trafo3d.Scale 0.0, Trafo3d.Scale 0.0, Frustum.ofTrafo Trafo3d.Identity, V2i.One) // ignored
              
                 let rotation = Rot3d.FromAngleAxis(angles * angleToRad)
                 let translation = Trafo3d.Translation position
@@ -103,6 +119,11 @@ module LinkingApp =
 
                 let hull = trafoInv |> toHull3d 
 
+                let imageOffset =
+                    match f.instrument with
+                    | Instrument.MastcamL -> V2i(305 + 48, 385) // ATTENTION/TODO hardcoded data value, replace with database!
+                    | _ -> (sensorSize - f.dimensions) / 2 // TODO: hardcoded center
+
                 (f.id, {
                     id = f.id
                     hull = hull
@@ -114,91 +135,57 @@ module LinkingApp =
                     camFrustum = fullFrustum
                     color = color
                     instrument = f.instrument
-                    imageDimensions = dimensions
-                    imageOffset = V2i(305 + 48, 385) // ATTENTION/TODO hardcoded data value, replace with database!
+                    imageDimensions = f.dimensions
+                    imageOffset = imageOffset
                 })
             )
             |> PList.toList
             |> HMap.ofList
 
-        (linkingFeatures, originTrafo, instrumentParameter)
+        let filterProducts =
+            instrumentParameter
+            |> HMap.keys
+            |> HSet.mapHMap (fun _ -> true)
+
+        { m with frustums = linkingFeatures; trafo = originTrafo; instrumentParameter = instrumentParameter; filterProducts = filterProducts }
+
+    let checkPoint (p: V3d) (filtered: hset<string>) (m: LinkingModel) : (LinkingAction * MinervaAction) =
+
+        let originP = m.trafo.Backward.TransformPos p
+
+        let intersected =
+            filtered
+            |> HSet.chooseHMap (fun s -> HMap.tryFind s m.frustums)
+            |> HMap.filter (fun _ v -> v.hull.Contains originP) 
+
+        let currentInstruments =
+            intersected
+            |> HMap.values
+            |> HSet.ofSeq
+            |> HSet.map (fun p -> p.instrument)
+
+        let filterProducts =
+            m.filterProducts
+            |> HMap.map (fun k v -> if HSet.contains k currentInstruments then true else v)
+
+        let linkingAction = LinkingAction.UpdatePickingPoint (Some(originP), filterProducts)
+        let minervaAction = MinervaAction.SelectByIds (intersected.Keys |> HSet.toList)
+        (linkingAction, minervaAction)
 
     //---UPDATE
-    let rec update (view: CameraView) (m: LinkingModel) (msg: LinkingAction) : LinkingModel =
-
-        let minervaFrustumHit (hit: SceneHit) =
-            let closestPoints = MinervaApp.queryClosestPoint m.minervaModel hit
-            match closestPoints with
-            | emptySeq when Seq.isEmpty emptySeq -> 
-                None
-            | seq -> 
-                let index = seq |> Seq.map (fun (depth, pos, index) -> index) |> Seq.head
-                let closestID = m.minervaModel.selection.flatID.[index]
-                (m.frustums.TryFind closestID)
+    let rec update (m: LinkingModel) (msg: LinkingAction) : LinkingModel =
             
         match msg with
-        | CheckPoint p ->
-            let originP = m.trafo.Backward.TransformPos p
-
-            let intersected = 
-                m.frustums 
-                |> HMap.filter (fun _ v -> v.hull.Contains originP) 
-                |> HMap.keys
-
-            let filterProducts =
-                intersected
-                |> HSet.choose (fun p -> HMap.tryFind p m.frustums)
-                |> HSet.map (fun p -> p.instrument)
-                |> HSet.mapHMap (fun _ -> true)
-
-            let partialUpdatedM = { m with pickingPos = Some(originP); filterProducts = filterProducts }
-            update view partialUpdatedM (MinervaAction(MinervaAction.UpdateSelection (intersected |> HSet.toList)))
-
         | ToggleView i ->
             match m.filterProducts.TryFind i with
             | Some b -> 
                 { m with filterProducts = m.filterProducts.Add (i, not b) }
             | None -> m
 
+        | UpdatePickingPoint (pos, filterProducts) -> { m with pickingPos = pos; filterProducts = filterProducts }
         | OpenFrustum f -> { m with overlayFeature = Some(f) }  // also handled by upper app
         | CloseFrustum -> { m with overlayFeature = None }
         | ChangeFrustumOpacity v -> { m with frustumOpacity = v }
-        | MinervaAction a ->
-
-            match a with
-
-            | MinervaAction.LoadProducts _ -> 
-                let minervaModel = MinervaApp.update view m.minervaModel a
-                let (frustums, trafo, instrumentParameter) = loadFrustums minervaModel.data.features
-                { m with minervaModel = minervaModel; frustums = frustums; trafo = trafo; instrumentParameter = instrumentParameter }
-
-            | MinervaAction.HoverProducts hit ->
-                { m with 
-                    minervaModel = MinervaApp.update view m.minervaModel a
-                    hoveredFrustrum = minervaFrustumHit hit 
-                }
-
-            |  MinervaAction.PickProducts hit -> //MinervaAction.AddProductToSelection name -> // MinervaAction.SingleSelectProduct |  no idea what difference
-                let selectedFrustums =
-                    match minervaFrustumHit hit with
-                    | Some f -> 
-                        if m.selectedFrustums.Contains f.id 
-                        then m.selectedFrustums.Remove f.id
-                        else m.selectedFrustums.Add f.id
-                    | None -> m.selectedFrustums
-                { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = selectedFrustums}
-              
-            | MinervaAction.UpdateSelection list ->
-                let selectedFrustums = list |> List.filter(fun s -> (HMap.containsKey s m.frustums)) |> HSet.ofList
-
-                Log.line "updateselection: s#: %A" list.Length
-                { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = selectedFrustums}
-
-            | MinervaAction.ClearSelection ->
-                { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = hset.Empty}
-
-            | _ -> { m with minervaModel = MinervaApp.update view m.minervaModel a}
-
         | _ -> failwith "Not implemented yet"
 
     //---Helpers
@@ -232,48 +219,74 @@ module LinkingApp =
         svgLine (p1.X, p1.Y) (p2.X, p2.Y) (color |> cssColor) storkeWidth
 
     //---VIEWS
-    let view (m: MLinkingModel) =
+    let view (hoveredFrustum: IMod<Option<SelectedProduct>>) (selectedFrustums: aset<string>) (m: MLinkingModel) =
 
-        let sgFrustum' (f: LinkingFeature) =
+        let sgFrustum (f: LinkingFeature) =
             Sg.wireBox' f.color (Box3d(V3d.NNN,V3d.III))
             |> Sg.noEvents
-            |> Sg.shader {
-                do! DefaultSurfaces.stableTrafo
-                do! DefaultSurfaces.vertexColor
-            }
-
-        let sgFrustum (f: IMod<LinkingFeature>) =
-            Sg.wireBox (f |> Mod.map(fun f -> f.color)) (Mod.constant(Box3d(V3d.NNN,V3d.III)))
-            |> Sg.noEvents
-            |> Sg.shader {
-                do! DefaultSurfaces.stableTrafo
-                do! DefaultSurfaces.vertexColor
-            }
-            |> Sg.trafo (f |> Mod.map(fun f -> f.trafo))
-
-        let infinitelySmall = Trafo3d.Scale 0.0
+            |> Sg.transform f.trafo
 
         let hoverFrustum =
-            m.hoveredFrustrum
-            |> Mod.map (fun f -> f |> (Option.defaultValue { LinkingFeature.initial with trafo = infinitelySmall }))
-            |> sgFrustum
+            hoveredFrustum
+            |> Mod.bind (fun f -> 
+                f 
+                |> Option.map (fun x -> m.frustums |> AMap.tryFind x.id)
+                |> Option.defaultValue (Mod.constant None)
+            )
+            |> Mod.map (fun f -> f |> Option.defaultValue { LinkingFeature.initial with trafo = Trafo3d.Scale 0.0 })  
+            |> Mod.map (fun x -> 
+                x 
+                |> sgFrustum
+                |> Sg.shader {
+                    do! DefaultSurfaces.stableTrafo
+                    do! DefaultSurfaces.vertexColor
+                    do! DefaultSurfaces.thickLine
+                    //do! Aardvark.GeoSpatial.Opc.Shader.Shaders.thickLine
+                    do! DefaultSurfaces.thickLineRoundCaps
+                }
+                |> Sg.uniform "LineWidth" (Mod.constant 5.0)
+            )
+            |> Sg.dynamic
+            
+        //let frustra =
+        //    m.frustums
+        //    |> AMap.toASet
+        //    |> ASet.map (fun (k, v) ->
+        //        v
+        //        |> sgFrustum'
+        //        |> Sg.trafo (
+        //            selectedFrustums 
+        //            |> ASet.contains k
+        //            |> Mod.map (fun s -> if s then v.trafo else Trafo3d.Scale 0.0) 
+        //        )
+        //    )
+        //    |> Sg.set
+
+
+        //let frustums =
+        //    Array.init 1000 (fun i -> Sg.wireBox' C4b.Yellow (Box3d(V3d.NNN,V3d.III)))
+
+        //let getSelectedFrustumssg
+        //selectedFrustums 
+        //    |> ASet.toMod 
+        //    |> Mod.map (fun s -> 
+        //        s |> HRefSet.toArray 
+        //          |> Array.mapi (fun i v -> frustums.[i])
+        //       )
+        //    |> 
 
         let frustra =
-            m.frustums
-            |> AMap.toASet
-            |> ASet.map (fun (k, v) ->
-                v
-                |> sgFrustum'
-                |> Sg.trafo (
-                    m.selectedFrustums  
-                    |> ASet.contains k
-                    |> Mod.map (fun s -> if s then v.trafo else infinitelySmall) 
-                )
-            )
+            selectedFrustums
+            |> ASet.chooseM (fun s -> AMap.tryFind s m.frustums)
+            |> ASet.map sgFrustum 
             |> Sg.set
+            |> Sg.shader {
+                do! DefaultSurfaces.stableTrafo
+                do! DefaultSurfaces.vertexColor
+            }
 
         let pickingIndicator =
-            Sg.sphere 3 (Mod.constant(C4b.VRVisGreen)) (Mod.constant(0.05))
+            Sg.sphere 3 (Mod.constant C4b.VRVisGreen) (Mod.constant 0.05)
             |> Sg.noEvents
             |> Sg.shader {
                 do! DefaultSurfaces.stableTrafo
@@ -289,38 +302,34 @@ module LinkingApp =
             )
 
         let defaultScene = 
-            Sg.ofArray [|
+            [|
                 frustra
                 hoverFrustum
             |]
-
-        let featureScene =
-            Sg.empty
+            |> Sg.ofArray 
 
         let commonScene =
-            Sg.ofArray [|
+            [|
                 pickingIndicator
             |]
+            |> Sg.ofArray 
 
         let scene = 
-            Sg.ofArray [|
+            [|
                 (
                     m.overlayFeature 
                     |> Mod.map(fun o ->
-                        if o = None
-                        then defaultScene
-                        else featureScene
-                    )
+                        match o with
+                        | None -> defaultScene
+                        | Some x -> Sg.empty) // featureScene
                     |> Sg.dynamic
                 )
                 commonScene
             |]
+            |> Sg.ofArray 
             |> Sg.trafo m.trafo
 
-        Sg.ofArray [|
-            scene
-            MinervaApp.viewFeaturesSg m.minervaModel |> Sg.map MinervaAction
-        |]
+        scene
 
     let viewSideBar (m: MLinkingModel) =
 
@@ -330,9 +339,8 @@ module LinkingApp =
                 match od with
                 | None -> (None, None)
                 | Some(d) -> 
-                    let beforeF = d.before.TryGet (d.before.Count - 1) // get last element of before list (before f)
                     let before = 
-                        beforeF
+                        d.before.TryGet (d.before.Count - 1) // get last element of before list (before f)
                         |> Option.map (fun f -> 
                             { 
                                 before = d.before.Remove f
@@ -341,9 +349,8 @@ module LinkingApp =
                             }
                         )
 
-                    let afterF = d.after.TryGet 0 // get first element of after list (after f)
                     let after =
-                        afterF
+                        d.after.TryGet 0 // get first element of after list (after f)
                         |> Option.map (fun f -> 
                             {
                                 before = d.before.Append d.f
@@ -357,10 +364,10 @@ module LinkingApp =
 
         require dependencies (
             div [][
-                div [clazz "inverted fluid ui vertical buttons"] [
-                    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.UpdateSelection(m.frustums |> AMap.keys |> ASet.toList)))][text "Select All"]         
-                    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.ClearSelection))][text "Clear Selection"]                 
-                ]
+                //div [clazz "inverted fluid ui vertical buttons"] [
+                //    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.SelectByIds(m.frustums |> AMap.keys |> ASet.toList)))][text "Select All"]         
+                //    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.ClearSelection))][text "Clear Selection"]                 
+                //]
                 Incremental.div 
                     (AttributeMap.ofAMap (amap { 
                         let! d = m.overlayFeature
@@ -368,6 +375,30 @@ module LinkingApp =
                             yield style "display: none;"
                     }))
                     (AList.ofList [
+                        Incremental.div AttributeMap.empty (alist {
+                            let! df = m.overlayFeature
+
+                            match df with
+                            | Some(d) -> 
+                                let f = d.f
+                                yield table[style "color: white;" ][
+                                    tr[][ 
+                                        td[][ text "ID:" ]
+                                        td[][ text f.id ]
+                                    ]
+                                    tr[][ 
+                                        td[][ text "Instrument:" ]
+                                        td[style (sprintf "color: %s;" (f.instrument |> instrumentColor))]
+                                            [ text (string f.instrument) ]
+                                    ]
+                                    tr[][ 
+                                        td[][ text "Image Size:" ]
+                                        td[][ text (sprintf "%d x %d" f.imageDimensions.X f.imageDimensions.Y) ]
+                                    ]
+                                ]
+                            | None -> ()
+                        })
+
                         slider 
                             {min = 0.0; max = 1.0; step = 0.01} 
                             [clazz "ui blue slider"]
@@ -413,11 +444,19 @@ module LinkingApp =
             ]
         )
 
-    let sceneOverlay (v: IMod<CameraView>) (m: MLinkingModel) : DomNode<LinkingAction> =
+    let sceneOverlay (m: MLinkingModel) : DomNode<LinkingAction> =
 
         let overlayDom (f: LinkingFeature, dim: V2i) : DomNode<LinkingAction> =
 
             let offset = f.imageOffset //let border = (dim - V2d(f.imageDimensions)) * 0.5
+            let sensor = 
+                m.instrumentParameter
+                |> AMap.tryFind f.instrument 
+                |> Mod.map (fun i -> 
+                    i 
+                    |> Option.map (fun o -> o.sensorSize) 
+                    |> Option.defaultValue V2i.One
+                )
 
             let frustumRect = [
                 attribute "x" (string offset.X) //border.x
@@ -427,12 +466,14 @@ module LinkingApp =
             ]
 
             div [clazz "ui scene-overlay"] [
-                Svg.svg [
-                    clazz "frustum-svg"
-                    attribute "id" "frustum-overlay-svg"
-                    attribute "viewBox" "0 0 1600 1200"
-                    style (sprintf "border-color: %s" (instrumentColor f.instrument))
-                ][
+                Incremental.Svg.svg (AttributeMap.ofAMap (amap {
+                    yield clazz "frustum-svg"
+                    yield attribute "id" "frustum-overlay-svg"
+                    yield style (sprintf "border-color: %s" (instrumentColor f.instrument))
+
+                    let! s = sensor
+                    yield attribute "viewBox" (sprintf "0 0 %d %d" s.X s.Y)
+                })) (AList.ofList [
                     Svg.path [
                         attribute "fill" "rgba(0,0,0,0.5)"
                         attribute "d" (sprintf "M0 0 h%d v%d h-%dz M%d %d v%d h%d v-%dz"
@@ -449,7 +490,7 @@ module LinkingApp =
                             ])
                         ]
                     )
-                ]
+                ])
             ]
 
         let dom =
@@ -473,11 +514,10 @@ module LinkingApp =
             
         require dependencies dom
 
-
-    let viewHorizontalBar (m: MLinkingModel) =
+    let viewHorizontalBar (selectedFrustums: aset<string>) (m: MLinkingModel) =
         
         let products =
-            m.selectedFrustums
+            selectedFrustums
             |> ASet.chooseM (fun k -> AMap.tryFind k m.frustums)
 
         let filteredProducts =
@@ -500,7 +540,7 @@ module LinkingApp =
                 )
                 |> Mod.map(fun pp -> (prod, pp))
             )
-            |> ASet.mapM (fun p -> p)
+            |> ASet.mapM id
 
         let countStringPerInstrument =
             products
@@ -518,9 +558,10 @@ module LinkingApp =
         let filteredCount = filteredProducts |> ASet.count
         let countString =
             Mod.map2 (fun full filtered -> 
-                if full = filtered
-                then full |> string
-                else (sprintf "%d (%d)" full filtered)
+                if full = filtered then
+                    full |> string
+                else 
+                    (sprintf "%d (%d)" full filtered)
             ) fullCount filteredCount
 
         require dependencies (
@@ -535,10 +576,13 @@ module LinkingApp =
                             countStringPerInstrument
                             |> AList.map (fun (i, s) ->
                                 let o = AMap.tryFind i m.filterProducts |> Mod.map (fun b -> b |> Option.defaultValue false)
-                                span[clazz "ui inverted label";
-                                    style (sprintf "background-color: %s;" (instrumentColor i))][
-                                    Html.SemUi.iconCheckBox o (ToggleView i) //checkbox [clazz "ui inverted checkbox"] o (ToggleView i) s
-                                    Incremental.text s
+                                a[clazz "instrument-toggle"; onClick (fun _ -> ToggleView i)][
+                                    span[clazz "ui inverted label";
+                                        style (sprintf "background-color: %s;" (instrumentColor i))][
+                                        //Html.SemUi.iconCheckBox o (ToggleView i)
+                                        Html.SemUi.iconCheckBox o (ToggleView Instrument.NotImplemented) //checkbox [clazz "ui inverted checkbox"] o (ToggleView i) s
+                                        Incremental.text s
+                                    ]
                                 ]
                             )
                         )
@@ -562,7 +606,7 @@ module LinkingApp =
                                     f, p, (image, sensor, max)
                                 ))
                             )
-                            |> AList.chooseM (fun im -> im)
+                            |> AList.chooseM id
                             |> AList.sortBy (fun (f, p, (image, sensor, max)) ->
                                 let ratioP = p.XY * V2d(1.0, sensor.Y / sensor.X)
                                 let dist = V2d.Dot(ratioP, ratioP) // euclidean peseudo distance (w/o root)
@@ -610,17 +654,10 @@ module LinkingApp =
 
                                 let! selected = m.overlayFeature
 
-                                let defaultClassStr = "product-view"
-                                let classStr =
-                                    match selected with
-                                    | None -> defaultClassStr
-                                    | Some(d) ->
-                                        if d.f = f then
-                                            defaultClassStr + " selected"
-                                        else
-                                            defaultClassStr
+                                match selected with
+                                | Some d when d.f = f -> yield clazz "product-view selected"
+                                | _ -> yield clazz "product-view"
 
-                                yield clazz classStr
                             })) (AList.ofList [
                                 img[
                                     clazz f.id; 

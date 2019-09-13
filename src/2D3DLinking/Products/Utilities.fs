@@ -1,139 +1,22 @@
 ﻿namespace PRo3D.Minerva
 
-open System
+open System.IO
+open System.Diagnostics
 
-//open Aardvark.GeoSpatial.Opc
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Rendering.Text 
 open Aardvark.Base.Incremental
 open Aardvark.SceneGraph
 open Aardvark.Application
-//open Aardvark.Application.Utilities
-open FShade
-open OpcViewer.Base
 open Aardvark.UI
-open FSharp.Data
+
+open FShade
 
 module Files = 
 
-    let getProperties (ins : Instrument) (insId:string) (row:CsvRow) : PRo3D.Minerva.Properties = 
-        match ins with
-            | Instrument.MAHLI ->   
-                {
-                MAHLI_Properties.id = insId |> FeatureId
-                beginTime =  DateTime.Parse(row.GetColumn "{Timestamp}Start_time")
-                endTime =  DateTime.Parse(row.GetColumn "{Timestamp}Stop_time")
-                } |> Properties.MAHLI
-            | Instrument.FrontHazcam | Instrument.FrontHazcamL | Instrument.FrontHazcamR ->
-                {
-                FrontHazcam_Properties.id = insId |> FeatureId
-                beginTime =  DateTime.Parse(row.GetColumn "{Timestamp}Start_time")
-                endTime =  DateTime.Parse(row.GetColumn "{Timestamp}Stop_time")
-                } |> Properties.FrontHazcam
-            | Instrument.Mastcam | Instrument.MastcamL | Instrument.MastcamR ->
-                {
-                Mastcam_Properties.id = insId |> FeatureId
-                beginTime =  DateTime.Parse(row.GetColumn "{Timestamp}Start_time")
-                endTime =  DateTime.Parse(row.GetColumn "{Timestamp}Stop_time")
-                } |> Properties.Mastcam
-            | Instrument.APXS ->
-              {
-                APXS_Properties.id = insId |> FeatureId
-              } |> Properties.APXS       
-            | Instrument.ChemLib ->
-              {
-                ChemCam_Properties.id = insId |> FeatureId           
-              } |> Properties.ChemCam       
-            | Instrument.ChemRmi ->
-              {
-                ChemCam_Properties.id = insId |> FeatureId            
-              } |> Properties.ChemCam       
-            | Instrument.NotImplemented ->
-              {
-                APXS_Properties.id = insId |> FeatureId
-              } |> Properties.APXS               
-            | _ -> failwith "encountered invalid instrument from parsing"
-
-    let getFeature (row:CsvRow) : option<Feature> =
-
-        let id' = row.GetColumn "{Key}Product_id"
-        match id' with
-         | "" -> None
-         | _-> 
-            let inst = row.GetColumn "{Category}Instrument_id"
-            let instrument = inst |> MinervaModel.toInstrument
-            let sol' = (row.GetColumn "{Value}{Sol}Planet_day_number").AsInteger()
-
-            let omega = (row.GetColumn "{Angle}Omega").AsFloat()
-            let phi = (row.GetColumn "{Angle}Phi").AsFloat()
-            let kappa = (row.GetColumn "{Angle}Kappa").AsFloat()
-
-            let x = (row.GetColumn "{CartX}X").AsFloat()
-            let y = (row.GetColumn "{CartY}Y").AsFloat()
-            let z = (row.GetColumn "{CartZ}Z").AsFloat()
-
-            let tryInt (name: string) =
-                try Some ((row.GetColumn name).AsInteger())
-                with _ -> None
-
-            let w = (tryInt "{Value}Image_width") |> Option.defaultValue 0
-            let h = (tryInt "{Value}Image_height") |> Option.defaultValue 0
-
-            let instName = row.GetColumn "{Category}Instrument_name"
-
-            let props = getProperties instrument inst row
-
-            let geo = 
-                {
-                    typus = Typus.Point
-                    coordinates = V3d(omega, phi, kappa) |> List.singleton
-                    positions = V3d(x, y, z) |> List.singleton
-                }
-
-            let feature = 
-                {
-                  id          = id'
-                  instrument  = instrument
-                  typus       = Feature
-                  boundingBox = Box2d.Invalid//feature?bbox |> parseBoundingBox
-                  properties  = props
-                  geometry    = geo
-                  sol         = sol'
-                  dimensions  = (w, h)
-                } 
-            Some feature
-
-    open System.IO   
-    open PRo3D.Base
-
-    let loadDataFile dumpFile cacheFile=
-        let cachePath = cacheFile
-        //let cachePath = @".\MinervaData\dump.cache"
-        let path = dumpFile
-        //let path = @".\MinervaData\dump.csv"
-        match (File.Exists path, File.Exists cachePath) with
-         | (true, false) -> 
-            let allData = CsvFile.Load(path).Cache()
-
-            let features = 
-                allData.Rows
-                    |> Seq.choose( fun x -> getFeature x )
-                
-            {
-              name        = "dump"
-              typus       = Typus.FeatureCollection    
-              boundingBox = Box2d.Invalid
-              features    = features |> PList.ofSeq
-            } |> Serialization.save cachePath
-         | (_, true) -> Serialization.loadAs cachePath
-         | _ -> 
-            Log.error "[Minerva] sth. went wrong with dump.csv"
-            Initial.data        
-
-    let loadTif (access: string) (featureId: string) =
-        // https://minerva.eox.at/store/datafile/FRB_495137799RADLF0492626FHAZ00323M1/frb_495137799radlf0492626fhaz00323m1.tif
-        let filename = featureId.ToLower() + ".tif" //"frb_495137799radlf0492626fhaz00323m1.tif"
+    let loadTifAndConvert (access: string) (featureId: string) =
+        let filename = featureId.ToLower() + ".tif"
         let imagePath = @".\MinervaData\" + filename
         let targetPath = @".\MinervaData\" + featureId.ToLower() + ".png"
         let path = "https://minerva.eox.at/store/datafile/" + featureId + "/" + filename
@@ -149,7 +32,30 @@ module Files =
                 let targetPath = @".\MinervaData\" + featureId.ToLower() + ".png"
                 PixImage.Create(imagePath).ToPixImage<byte>().SaveAsImage(targetPath)
             with e -> ()//Log.line "[Minerva] error: %A" e
-            
+    
+    let loadTif (featureId:string) (model:MinervaModel) =
+        // https://minerva.eox.at/store/datafile/FRB_495137799RADLF0492626FHAZ00323M1/frb_495137799radlf0492626fhaz00323m1.tif
+        let filename = featureId.ToLower() + ".tif" //"frb_495137799radlf0492626fhaz00323m1.tif"
+        let imagePath = @".\MinervaData\" + filename
+        let path = "https://minerva.eox.at/store/datafile/" + featureId + "/" + filename
+        match (File.Exists imagePath) with
+         | true -> 
+            let argument = sprintf "/select, \"%s\"" imagePath
+            Process.Start("explorer.exe", argument) |> ignore
+            model
+         |  false -> 
+            let mutable client = new System.Net.WebClient()
+            client.UseDefaultCredentials <- true       
+            let credentials = System.Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes("minerva:tai8Ies7"))   
+            client.Headers.[System.Net.HttpRequestHeader.Authorization] <- "Basic " + credentials  
+            //try takeScreenshot baseAddress sh.col sh.row sh.id sh.folder with e -> printfn "error: %A" e
+            try (client.DownloadFile(path, imagePath) |> ignore) with e -> Log.error "[Minerva] error: %A" e
+            match (File.Exists imagePath) with
+                | true -> let argument = sprintf "/select, \"%s\"" imagePath
+                          Process.Start("explorer.exe", argument) |> ignore
+                | _ -> Log.error "[Minerva] sth. went wrong with tif file"
+            model
+             
 module Shader = 
 
     type UniformScope with
@@ -201,7 +107,7 @@ module Shader =
             yield t.P0
             yield t.P1
             restartStrip()
-       
+            
             yield t.P1
             yield t.P2
             restartStrip()
@@ -210,6 +116,36 @@ module Shader =
             yield t.P0
             restartStrip()
         }
+
+module DataStructures =
+    type HarriSchirchWrongBlockingCollection<'a>() =
+        let sema = new System.Threading.SemaphoreSlim(0)
+        let l = obj()
+        let queue = System.Collections.Generic.Queue<'a>()
+        let mutable finished = false
+    
+        member x.TakeAsync() =
+            async {
+                do! sema.WaitAsync() |> Async.AwaitTask
+                if finished then return None
+                else
+                    return 
+                        lock l (fun _ -> 
+                            queue.Dequeue() |> Some
+                        )
+            }
+    
+        member x.Enqueue(v) =
+            lock l (fun _ -> 
+                queue.Enqueue(v)
+            )
+            sema.Release() |> ignore
+    
+        member x.CompleteAdding() =
+            finished <- true
+            sema.Release()
+    
+        member x.IsCompleted = finished
 
 module Drawing =
 
@@ -251,10 +187,10 @@ module Drawing =
 
     let drawHoveredFeaturePoint hoveredProduct pointSize trafo =
       let hoveredPoint = 
-        Mod.map2(fun (x:Option<V3d>) (t:Trafo3d) ->  
+        Mod.map2(fun (x:Option<SelectedProduct>) (t:Trafo3d) ->  
           match x with 
           | None -> [||]
-          | Some a ->  [|t.Backward.TransformPos(a)|]) hoveredProduct trafo 
+          | Some a ->  [|t.Backward.TransformPos(a.pos)|]) hoveredProduct trafo 
 
       drawSingleColorPoints hoveredPoint (C4f.Yellow.ToV4d()) (pointSize |> Mod.map(fun x -> x + 5.0)) |> Sg.trafo trafo
 
@@ -273,6 +209,16 @@ module Drawing =
           |> Sg.depthTest (Mod.constant(DepthTestMode.Always))
 
         Sg.ofList [inside; outline]
+
+    let coneISg color radius height trafo =  
+        Sg.cone 30 color radius height
+        |> Sg.noEvents
+        |> Sg.shader {
+            do! DefaultSurfaces.stableTrafo
+            do! DefaultSurfaces.vertexColor
+            //do! Shader.stableLight
+        }
+        |> Sg.trafo(trafo)
 
     let featureMousePick (boundingBox : IMod<Box3d>) =
       boundingBox 
@@ -334,8 +280,26 @@ module Drawing =
             }      
       
         Sg.text (Font.create "Consolas" FontStyle.Regular) C4b.White text
-            |> Sg.noEvents
-            |> Aardvark.UI.FShadeSceneGraph.Sg.shader {
+        |> Sg.noEvents
+        |> Aardvark.UI.FShadeSceneGraph.Sg.shader {
             do! DefaultSurfaces.stableTrafo
-            }                  
-            |> Sg.trafo billboardTrafo  
+        }                  
+        |> Sg.trafo billboardTrafo  
+
+    [<AutoOpen>]
+    module MissingInBase = 
+        type ProcListBuilder with   
+            member x.While(predicate : unit -> bool, body : ProcList<'m,unit>) : ProcList<'m,unit> =
+                proclist {
+                    let p = predicate()
+                    if p then 
+                        yield! body
+                        yield! x.While(predicate,body)
+                    else ()
+                }
+
+       
+
+module List =
+    let take' (n : int) (input : list<'a>) : list<'a> =
+        if n >= input.Length then input else input |> List.take n
