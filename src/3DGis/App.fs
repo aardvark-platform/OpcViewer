@@ -290,14 +290,10 @@ module App =
       let secondPoint = pickingModel.intersectionPoints.Item(1)
       let dir = secondPoint - firstPoint
       let samplingSize = ( Math.Round (firstPoint-secondPoint).Length) * model.stepSampleSize.value
-      let step = dir / samplingSize
+      let step = dir / samplingSize  
     
-      let mutable pointList = []
-      let mutable altitudeList = []
-      let mutable errorHitList = []
-    
-      let drawPoints x y =
-          let fray = FastRay3d(V3d.Zero, (firstPoint + (step * float y)).Normalized)         
+      let sampleAndFillLists ((pointList : V3d list), (altitudeList : float list), (errorHitList: int list)) i =
+          let fray = FastRay3d(V3d.Zero, (firstPoint + (step * float i)).Normalized)         
           model.picking.pickingInfos 
           |> HMap.tryFind model.opcBox
           |> Option.map (fun opcData -> 
@@ -306,20 +302,14 @@ module App =
                   let hitpoint = fray.Ray.GetPointOnRay t
                   let pointHeight = CooTransformation.getLatLonAlt hitpoint Planet.Mars
     
-                  pointList <- hitpoint :: pointList
-                  altitudeList <- pointHeight.altitude :: altitudeList
-                  errorHitList <- 0 :: errorHitList
-    
-                  //DrawingApp.update x (DrawingAction.AddPoint (hitpoint, None)) 
-                  x
+                  (hitpoint :: pointList), (pointHeight.altitude :: altitudeList), (0 :: errorHitList)
+                      
               | None -> 
-                  pointList <- pointList.Head :: pointList
-                  errorHitList <- -1 :: errorHitList
-                  x
+                  (pointList.Head :: pointList), altitudeList, (-1 :: errorHitList)                 
               )
-          |> Option.defaultValue x
+          |> Option.defaultValue (pointList, altitudeList, errorHitList)
                             
-      let newDraw = List.fold drawPoints drawingModel [0.0..samplingSize]
+      let pointList, altitudeList, errorHitList = List.fold sampleAndFillLists ([], [], []) [0.0..samplingSize]
 
       let correctedAltitudeList= correctSamplingErrors altitudeList errorHitList  
       
@@ -334,7 +324,7 @@ module App =
     
       { model with 
               picking             = pickingModel 
-              drawing             = newDraw 
+              drawing             = drawingModel 
               //drawing2            = newDraw2 
               numSampledPoints    = int samplingSize + 1 
               samplingDistance    = dir.Length/samplingSize
@@ -345,7 +335,7 @@ module App =
               pointList           = pointList
               altitudeList        = correctedAltitudeList  
               errorHitList        = errorHitList
-              hoverBox            = Cylinder3d(firstPoint, secondPoint, altitudeList.Max (altitudeList.Item(0)) - altitudeList.Min (altitudeList.Item(0)))
+              hoverCylinder       = Cylinder3d(firstPoint, secondPoint, altitudeList.Max (altitudeList.Item(0)) - altitudeList.Min (altitudeList.Item(0)))
       }
     
   let rec update (model : Model) (msg : Message) =   
@@ -383,7 +373,7 @@ module App =
                 minHeight = 0.0; 
                 maxHeight = 0.0; 
                 accDistance = 0.0; 
-                hoverBox = Cylinder3d(V3d.Zero,V3d.Zero,0.0,0.0) 
+                hoverCylinder = Cylinder3d(V3d.Zero,V3d.Zero,0.0,0.0) 
             }
           | _ -> model
       | Message.KeyUp m ->
@@ -396,7 +386,7 @@ module App =
           | Keys.LeftShift -> 
             { model with pickingActive = false; lineSelectionActive = false }
           | Keys.LeftCtrl -> 
-            { model with hover3dActive = false }
+            { model with hover3dActive = false; markerCone = { height =0.0; radius = 0.0; color = C4b.Red; trafoRot = Trafo3d.Identity; trafoTrl = Trafo3d.Identity} }
           | Keys.Delete ->            
             { model with picking = PickingApp.update model.picking (PickingAction.ClearPoints) }
           | Keys.Back ->
@@ -567,7 +557,7 @@ module App =
             { model with currentOption = a }
       | SetSamplingRate f -> 
         if model.picking.intersectionPoints.AsList.Length >= 2 then 
-            caluculateSVGDrawingPositions <| sampleSurfacePointsForCutView { model with stepSampleSize = Numeric.update model.stepSampleSize f } model.picking { DrawingModel.initial with style = { DrawingModel.initial.style with thickness = 0.0; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } }
+            caluculateSVGDrawingPositions <| sampleSurfacePointsForCutView { model with stepSampleSize = Numeric.update model.stepSampleSize f } model.picking model.drawing
         else 
             { model with stepSampleSize = Numeric.update model.stepSampleSize f }
       | MouseWheel v ->       
@@ -597,12 +587,33 @@ module App =
         | _ -> model
       | HovereCircleLeave -> 
         if model.hoveredCircleIndex.IsSome then
-            { model with hoveredCircleIndex = None; drawing2 = DrawingModel.initial}
+            { model with hoveredCircleIndex = None; 
+                         drawing2 = DrawingModel.initial;
+                         markerCone = { height =0.0; radius = 0.0; color = C4b.Red; trafoRot = Trafo3d.Identity; trafoTrl = Trafo3d.Identity}                
+            }
         else
             model
       | HighlightIn3DView ->
-        { model with drawing2 =  DrawingApp.update model.drawing2 (DrawingAction.AddPoint (model.pointList.Item(model.hoveredCircleIndex.Value), None))}
-      
+       // { model with drawing2 =  DrawingApp.update model.drawing2 (DrawingAction.AddPoint (model.pointList.Item(model.hoveredCircleIndex.Value), None))}
+        let pointList = model.pointList
+        let lineOrigin = pointList.Item(0)
+        let lineEnd = pointList.Item(pointList.Length-1)
+        let line = lineEnd-lineOrigin  
+        
+        let projectedPointOnLine = 
+                let a = line
+                let b = pointList.Item(model.hoveredCircleIndex.Value) - lineOrigin
+                lineOrigin + a * (((V3d.Dot(b,a)/(a.Length*a.Length)) * a)/a.Length).Length
+            
+        { model with markerCone = { height = (projectedPointOnLine - pointList.Item(model.hoveredCircleIndex.Value)).Length;
+                                               radius = 8.0; 
+                                               color = C4b.Red; 
+                                               trafoRot = Trafo3d.RotateInto(V3d.OOI, model.opcCenterPosition.Normalized ); 
+                                               trafoTrl = Trafo3d.Translation(pointList.Item(model.hoveredCircleIndex.Value))
+                                  }                 
+        }
+        
+        
       | EnterBox v ->
         if model.hover3dActive then
             let pointList = model.pointList
@@ -753,19 +764,21 @@ module App =
       
       
 
-      let marker = Sg.cone 32 (Mod.constant C4b.Red) (Mod.constant 400.0) (Mod.constant 400.0)
-                   |> Sg.shader {
-                           do! DefaultSurfaces.trafo
-                           do! DefaultSurfaces.vertexColor
-                           do! DefaultSurfaces.simpleLighting
-                           }  
-                   |> Sg.noEvents
-                   |> Sg.translate -2487194.25671355 2289440.21734682 -276259.808310618
-
+      let markerCone = 
+        Sg.cone 16  (m.markerCone |> Mod.map ( fun x -> x.color)) (m.markerCone |> Mod.map ( fun x -> x.radius)) (m.markerCone |> Mod.map ( fun x -> x.height))
+            |> Sg.noEvents
+            |> Sg.effect [
+                toEffect Shader.stableTrafo
+                toEffect DefaultSurfaces.vertexColor
+            ]
+            |> Sg.trafo (m.markerCone |> Mod.map ( fun x -> x.trafoRot))
+            |> Sg.trafo (m.markerCone |> Mod.map ( fun x -> x.trafoTrl))
+      
+     
 
 
       let hoverBox = Sg.empty 
-                     |> Sg.pickable' (m.hoverBox |> Mod.map ( fun s -> { shape = PickShape.Cylinder (s); trafo = Trafo3d.Identity } ))
+                     |> Sg.pickable' (m.hoverCylinder |> Mod.map ( fun s -> { shape = PickShape.Cylinder (s); trafo = Trafo3d.Identity } ))
                      |> Sg.requirePicking
                      |> Sg.noEvents
                      |> Sg.withEvents[ 
@@ -781,7 +794,7 @@ module App =
             afterFilledPolygonSg |> Sg.map PickingAction
             afterFilledPolygonSg2 |> Sg.map PickingAction
             hoverBox 
-            marker
+            markerCone
         ]
         |> Sg.ofList
         |> Sg.overrideProjTrafo trafo
@@ -1267,9 +1280,10 @@ module App =
           svgSurfaceUnderLineErrorCoord   = ""
           svgCircleSize                   = 0.0
           hoveredCircleIndex              = None
-          hoverBox                        = Cylinder3d(V3d.Zero,V3d.Zero,0.0,0.0)
+          hoverCylinder                   = Cylinder3d(V3d.Zero,V3d.Zero,0.0,0.0)
           hover3dActive                   = false
    
+          markerCone                      = { height =0.0; radius = 0.0; color = C4b.Red; trafoRot = Trafo3d.Identity; trafoTrl = Trafo3d.Identity}
         }
 
       {

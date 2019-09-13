@@ -13,6 +13,7 @@ open Rabbyte.Drawing
 open Rabbyte.Annotation
 open OpenTK.Input
 open System
+open ProviderImplementation.ProvidedTypes
 
 
 
@@ -72,6 +73,14 @@ type CameraStateLean =
       position              : V3d
       stationing            : Stationing
   }
+
+type Cone = {
+    height : float
+    radius : float
+    color : C4b
+    trafoRot : Trafo3d
+    trafoTrl : Trafo3d
+}
 
 
 [<DomainType>]
@@ -157,7 +166,9 @@ type Model =
 
         hoveredCircleIndex             : Option<int>
         hover3dActive                  : bool
-        hoverBox                       : Cylinder3d
+        hoverCylinder                  : Cylinder3d
+
+        markerCone                     : Cone
 
 
     }
