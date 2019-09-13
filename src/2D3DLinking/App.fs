@@ -69,7 +69,7 @@ module App =
     //---UPDATE
     let update (model : Model) (msg : Action) =   
         match msg with
-        | Camera m when model.pickingActive = false -> 
+        | Camera m when model.pickingActive = false && model.overlayFrustum.IsNone -> 
             { model with cameraState = FreeFlyController.update model.cameraState m; }
 
         | Action.KeyDown m ->
@@ -103,26 +103,25 @@ module App =
                 { model with annotationModel = AnnotationApp.update model.annotationModel msg }
 
         | PickingAction msg ->
-            // TODO...refactor this!
-            let pickingModel, linkingModel, minervaModel =
-              match msg with
-              | HitSurface (a,b) -> //,_) -> 
-                let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
-                let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
+            let model' = { model with pickingModel = PickingApp.update model.pickingModel msg }
+            match msg with
+            | HitSurface (a,b) ->
+                let lastPick = model'.pickingModel.intersectionPoints |> PList.tryFirst
 
-                let updatedLinkingM, updatedMinervaM = 
-                    match lastPick with
-                    | Some p -> 
+                match lastPick with
+                | Some p -> 
+                    match model.overlayFrustum with
+                    | Some (o) -> 
+                        let drawing' = DrawingApp.update model.drawingModel (DrawingAction.AddPoint (p, None))
+                        { model' with drawingModel = drawing' }
+                    | None ->
                         let filtered = model.minervaModel.session.filteredFeatures |> PList.map (fun f -> f.id) |> PList.toList |> HSet.ofList
                         let linkingAction, minervaAction = LinkingApp.checkPoint p filtered model.linkingModel
                         let minerva' = MinervaApp.update model.cameraState.view model.mainFrustum model.minervaModel minervaAction
                         let linking' = LinkingApp.update model.linkingModel linkingAction
-                        (linking', minerva')
-                    | None -> (model.linkingModel, model.minervaModel)
-
-                updatePickM, updatedLinkingM, updatedMinervaM
-              | _ -> (PickingApp.update model.pickingModel msg), model.linkingModel, model.minervaModel
-            { model with pickingModel = pickingModel; linkingModel = linkingModel; minervaModel = minervaModel }
+                        { model' with minervaModel = minerva'; linkingModel = linking'}
+                | None -> model'
+            | _ -> model'
 
         | MinervaAction msg ->
             { model with minervaModel = MinervaApp.update model.cameraState.view model.mainFrustum model.minervaModel msg }
@@ -161,11 +160,24 @@ module App =
         let near = m.mainFrustum |> Mod.map(fun x -> x.near)
         let far = m.mainFrustum |> Mod.map(fun x -> x.far)
 
+        let filledPolygonSg, afterFilledPolygonRenderPass = 
+            m.annotationModel 
+            |> AnnotationApp.viewGrouped near far (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
+
+        let afterFilledPolygonSg = 
+            [
+                LinkingApp.view m.minervaModel.hoveredProduct m.minervaModel.session.selection.selectedProducts m.linkingModel |> Sg.map LinkingAction
+                MinervaApp.viewFeaturesSg m.minervaModel |> Sg.map MinervaAction
+                DrawingApp.view near far (* whereever you are ♫ *) m.drawingModel |> Sg.map DrawingAction
+            ] 
+            |> Sg.ofList
+            |> Sg.pass afterFilledPolygonRenderPass
+
         let scene = 
             [
                 opcs |> Sg.map PickingAction
-                LinkingApp.view m.minervaModel.hoveredProduct m.minervaModel.session.selection.selectedProducts m.linkingModel |> Sg.map LinkingAction
-                MinervaApp.viewFeaturesSg m.minervaModel |> Sg.map MinervaAction
+                filledPolygonSg |> Sg.map AnnotationAction
+                afterFilledPolygonSg
             ]
             |> Sg.ofList
 
