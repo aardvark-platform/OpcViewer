@@ -285,9 +285,9 @@ module App =
                                     
       correctedList
   
-  let sampleSurfacePointsForCutView (model : Model) (pickingModel : PickingModel) (drawingModel : DrawingModel) = 
-      let firstPoint = pickingModel.intersectionPoints.Item(0)
-      let secondPoint = pickingModel.intersectionPoints.Item(1)
+  let sampleBetweenTwoPoints (model : Model) (firstPoint : V3d) (secondPoint : V3d) (pointList : V3d list) (altitudeList : float list) (errorHitList: int list) = 
+      let initialListLength = pointList.Length
+
       let dir = secondPoint - firstPoint
       let samplingSize = ( Math.Round (firstPoint-secondPoint).Length) * model.stepSampleSize.value
       let step = dir / samplingSize  
@@ -309,9 +309,53 @@ module App =
               )
           |> Option.defaultValue (pointList, altitudeList, errorHitList)
                             
-      let pointList, altitudeList, errorHitList = List.fold sampleAndFillLists ([], [], []) [0.0..samplingSize]
+      let pL, aL, eL = List.fold sampleAndFillLists (pointList, altitudeList, errorHitList) [0.0..samplingSize]
+      let numofElemBtw2Points = pL.Length - initialListLength
 
-      let correctedAltitudeList= correctSamplingErrors altitudeList errorHitList  
+      pL, aL, eL, numofElemBtw2Points
+     
+
+
+  let sampleSurfacePointsForCutView (model : Model) (pickingModel : PickingModel) (drawingModel : DrawingModel) = 
+
+      let rec sampleBetweenMultiplePoints i pL aL eL numElemList=
+          if (pickingModel.intersectionPoints.Count-1) > i then 
+              let pl, aL, eL, numElem = sampleBetweenTwoPoints model (pickingModel.intersectionPoints.Item(i)) (pickingModel.intersectionPoints.Item(i+1) ) pL aL eL 
+              sampleBetweenMultiplePoints (i+1) pl aL eL (numElem :: numElemList)
+          else 
+            pL, aL, eL, numElemList
+
+
+      let pointList, altitudeList, errorHitList, numofElemsBtw2PointsList = sampleBetweenMultiplePoints 0 [] [] [] []
+
+      let numSampledPoints = altitudeList.Length
+
+      let firstPoint = pickingModel.intersectionPoints.Item(0)
+      let secondPoint = pickingModel.intersectionPoints.Item(1)
+      let dir = secondPoint - firstPoint
+      //let samplingSize = ( Math.Round (firstPoint-secondPoint).Length) * model.stepSampleSize.value
+      //let step = dir / samplingSize  
+    
+      //let sampleAndFillLists ((pointList : V3d list), (altitudeList : float list), (errorHitList: int list)) i =
+      //    let fray = FastRay3d(V3d.Zero, (firstPoint + (step * float i)).Normalized)         
+      //    model.picking.pickingInfos 
+      //    |> HMap.tryFind model.opcBox
+      //    |> Option.map (fun opcData -> 
+      //        match OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some opcData.kdTree) fray with
+      //        | Some t -> 
+      //            let hitpoint = fray.Ray.GetPointOnRay t
+      //            let pointHeight = CooTransformation.getLatLonAlt hitpoint Planet.Mars
+    
+      //            (hitpoint :: pointList), (pointHeight.altitude :: altitudeList), (0 :: errorHitList)
+                      
+      //        | None -> 
+      //            (pointList.Head :: pointList), altitudeList, (-1 :: errorHitList)                 
+      //        )
+      //    |> Option.defaultValue (pointList, altitudeList, errorHitList)
+                            
+      //let pointList, altitudeList, errorHitList = List.fold sampleAndFillLists ([], [], []) [0.0..samplingSize]
+
+      let correctedAltitudeList = correctSamplingErrors altitudeList errorHitList  
       
       let rec accDistance i acc = 
           if i >= 1 then
@@ -321,21 +365,24 @@ module App =
               accDistance (i-1) (acc+distance)
           else 
               acc
-    
+      
+      //Log.line "Num ELEMS : %A " numofElemsBtw2PointsList
+
       { model with 
-              picking             = pickingModel 
-              drawing             = drawingModel 
-              //drawing2            = newDraw2 
-              numSampledPoints    = int samplingSize + 1 
-              samplingDistance    = dir.Length/samplingSize
-              linearDistance      = dir.Length
-              minHeight           = altitudeList.Min (altitudeList.Item(0))
-              maxHeight           = altitudeList.Max (altitudeList.Item(0))
-              accDistance         = Math.Round(accDistance (pointList.Length-1) 0.0,2)
-              pointList           = pointList
-              altitudeList        = correctedAltitudeList  
-              errorHitList        = errorHitList
-              hoverCylinder       = Cylinder3d(firstPoint, secondPoint, altitudeList.Max (altitudeList.Item(0)) - altitudeList.Min (altitudeList.Item(0)))
+              picking                    = pickingModel 
+              drawing                    = drawingModel 
+              //drawing2                   = newDraw2 
+              numSampledPoints           = numSampledPoints 
+              samplingDistance           = dir.Length/(float numSampledPoints)
+              linearDistance             = dir.Length
+              minHeight                  = altitudeList.Min (altitudeList.Item(0))
+              maxHeight                  = altitudeList.Max (altitudeList.Item(0))
+              accDistance                = Math.Round(accDistance (pointList.Length-1) 0.0,2)
+              pointList                  = pointList
+              altitudeList               = correctedAltitudeList  
+              errorHitList               = errorHitList
+              numofPointsinLineList      = numofElemsBtw2PointsList
+              hoverCylinder              = Cylinder3d(firstPoint, secondPoint, altitudeList.Max (altitudeList.Item(0)) - altitudeList.Min (altitudeList.Item(0)))
       }
     
   let rec update (model : Model) (msg : Message) =   
@@ -535,9 +582,9 @@ module App =
             update { model with selectedJumpPosition = pickingModel.intersectionPoints.Item(0); jumpSelectionActive = false; inJumpedPosition = true } Message.AnimateCameraJump            
         elif model.camViewAnimRunning then
             model
-        elif pickingModel.intersectionPoints.AsList.Length > 2 then
-            model
-        elif model.lineSelectionActive && pickingModel.intersectionPoints.AsList.Length = 2 then       
+       // elif pickingModel.intersectionPoints.AsList.Length > 2 then
+         //   model
+        elif model.lineSelectionActive && pickingModel.intersectionPoints.AsList.Length >= 2 then       
            caluculateSVGDrawingPositions <| sampleSurfacePointsForCutView model pickingModel newDrawingModel
         else
             { model with picking = pickingModel; drawing = newDrawingModel }
@@ -604,12 +651,20 @@ module App =
                 let a = line
                 let b = pointList.Item(model.hoveredCircleIndex.Value) - lineOrigin
                 lineOrigin + a * (((V3d.Dot(b,a)/(a.Length*a.Length)) * a)/a.Length).Length
+
+        let height =
+            let h = (projectedPointOnLine - pointList.Item(model.hoveredCircleIndex.Value)).Length
+            if projectedPointOnLine.Length >= pointList.Item(model.hoveredCircleIndex.Value).Length then
+                h
+            else 
+                -h
+                       
             
-        { model with markerCone = { height = (projectedPointOnLine - pointList.Item(model.hoveredCircleIndex.Value)).Length;
-                                               radius = 8.0; 
-                                               color = C4b.Red; 
-                                               trafoRot = Trafo3d.RotateInto(V3d.OOI, model.opcCenterPosition.Normalized ); 
-                                               trafoTrl = Trafo3d.Translation(pointList.Item(model.hoveredCircleIndex.Value))
+        { model with markerCone = { height = height;
+                                    radius = 8.0; 
+                                    color = C4b.Red; 
+                                    trafoRot = Trafo3d.RotateInto(V3d.OOI, model.opcCenterPosition.Normalized ); 
+                                    trafoTrl = Trafo3d.Translation(pointList.Item(model.hoveredCircleIndex.Value))
                                   }                 
         }
         
@@ -943,6 +998,43 @@ module App =
                     } |> AttributeMap.ofAMap
                 )
 
+              let verticalLine (i : int) (numofPointsinLineList : int list) (coordArray : string[])=
+                  Incremental.Svg.line ( 
+                    amap {
+                        let rec countElemOffset i acc = 
+                            if i >= 1 then
+                                countElemOffset (i-1) (acc + numofPointsinLineList.Item(i))
+                            else 
+                                acc + numofPointsinLineList.Item(0)
+                        
+                        let numElemOffset = countElemOffset i 0
+
+                        let xy1 = coordArray.[numElemOffset-1].Split([|","|], StringSplitOptions.None)
+                        let xy2 = coordArray.[numElemOffset].Split([|","|], StringSplitOptions.None)
+                        
+                        let avgX = ((xy1.[0] |> float) + (xy2.[0] |> float)) / 2.0
+
+                        let! yOffset = m.offsetUIDrawY
+
+                        let! dimensions = m.cutViewDim
+                        let yWidth = (float) dimensions.Y
+                            
+                        let sX = sprintf "%f" avgX
+                        
+                        let sY = (sprintf "%f" ((yOffset - 0.025) * yWidth)) + px
+
+                        let wY = (sprintf "%f" ((1.0-yOffset+0.025) * yWidth)) + px
+
+                        yield attribute "x1" sX
+                        yield attribute "y1" sY
+                        yield attribute "x2" sX
+                        yield attribute "y2" wY
+                        yield attribute "stroke" strokeColor
+                        yield attribute "stroke-width" "1.0"
+                        yield attribute "stroke-opacity" "0.6"
+                    } |> AttributeMap.ofAMap
+                 )
+
               let containerAttribs = 
                 amap {
                     let! dimensions = m.cutViewDim
@@ -991,15 +1083,7 @@ module App =
 
                             //contour line (very low)
                             yield contourLine 5.0 2.5 "1.0"      
-
-
-                            ////contour line (vertical low)
-                            //yield verticalLine "left"      
-
-                            ////contour line (vertical height)
-                            //yield verticalLine "right"                       
-                        
-                            
+                                                                         
                             
                             //chart curve 
                             yield Incremental.Svg.polyline ( 
@@ -1054,12 +1138,16 @@ module App =
                                 } |> AttributeMap.ofAMap
                             )    
 
+
+                            
+
                             let! circleSize = m.svgCircleSize
                             let! dim = m.cutViewDim
                             
                             let r = sprintf "%f" (Math.Min(circleSize/4.0 * float dim.X/100.0, 6.8))                              
                             let stw = sprintf "%f" (Math.Min(circleSize/12.0 * float dim.X/100.0, 2.25) |> (fun x -> if x >= 1.0 then x else 0.0)) + "px"       
 
+                            //draw correct circles
                             let! drawingCoord = m.svgPointsCoord                                  
                             let coordArray = drawingCoord.Split([|" "|], StringSplitOptions.None)                                
                             for i in 0 .. coordArray.Length - 2 do
@@ -1081,8 +1169,13 @@ module App =
                                     let wY = (sprintf "%f" ((1.0-yOffset*2.0) * yWidth)) + px
 
                                     yield Incremental.Svg.rect ([attribute "x" (sprintf "%f" (boxX-boxR)); attribute "y" sY; attribute "width" (sprintf "%f" (boxR * 2.0)); attribute "height" wY; attribute "stroke-width" "0"; attribute "fill" "rgba(50,208,255,0)"; clazz "hoverRect" ;onMouseEnter (fun _ -> HovereCircleEnter i);] |> AttributeMap.ofList)      
+                                    
+                            // draw separating vertical lines
+                            let! numofPointsinLineList = m.numofPointsinLineList
+                            for i in 0 .. numofPointsinLineList.Length-2 do
+                                yield verticalLine i numofPointsinLineList coordArray
 
-
+                            // draw error circles
                             let! drawingErrorCoord = m.svgPointsErrorCoord                                  
                             let coordArray = drawingErrorCoord.Split([|" "|], StringSplitOptions.None)
                             for i in 0 .. coordArray.Length - 2 do
@@ -1281,9 +1374,9 @@ module App =
           svgCircleSize                   = 0.0
           hoveredCircleIndex              = None
           hoverCylinder                   = Cylinder3d(V3d.Zero,V3d.Zero,0.0,0.0)
-          hover3dActive                   = false
-   
+          hover3dActive                   = false   
           markerCone                      = { height =0.0; radius = 0.0; color = C4b.Red; trafoRot = Trafo3d.Identity; trafoTrl = Trafo3d.Identity}
+          numofPointsinLineList           = []
         }
 
       {

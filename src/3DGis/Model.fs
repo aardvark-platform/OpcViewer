@@ -152,6 +152,7 @@ type Model =
         pointList                      : V3d list   
         altitudeList                   : float list
         errorHitList                   : int list
+        numofPointsinLineList          : int list
                                        
         svgPointsCoord                 : string
         svgPointsErrorCoord            : string
