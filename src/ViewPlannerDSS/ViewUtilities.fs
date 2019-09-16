@@ -10,8 +10,6 @@ open Aardvark.UI.Primitives
 open ViewPlanner.Rover
 
 module ViewUtilities = 
-    open System.Reactive.Joins
-    
 
     let accordionContentPositions (r:MRoverModel) = 
         
@@ -380,5 +378,133 @@ module ViewUtilities =
 
             }
         )
+    
+
+    let viewLeft (scene: ISg<Action>) (m:MModel) =
+        
+        let att = 
+            (AttributeMap.ofList [ 
+            style "width: 100%; height:100%"; 
+            attribute "showFPS" "false";      
+            attribute "data-renderalways" "false"
+            attribute "data-samples" "4"
+            ]) 
+
+        Incremental.div AttributeMap.Empty (
+        
+            alist{
+                
+                let! s = m.rover.selectedViewPlan
+                let! idx = m.rover.walkThroughIdx
+                
+                match s with
+                | Some plan ->
+                    
+                    let views = plan.cameraVariables |> AList.toPList |> PList.first
+                    let viewList = views.viewList
+                    let activeView = (viewList |> AList.toList).Item(idx)
+
+                    let camera = Mod.map(fun f -> Camera.create activeView f) views.frustum
+                    //let camera = Mod.map2(fun v f -> Camera.create v f) views.camera.view views.frustum
+                    let dom = DomNode.RenderControl(att, camera, scene, RenderControlConfig.standard, None)
+                    yield div [clazz "ui"; style "background: #1B1C1E"] [dom]
+
+                | None -> yield h5[][text "Select a viewplan"]
+
+           
+
+            }
+        )
+    
+    let viewRight (scene: ISg<Action>) (m:MModel) =
+        
+        let att = 
+            (AttributeMap.ofList [ 
+            style "width: 100%; height:100%"; 
+            attribute "showFPS" "false";      
+            attribute "data-renderalways" "false"
+            attribute "data-samples" "4"
+            ]) 
+
+        Incremental.div AttributeMap.Empty (
+        
+            alist{
+                
+                let! s = m.rover.selectedViewPlan
+                let! idx = m.rover.walkThroughIdx
+                
+                match s with
+                | Some plan ->
+                    
+                    let! instrument = plan.instrument
+                    match instrument with
+                    | "High Resolution Camera" -> yield h5[][text " "]
+                    | "WACLR" -> 
+                        
+                        let v = plan.cameraVariables |> AList.toList
+                        let view = v.Item(1)
+                        let viewList = view.viewList
+                        let activeView = (viewList |> AList.toList).Item(idx)
+
+
+                        let camera = Mod.map (fun f -> Camera.create activeView f) view.frustum
+                        let dom = DomNode.RenderControl(att, camera, scene, RenderControlConfig.standard, None)
+                        yield div [clazz "ui"; style "background: #1B1C1E"] [dom]
+
+
+
+                    | _ -> yield h5[][text " "]
+
+                | None -> yield h5[][text "Select a viewplan"]
+
+           
+
+            }
+        )
+
+
+
+
+
+    let selectViewLeft (curr:IMod<Option<ModeOption>>) (scene: ISg<Action>) (m:MModel) = 
+        
+        Incremental.div AttributeMap.Empty (
+        
+            alist{
+        
+                let! d = curr |> Mod.map (fun f -> 
+        
+                    match f with
+                    | Some ViewPlanMode -> viewLeft scene m
+                    | _ -> div[][h4[][text " "]
+                    ]
+
+                )
+
+            yield d
+
+            }
+        )
+    
+    let selectViewRight (curr:IMod<Option<ModeOption>>) (scene: ISg<Action>) (m:MModel) = 
+        
+        Incremental.div AttributeMap.Empty (
+        
+            alist{
+        
+                let! d = curr |> Mod.map (fun f -> 
+        
+                    match f with
+                    | Some ViewPlanMode -> viewRight scene m
+                    | _ -> div[][h4[][text " "]
+                    ]
+
+                )
+
+            yield d
+
+            }
+        )
+
     
     //---

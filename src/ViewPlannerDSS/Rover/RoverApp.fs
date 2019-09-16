@@ -337,9 +337,6 @@ module RoverApp =
     //takes pan and tilt values and calculates a view matrix for frustum visualisation
     let calculateViewMatrix (rover : RoverModel) (pan : float) (tilt : float) (cam:CamVariables) =
         
-
-        //
-        
         let panCurr = rover.pan.current
 
         let signCurr = Math.Sign(panCurr)
@@ -347,19 +344,25 @@ module RoverApp =
 
         let panDelta = 
             match signCurr, signTargetValue with
-            | -1, 1 -> (panCurr - pan) * (-1.0)
-            | 1, -1 -> (panCurr - pan) * (-1.0)
-            | _,_ -> (panCurr - pan)
+            | -1, 1 ->                                      //from negative side to positive side
+                let sum = Math.Abs(panCurr) + Math.Abs(pan)
+                if sum > 180.0 then (sum - 180.0) * (-1.0) else (sum*(-1.0))
+                    
+            | 1, -1 ->                                      //from positive side to negative side
+                let sum = Math.Abs(panCurr) + Math.Abs(pan)
+                if sum > 180.0 then (sum - 180.0) else sum
+                
+                
 
 
+            | _,_ -> (panCurr - pan)                        //both values on the same side
 
-        //let panDelta = (panCurr - pan) 
+
         let tiltCurr = rover.tilt.current
         let tiltDelta = tiltCurr - tilt
 
         let forward = cam.camera.view.Forward
         let up = rover.up 
-        let right = cam.camera.view.Right
 
         //panning
         let panRotation = Rot3d(up, panDelta.RadiansFromDegrees())
@@ -372,7 +375,11 @@ module RoverApp =
         let newPos = roverPos + rotatedDistanceV
 
         //tilting
-        let tiltRotation = Rot3d(right, tiltDelta.RadiansFromDegrees())
+        //new right Vec
+        let newView = CameraView.look newPos targetWithPan.Normalized up
+        let newRight = newView.Right
+        let tiltRotation = Rot3d(newRight, tiltDelta.RadiansFromDegrees())
+
         let targetWithTilt = tiltRotation.TransformDir(targetWithPan)
 
         let view = CameraView.look newPos targetWithTilt.Normalized up
@@ -548,49 +555,65 @@ module RoverApp =
     
     let rotateToPoint (rover:RoverModel) =
         
-        let currentCamera = rover.camera
+        let selectedViewPlan = rover.selectedViewPlan
 
-        let r = 
-         match currentCamera with
-         | HighResCam -> 
-           let c = rover.HighResCam.cam
-           let values = c.samplingValues
-           let li = values |> PList.toList
-           let idx = rover.HighResCam.currIdx
-           let pair = values.Item(idx)
-
-           let panned = setPan rover pair.X
-           let pannedRover = panning panned currentCamera
-           let tilted = setTilt pannedRover pair.Y
-           let ro = tilting tilted currentCamera
-
-           let lastIdx = li.Length - 1
-           let newIdx = 
-            if idx = lastIdx then 0 else (idx+1)
-           
-           {ro with HighResCam = { ro.HighResCam with currIdx = newIdx}}
-
-         | WACLR ->  
-            let c = rover.WACLR.camL
-            let values = c.samplingValues
-            let li = values |> PList.toList
-            let idx = rover.WACLR.currIdx
-            let pair = values.Item(idx)
-
-            let panned = setPan rover pair.X
-            let pannedRover = panning panned currentCamera
-            let tilted = setTilt pannedRover pair.Y
-            let ro = tilting tilted currentCamera
-
-            let lastIdx = li.Length - 1
+        match selectedViewPlan with
+        | Some plan ->
+            let camvar = plan.cameraVariables |> PList.first
+            let length = camvar.viewList |> PList.toList |> List.length
+            let idx = rover.walkThroughIdx
+            let lastIdx = length - 1
             let newIdx = 
-             if idx = lastIdx then 0 else (idx+1)
+                if idx = lastIdx then 0 else (idx+1)
+
+            {rover with walkThroughIdx = newIdx}
+            
+        | None -> rover
+
+
+        //let currentCamera = rover.camera
+
+        //let r = 
+        // match currentCamera with
+        // | HighResCam -> 
+        //   let c = rover.HighResCam.cam
+        //   let values = c.samplingValues
+        //   let li = values |> PList.toList
+        //   let idx = rover.HighResCam.currIdx
+        //   let pair = values.Item(idx)
+
+        //   let panned = setPan rover pair.X
+        //   let pannedRover = panning panned currentCamera
+        //   let tilted = setTilt pannedRover pair.Y
+        //   let ro = tilting tilted currentCamera
+
+        //   let lastIdx = li.Length - 1
+        //   let newIdx = 
+        //    if idx = lastIdx then 0 else (idx+1)
            
-            {ro with WACLR = { ro.WACLR with currIdx = newIdx}}
+        //   {ro with HighResCam = { ro.HighResCam with currIdx = newIdx}}
+
+        // | WACLR ->  
+        //    let c = rover.WACLR.camL
+        //    let values = c.samplingValues
+        //    let li = values |> PList.toList
+        //    let idx = rover.WACLR.currIdx
+        //    let pair = values.Item(idx)
+
+        //    let panned = setPan rover pair.X
+        //    let pannedRover = panning panned currentCamera
+        //    let tilted = setTilt pannedRover pair.Y
+        //    let ro = tilting tilted currentCamera
+
+        //    let lastIdx = li.Length - 1
+        //    let newIdx = 
+        //     if idx = lastIdx then 0 else (idx+1)
+           
+        //    {ro with WACLR = { ro.WACLR with currIdx = newIdx}}
 
 
         
-        r
+        //r
 
 
 

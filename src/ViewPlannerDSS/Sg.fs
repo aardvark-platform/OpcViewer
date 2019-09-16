@@ -30,7 +30,19 @@ module Sg =
             attribute "data-samples" "4"
         ]) 
 
-    
+    let scene = 
+       let r = 
+        adaptive {
+            let! cam = cam 
+            let result = 
+                match cam with
+                | HighResCam -> Sg.empty
+                | WACLR -> sg
+            return result
+            }
+       r |> Sg.dynamic
+       
+
     let cams = 
      adaptive {
         let! c = cam
@@ -217,10 +229,18 @@ module Sg =
                                 }
 
 
+   
+  let activeFrustum (view:IMod<CameraView>) (frustum:IMod<Frustum>)  =
+    
+    let vp = (RoverModel.getViewProj view frustum) 
+    frustumModel vp C4b.DarkRed
+
+
+
   let sgFrustums (list:alist<CameraView>) (frustum:IMod<Frustum>) (view:IMod<CameraView>) = 
       
-      let vp = (RoverModel.getViewProj view frustum) 
-      let camFrustum = frustumModel vp C4b.DarkRed
+      //let vp = (RoverModel.getViewProj view frustum) 
+      //let camFrustum = frustumModel vp C4b.DarkRed
       let samplingFrustums = 
             list 
                 |> AList.map (fun v -> 
@@ -231,7 +251,7 @@ module Sg =
                 |> Sg.set
       
       [
-          camFrustum
+          //camFrustum
           samplingFrustums
       
       ] |> Sg.ofList
@@ -248,6 +268,13 @@ module Sg =
     let cam = vp.cameraVariables
     let axes = cam |> AList.map (fun a -> cameraAxes a.camera.view r)
     let frustums = cam |> AList.map (fun f -> sgFrustums f.viewList f.frustum f.camera.view)
+
+    let activeFrustums = cam |> AList.map (fun f ->  
+            let views = f.viewList |> AList.toList
+            let active = Mod.map(fun i -> views.Item(i)) r.walkThroughIdx
+            activeFrustum active f.frustum
+            )
+
     let positions = cam |> AList.map (fun p -> sphereVisualisation C4b.Red 0.2 p.position)
     let projPoints = vp.projPoints |> AList.map (fun pr -> sphereVisualisation C4b.DarkYellow 0.1 (Mod.constant pr) )
 
@@ -256,6 +283,9 @@ module Sg =
 
     for f in frustums do
       yield f
+
+    for af in activeFrustums do
+        yield af
     
     for p in positions do
       yield p
@@ -264,8 +294,6 @@ module Sg =
      yield pr
 
     yield target
-
-  
 
     } |> AList.toASet |> Sg.set
 

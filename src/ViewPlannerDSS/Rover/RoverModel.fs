@@ -107,8 +107,8 @@ type RoverModel =
         target   :       V3d            
         tilt     :       CameraInput
         pan      :       CameraInput
-        HighResCam   :   HighRes  //single camera
-        WACLR :          Stereo  //stereo
+        HighResCam   :   HighRes 
+        WACLR :          Stereo  
         camera:          CameraType
         up       :       V3d
         panOverlap  :    float     
@@ -129,6 +129,7 @@ type RoverModel =
 
         viewplans : plist<ViewPlan>
         selectedViewPlan : Option<ViewPlan>
+        walkThroughIdx : int
 
         //variables
         //! currently dummy values for test purposes
@@ -141,15 +142,7 @@ type RoverModel =
         //! currently dummy values for test purposes
         energyForPanTilt : float
         timeForPanTilt: float
-
-        //output values
-        //numberOfSamples : int
-        //energyRequired: float
-        //timeRequired: float
-        //bandwidthRequired: float
-
-
-
+        
 
     }
 
@@ -236,6 +229,7 @@ module RoverModel =
 
         up     = initCamera.view.Up
         camera = HighResCam
+        walkThroughIdx = 0
 
 
         

@@ -294,7 +294,7 @@ module App =
       let rovercamScene = 
        [
           m.drawing |> DrawingApp.view
-          ps
+          //ps
        ] |> Sg.ofList
 
       let fullSceneRenderView = 
@@ -304,17 +304,6 @@ module App =
          m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main rovercamScene
    
      
-      let roverPlacementActive = 
-        let active = m.roverPlacement.active
-        let text = 
-            active |> Mod.map(fun a -> 
-            match a with
-            | true -> "Rover placement active"
-            | false -> ""
-            )
-        ViewUtilities.overlayText text
-        
-    
       //show sample button or not
       let criteria = 
             adaptive {
@@ -330,6 +319,8 @@ module App =
       let roverViews = Sg.createView (camSceneRenderView |> Sg.map PickingAction) m.rover.camera m.rover
       let viewLeft = fst roverViews 
       let viewRight = snd roverViews
+
+      let camScene = (camSceneRenderView |> Sg.map PickingAction)
      
 
       let renderControl =
@@ -360,17 +351,19 @@ module App =
         | Some "render" ->
  
           require Html.semui ( 
-              div [clazz "ui"; style "background: #1B1C1E"] [renderControl; roverPlacementActive] 
+              div [clazz "ui"; style "background: #1B1C1E"] [renderControl] 
           )
         
         | Some "leftCam" ->
             require Html.semui (
-              div [clazz "ui"; style "background: #1B1C1E"] [viewLeft]
+                ViewUtilities.selectViewLeft m.currentModeOption camScene m
+              //div [clazz "ui"; style "background: #1B1C1E"] [viewLeft]
           )
         
          | Some "rightCam" ->
             require Html.semui (
-               div [clazz "ui"; style "background: #1B1C1E"] [viewRight]
+                ViewUtilities.selectViewRight m.currentModeOption camScene m
+               //div [clazz "ui"; style "background: #1B1C1E"] [viewRight]
             )
 
         | Some "controls" -> 
@@ -392,37 +385,6 @@ module App =
           )
             
  
-          //      //h4[][text "Output"]
-          //      //table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
-          //      //            tr [] [
-          //      //               td [] [text "# of samples"]
-          //      //               td [] [Incremental.text (n |> Mod.map (fun f -> "" + f.ToString()))]
-          //      //            ]
-          //      //            tr [] [
-          //      //                td [] [text "required energy"]
-          //      //                td [] [Incremental.text (energy |> Mod.map (fun f -> f.ToString() + " %"))]
-          //      //            ]
-
-          //      //            tr [] [
-          //      //                td [] [text "required time"]
-          //      //                td [] [Incremental.text (time |> Mod.map (fun f -> f.ToString() + " sec")) ]
-          //      //            ]
-
-          //      //            tr [] [
-          //      //                td [] [text "required bandwidth"]
-          //      //            ]
-          //      //        ]
-
-
-
-
-
-          //    ]
-          //  ]
-          //)
-        
-       
-          
         | Some other -> 
           let msg = sprintf "Unknown page: %A" other
           body [] [

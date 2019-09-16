@@ -302,9 +302,9 @@ module App =
         config {
           content (
               horizontal 10.0 [
-                  element { id "render"; title "Render View"; weight 7.0 }
-                  element { id "controls"; title "Controls"; weight 3.0 } 
-                  element { id "falseColors"; title "FalseColors"; weight 3.0 }  
+                  element { id "render"; title "Render View"; weight 2.0 }
+                  element { id "controls"; title "Controls"; weight 1.0 } 
+                  element { id "falseColors"; title "FalseColors"; weight 1.0 }  
               ]
           )
           appName "OpcSelectionViewer"
