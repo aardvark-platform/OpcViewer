@@ -380,7 +380,20 @@ module ViewUtilities =
         )
     
 
-    let viewLeft (scene: ISg<Action>) (m:MModel) =
+    let renderControl (vars:IMod<MCamVariables>) (idx:IMod<int>) (scene: ISg<Action>) (att:AttributeMap<Action>) =
+ 
+          let viewListMod = vars |> Mod.map(fun v -> v.viewList) 
+          let fr = vars |> Mod.map(fun v -> v.frustum) |> Mod.bind(fun f -> f)
+          let v = viewListMod |> Mod.bind(fun a -> a.Content)
+          let activeView = 
+              Mod.map2( fun (x:plist<CameraView>) index -> 
+                  let arr = x |> PList.toArray
+                  arr.[index]
+                  ) v idx
+          let camera = Mod.map2(fun view frustum -> Camera.create view frustum) activeView fr
+          DomNode.RenderControl(att, camera, scene, RenderControlConfig.standard, None)
+
+    let view (scene: ISg<Action>) (side:string) (m:MModel) =
         
         let att = 
             (AttributeMap.ofList [ 
@@ -389,73 +402,46 @@ module ViewUtilities =
             attribute "data-renderalways" "false"
             attribute "data-samples" "4"
             ]) 
-
+        
         Incremental.div AttributeMap.Empty (
         
-            alist{
+            alist {
                 
                 let! s = m.rover.selectedViewPlan
-                let! idx = m.rover.walkThroughIdx
-                
+
                 match s with
                 | Some plan ->
-                    
-                    let views = plan.cameraVariables |> AList.toPList |> PList.first
-                    let viewList = views.viewList
-                    let activeView = (viewList |> AList.toList).Item(idx)
 
-                    let camera = Mod.map(fun f -> Camera.create activeView f) views.frustum
-                    //let camera = Mod.map2(fun v f -> Camera.create v f) views.camera.view views.frustum
-                    let dom = DomNode.RenderControl(att, camera, scene, RenderControlConfig.standard, None)
-                    yield div [clazz "ui"; style "background: #1B1C1E"] [dom]
-
-                | None -> yield h5[][text "Select a viewplan"]
-
-           
-
-            }
-        )
-    
-    let viewRight (scene: ISg<Action>) (m:MModel) =
-        
-        let att = 
-            (AttributeMap.ofList [ 
-            style "width: 100%; height:100%"; 
-            attribute "showFPS" "false";      
-            attribute "data-renderalways" "false"
-            attribute "data-samples" "4"
-            ]) 
-
-        Incremental.div AttributeMap.Empty (
-        
-            alist{
-                
-                let! s = m.rover.selectedViewPlan
-                let! idx = m.rover.walkThroughIdx
-                
-                match s with
-                | Some plan ->
-                    
-                    let! instrument = plan.instrument
-                    match instrument with
-                    | "High Resolution Camera" -> yield h5[][text " "]
-                    | "WACLR" -> 
+                    match side with
+                    | "left" ->
                         
-                        let v = plan.cameraVariables |> AList.toList
-                        let view = v.Item(1)
-                        let viewList = view.viewList
-                        let activeView = (viewList |> AList.toList).Item(idx)
-
-
-                        let camera = Mod.map (fun f -> Camera.create activeView f) view.frustum
-                        let dom = DomNode.RenderControl(att, camera, scene, RenderControlConfig.standard, None)
+                        let views = plan.cameraVariables |> AList.toMod
+                        let view = views |> Mod.map(fun f -> f |> PList.toArray |> fun a -> a.[0])
+                        let dom = renderControl view m.rover.walkThroughIdx scene att
                         yield div [clazz "ui"; style "background: #1B1C1E"] [dom]
 
+                    | "right" -> 
+                       
+                       let! instrument = plan.instrument
+
+                       match instrument with
+                       | "High Resolution Camera" -> yield div[][]
+ 
+                       | "WACLR" -> 
+                         
+                         let viewsMod = plan.cameraVariables |> AList.toMod
+                         let view = viewsMod |> Mod.map(fun p -> p |> PList.toArray |> fun i -> i.[1])
+                         let dom = renderControl view m.rover.walkThroughIdx scene att
+                         yield div [clazz "ui"; style "background: #1B1C1E"] [dom]
+                            
+                       
+                       | _ -> yield div[][]
 
 
-                    | _ -> yield h5[][text " "]
+                    | _ -> yield div[][]
 
-                | None -> yield h5[][text "Select a viewplan"]
+      
+                | None -> yield div[][]
 
            
 
@@ -463,41 +449,19 @@ module ViewUtilities =
         )
 
 
-
-
-
-    let selectViewLeft (curr:IMod<Option<ModeOption>>) (scene: ISg<Action>) (m:MModel) = 
-        
-        Incremental.div AttributeMap.Empty (
-        
-            alist{
-        
-                let! d = curr |> Mod.map (fun f -> 
-        
-                    match f with
-                    | Some ViewPlanMode -> viewLeft scene m
-                    | _ -> div[][h4[][text " "]
-                    ]
-
-                )
-
-            yield d
-
-            }
-        )
     
-    let selectViewRight (curr:IMod<Option<ModeOption>>) (scene: ISg<Action>) (m:MModel) = 
-        
-        Incremental.div AttributeMap.Empty (
+    let selectView (curr:IMod<Option<ModeOption>>) (scene: ISg<Action>) (side:string) (m:MModel) = 
+          
+          Incremental.div AttributeMap.Empty (
         
             alist{
         
                 let! d = curr |> Mod.map (fun f -> 
         
                     match f with
-                    | Some ViewPlanMode -> viewRight scene m
-                    | _ -> div[][h4[][text " "]
-                    ]
+                    | Some ViewPlanMode -> view scene side m
+                    | _ -> div[][]
+                    
 
                 )
 
@@ -505,6 +469,8 @@ module ViewUtilities =
 
             }
         )
+
+
 
     
     //---

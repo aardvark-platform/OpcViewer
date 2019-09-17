@@ -270,8 +270,10 @@ module Sg =
     let frustums = cam |> AList.map (fun f -> sgFrustums f.viewList f.frustum f.camera.view)
 
     let activeFrustums = cam |> AList.map (fun f ->  
-            let views = f.viewList |> AList.toList
-            let active = Mod.map(fun i -> views.Item(i)) r.walkThroughIdx
+            let views = f.viewList |> AList.toMod 
+            let active = Mod.map2 (fun view idx -> view |> PList.toArray |> fun x -> x.[idx]
+                                ) views r.walkThroughIdx 
+            //let active = Mod.map(fun i -> views.Item(i)) r.walkThroughIdx
             activeFrustum active f.frustum
             )
 

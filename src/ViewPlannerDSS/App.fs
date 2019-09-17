@@ -231,7 +231,18 @@ module App =
             {model with rover = r}
                     
         | Configs msg ->
-            {model with currentModeOption = msg }
+            //let mode = 
+            //    msg 
+            //    |> Option.map (fun x -> 
+            //        match x with
+            //        | ModeOption.RoverPlacementMode -> failwith ""
+            //        | ModeOption.SampleMode -> failwith ""
+            //        //| ModeOption.RoverPlacementMode -> failwith ""
+            //        | _ -> failwith ""
+            //        )
+            //    |> Option.defaultValue (failwith "")
+
+            { model with currentModeOption = msg}// dockConfig = mode }
             
             //| Some SaveCameraState -> 
             //    Log.line "[App] saving camstate"
@@ -356,14 +367,12 @@ module App =
         
         | Some "leftCam" ->
             require Html.semui (
-                ViewUtilities.selectViewLeft m.currentModeOption camScene m
-              //div [clazz "ui"; style "background: #1B1C1E"] [viewLeft]
+                ViewUtilities.selectView m.currentModeOption camScene "left" m
           )
         
          | Some "rightCam" ->
             require Html.semui (
-                ViewUtilities.selectViewRight m.currentModeOption camScene m
-               //div [clazz "ui"; style "background: #1B1C1E"] [viewRight]
+                ViewUtilities.selectView m.currentModeOption camScene "right" m
             )
 
         | Some "controls" -> 
@@ -510,6 +519,30 @@ module App =
                 horizontal 6.0[
                 element {id "leftCam"; title "HR-Cam / WACL"; weight 3.0}
                 element {id "rightCam"; title "WACR"; weight 3.0}
+                ]
+                
+                ]
+                element {id "controls"; title "Controls"; weight 9.0}
+                
+              
+              ]
+
+          )
+          appName "ViewPlanner"
+          useCachedConfig true
+        }
+    
+      let alternativeDockConfig = 
+        config {
+          content (
+
+              horizontal 23.0 [
+                
+                vertical 14.0 [
+                element {id "render"; title "Main View"; weight 8.0}
+                horizontal 6.0[
+                element {id "leftCam"; title "HR-Cam / WACL"; weight 0.0}
+                element {id "rightCam"; title "WACR"; weight 0.0}
                 ]
                 
                 ]
