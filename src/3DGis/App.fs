@@ -317,9 +317,11 @@ module App =
 
 
   let sampleSurfacePointsForCutView (model : Model) (pickingModel : PickingModel) (drawingModel : DrawingModel) = 
-
+    
+      let numIntersectionPoints = pickingModel.intersectionPoints.Count
+        
       let rec sampleBetweenMultiplePoints i pL aL eL numElemList=
-          if (pickingModel.intersectionPoints.Count-1) > i then 
+          if (numIntersectionPoints-1) > i then 
               let pl, aL, eL, numElem = sampleBetweenTwoPoints model (pickingModel.intersectionPoints.Item(i)) (pickingModel.intersectionPoints.Item(i+1) ) pL aL eL 
               sampleBetweenMultiplePoints (i+1) pl aL eL (numElem :: numElemList)
           else 
@@ -330,33 +332,19 @@ module App =
 
       let numSampledPoints = altitudeList.Length
 
-      let firstPoint = pickingModel.intersectionPoints.Item(0)
-      let secondPoint = pickingModel.intersectionPoints.Item(1)
-      let dir = secondPoint - firstPoint
-      //let samplingSize = ( Math.Round (firstPoint-secondPoint).Length) * model.stepSampleSize.value
-      //let step = dir / samplingSize  
-    
-      //let sampleAndFillLists ((pointList : V3d list), (altitudeList : float list), (errorHitList: int list)) i =
-      //    let fray = FastRay3d(V3d.Zero, (firstPoint + (step * float i)).Normalized)         
-      //    model.picking.pickingInfos 
-      //    |> HMap.tryFind model.opcBox
-      //    |> Option.map (fun opcData -> 
-      //        match OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some opcData.kdTree) fray with
-      //        | Some t -> 
-      //            let hitpoint = fray.Ray.GetPointOnRay t
-      //            let pointHeight = CooTransformation.getLatLonAlt hitpoint Planet.Mars
-    
-      //            (hitpoint :: pointList), (pointHeight.altitude :: altitudeList), (0 :: errorHitList)
-                      
-      //        | None -> 
-      //            (pointList.Head :: pointList), altitudeList, (-1 :: errorHitList)                 
-      //        )
-      //    |> Option.defaultValue (pointList, altitudeList, errorHitList)
-                            
-      //let pointList, altitudeList, errorHitList = List.fold sampleAndFillLists ([], [], []) [0.0..samplingSize]
-
       let correctedAltitudeList = correctSamplingErrors altitudeList errorHitList  
       
+      let rec linearDistance i acc = 
+          if i >= 1 then
+              let A = pickingModel.intersectionPoints.Item(i)
+              let B = pickingModel.intersectionPoints.Item(i-1)
+              let distance = (A-B).Length
+              linearDistance (i-1) (acc+distance)
+          else 
+              acc
+
+      let linDist = linearDistance (numIntersectionPoints-1) 0.0
+
       let rec accDistance i acc = 
           if i >= 1 then
               let A = pointList.Item(i)
@@ -365,16 +353,19 @@ module App =
               accDistance (i-1) (acc+distance)
           else 
               acc
+ 
       
-      //Log.line "Num ELEMS : %A " numofElemsBtw2PointsList
-
+      let rec hoverSpherePos i acc = 
+          if i < numIntersectionPoints then
+              hoverSpherePos (i+1) (acc+pickingModel.intersectionPoints.Item(i))
+          else acc
+      
       { model with 
               picking                    = pickingModel 
               drawing                    = drawingModel 
-              //drawing2                   = newDraw2 
               numSampledPoints           = numSampledPoints 
-              samplingDistance           = dir.Length/(float numSampledPoints)
-              linearDistance             = dir.Length
+              samplingDistance           = linDist / float (pointList.Length - 1)
+              linearDistance             = Math.Round(linDist,2)
               minHeight                  = altitudeList.Min (altitudeList.Item(0))
               maxHeight                  = altitudeList.Max (altitudeList.Item(0))
               accDistance                = Math.Round(accDistance (pointList.Length-1) 0.0,2)
@@ -382,7 +373,7 @@ module App =
               altitudeList               = correctedAltitudeList  
               errorHitList               = errorHitList
               numofPointsinLineList      = numofElemsBtw2PointsList
-              hoverCylinder              = Cylinder3d(firstPoint, secondPoint, altitudeList.Max (altitudeList.Item(0)) - altitudeList.Min (altitudeList.Item(0)))
+              hoverSphere                = Sphere3d((hoverSpherePos 0 V3d.Zero) / float numIntersectionPoints, linDist)
       }
     
   let rec update (model : Model) (msg : Message) =   
@@ -407,21 +398,28 @@ module App =
           | Keys.LeftShift -> 
             let p = { model.picking with intersectionPoints = plist.Empty }             
             let clearedDrawingModel = { DrawingModel.initial with style = { DrawingModel.initial.style with thickness = 0.0; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } } 
-
+             
             { model with 
-                pickingActive = true; 
-                lineSelectionActive = true; 
-                picking = p; 
-                drawing = clearedDrawingModel; 
-                annotations = AnnotationModel.initial; 
-                numSampledPoints = 0; 
-                stepSampleSize = {min = 0.01; max = 10000.0; value = model.stepSampleSize.value; step = 0.05; format = "{0:0.00}"}; 
-                linearDistance = 0.0; 
-                minHeight = 0.0; 
-                maxHeight = 0.0; 
-                accDistance = 0.0; 
-                hoverCylinder = Cylinder3d(V3d.Zero,V3d.Zero,0.0,0.0) 
-            }
+                    pickingActive = true; 
+                    lineSelectionActive = true; 
+                    picking = p; 
+                    drawing = clearedDrawingModel; 
+                    annotations = AnnotationModel.initial; 
+                    numSampledPoints = 0; 
+                    stepSampleSize = {min = 0.01; max = 10000.0; value = model.stepSampleSize.value; step = 0.05; format = "{0:0.00}"}; 
+                    linearDistance = 0.0; 
+                    minHeight = 0.0; 
+                    maxHeight = 0.0; 
+                    accDistance = 0.0; 
+                    hoverSphere = Sphere3d(V3d.Zero,0.0) 
+                    pointList = []
+                    altitudeList = []
+                    errorHitList = []
+                    numofPointsinLineList = []
+                    hoveredCircleIndex = None
+                    markerCone = { height = 0.0; radius = 0.0; color = C4b.Red; trafoRot = Trafo3d.Identity; trafoTrl = Trafo3d.Identity}
+
+                } |> caluculateSVGDrawingPositions
           | _ -> model
       | Message.KeyUp m ->
         match m with
@@ -582,8 +580,6 @@ module App =
             update { model with selectedJumpPosition = pickingModel.intersectionPoints.Item(0); jumpSelectionActive = false; inJumpedPosition = true } Message.AnimateCameraJump            
         elif model.camViewAnimRunning then
             model
-       // elif pickingModel.intersectionPoints.AsList.Length > 2 then
-         //   model
         elif model.lineSelectionActive && pickingModel.intersectionPoints.AsList.Length >= 2 then       
            caluculateSVGDrawingPositions <| sampleSurfacePointsForCutView model pickingModel newDrawingModel
         else
@@ -641,7 +637,6 @@ module App =
         else
             model
       | HighlightIn3DView ->
-       // { model with drawing2 =  DrawingApp.update model.drawing2 (DrawingAction.AddPoint (model.pointList.Item(model.hoveredCircleIndex.Value), None))}
         let pointList = model.pointList
         let lineOrigin = pointList.Item(0)
         let lineEnd = pointList.Item(pointList.Length-1)
@@ -832,13 +827,13 @@ module App =
      
 
 
-      let hoverBox = Sg.empty 
-                     |> Sg.pickable' (m.hoverCylinder |> Mod.map ( fun s -> { shape = PickShape.Cylinder (s); trafo = Trafo3d.Identity } ))
-                     |> Sg.requirePicking
-                     |> Sg.noEvents
-                     |> Sg.withEvents[ 
-                         Sg.onEnter (fun x -> EnterBox x) 
-                         Sg.onLeave (fun _ -> HovereCircleLeave)   
+      let hoverCylinder = Sg.empty 
+                        |> Sg.pickable' (m.hoverSphere |> Mod.map ( fun s -> { shape = PickShape.Sphere (s); trafo = Trafo3d.Identity } ))
+                        |> Sg.requirePicking
+                        |> Sg.noEvents
+                        |> Sg.withEvents[ 
+                            Sg.onEnter (fun x -> EnterBox x) 
+                            Sg.onLeave (fun _ -> HovereCircleLeave)   
                         ] 
       
 
@@ -848,7 +843,7 @@ module App =
             filledPolygonSg |> Sg.map PickingAction
             afterFilledPolygonSg |> Sg.map PickingAction
             afterFilledPolygonSg2 |> Sg.map PickingAction
-            hoverBox 
+            hoverCylinder 
             markerCone
         ]
         |> Sg.ofList
@@ -1199,6 +1194,7 @@ module App =
                                 let! samplingDistance = m.samplingDistance
 
                                 let coordArray = drawingCoord.Split([|" "|], StringSplitOptions.None) 
+
                                 let xy = coordArray.[hoverCircle.Value].Split([|","|], StringSplitOptions.None)
                                 if xy.Length > 1 then
                                     let x = xy.[0]
@@ -1220,7 +1216,7 @@ module App =
                                         else
                                             "end"
 
-                                    yield Svg.text ([ attribute "x" x; attribute "y" (sprintf "%f" (yOffset * yWidth - 10.0) + px); attribute "font-size" "16"; attribute "fill" "#ffffff"; clazz "UIText"; attribute "text-anchor" textAnchor]) ( "Altitude: " + sprintf "%.2f" (aL.Item(hoverCircle.Value)) + " m; Distance: " + sprintf "%.2f" (samplingDistance * float hoverCircle.Value) + " m") 
+                                    yield Svg.text ([ attribute "x" x; attribute "y" (sprintf "%f" (yOffset * yWidth - 10.0) + px); attribute "font-size" "16"; attribute "fill" "#ffffff"; clazz "UIText"; attribute "text-anchor" textAnchor]) ( "Altitude: " + sprintf "%.2f" (aL.Item(hoverCircle.Value)) + " m; Distance: " + sprintf "%.2f" (samplingDistance * float (hoverCircle.Value)) + " m") 
                         }
 
                     onBoot "$(window).trigger('resize')" (
@@ -1373,7 +1369,7 @@ module App =
           svgSurfaceUnderLineErrorCoord   = ""
           svgCircleSize                   = 0.0
           hoveredCircleIndex              = None
-          hoverCylinder                   = Cylinder3d(V3d.Zero,V3d.Zero,0.0,0.0)
+          hoverSphere                   = Sphere3d(V3d.Zero,0.0)
           hover3dActive                   = false   
           markerCone                      = { height =0.0; radius = 0.0; color = C4b.Red; trafoRot = Trafo3d.Identity; trafoTrl = Trafo3d.Identity}
           numofPointsinLineList           = []

@@ -167,7 +167,7 @@ type Model =
 
         hoveredCircleIndex             : Option<int>
         hover3dActive                  : bool
-        hoverCylinder                  : Cylinder3d
+        hoverSphere                  : Sphere3d
 
         markerCone                     : Cone
 
