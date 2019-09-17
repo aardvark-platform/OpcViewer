@@ -80,6 +80,8 @@ type Model =
         opcInfos             : hmap<Box3d, OpcData>
         threads              : ThreadPool<Action>
         dockConfig           : DockConfig
+        standardConfig       : DockConfig
+        viewPlanModeConfig   : DockConfig
         pickingModel         : PickingModel
         drawing              : DrawingModel
         annotations          : AnnotationModel

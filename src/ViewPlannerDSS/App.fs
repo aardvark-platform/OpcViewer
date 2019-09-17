@@ -235,14 +235,12 @@ module App =
             //    msg 
             //    |> Option.map (fun x -> 
             //        match x with
-            //        | ModeOption.RoverPlacementMode -> failwith ""
-            //        | ModeOption.SampleMode -> failwith ""
-            //        //| ModeOption.RoverPlacementMode -> failwith ""
-            //        | _ -> failwith ""
+            //        | ModeOption.ViewPlanMode -> model.viewPlanModeConfig
+            //        | _ -> model.standardConfig
             //        )
-            //    |> Option.defaultValue (failwith "")
+            //    |> Option.defaultValue model.standardConfig
 
-            { model with currentModeOption = msg}// dockConfig = mode }
+            { model with currentModeOption = msg}//; dockConfig = mode }
             
             //| Some SaveCameraState -> 
             //    Log.line "[App] saving camstate"
@@ -316,20 +314,20 @@ module App =
    
      
       //show sample button or not
-      let criteria = 
-            adaptive {
-                let! pos = m.rover.selectedPosition
-                let! reg = m.rover.reg
-                let crit = 
-                   match pos,reg with
-                   | Some p, Some r -> true
-                   | _ -> false
-                return crit
-            }
+      //let criteria = 
+      //      adaptive {
+      //          let! pos = m.rover.selectedPosition
+      //          let! reg = m.rover.reg
+      //          let crit = 
+      //             match pos,reg with
+      //             | Some p, Some r -> true
+      //             | _ -> false
+      //          return crit
+      //      }
     
-      let roverViews = Sg.createView (camSceneRenderView |> Sg.map PickingAction) m.rover.camera m.rover
-      let viewLeft = fst roverViews 
-      let viewRight = snd roverViews
+      //let roverViews = Sg.createView (camSceneRenderView |> Sg.map PickingAction) m.rover.camera m.rover
+      //let viewLeft = fst roverViews 
+      //let viewRight = snd roverViews
 
       let camScene = (camSceneRenderView |> Sg.map PickingAction)
      
@@ -508,7 +506,7 @@ module App =
       let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
       let camState = camState |> OpcSelectionViewer.Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
 
-      let initialDockConfig = 
+      let viewPlanDockConfig = 
         config {
           content (
 
@@ -532,15 +530,15 @@ module App =
           useCachedConfig true
         }
     
-      let alternativeDockConfig = 
+      let standardDockConfig = 
         config {
           content (
 
               horizontal 23.0 [
                 
                 vertical 14.0 [
-                element {id "render"; title "Main View"; weight 8.0}
-                horizontal 6.0[
+                element {id "render"; title "Main View"; weight 14.0}
+                horizontal 0.0[
                 element {id "leftCam"; title "HR-Cam / WACL"; weight 0.0}
                 element {id "rightCam"; title "WACR"; weight 0.0}
                 ]
@@ -600,7 +598,9 @@ module App =
           pickedPoint        = None
           planePoints        = setPlaneForPicking
           rover              = { RoverModel.initial with up = box.Center.Normalized; HighResCam = hrcam; WACLR = stcam; position = initialRoverPos; target = initialRoverTarget; projsphere = {RoverModel.initial.projsphere with position = initialRoverPos}}
-          dockConfig         = initialDockConfig        
+          dockConfig         = viewPlanDockConfig//standardDockConfig    
+          standardConfig     = standardDockConfig
+          viewPlanModeConfig = viewPlanDockConfig
           region             = None
           roiBboxFull        = false
           roverPlacement     = 

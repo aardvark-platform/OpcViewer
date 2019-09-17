@@ -833,25 +833,15 @@ module RoverApp =
         //| None -> rover
 
     
-    //TODO
     let showViewPlan (id:int) (rover:RoverModel) = 
         
         let viewplans = rover.viewplans
         let selectedVP = viewplans |> Seq.tryFind (fun place -> place.id = id)
-
+        Log.line "\n\n\n\nID IS %A\n\n\n\n" id
         match selectedVP with 
         | Some viewplan ->
-            
-            //let camVars = viewplan.cameraVariables
-            //let size = camVars |> PList.toList |> List.length
-            //let camtype = if size = 1 then HighResCam else WACLR
-            //let placement = viewplan.placement
-
-            //TODO
-            {rover with selectedViewPlan = Some viewplan}
-
-
-
+    
+            {rover with selectedViewPlan = Some viewplan; walkThroughIdx = 0}
 
 
         | None -> rover

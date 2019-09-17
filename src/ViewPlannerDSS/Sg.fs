@@ -227,13 +227,23 @@ module Sg =
                                 do! DefaultSurfaces.stableTrafo
                                 do! DefaultSurfaces.vertexColor
                                 }
-
+  
+  let frustumModel2 (vp:IMod<Trafo3d>) (col:C4b)= 
+        Sg.wireBox' col (Box3d(V3d.NNN,V3d.III))
+                            |> Sg.noEvents
+                            |> Sg.trafo (vp |> Mod.map (fun vp -> vp.Inverse))
+                            |> Sg.shader {
+                                do! DefaultSurfaces.stableTrafo
+                                do! DefaultSurfaces.thickLine 
+                                do! DefaultSurfaces.vertexColor
+                                }
+                            |> Sg.uniform "LineWidth" (Mod.constant 5.0)
 
    
   let activeFrustum (view:IMod<CameraView>) (frustum:IMod<Frustum>)  =
     
     let vp = (RoverModel.getViewProj view frustum) 
-    frustumModel vp C4b.DarkRed
+    frustumModel2 vp C4b.DarkRed
 
 
 
@@ -273,7 +283,6 @@ module Sg =
             let views = f.viewList |> AList.toMod 
             let active = Mod.map2 (fun view idx -> view |> PList.toArray |> fun x -> x.[idx]
                                 ) views r.walkThroughIdx 
-            //let active = Mod.map(fun i -> views.Item(i)) r.walkThroughIdx
             activeFrustum active f.frustum
             )
 

@@ -184,9 +184,9 @@ module ViewUtilities =
         
               div[style "color:white; margin: 5px 15px 5px 5px"][
 
-                h4[][text "Rover Controls"]
-                p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
-                p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
+                //h4[][text "Rover Controls"]
+                //p[][div[][Incremental.text (m.rover.pan.current |>Mod.map (fun f -> "Panning - current value: " + f.ToString())); slider { min = -180.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.pan.current RoverAction.ChangePan]] |> UI.map RoverAction 
+                //p[][div[][Incremental.text (m.rover.tilt.current |> Mod.map (fun f -> "Tilting - current value: " + f.ToString())); slider { min = 0.0; max = 180.0; step = 1.0 } [clazz "ui blue slider"] m.rover.tilt.current RoverAction.ChangeTilt]] |> UI.map RoverAction  
                 
                 h4[][text "Input Parameters"]
                 table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
@@ -393,6 +393,7 @@ module ViewUtilities =
           let camera = Mod.map2(fun view frustum -> Camera.create view frustum) activeView fr
           DomNode.RenderControl(att, camera, scene, RenderControlConfig.standard, None)
 
+
     let view (scene: ISg<Action>) (side:string) (m:MModel) =
         
         let att = 
@@ -408,40 +409,66 @@ module ViewUtilities =
             alist {
                 
                 let! s = m.rover.selectedViewPlan
-
+                
                 match s with
                 | Some plan ->
 
                     match side with
                     | "left" ->
                         
+                        Log.line "left camera side"
                         let views = plan.cameraVariables |> AList.toMod
-                        let view = views |> Mod.map(fun f -> f |> PList.toArray |> fun a -> a.[0])
+                        let view = views |> Mod.map(fun f -> f |> PList.first)
                         let dom = renderControl view m.rover.walkThroughIdx scene att
                         yield div [clazz "ui"; style "background: #1B1C1E"] [dom]
 
                     | "right" -> 
                        
-                       let! instrument = plan.instrument
-
-                       match instrument with
-                       | "High Resolution Camera" -> yield div[][]
- 
-                       | "WACLR" -> 
-                         
-                         let viewsMod = plan.cameraVariables |> AList.toMod
-                         let view = viewsMod |> Mod.map(fun p -> p |> PList.toArray |> fun i -> i.[1])
-                         let dom = renderControl view m.rover.walkThroughIdx scene att
-                         yield div [clazz "ui"; style "background: #1B1C1E"] [dom]
-                            
+                       let instrument = plan.instrument
+                       Log.line " viewplan instrument %A" instrument 
                        
-                       | _ -> yield div[][]
+                       //let viewsMod = plan.cameraVariables |> AList.toMod
+                       //let view = 
+                       //    viewsMod 
+                       //    |> Mod.map(fun p -> p |> PList.last) 
+                       let m = 
+                            adaptive {
+                                let! st = instrument
+                                match st with
+                                | "High Resolution Camera" -> return div[style " background: transparent"][] //yield div[][]
+ 
+                                | "WACLR" -> 
+                                    let! viewsMod = plan.cameraVariables |> AList.toMod
+                                    let view = viewsMod |> PList.last |> Mod.constant
+                                    return renderControl view m.rover.walkThroughIdx scene att
+                                    //yield div [clazz "ui"; style "background: #1B1C1E"] [dom]
+                            
+                                | _ -> return div[style " background: transparent"][]//yield div[][]
+                            }
+
+                            //instrument |> Mod.map (fun st -> 
+                            //    match st with
+                            //    | "High Resolution Camera" -> div[][] //yield div[][]
+ 
+                            //    | "WACLR" -> 
+
+                            //        renderControl view m.rover.walkThroughIdx scene att
+                            //        //yield div [clazz "ui"; style "background: #1B1C1E"] [dom]
+                            
+                            //    | _ -> div[][]//yield div[][]
+
+                            //                    )
+                       let a = m |> Mod.toAList
+                       for item in a do
+                        yield item
+
+                       
 
 
-                    | _ -> yield div[][]
+                    | _ -> yield div[style " background: transparent"][]
 
       
-                | None -> yield div[][]
+                | None -> yield div[style " background: transparent"][]
 
            
 
@@ -460,9 +487,7 @@ module ViewUtilities =
         
                     match f with
                     | Some ViewPlanMode -> view scene side m
-                    | _ -> div[][]
-                    
-
+                    | _ -> div[style " background: transparent"][]
                 )
 
             yield d
