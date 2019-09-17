@@ -228,7 +228,7 @@ module RoverApp =
     
     //panR = number of required pans; tiltR = number of required tilts per pan
     //TODO: incoorporate possible overlap between pans
-    let rec buildList (l:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (deltaPan:float) (deltaTilt:float) =
+    let rec buildList (l:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (deltaPan:float) (deltaTilt:float) (cross180:bool)=
         match panR,tiltR with 
             | (p,t) when  p = 0 && t = 0 -> l
             | (p,t) when  p >= 0 && t > 0 -> 
@@ -236,14 +236,26 @@ module RoverApp =
                         let newTilt = lastItem.Y + deltaTilt
                         let listItem = [V2d(lastItem.X, newTilt)]
                         let newList = List.append l listItem
-                        buildList newList panR (tiltR-1) originalTiltR deltaPan deltaTilt 
+                        buildList newList panR (tiltR-1) originalTiltR deltaPan deltaTilt cross180
             | (p,t) when p > 0 && t = 0 -> 
                         let lastItem = l.Item(l.Length-1)
-                        let newPan = lastItem.X + deltaPan
+                        let newPan = 
+                            if cross180 then     //if the -180/180 point will be crossed at some point
+                                let p = lastItem.X - deltaPan
+                                let sign = Math.Sign(p)
+                                let newP = 
+                                    if (sign = -1 && p < -180.0) then 
+                                        let d = (Math.Abs(p)) - 180.0
+                                        180.0 - d
+                                    else p
+                                newP
+
+                            else lastItem.X + deltaPan
+                                
                         let newDeltaTilt = deltaTilt * (-1.0) 
                         let listItem = [V2d(newPan, lastItem.Y)]
                         let newList = List.append l listItem
-                        buildList newList (panR-1) originalTiltR originalTiltR deltaPan newDeltaTilt 
+                        buildList newList (panR-1) originalTiltR originalTiltR deltaPan newDeltaTilt cross180
             | _,_ -> l //this case should never be reached
                 
     
@@ -346,11 +358,11 @@ module RoverApp =
             match signCurr, signTargetValue with
             | -1, 1 ->                                      //from negative side to positive side
                 let sum = Math.Abs(panCurr) + Math.Abs(pan)
-                if sum > 180.0 then (sum - 180.0) * (-1.0) else (sum*(-1.0))
+                if sum > 180.0 then (sum - 360.0) * (-1.0) else (sum*(-1.0))
                     
             | 1, -1 ->                                      //from positive side to negative side
                 let sum = Math.Abs(panCurr) + Math.Abs(pan)
-                if sum > 180.0 then (sum - 180.0) else sum
+                if sum > 180.0 then (sum - 360.0) else sum
                 
                 
 
@@ -437,7 +449,6 @@ module RoverApp =
         let tiltOverlap = rover.tiltOverlap
         let currentCamera = rover.camera
 
-        //let fov = rover.fov
         let values = rover.thetaPhiValues
         let li = values |> PList.toList
         let pans = li |> List.map (fun l -> l.X) //list with just pan values
@@ -447,18 +458,42 @@ module RoverApp =
 
         let tilts = li |> List.map (fun l -> l.Y) //list with just tilt values
 
-      
-
-        //let panRef = fov * (1.0 - (panOverlap/100.0))
-        //let tiltRef = fov * (1.0 - (tiltOverlap/100.0))
-
-
         //sort pan values
         let sortedPans = List.sort pans
-        
         let minPan = sortedPans.Head
-        let maxPan = sortedPans.Item(sortedPans.Length - 1)
-        let deltaPan = Math.Abs (maxPan - minPan)
+        let maxPanTest = sortedPans.Item(sortedPans.Length - 1)
+
+        //maxPan depends on scenario
+        //check if a crossing of -180/180 is possible
+        let cross = 
+            let signMin = Math.Sign(minPan)
+            let signMax = Math.Sign(maxPanTest)
+            let above90 = Math.Abs(minPan) > 90.0 && Math.Abs(maxPanTest) > 90.0
+            if signMin = -1 && signMax = 1 && above90 then true else false
+
+        //if cross is true than maxPan has to be recalculated (the smallest positive value)
+        let check (oldV:float) (newV:float) =
+            
+            //if the next value in the list is positive
+            if (newV > 0.0) then
+                //if the oldV is not still 0.0
+                if (oldV > 0.0) then 
+                    //check if there is a new smaller positive value
+                    if (newV < oldV) then (oldV+newV) else oldV
+                else newV
+            else oldV
+                
+
+        let maxPanCorr = 
+            if cross then 
+                List.fold (fun f x -> check f x) 0.0 sortedPans 
+            
+            else maxPanTest
+
+        let deltaPan = 
+            let diff = Math.Abs (maxPanCorr - minPan)
+            let d = if diff > 180.0 then diff - 360.0 else diff
+            Math.Abs(d)
         
         //let panningRate = int(Math.Round(deltaPan / panRef))
         //printfn "pan delta %A rate %A " deltaPan panningRate
@@ -469,14 +504,12 @@ module RoverApp =
         let maxTilt = sortedTilts.Item(sortedTilts.Length - 1)
         let deltaTilt = maxTilt - minTilt
     
-    
-        //let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef))) 
-        //printfn "tilt delta %A rate %A " deltaTilt tiltingRate
-
         //generate a sampling list with pan and tilt values
         let firstPair = V2d(minPan, maxTilt) //pair with min pan value and max tilt value (equals left bottom corner of bounding box)
         let samplingValues = [firstPair] //initial list
         
+       
+
         let newRover = 
          match currentCamera with
             | HighResCam -> 
@@ -486,7 +519,10 @@ module RoverApp =
                 let tiltRef = fov * (1.0 - (tiltOverlap/100.0))
                 let panningRate = int(Math.Round(deltaPan / panRef))
                 let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef)))
-                let values = buildList samplingValues panningRate tiltingRate tiltingRate panRef -tiltRef
+
+
+
+                let values = buildList samplingValues panningRate tiltingRate tiltingRate panRef -tiltRef cross
                 let sv = values |> PList.ofList
 
                 //for visualising footprints
@@ -508,7 +544,7 @@ module RoverApp =
                 let tiltRef = fov * (1.0 - (tiltOverlap/100.0))
                 let panningRate = int(Math.Round(deltaPan / panRef))
                 let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef)))
-                let values = buildList samplingValues panningRate tiltingRate tiltingRate panRef -tiltRef
+                let values = buildList samplingValues panningRate tiltingRate tiltingRate panRef -tiltRef cross
                 let sv = values |> PList.ofList
 
                 let viewMatricesLeft = values |> List.map(fun m -> calculateViewMatrix rover m.X m.Y camera.camL) |> PList.ofList
