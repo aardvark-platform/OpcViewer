@@ -142,6 +142,12 @@ type QueryAction =
     | CheckChemRmi
   //| UseQueriesForDataFile
 
+type SelectedProduct =
+    {
+        id:  string
+        pos: V3d
+    }
+
 type MinervaAction =
     | LoadProducts                  of string * string
     | Save
@@ -164,6 +170,7 @@ type MinervaAction =
     | AddProductToSelection         of string
     | PickProducts                  of SceneHit
     | HoverProducts                 of SceneHit
+    | HoverProduct                  of Option<SelectedProduct>
     | OpenTif                       of string
     | LoadTifs                      of string
   //| ChangeInstrumentColor of ColorPicker.Action * Instrument
@@ -527,12 +534,6 @@ with
             featureProperties = MinervaModel.Initial.featureProperties        
             dataFilePath      = ""
         }
-
-type SelectedProduct =
-    {
-        id:  string
-        pos: V3d
-    }
 
 [<DomainType>]
 type MinervaModel = 

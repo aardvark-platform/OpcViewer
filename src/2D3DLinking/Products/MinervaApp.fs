@@ -361,6 +361,9 @@ module MinervaApp =
             //Report.EndTimed() |> ignore
     
             updateModel
+
+        | HoverProduct o ->
+            { model with hoveredProduct = o }
    
         | SetPointSize s ->
             let size = Numeric.update model.session.featureProperties.pointSize s

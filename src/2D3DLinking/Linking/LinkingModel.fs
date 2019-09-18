@@ -23,13 +23,13 @@ type LinkingFeature =
 
 type LinkingFeatureDisplay =
     {
-        before: plist<LinkingFeature>
+        before:   plist<LinkingFeature>
         f:        LinkingFeature
         after:    plist<LinkingFeature>
     }
 
 type LinkingAction =
-    //| MinervaAction of MinervaAction
+    | MinervaAction of MinervaAction
     | UpdatePickingPoint of Option<V3d> * hmap<Instrument, bool>
     //| CheckPoint of V3d
     | ToggleView of Instrument
@@ -69,6 +69,7 @@ module InstrumentParameter =
 [<DomainType>]
 type LinkingModel =
     {
+        [<TreatAsValue>]
         frustums:               hmap<string,LinkingFeature>
         instrumentParameter:    hmap<Instrument, InstrumentParameter>
         //selectedFrustums:       hset<string>

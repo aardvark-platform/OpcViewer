@@ -123,11 +123,13 @@ module App =
                 | None -> model'
             | _ -> model'
 
-        | MinervaAction msg ->
+        | Action.MinervaAction msg ->
             { model with minervaModel = MinervaApp.update model.cameraState.view model.mainFrustum model.minervaModel msg }
 
         | LinkingAction msg ->
             match msg with
+            | MinervaAction a ->
+                { model with minervaModel = MinervaApp.update model.cameraState.view model.mainFrustum model.minervaModel a } // also update minerva here
             | OpenFrustum d ->
                 let updatedLinking = LinkingApp.update model.linkingModel msg
                 let newCamState = { model.cameraState with view = CameraView.ofTrafo d.f.camTrafo }
@@ -167,7 +169,7 @@ module App =
         let afterFilledPolygonSg = 
             [
                 LinkingApp.view m.minervaModel.hoveredProduct m.minervaModel.session.selection.selectedProducts m.linkingModel |> Sg.map LinkingAction
-                MinervaApp.viewFeaturesSg m.minervaModel |> Sg.map MinervaAction
+                MinervaApp.viewFeaturesSg m.minervaModel |> Sg.map Action.MinervaAction
                 DrawingApp.view near far (* whereever you are ♫ *) m.drawingModel |> Sg.map DrawingAction
             ] 
             |> Sg.ofList

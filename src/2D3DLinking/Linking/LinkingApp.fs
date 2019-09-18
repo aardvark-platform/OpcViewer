@@ -230,7 +230,8 @@ module LinkingApp =
             hoveredFrustum
             |> Mod.bind (fun f -> 
                 f 
-                |> Option.map (fun x -> m.frustums |> AMap.tryFind x.id)
+                //|> Option.map (fun x -> m.frustums |> AMap.tryFind x.id)
+                |> Option.map (fun x -> m.frustums |> Mod.map (fun f -> f |> HMap.tryFind x.id))
                 |> Option.defaultValue (Mod.constant None)
             )
             |> Mod.map (fun f -> f |> Option.defaultValue { LinkingFeature.initial with trafo = Trafo3d.Scale 0.0 })  
@@ -277,7 +278,8 @@ module LinkingApp =
 
         let frustra =
             selectedFrustums
-            |> ASet.chooseM (fun s -> AMap.tryFind s m.frustums)
+            //|> ASet.chooseM (fun s -> AMap.tryFind s m.frustums)
+            |> ASet.chooseM (fun s -> m.frustums |> Mod.map (fun f -> f |> HMap.tryFind s))
             |> ASet.map sgFrustum 
             |> Sg.set
             |> Sg.shader {
@@ -518,7 +520,8 @@ module LinkingApp =
         
         let products =
             selectedFrustums
-            |> ASet.chooseM (fun k -> AMap.tryFind k m.frustums)
+            //|> ASet.chooseM (fun k -> AMap.tryFind k m.frustums)
+            |> ASet.chooseM (fun s -> m.frustums |> Mod.map (fun f -> f |> HMap.tryFind s))
 
         let filteredProducts =
             products
@@ -651,6 +654,8 @@ module LinkingApp =
                             Incremental.div (AttributeMap.ofAMap (amap {
                                 yield style (sprintf "border-color: %s" (instrumentColor f.instrument))
                                 yield onClick (fun _ -> OpenFrustum { before = before; f = f; after = after })
+                                yield onMouseEnter (fun _ -> MinervaAction (HoverProduct (Some { id = f.id; pos = f.position })))
+                                yield onMouseLeave (fun _ -> MinervaAction (HoverProduct None))
 
                                 let! selected = m.overlayFeature
 
@@ -659,6 +664,9 @@ module LinkingApp =
                                 | _ -> yield clazz "product-view"
 
                             })) (AList.ofList [
+                                div[
+                                    clazz "selection-box"
+                                ][]
                                 img[
                                     clazz f.id; 
                                     attribute "alt" f.id; 
