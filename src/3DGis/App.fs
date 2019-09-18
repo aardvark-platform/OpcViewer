@@ -355,11 +355,61 @@ module App =
               acc
  
       
-      let rec hoverSpherePos i acc = 
-          if i < numIntersectionPoints then
-              hoverSpherePos (i+1) (acc+pickingModel.intersectionPoints.Item(i))
-          else acc
-      
+      //let rec hoverSpherePos i acc = 
+      //    if i < numIntersectionPoints then
+      //        hoverSpherePos (i+1) (acc+pickingModel.intersectionPoints.Item(i))
+      //    else acc
+
+      let camLoc = model.cameraState.view.Location
+
+      let rec createTriangleStrips i arr = 
+          if i >= 1 then
+              let a = pickingModel.intersectionPoints.Item(i)
+              let b = pickingModel.intersectionPoints.Item(i-1)
+
+              let aDir = b-a
+              let bDir = a-b
+
+              let aCorrected = a + bDir / 5.0 
+              let bCorrected = b + aDir / 5.0 
+
+              let aV = aCorrected - camLoc
+              let bV = bCorrected - camLoc
+
+              let aDublicated1 = V4d(aCorrected,0.0)
+              let aDublicated2 = V4d(aCorrected,1.0)
+
+              let bDublicated1 = V4d(bCorrected,0.0)
+              let bDublicated2 = V4d(bCorrected,1.0)
+
+              let stripWidth = (aV.Length + bV.Length)  / 10.0
+
+              let aCross, bCross = 
+                  if numIntersectionPoints > 2 then
+                      if i > 1 then
+                          (V3d.Cross(bDir,b)).Normalized, (V3d.Cross(bDir,b)).Normalized
+                      else 
+                          (V3d.Cross(aDir,a)).Normalized, (V3d.Cross(aDir,a)).Normalized
+                  else
+                      (V3d.Cross(bDir,bV)).Normalized, (V3d.Cross(aV,aDir)).Normalized
+                
+
+              let a0Moved = aDublicated1.XYZ + aCross * (aDublicated1.W - 0.5) * stripWidth 
+              let a1Moved = aDublicated2.XYZ + aCross * (aDublicated2.W - 0.5) * stripWidth 
+
+              let b0Moved = bDublicated1.XYZ + bCross * (bDublicated1.W - 0.5) * stripWidth 
+              let b1Moved = bDublicated2.XYZ + bCross * (bDublicated2.W - 0.5) * stripWidth 
+             
+              let triangle1 = Triangle3d(a0Moved,a1Moved,b0Moved)
+              let triangle2 = Triangle3d(a1Moved,b0Moved,b1Moved)
+
+              createTriangleStrips (i-1) (Array.append [|triangle1;triangle2|] arr)
+          else 
+              arr 
+
+
+      let triangleStrips = createTriangleStrips (numIntersectionPoints-1) [||]
+            
       { model with 
               picking                    = pickingModel 
               drawing                    = drawingModel 
@@ -373,7 +423,8 @@ module App =
               altitudeList               = correctedAltitudeList  
               errorHitList               = errorHitList
               numofPointsinLineList      = numofElemsBtw2PointsList
-              hoverSphere                = Sphere3d((hoverSpherePos 0 V3d.Zero) / float numIntersectionPoints, linDist)
+              hoverTriangles             = triangleStrips
+            
       }
     
   let rec update (model : Model) (msg : Message) =   
@@ -411,7 +462,7 @@ module App =
                     minHeight = 0.0; 
                     maxHeight = 0.0; 
                     accDistance = 0.0; 
-                    hoverSphere = Sphere3d(V3d.Zero,0.0) 
+                    hoverTriangles = [|Triangle3d(V3d.Zero, V3d.Zero, V3d.Zero)|] 
                     pointList = []
                     altitudeList = []
                     errorHitList = []
@@ -500,7 +551,7 @@ module App =
         else
             model
       | Message.Pan pos ->
-         if model.persToOrthoValue = 1.0 then
+         if model.persToOrthoValue = 1.0 && not model.hover3dActive then
              let direction = pos - model.mouseDragStart
              
              let camPos = model.cameraState.view.Location
@@ -575,7 +626,7 @@ module App =
           | _ -> PickingApp.update model.picking msg, model.drawing
         
         let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 2.0; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } } 
-
+        
         if model.jumpSelectionActive && not model.camViewAnimRunning then
             update { model with selectedJumpPosition = pickingModel.intersectionPoints.Item(0); jumpSelectionActive = false; inJumpedPosition = true } Message.AnimateCameraJump            
         elif model.camViewAnimRunning then
@@ -638,47 +689,53 @@ module App =
             model
       | HighlightIn3DView ->
         let pointList = model.pointList
-        let lineOrigin = pointList.Item(0)
-        let lineEnd = pointList.Item(pointList.Length-1)
+        let numofPointsinLineList = model.numofPointsinLineList
+        let currentHoveredIndex = model.hoveredCircleIndex.Value
+
+        let intersectionPoints = (model.picking.intersectionPoints).AsListBackward
+
+        let lineOrigin, lineEnd =
+            let rec getIndices i curV = 
+                if (curV - numofPointsinLineList.Item(i)) < 0 then
+                    if i = 0 then
+                        (intersectionPoints.Item(i)), (intersectionPoints.Item(i+1))
+                    elif i = numofPointsinLineList.Length-1 then
+                        (intersectionPoints.Item(i)), (intersectionPoints.Item(i+1))
+                    else
+                        (intersectionPoints.Item(i)), (intersectionPoints.Item(i+1))
+                else
+                    getIndices (i+1) (curV - numofPointsinLineList.Item(i))
+
+            getIndices 0 currentHoveredIndex
+
         let line = lineEnd-lineOrigin  
         
         let projectedPointOnLine = 
                 let a = line
-                let b = pointList.Item(model.hoveredCircleIndex.Value) - lineOrigin
+                let b = pointList.Item(currentHoveredIndex) - lineOrigin
                 lineOrigin + a * (((V3d.Dot(b,a)/(a.Length*a.Length)) * a)/a.Length).Length
 
         let height =
-            let h = (projectedPointOnLine - pointList.Item(model.hoveredCircleIndex.Value)).Length
-            if projectedPointOnLine.Length >= pointList.Item(model.hoveredCircleIndex.Value).Length then
+            let h = (projectedPointOnLine - pointList.Item(currentHoveredIndex)).Length
+            if projectedPointOnLine.Length >= pointList.Item(currentHoveredIndex).Length then
                 h
             else 
                 -h
                        
             
         { model with markerCone = { height = height;
-                                    radius = 8.0; 
+                                    radius = 1.0; 
                                     color = C4b.Red; 
                                     trafoRot = Trafo3d.RotateInto(V3d.OOI, model.opcCenterPosition.Normalized ); 
-                                    trafoTrl = Trafo3d.Translation(pointList.Item(model.hoveredCircleIndex.Value))
+                                    trafoTrl = Trafo3d.Translation(pointList.Item(currentHoveredIndex))
                                   }                 
         }
         
-        
-      | EnterBox v ->
+      | Hoverin3D pos ->
         if model.hover3dActive then
-            let pointList = model.pointList
+            let pointList = model.pointList 
 
-            let lineOrigin = pointList.Item(0)
-            let lineEnd = pointList.Item(pointList.Length-1)
-            let line = lineEnd-lineOrigin       
-            let lineCameraVec = (model.cameraState.view.Location - lineOrigin)
-
-            let intersectionPlane = Plane3d(lineOrigin, lineEnd, lineOrigin + V3d.Cross(line,lineCameraVec))
-
-            let fray = FastRay3d(model.cameraState.view.Location, (v-model.cameraState.view.Location).Normalized)
-            let intersectionPoint = fray.Ray.Intersect (intersectionPlane)
-
-            let fray = FastRay3d(V3d.Zero, intersectionPoint.Normalized)   
+            let fray = FastRay3d(V3d.Zero, pos.Normalized)   
             let hitpoint=
                 model.picking.pickingInfos 
                 |> HMap.tryFind model.opcBox
@@ -687,7 +744,7 @@ module App =
                     | Some t -> 
                         fray.Ray.GetPointOnRay t 
                     | None -> 
-                        intersectionPoint
+                        pos
                     )
 
             let minElementIndex = 
@@ -703,6 +760,66 @@ module App =
             update model (HovereCircleEnter minElementIndex)
         else
             model
+
+      | UpdateTriagleStrips pos ->
+        pos |> ignore
+
+        let numIntersectionPoints = model.picking.intersectionPoints.Count
+
+        if numIntersectionPoints >= 2 then
+            let camLoc = model.cameraState.view.Location
+
+            let rec createTriangleStrips i arr = 
+              if i >= 1 then
+                  let a = model.picking.intersectionPoints.Item(i)
+                  let b = model.picking.intersectionPoints.Item(i-1)
+
+                  let aDir = b-a
+                  let bDir = a-b
+
+                  let aCorrected = a + bDir / 5.0 
+                  let bCorrected = b + aDir / 5.0 
+
+                  let aV = aCorrected - camLoc
+                  let bV = bCorrected - camLoc
+
+                  let aDublicated1 = V4d(aCorrected,0.0)
+                  let aDublicated2 = V4d(aCorrected,1.0)
+
+                  let bDublicated1 = V4d(bCorrected,0.0)
+                  let bDublicated2 = V4d(bCorrected,1.0)
+
+                  let stripWidth = (aV.Length + bV.Length)  / 10.0
+
+                  let aCross, bCross = 
+                      if numIntersectionPoints > 2 then
+                          if i > 1 then
+                             (V3d.Cross(bDir,b)).Normalized, (V3d.Cross(bDir,b)).Normalized
+                          else 
+                             (V3d.Cross(aDir,a)).Normalized, (V3d.Cross(aDir,a)).Normalized
+                      else
+                          (V3d.Cross(bDir,bV)).Normalized, (V3d.Cross(aV,aDir)).Normalized
+                  
+
+                  let a0Moved = aDublicated1.XYZ + aCross * (aDublicated1.W - 0.5) * stripWidth 
+                  let a1Moved = aDublicated2.XYZ + aCross * (aDublicated2.W - 0.5) * stripWidth 
+
+                  let b0Moved = bDublicated1.XYZ + bCross * (bDublicated1.W - 0.5) * stripWidth 
+                  let b1Moved = bDublicated2.XYZ + bCross * (bDublicated2.W - 0.5) * stripWidth 
+             
+                  let triangle1 = Triangle3d(a0Moved,a1Moved,b0Moved)
+                  let triangle2 = Triangle3d(a1Moved,b0Moved,b1Moved)
+
+                  createTriangleStrips (i-1) (Array.append [|triangle1;triangle2|] arr)
+              else 
+                  arr 
+
+            let triangleStrips = createTriangleStrips (numIntersectionPoints-1) [||]
+
+            { model with hoverTriangles = triangleStrips}
+        else
+            model
+
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | _ -> model
@@ -823,19 +940,16 @@ module App =
             ]
             |> Sg.trafo (m.markerCone |> Mod.map ( fun x -> x.trafoRot))
             |> Sg.trafo (m.markerCone |> Mod.map ( fun x -> x.trafoTrl))
+           
       
-     
-
-
-      let hoverCylinder = Sg.empty 
-                        |> Sg.pickable' (m.hoverSphere |> Mod.map ( fun s -> { shape = PickShape.Sphere (s); trafo = Trafo3d.Identity } ))
-                        |> Sg.requirePicking
-                        |> Sg.noEvents
-                        |> Sg.withEvents[ 
-                            Sg.onEnter (fun x -> EnterBox x) 
-                            Sg.onLeave (fun _ -> HovereCircleLeave)   
-                        ] 
-      
+      let hoverTriangle = Sg.empty 
+                         |> Sg.pickable' (m.hoverTriangles |> Mod.map ( fun s -> { shape = PickShape.Triangles(KdTree(Spatial.triangle, s)); trafo = Trafo3d.Identity } ))
+                         |> Sg.requirePicking
+                         |> Sg.noEvents
+                         |> Sg.withEvents[ 
+                             Sg.onEnter (fun x -> Hoverin3D x) 
+                             Sg.onLeave (fun _ -> HovereCircleLeave)   
+                            ]       
 
       let scene = 
         [
@@ -843,8 +957,8 @@ module App =
             filledPolygonSg |> Sg.map PickingAction
             afterFilledPolygonSg |> Sg.map PickingAction
             afterFilledPolygonSg2 |> Sg.map PickingAction
-            hoverCylinder 
             markerCone
+            hoverTriangle
         ]
         |> Sg.ofList
         |> Sg.overrideProjTrafo trafo
@@ -867,8 +981,9 @@ module App =
            always (onKeyUp (Message.KeyUp))
            always (onMouseDown (fun b p -> f (Message.Down(b,p))))
            always (onMouseUp (fun b p -> f (Message.Up(b))))
-           onlyWhen state.zoom (onMouseMove (Message.Zoom >> f))
+           onlyWhen state.zoom (onMouseMove (Message.Zoom ))
            onlyWhen state.pan (onMouseMove (Message.Pan >> f))
+           onlyWhen state.hover3dActive (onMouseMove (Message.UpdateTriagleStrips))
          ])
          scene 
          
@@ -1369,10 +1484,10 @@ module App =
           svgSurfaceUnderLineErrorCoord   = ""
           svgCircleSize                   = 0.0
           hoveredCircleIndex              = None
-          hoverSphere                   = Sphere3d(V3d.Zero,0.0)
           hover3dActive                   = false   
           markerCone                      = { height =0.0; radius = 0.0; color = C4b.Red; trafoRot = Trafo3d.Identity; trafoTrl = Trafo3d.Identity}
           numofPointsinLineList           = []
+          hoverTriangles                  = [|Triangle3d(V3d.Zero, V3d.Zero, V3d.Zero)|]
         }
 
       {

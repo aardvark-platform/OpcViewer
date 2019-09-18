@@ -48,9 +48,9 @@ type Message =
   | ResizeCutView           of V2i
   | HovereCircleEnter       of int
   | HovereCircleLeave       
-  | HighlightIn3DView            
-
-  | EnterBox                of V3d
+  | HighlightIn3DView           
+  | Hoverin3D               of V3d
+  | UpdateTriagleStrips     of V2i
 
 
 
@@ -167,7 +167,7 @@ type Model =
 
         hoveredCircleIndex             : Option<int>
         hover3dActive                  : bool
-        hoverSphere                  : Sphere3d
+        hoverTriangles                 : Triangle3d []
 
         markerCone                     : Cone
 
