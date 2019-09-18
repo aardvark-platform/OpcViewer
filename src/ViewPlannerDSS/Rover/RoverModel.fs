@@ -3,7 +3,6 @@
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.UI.Primitives
-open PRo3D.Minerva
 
 [<DomainType>]
 type CameraInput = 
@@ -158,6 +157,7 @@ type RoverAction =
     | ChangeTiltOverlap of Option<Overlap>
     | SetRoverPosAndTarget of int
     | ShowViewPlan of int
+    | SampleAllCombinations
 
 
 

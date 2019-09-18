@@ -2,6 +2,7 @@
 
 open System
 open Aardvark.Base
+open Aardvark.Base.Incremental
 
 module RoverApp =
     open Aardvark.UI
@@ -570,14 +571,6 @@ module RoverApp =
 
 
 
-
-        //let samplings = buildList samplingValues panningRate tiltingRate tiltingRate panRef -tiltRef
-
-        //samplings
-       
-
-
-
     let moveFrustum (m:RoverModel) = 
        
         //let v = checkROIFullyInside m m.reg
@@ -585,10 +578,7 @@ module RoverApp =
         m
    
 
-
-
-
-    
+   
     let rotateToPoint (rover:RoverModel) =
         
         let selectedViewPlan = rover.selectedViewPlan
@@ -705,19 +695,19 @@ module RoverApp =
 
 
        
-    let calculateValues (rover:RoverModel) =
+    let calculateValues (rover:RoverModel)=
         
         let region = rover.reg
         let selectedPos = rover.selectedPosition
         let newRover = 
          match region,selectedPos with
             | Some reg, Some p -> 
-                let spherePos = rover.projsphere.position
+                let spherePos = p.position
                 let l = reg |> PList.toList
                 let shiftedPoints = l  |> List.map (fun p -> (p - spherePos).Normalized)
                 let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotateIntoCoordinateSystem rover p)
                 let projectionPoints = shiftedPoints |> List.map (fun p -> p + spherePos) |> PList.ofList
-                let thetaPhiValues = rotatedPoints |> List.map(fun p -> calcThetaPhi p)
+                let thetaPhiValues = rotatedPoints |> List.map(fun p -> calcThetaPhi p) 
 
                 //debugging
                 for p in thetaPhiValues do
@@ -727,7 +717,7 @@ module RoverApp =
 
      
                 //point on forward vector
-                let referencePoint = rover.target
+                let referencePoint = p.target
                 let shifted = (referencePoint-spherePos).Normalized
                 let r = rotateIntoCoordinateSystem rover shifted
                 let thetaPhi = calcThetaPhi r
@@ -745,8 +735,7 @@ module RoverApp =
             | _,_ -> rover
         
         newRover
-        //let roverWithSampling = sampling newRover
-        //roverWithSampling
+   
         
       
     let changeCam (rover:RoverModel) (camtype:Option<CameraType>)=
@@ -837,7 +826,6 @@ module RoverApp =
         
         let viewplans = rover.viewplans
         let selectedVP = viewplans |> Seq.tryFind (fun place -> place.id = id)
-        Log.line "\n\n\n\nID IS %A\n\n\n\n" id
         match selectedVP with 
         | Some viewplan ->
     
@@ -846,17 +834,56 @@ module RoverApp =
 
         | None -> rover
 
+    
 
 
+    let sampleAllCombinations (rover:RoverModel) =
+        
+        let positions = rover.positionsList
+        let cameras = rover.cameraOptions
+        let panoverlaps = rover.panOverlapOptions
+        let tiltoverlaps = rover.tiltOverlapOptions
+        let mutable id = 1
+
+        let views = 
+         alist{
+        
+            for position in positions do
+            
+                for cam in cameras do
+                    let camtype = fst cam
+                    
+                    for panOL in panoverlaps do  
+                        let o = fst panOL
+                        let panO = 
+                            match o with
+                            | Percent_20 -> 20.0
+                            | Percent_30 -> 30.0
+                            | Percent_40 -> 40.0
+                            | Percent_50 -> 50.0
+                        
+                        for tiltOL in tiltoverlaps do
+                            let o = fst tiltOL
+                            let tiltO = 
+                                match o with
+                                | Percent_20 -> 20.0
+                                | Percent_30 -> 30.0
+                                | Percent_40 -> 40.0
+                                | Percent_50 -> 50.0
+                            
+                            let sampleRover = {rover with selectedPosition = Some position; camera = camtype; panOverlap = panO; tiltOverlap = tiltO}
+                            let result = calculateValues sampleRover
+                            let newViewPlan = result.viewplans |> PList.first
+                            let vpWithId = {newViewPlan with id = id}
+                            id <- id + 1
+                            yield vpWithId
+
+         }
+        
+        let list = views |> AList.toPList
+        {rover with viewplans = list}
 
         
-
-
-
-
-
-
-
 
     let update (rover:RoverModel) (action:RoverAction) =
         
@@ -877,8 +904,11 @@ module RoverApp =
             | SwitchCamera cam ->
                 changeCam rover cam
             
-            |CalculateAngles ->
+            | CalculateAngles ->
                 calculateValues rover
+
+            | SampleAllCombinations ->
+                sampleAllCombinations rover
             
             | RotateToPoint ->
                 rotateToPoint rover

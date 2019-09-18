@@ -53,6 +53,99 @@ module ViewUtilities =
             }
           )
 
+
+    let viewPlanDetails (vp:MViewPlan) (same:bool) = 
+        
+         Incremental.div AttributeMap.Empty (
+        
+                alist{
+                
+                    match same with
+                    | true -> 
+                        let plan = vp
+                        let outputvars = plan.outputParams
+                        let! instrument = plan.instrument
+                        let! pan = plan.panOverlap
+                        let! tilt = plan.tiltOverlap
+                        let! numsamples = outputvars.numberOfSamples
+                        let! energy = outputvars.energyRequired
+                        let! time = outputvars.timeRequired
+                        let! bandwidth = outputvars.bandwidthRequired
+
+                        //text
+                        let ins = instrument.ToString()
+                        let p = "" + pan.ToString() + " °"
+                        let t = "" + tilt.ToString() + " °"
+                        let samples = "" + numsamples.ToString()
+                        let e = "" + energy.ToString() + " %"
+                        let ti = "" + time.ToString() + " sec"
+                        let bw = "" + bandwidth.ToString()
+                         
+                        yield table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
+                            
+                            tr [] [
+                                td [attribute "colspan" "2"] [
+                                   text "Input parameters"
+                                ]
+                            ]
+
+                            tr [] [
+                               td [] [text "Instrument"]
+                               td [] [text ins]
+                                ]
+                            
+                            tr [] [
+                               td [] [text "pan overlap"]
+                               td [] [text p]
+                                ]
+                            
+                            tr [] [
+                               td [] [text "tilt overlap"]
+                               td [] [text t]
+                                ]
+                            
+                            tr [] [
+                                td [attribute "colspan" "2"] [
+                                   text "Output parameters"
+                                ]
+                            ]
+
+                            tr [] [
+                               td [] [text "# of samples"]
+                               td [] [text samples]
+                                ]
+                            
+                            tr [] [
+                               td [] [text "required energy"]
+                               td [] [text e]
+                                ]
+
+                            tr [] [
+                               td [] [text "required time"]
+                               td [] [text ti]
+                                ]
+
+                            tr [] [
+                               td [] [text "required bandwidth"]
+                               td [] [text bw]
+                                ]
+                          ]
+                        
+                        yield button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.RotateToPoint)]  [
+                            i [clazz "icon play"] []
+                            text "walk through" 
+                            ] //|> UI.map RoverAction
+
+
+                 
+                    | false -> yield div[][]
+
+                }
+            )
+
+      
+      
+
     let accordionContentViewPlans (r:MRoverModel) = 
         
         let itemAttributes =
@@ -62,7 +155,7 @@ module ViewUtilities =
 
         Incremental.div itemAttributes (
             alist { 
-              //yield Incremental.i itemAttributes AList.empty
+
               let items = r.viewplans
               let! selected = r.selectedViewPlan
               for item in items do
@@ -71,27 +164,41 @@ module ViewUtilities =
                 let! s = item.id
                 let t = Incremental.text (Mod.map (fun id  -> "ViewPlan " + id.ToString()) id)
 
-                let! color = 
+                let! color,same, ic = 
                     match selected with
                     | Some placement -> 
                         let pid = placement.id
                         let equal = Mod.map2 (fun a b -> a = b) pid id
-                        equal |> Mod.map (fun e -> if e then C4b.Cyan else C4b.White)
-                    | None -> Mod.constant C4b.White
+                        equal |> Mod.map (fun e -> if e then (C4b.Cyan,true, "icon folder open outline") else (C4b.White,false, "icon folder outline"))
+                    | None -> Mod.constant (C4b.White, false, "icon folder outline")
                 let bgc = color |> Html.ofC4b |> sprintf "color: %s"
+               
 
                 yield div [clazz "item"] [
                     Incremental.i itemAttributes AList.empty
-                    i [
-                        clazz "small cube left aligned icon"; 
-                        style bgc
-                        onClick (fun _ -> ShowViewPlan s)
-                    ][]
-                    div [clazz "content"] [
-                        Incremental.i itemAttributes AList.empty
-                        t      
+
+                    div[onClick (fun _ -> ShowViewPlan s); style "margin-top:5px"][
+                        
+                        
+                        i [
+                            clazz ic // "small cube left aligned icon"; 
+                            style bgc
+                            onClick (fun _ -> ShowViewPlan s)
+                        
+                        ][]
+                    
+                        t
+                    
+                    ]
+                    
+                    div [clazz "content"; style "margin-bottom:5px"] [
+                        //Incremental.i itemAttributes AList.empty
+                        //t
+                        viewPlanDetails item same
+                        
                     ]
                 ]
+
             }
           )
     
@@ -219,95 +326,15 @@ module ViewUtilities =
                 button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.CalculateAngles)]  [
                 i [clazz "icon camera"] []
                 text "sample"] |> UI.map RoverAction
+
+                button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.SampleAllCombinations)]  [
+                i [clazz "icon camera"] []
+                text "sample all"] |> UI.map RoverAction
                                 
               ]
             
     
-    let viewPlanDetails (vp:IMod<Option<MViewPlan>>)  =
-
-        Incremental.div AttributeMap.Empty (
-        
-            alist{
-                
-                let! v = vp
-               
-                match v with
-                    | Some plan -> 
-                        
-                        let outputvars = plan.outputParams
-                        let! instrument = plan.instrument
-                        let! pan = plan.panOverlap
-                        let! tilt = plan.tiltOverlap
-                        let! numsamples = outputvars.numberOfSamples
-                        let! energy = outputvars.energyRequired
-                        let! time = outputvars.timeRequired
-                        let! bandwidth = outputvars.bandwidthRequired
-
-                        //text
-                        let ins = instrument.ToString()
-                        let p = "" + pan.ToString() + " °"
-                        let t = "" + tilt.ToString() + " °"
-                        let samples = "" + numsamples.ToString()
-                        let e = "" + energy.ToString() + " %"
-                        let ti = "" + time.ToString() + " sec"
-                        let bw = "" + bandwidth.ToString()
-                         
-                        yield table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
-                            
-                            tr [] [
-                                td [attribute "colspan" "2"] [
-                                   text "Input parameters"
-                                ]
-                            ]
-
-                            tr [] [
-                               td [] [text "Instrument"]
-                               td [] [text ins]
-                                ]
-                            
-                            tr [] [
-                               td [] [text "pan overlap"]
-                               td [] [text p]
-                                ]
-                            
-                            tr [] [
-                               td [] [text "tilt overlap"]
-                               td [] [text t]
-                                ]
-                            
-                            tr [] [
-                                td [attribute "colspan" "2"] [
-                                   text "Output parameters"
-                                ]
-                            ]
-
-                            tr [] [
-                               td [] [text "# of samples"]
-                               td [] [text samples]
-                                ]
-                            
-                            tr [] [
-                               td [] [text "required energy"]
-                               td [] [text e]
-                                ]
-
-                            tr [] [
-                               td [] [text "required time"]
-                               td [] [text ti]
-                                ]
-
-                            tr [] [
-                               td [] [text "required bandwidth"]
-                               td [] [text bw]
-                                ]
-                          ]
-
-
-                 
-                    | None -> yield h5[][text "Select a viewplan to view its details"]
-
-            }
-        )
+   
 
 
     let viewPlanModeMenu (m: MModel) = 
@@ -318,15 +345,10 @@ module ViewUtilities =
                 accordionContentViewPlans m.rover |> UI.map RoverAction
             ]  
                 
-            br[]
-            viewPlanDetails m.rover.selectedViewPlan
-                
-            br[]
-
-            button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.RotateToPoint)]  [
-                i [clazz "icon play"] []
-                text "walk through" 
-            ] |> UI.map RoverAction
+            //button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.RotateToPoint)]  [
+            //    i [clazz "icon play"] []
+            //    text "walk through" 
+            //] |> UI.map RoverAction
                                 
         ] 
     
@@ -415,8 +437,7 @@ module ViewUtilities =
 
                     match side with
                     | "left" ->
-                        
-                        Log.line "left camera side"
+
                         let views = plan.cameraVariables |> AList.toMod
                         let view = views |> Mod.map(fun f -> f |> PList.first)
                         let dom = renderControl view m.rover.walkThroughIdx scene att
@@ -425,39 +446,22 @@ module ViewUtilities =
                     | "right" -> 
                        
                        let instrument = plan.instrument
-                       Log.line " viewplan instrument %A" instrument 
-                       
-                       //let viewsMod = plan.cameraVariables |> AList.toMod
-                       //let view = 
-                       //    viewsMod 
-                       //    |> Mod.map(fun p -> p |> PList.last) 
+  
                        let m = 
                             adaptive {
                                 let! st = instrument
                                 match st with
-                                | "High Resolution Camera" -> return div[style " background: transparent"][] //yield div[][]
+                                | "High Resolution Camera" -> return div[style " background: transparent"][] 
  
                                 | "WACLR" -> 
                                     let! viewsMod = plan.cameraVariables |> AList.toMod
                                     let view = viewsMod |> PList.last |> Mod.constant
                                     return renderControl view m.rover.walkThroughIdx scene att
-                                    //yield div [clazz "ui"; style "background: #1B1C1E"] [dom]
-                            
-                                | _ -> return div[style " background: transparent"][]//yield div[][]
+                                   
+                                | _ -> return div[style " background: transparent"][]
                             }
 
-                            //instrument |> Mod.map (fun st -> 
-                            //    match st with
-                            //    | "High Resolution Camera" -> div[][] //yield div[][]
- 
-                            //    | "WACLR" -> 
-
-                            //        renderControl view m.rover.walkThroughIdx scene att
-                            //        //yield div [clazz "ui"; style "background: #1B1C1E"] [dom]
-                            
-                            //    | _ -> div[][]//yield div[][]
-
-                            //                    )
+                           
                        let a = m |> Mod.toAList
                        for item in a do
                         yield item
