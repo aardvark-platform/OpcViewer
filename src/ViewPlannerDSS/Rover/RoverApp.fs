@@ -115,7 +115,16 @@ module RoverApp =
         let theta = (atan2 x y)* Constant.DegreesPerRadian 
         let phi = (acos(z)) * Constant.DegreesPerRadian
 
-        V2d(theta,phi)
+        //bring theta to interval [0, 360]
+        let thetaShifted = 
+            if theta < 0.0 then
+                theta * (-1.0)
+            else 
+                let delta = 180.0 - theta
+                180.0 + delta
+
+        V2d(thetaShifted,phi)
+        //V2d(theta,phi)
 
 
 
@@ -229,7 +238,7 @@ module RoverApp =
     
     //panR = number of required pans; tiltR = number of required tilts per pan
     //TODO: incoorporate possible overlap between pans
-    let rec buildList (l:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (deltaPan:float) (deltaTilt:float) (cross180:bool)=
+    let rec buildList (l:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (deltaPan:float) (deltaTilt:float) (cross360:bool)=
         match panR,tiltR with 
             | (p,t) when  p = 0 && t = 0 -> l
             | (p,t) when  p >= 0 && t > 0 -> 
@@ -237,17 +246,15 @@ module RoverApp =
                         let newTilt = lastItem.Y + deltaTilt
                         let listItem = [V2d(lastItem.X, newTilt)]
                         let newList = List.append l listItem
-                        buildList newList panR (tiltR-1) originalTiltR deltaPan deltaTilt cross180
+                        buildList newList panR (tiltR-1) originalTiltR deltaPan deltaTilt cross360
             | (p,t) when p > 0 && t = 0 -> 
                         let lastItem = l.Item(l.Length-1)
                         let newPan = 
-                            if cross180 then     //if the -180/180 point will be crossed at some point
-                                let p = lastItem.X - deltaPan
-                                let sign = Math.Sign(p)
+                            if cross360 then                    //if the 0/360 point will be crossed at some point
+                                let p = lastItem.X + deltaPan
                                 let newP = 
-                                    if (sign = -1 && p < -180.0) then 
-                                        let d = (Math.Abs(p)) - 180.0
-                                        180.0 - d
+                                    if (p < 0.0) then 
+                                        360.0 - p
                                     else p
                                 newP
 
@@ -256,7 +263,7 @@ module RoverApp =
                         let newDeltaTilt = deltaTilt * (-1.0) 
                         let listItem = [V2d(newPan, lastItem.Y)]
                         let newList = List.append l listItem
-                        buildList newList (panR-1) originalTiltR originalTiltR deltaPan newDeltaTilt cross180
+                        buildList newList (panR-1) originalTiltR originalTiltR deltaPan newDeltaTilt cross360
             | _,_ -> l //this case should never be reached
                 
     
@@ -352,25 +359,14 @@ module RoverApp =
         
         let panCurr = rover.pan.current
 
-        let signCurr = Math.Sign(panCurr)
-        let signTargetValue = Math.Sign(pan)
-
         let panDelta = 
-            match signCurr, signTargetValue with
-            | -1, 1 ->                                      //from negative side to positive side
-                let sum = Math.Abs(panCurr) + Math.Abs(pan)
-                if sum > 180.0 then (sum - 360.0) * (-1.0) else (sum*(-1.0))
-                    
-            | 1, -1 ->                                      //from positive side to negative side
-                let sum = Math.Abs(panCurr) + Math.Abs(pan)
-                if sum > 180.0 then (sum - 360.0) else sum
+            let d = pan - panCurr
+            let sign = float (Math.Sign(d))
+            let dA = Math.Abs(d)
+            let p = if dA > 180.0 then dA - 360.0 else dA
+            p * sign
                 
-                
-
-
-            | _,_ -> (panCurr - pan)                        //both values on the same side
-
-
+        
         let tiltCurr = rover.tilt.current
         let tiltDelta = tiltCurr - tilt
 
@@ -441,8 +437,85 @@ module RoverApp =
         vp
 
 
+    let selectFromList (values:alist<float*int>) (quadrant:int) =
+        
+        values |> AList.choose (fun v -> 
+                                    let q = snd v
+                                    let p = fst v
+                                    match v with
+                                    | v when q = quadrant -> Some p
+                                    | _ -> None 
 
-    
+                                )
+        |> AList.toList
+        |> List.sort
+
+
+    let panValues (pans:list<float>) =
+        
+        let sorting = 
+            
+            alist {
+            
+                for pan in pans do
+                    
+                    //check in which quadrant the value lies
+                    let quadrant = 
+                        match pan with
+                        | p when ((p >= 0.0 && p < 90.0) || p = 360.0) -> 1
+                        | p when (p >= 90.0 && p < 180.0) -> 2
+                        | p when (p >= 180.0 && p < 270.0) -> 3
+                        | p when (p >= 270.0 && p < 360.0) -> 4
+                        | _ -> failwith "invalid value"
+                    
+                    yield (pan, quadrant)
+            }
+        
+        //create a list for each quadrant
+        let q1 = selectFromList sorting 1 
+        let q2 = selectFromList sorting 2
+        let q3 = selectFromList sorting 3
+        let q4 = selectFromList sorting 4
+
+        //check for problematic scenarios
+        //scenario 1: Q1 and Q4
+        //scenario 2: Q1 and Q4 and Q3
+        //scenario 3: Q1 and Q2 and Q4
+
+        let minPan, maxPan, cross0_360 = 
+            
+            let q1empty = q1.IsEmpty
+            let q2empty = q2.IsEmpty
+            let q3empty = q3.IsEmpty
+            let q4empty = q4.IsEmpty
+
+
+            match q1empty,q2empty,q3empty,q4empty with
+            | false, true, true, false -> 
+                let minPan = q1.Item(q1.Length - 1)
+                let maxPan = q4.Head
+                (minPan,maxPan, true)
+            
+            | false, true, false, false -> 
+                let minPan = q1.Item(q1.Length - 1)
+                let maxPan = q3.Head
+                (minPan,maxPan, true)
+            
+            | false, false, true, false ->
+                let minPan = q2.Item(q1.Length - 1)
+                let maxPan = q4.Head
+                (minPan,maxPan, true)
+            
+            | _, _, _, _ -> 
+                let sortedPans = pans |> List.sort
+                let minPan = sortedPans.Head
+                let maxPan = sortedPans.Item(sortedPans.Length - 1)
+                (minPan,maxPan, false)
+
+        (minPan,maxPan,cross0_360)
+
+
+
 
     let sampling (p : Placement) (rover : RoverModel) = 
         
@@ -454,51 +527,34 @@ module RoverApp =
         let li = values |> PList.toList
         let pans = li |> List.map (fun l -> l.X) //list with just pan values
         
-        //let min = pans |> Seq.indexed |> Seq.min
-        //let idx = fst min
-
         let tilts = li |> List.map (fun l -> l.Y) //list with just tilt values
 
-        //sort pan values
-        let sortedPans = List.sort pans
-        let minPan = sortedPans.Head
-        let maxPanTest = sortedPans.Item(sortedPans.Length - 1)
 
-        //maxPan depends on scenario
-        //check if a crossing of -180/180 is possible
-        let cross = 
-            let signMin = Math.Sign(minPan)
-            let signMax = Math.Sign(maxPanTest)
-            let above90 = Math.Abs(minPan) > 90.0 && Math.Abs(maxPanTest) > 90.0
-            if signMin = -1 && signMax = 1 && above90 then true else false
+        let panInfo = panValues pans
+        let minPan = 
+            match panInfo with
+            | min, max, bool -> min
 
-        //if cross is true than maxPan has to be recalculated (the smallest positive value)
-        let check (oldV:float) (newV:float) =
-            
-            //if the next value in the list is positive
-            if (newV > 0.0) then
-                //if the oldV is not still 0.0
-                if (oldV > 0.0) then 
-                    //check if there is a new smaller positive value
-                    if (newV < oldV) then (oldV+newV) else oldV
-                else newV
-            else oldV
-                
-
-        let maxPanCorr = 
-            if cross then 
-                List.fold (fun f x -> check f x) 0.0 sortedPans 
-            
-            else maxPanTest
-
-        let deltaPan = 
-            let diff = Math.Abs (maxPanCorr - minPan)
-            let d = if diff > 180.0 then diff - 360.0 else diff
-            Math.Abs(d)
+        let maxPan = 
+            match panInfo with
+            | min, max, bool -> max
         
-        //let panningRate = int(Math.Round(deltaPan / panRef))
-        //printfn "pan delta %A rate %A " deltaPan panningRate
+        let cross360 = 
+            match panInfo with
+            | min, max, bool -> bool
 
+     
+        let deltaPan = 
+            
+            match cross360 with
+            | true -> 
+                let deltaToZero = minPan
+                let deltaToMaxFromZero = 360.0 - maxPan
+                deltaToZero + deltaToMaxFromZero
+                
+            | false -> Math.Abs (maxPan - minPan)
+
+           
         //sort tilt values
         let sortedTilts = List.sort tilts
         let minTilt = sortedTilts.Head
@@ -516,14 +572,16 @@ module RoverApp =
             | HighResCam -> 
                 let camera = rover.HighResCam
                 let fov = camera.cam.frustum |> Frustum.horizontalFieldOfViewInDegrees
-                let panRef = fov * (1.0 - (panOverlap/100.0))
+
+                let panRef = fov * (1.0 - (panOverlap/100.0))            
                 let tiltRef = fov * (1.0 - (tiltOverlap/100.0))
-                let panningRate = int(Math.Round(deltaPan / panRef))
-                let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef)))
+                let panningRate = int(Math.Round((Math.Abs(deltaPan)) / panRef))
+                let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / tiltRef))
+
+                let refPan = if cross360 then (panRef * -1.0) else panRef
 
 
-
-                let values = buildList samplingValues panningRate tiltingRate tiltingRate panRef -tiltRef cross
+                let values = buildList samplingValues panningRate tiltingRate tiltingRate refPan -tiltRef cross360 
                 let sv = values |> PList.ofList
 
                 //for visualising footprints
@@ -541,11 +599,14 @@ module RoverApp =
                 let camera = rover.WACLR
                 let fov = camera.camL.frustum |> Frustum.horizontalFieldOfViewInDegrees //equal for both left and right cams
                 let ol = camera.overlapBetweenCams
-                let panRef = ((fov+fov) - ol) * (1.0 - (panOverlap/100.0))
+                let panRef = ((fov+fov) - ol) * (1.0 - (panOverlap/100.0)) 
                 let tiltRef = fov * (1.0 - (tiltOverlap/100.0))
                 let panningRate = int(Math.Round(deltaPan / panRef))
                 let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef)))
-                let values = buildList samplingValues panningRate tiltingRate tiltingRate panRef -tiltRef cross
+
+                let refPan = if cross360 then (panRef * -1.0) else panRef
+
+                let values = buildList samplingValues panningRate tiltingRate tiltingRate refPan -tiltRef cross360
                 let sv = values |> PList.ofList
 
                 let viewMatricesLeft = values |> List.map(fun m -> calculateViewMatrix rover m.X m.Y camera.camL) |> PList.ofList
@@ -595,52 +656,6 @@ module RoverApp =
             {rover with walkThroughIdx = newIdx}
             
         | None -> rover
-
-
-        //let currentCamera = rover.camera
-
-        //let r = 
-        // match currentCamera with
-        // | HighResCam -> 
-        //   let c = rover.HighResCam.cam
-        //   let values = c.samplingValues
-        //   let li = values |> PList.toList
-        //   let idx = rover.HighResCam.currIdx
-        //   let pair = values.Item(idx)
-
-        //   let panned = setPan rover pair.X
-        //   let pannedRover = panning panned currentCamera
-        //   let tilted = setTilt pannedRover pair.Y
-        //   let ro = tilting tilted currentCamera
-
-        //   let lastIdx = li.Length - 1
-        //   let newIdx = 
-        //    if idx = lastIdx then 0 else (idx+1)
-           
-        //   {ro with HighResCam = { ro.HighResCam with currIdx = newIdx}}
-
-        // | WACLR ->  
-        //    let c = rover.WACLR.camL
-        //    let values = c.samplingValues
-        //    let li = values |> PList.toList
-        //    let idx = rover.WACLR.currIdx
-        //    let pair = values.Item(idx)
-
-        //    let panned = setPan rover pair.X
-        //    let pannedRover = panning panned currentCamera
-        //    let tilted = setTilt pannedRover pair.Y
-        //    let ro = tilting tilted currentCamera
-
-        //    let lastIdx = li.Length - 1
-        //    let newIdx = 
-        //     if idx = lastIdx then 0 else (idx+1)
-           
-        //    {ro with WACLR = { ro.WACLR with currIdx = newIdx}}
-
-
-        
-        //r
-
 
 
      //create new cameraviews for stereo cam
@@ -780,8 +795,6 @@ module RoverApp =
 
     let setRoverPosAndTarget (id:int) (rover:RoverModel) = 
         
-        //let currentCam = rover.camera
-        //let up = rover.up
         let positions = rover.positionsList
         let selectedLoc = positions |> Seq.tryFind (fun place -> place.id = id)
 
@@ -795,33 +808,7 @@ module RoverApp =
             | None -> rover
 
 
-        //match selectedLoc with
-        //| Some placement -> 
-        //    let pos = (placement.position + up)
-        //    let tar = placement.target
-
-        //    match currentCam with
-        //    | HighResCam -> 
-        //        let forward = tar - pos
-        //        let cam = CameraView.look pos forward.Normalized up
-        //        let view = {rover.HighResCam.cam.camera with view = cam}
-        //        let vars = {rover.HighResCam.cam with position = pos; camera = view}
-        //        let hr = {rover.HighResCam with cam = vars}
-        //        let projSphere = {rover.projsphere with position = pos}
-        //        {rover with position = pos; target = tar; HighResCam = hr; projsphere = projSphere; selectedPosition = Some placement}
-
-        //    | WACLR -> 
-        //        let forward = (tar - pos)
-        //        let projSphere = {rover.projsphere with position = pos}
-        //        let vars = updateStereoCam forward pos rover
-        //        let camL = fst vars
-        //        let camR = snd vars
-        //        let stc = {rover.WACLR with camL = camL; camR = camR}
-        //        {rover with position = pos; target = tar; WACLR = stc; projsphere = projSphere; selectedPosition = Some placement}
-
-        //| None -> rover
-
-    
+     
     let showViewPlan (id:int) (rover:RoverModel) = 
         
         let viewplans = rover.viewplans
@@ -871,7 +858,7 @@ module RoverApp =
                                 | Percent_40 -> 40.0
                                 | Percent_50 -> 50.0
                             
-                            let sampleRover = {rover with selectedPosition = Some position; camera = camtype; panOverlap = panO; tiltOverlap = tiltO}
+                            let sampleRover = {rover with position = position.position; target = position.target; selectedPosition = Some position; camera = camtype; panOverlap = panO; tiltOverlap = tiltO}
                             let result = calculateValues sampleRover
                             let newViewPlan = result.viewplans |> PList.first
                             let vpWithId = {newViewPlan with id = id}

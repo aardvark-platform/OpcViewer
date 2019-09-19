@@ -54,6 +54,18 @@ module ViewUtilities =
           )
 
 
+    let rec modulo (time:float) (counter:int) (current:float) = 
+                            
+        match current with
+        | c when ((c + 60.0) > time) -> 
+               let v = c + 60.0
+               let remainder = v - time
+               (counter, remainder)
+                            
+        | _ -> modulo time (counter+1) (current+60.0)
+
+
+
     let viewPlanDetails (vp:MViewPlan) (same:bool) = 
         
          Incremental.div AttributeMap.Empty (
@@ -72,13 +84,19 @@ module ViewUtilities =
                         let! time = outputvars.timeRequired
                         let! bandwidth = outputvars.bandwidthRequired
 
+                        let m = modulo time 0 0.0
+
+                        let minutes = fst m
+                        let seconds = snd m
+
+        
                         //text
                         let ins = instrument.ToString()
-                        let p = "" + pan.ToString() + " °"
-                        let t = "" + tilt.ToString() + " °"
+                        let p = "" + pan.ToString() + " %"
+                        let t = "" + tilt.ToString() + " %"
                         let samples = "" + numsamples.ToString()
                         let e = "" + energy.ToString() + " %"
-                        let ti = "" + time.ToString() + " sec"
+                        let ti = "" + minutes.ToString() + " min " + seconds.ToString() + " sec"
                         let bw = "" + bandwidth.ToString()
                          
                         yield table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
@@ -344,12 +362,7 @@ module ViewUtilities =
             Html.SemUi.accordion "ViewPlans" "bookmark" true [
                 accordionContentViewPlans m.rover |> UI.map RoverAction
             ]  
-                
-            //button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.RotateToPoint)]  [
-            //    i [clazz "icon play"] []
-            //    text "walk through" 
-            //] |> UI.map RoverAction
-                                
+                                  
         ] 
     
 
@@ -451,14 +464,14 @@ module ViewUtilities =
                             adaptive {
                                 let! st = instrument
                                 match st with
-                                | "High Resolution Camera" -> return div[style " background: transparent"][] 
+                                | "High Resolution Camera" -> return div[][] 
  
                                 | "WACLR" -> 
                                     let! viewsMod = plan.cameraVariables |> AList.toMod
                                     let view = viewsMod |> PList.last |> Mod.constant
                                     return renderControl view m.rover.walkThroughIdx scene att
                                    
-                                | _ -> return div[style " background: transparent"][]
+                                | _ -> return div[][]
                             }
 
                            
@@ -469,10 +482,10 @@ module ViewUtilities =
                        
 
 
-                    | _ -> yield div[style " background: transparent"][]
+                    | _ -> yield div[][]
 
       
-                | None -> yield div[style " background: transparent"][]
+                | None -> yield div[][]
 
            
 

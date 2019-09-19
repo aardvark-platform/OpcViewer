@@ -365,12 +365,23 @@ module App =
         
         | Some "leftCam" ->
             require Html.semui (
+
+              body [style "width: 100%; height:100%; background: transparent";] [
                 ViewUtilities.selectView m.currentModeOption camScene "left" m
+                   ]
+
+               
           )
         
          | Some "rightCam" ->
             require Html.semui (
-                ViewUtilities.selectView m.currentModeOption camScene "right" m
+                
+                body [style "width: 100%; height:100%; background: transparent";] [
+                 ViewUtilities.selectView m.currentModeOption camScene "right" m
+                ]
+
+
+               
             )
 
         | Some "controls" -> 
@@ -608,7 +619,7 @@ module App =
             active = false
             counter = 0
             counterToMax = 0
-            max = 3
+            max = 4
             }
           //menuOptions        = HMap.ofList [SaveCameraState, "Save camera state"; SaveRoverState, "Save plane state"; RoverPlacementMode, "rover placement mode"; StandardMode, "standard mode"]
           modeOptions        = HMap.ofList [StandardMode, "standard mode"; RoverPlacementMode, "rover placement mode"; SampleMode, "sample mode" ; ViewPlanMode, "view plan mode"] 
