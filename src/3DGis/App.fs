@@ -107,11 +107,25 @@ module App =
         let durationTicks = TimeSpan.FromSeconds 2.0 
         let remaingTicks = model.cameraAnimEndTime - t
         let percent = 1.0 - (remaingTicks / float durationTicks.Ticks)
+        
 
-        let camToTarget = model.targetPosition - model.originalCamPos
+        let up = V3d.OOI 
+        let sky = model.opcCenterPosition.Normalized
+        let r = Trafo3d.RotateInto(V3d.OOI, sky)
+        let camTarget = V3d(model.opcCenterPosition.X,model.opcCenterPosition.Y,model.opcCenterPosition.Z)+r.Forward.TransformPos(V3d(0.0,0.0,10.0*2.0*100.0))
 
-        let cam = 
-            CameraView(model.cameraState.view.Sky, model.originalCamPos + camToTarget * percent, model.cameraState.view.Forward, model.cameraState.view.Up, model.cameraState.view.Right)
+        let camToTarget = camTarget - model.originalCamPos
+
+        //let cam = 
+        //    CameraView(model.cameraState.view.Sky, model.originalCamPos + camToTarget * percent, model.cameraState.view.Forward, model.cameraState.view.Up, model.cameraState.view.Right)
+
+        let cam = CameraView.lookAt (model.originalCamPos + camToTarget * percent) (model.targetPosition * (1.0-percent)) (up * percent + (1.0 - percent) * (model.cameraState.view.Location.Normalized));
+        
+       // let cam2 = 
+         //   CameraView(cam.Sky, cam.Location, model.cameraState.view.Forward * (1.0-percent), cam.Up, V3d.Cross(model.cameraState.view.Forward * (1.0-percent),cam.Up))
+        
+        //let cam = CameraView.lookAt (model.originalCamPos + camToTarget * percent) (model.targetPosition * percent) ((model.cameraState.view.Location.Normalized) * percent + (1.0 - percent) * up);
+
 
         let newCamState : CameraControllerState =
                       { model.cameraState with view = cam }
@@ -136,8 +150,12 @@ module App =
         let targetPos = model.targetPosition + offset
         let camToTarget = targetPos - model.originalCamPos
 
-        let cam = 
-            CameraView(model.cameraState.view.Sky, model.originalCamPos + camToTarget * percent, model.cameraState.view.Forward, model.cameraState.view.Up, model.cameraState.view.Right)
+        //let cam = 
+        //    CameraView(model.cameraState.view.Sky, model.originalCamPos + camToTarget * percent, model.cameraState.view.Forward, model.cameraState.view.Up, model.cameraState.view.Right)
+        //o.Forward * t + (1.0 - t) * p.Forward
+        //up * percent + (1.0 - percent) * (model.cameraState.view.Location.Normalized)
+        let up = V3d.OOI 
+        let cam = CameraView.lookAt (model.originalCamPos + camToTarget * percent) (model.targetPosition * percent) ((model.cameraState.view.Location.Normalized) * percent + (1.0 - percent) * up);
 
         let newCamState : CameraControllerState =
                       { model.cameraState with view = cam }
@@ -353,12 +371,6 @@ module App =
               accDistance (i-1) (acc+distance)
           else 
               acc
- 
-      
-      //let rec hoverSpherePos i acc = 
-      //    if i < numIntersectionPoints then
-      //        hoverSpherePos (i+1) (acc+pickingModel.intersectionPoints.Item(i))
-      //    else acc
 
       let camLoc = model.cameraState.view.Location
 
@@ -480,8 +492,29 @@ module App =
             else 
                 { model with jumpSelectionActive = false; pickingActive = false }
           | Keys.LeftShift -> 
-            { model with pickingActive = false; lineSelectionActive = false }
+            //Log.line "camviewOld  %A" model.cameraState.view
+
+            //let pos = V3d(-2487214.30278583, 2289426.58314977, -276223.545220743)
+
+            //let cam = CameraView.lookAt model.cameraState.view.Location (pos) model.cameraState.view.Location.Normalized;
+            ////CameraView(model.cameraState.view.Sky, model.originalCamPos + camToTarget * percent, model.cameraState.view.Forward, model.cameraState.view.Up, model.cameraState.view.Right)
+
+            ////let cam = CameraView(model.cameraState.view.Location.Normalized, model.cameraState.view.Location, (model.opcCenterPosition-model.cameraState.view.Location).Normalized, model.cameraState.view.Location.Normalized, V3d.Cross(model.cameraState.view.Location.Normalized,(model.opcCenterPosition-model.cameraState.view.Location).Normalized))
+            //Log.line "camviewNew  %A" cam
+            //let newCamState : CameraControllerState =
+            //          { model.cameraState with view = cam }
+            
+
+            { model with pickingActive = false; lineSelectionActive = false; } //cameraState = newCamState}
           | Keys.LeftCtrl -> 
+            
+            //CameraView.lookAt camPos V3d.Zero up
+            //let cam = CameraView.lookAt model.cameraState.view.Location V3d.Zero V3d.OOI;
+
+            //let newCamState : CameraControllerState =
+            //          { model.cameraState with view = cam }
+
+
             { model with hover3dActive = false; markerCone = { height =0.0; radius = 0.0; color = C4b.Red; trafoRot = Trafo3d.Identity; trafoTrl = Trafo3d.Identity} }
           | Keys.Delete ->            
             { model with picking = PickingApp.update model.picking (PickingAction.ClearPoints) }
@@ -1394,7 +1427,7 @@ module App =
       let sky = box.Center.Normalized
       let r = Trafo3d.RotateInto(V3d.OOI, sky)
       let camPos = V3d(box.Center.X,box.Center.Y,box.Center.Z)+r.Forward.TransformPos(V3d(0.0,0.0,10.0*2.0*100.0))
-      Log.line "box centereeeeeeeeee %A" box.Center
+      
       let restoreCamState : CameraControllerState =
         if File.Exists ".\camstate" then          
           Log.line "[App] restoring camstate"
