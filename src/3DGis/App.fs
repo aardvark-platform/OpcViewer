@@ -107,26 +107,32 @@ module App =
         let durationTicks = TimeSpan.FromSeconds 2.0 
         let remaingTicks = model.cameraAnimEndTime - t
         let percent = 1.0 - (remaingTicks / float durationTicks.Ticks)
-        
+
+        let targetToCam = model.originalCamPos - model.targetPosition
+        let offset = targetToCam/10.0
+        let targetPos = model.targetPosition + offset
+        let camToTarget = targetPos - model.originalCamPos
 
         let up = V3d.OOI 
-        let sky = model.opcCenterPosition.Normalized
-        let r = Trafo3d.RotateInto(V3d.OOI, sky)
-        let camTarget = V3d(model.opcCenterPosition.X,model.opcCenterPosition.Y,model.opcCenterPosition.Z)+r.Forward.TransformPos(V3d(0.0,0.0,10.0*2.0*100.0))
 
-        let camToTarget = camTarget - model.originalCamPos
+        let originVec = V3d.Zero  - model.originalCamPos 
 
-        //let cam = 
-        //    CameraView(model.cameraState.view.Sky, model.originalCamPos + camToTarget * percent, model.cameraState.view.Forward, model.cameraState.view.Up, model.cameraState.view.Right)
+        let projectedPointOnLine = 
+            let a = camToTarget
+            let b = originVec
 
-        let cam = CameraView.lookAt (model.originalCamPos + camToTarget * percent) (model.targetPosition * (1.0-percent)) (up * percent + (1.0 - percent) * (model.cameraState.view.Location.Normalized));
+            let s = a.Length * V3d.Dot(b,a) / (b.Length * a.Length)
+            model.originalCamPos + b*(s/b.Length)
+
+        let jumpTargetOffset = (projectedPointOnLine - targetPos)/5.0
+
+        let bezierCurve (t:float) (b0:V3d) (b1:V3d) (b2:V3d) = 
+            (b0 - 2.0*b1 + b2) * Math.Pow(t,2.0) + (-2.0*b0 + 2.0*b1) * t + b0
+            
+        let jumpTarget = bezierCurve (1.0-percent) model.originalCamPos projectedPointOnLine (targetPos+jumpTargetOffset)
+
+        let cam = CameraView.lookAt (jumpTarget) (model.targetPosition * ((1.0-percent) ** (1.0 / 200.0))) (up * percent + (1.0 - percent) * (model.cameraState.view.Location.Normalized));
         
-       // let cam2 = 
-         //   CameraView(cam.Sky, cam.Location, model.cameraState.view.Forward * (1.0-percent), cam.Up, V3d.Cross(model.cameraState.view.Forward * (1.0-percent),cam.Up))
-        
-        //let cam = CameraView.lookAt (model.originalCamPos + camToTarget * percent) (model.targetPosition * percent) ((model.cameraState.view.Location.Normalized) * percent + (1.0 - percent) * up);
-
-
         let newCamState : CameraControllerState =
                       { model.cameraState with view = cam }
 
@@ -139,6 +145,99 @@ module App =
     else 
         model
 
+  //let cameraReturnJumpAnimation (model : Model) (t : float) = 
+  //      if model.cameraAnimEndTime > t then 
+  //          let durationTicks = TimeSpan.FromSeconds 2.0 
+  //          let remaingTicks = model.cameraAnimEndTime - t
+  //          let percent = 1.0 - (remaingTicks / float durationTicks.Ticks)
+
+  //          let targetToCam = model.originalCamPos - model.targetPosition
+  //          let offset = targetToCam/10.0
+  //          let targetPos = model.targetPosition + offset
+  //          let camToTarget = targetPos - model.originalCamPos
+
+  //          let up = V3d.OOI 
+
+  //          let originVec = V3d.Zero  - model.originalCamPos 
+
+  //          let projectedPointOnLine = 
+  //              let a = camToTarget
+  //              let b = originVec
+
+  //              let s = a.Length * V3d.Dot(b,a) / (b.Length * a.Length)
+  //              model.originalCamPos + b*(s/b.Length)
+
+  //          let jumpTargetOffset = (projectedPointOnLine - targetPos)/5.0
+
+  //          let bezierCurve (t:float) (b0:V3d) (b1:V3d) (b2:V3d) = 
+  //              (b0 - 2.0*b1 + b2) * Math.Pow(t,2.0) + (-2.0*b0 + 2.0*b1) * t + b0
+            
+  //          let jumpTarget = bezierCurve (1.0-percent) (targetPos+jumpTargetOffset) projectedPointOnLine model.originalCamPos 
+
+  //          let cam = CameraView.lookAt (jumpTarget) (model.targetPosition * ((1.0-percent) ** (1.0 / 200.0))) ((model.cameraState.view.Location.Normalized) * (1.0 - percent) + percent * up);
+        
+  //          let newCamState : CameraControllerState =
+  //                        { model.cameraState with view = cam }
+
+  //          { model with cameraState = newCamState }
+     
+  //      elif model.camJumpAnimRunning && model.cameraAnimEndTime < t then
+  //          let duration = TimeSpan.FromSeconds 0.4
+  //          let total = DateTime.Now.AddTicks (duration.Ticks)
+  //          { model with camJumpAnimRunning = false; camViewAnimRunning = true; cameraAnimEndTime = float total.Ticks; inJumpedPosition = false }     
+  //      else 
+  //          model
+
+
+  //let cameraReturnJumpAnimation (model : Model) (t : float) = 
+  //  if model.cameraAnimEndTime > t then 
+  //      let durationTicks = TimeSpan.FromSeconds 2.0 
+  //      let remaingTicks = model.cameraAnimEndTime - t
+  //      let percent = 1.0 - (remaingTicks / float durationTicks.Ticks)
+        
+
+  //      let up = V3d.OOI 
+  //      let sky = model.opcCenterPosition.Normalized
+  //      let r = Trafo3d.RotateInto(V3d.OOI, sky)
+  //     // let camTarget = V3d(model.opcCenterPosition.X,model.opcCenterPosition.Y,model.opcCenterPosition.Z)+r.Forward.TransformPos(V3d(0.0,0.0,10.0*2.0*100.0))
+
+  //      let targetToCam = model.originalCamPos - model.targetPosition
+  //      let offset = targetToCam/10.0
+  //      let targetPos = model.targetPosition + offset
+  //      let camToTarget = targetPos - model.originalCamPos
+
+  //      let bezierCurve (t:float) (b0:V3d) (b1:V3d) (b2:V3d) = 
+  //          (b0 - 2.0*b1 + b2) * Math.Pow(t,2.0) + (-2.0*b0 + 2.0*b1) * t + b0
+
+  //      let originVec = V3d.Zero - model.originalCamPos
+  //      let projectedPointOnLine = 
+  //          let a = camToTarget
+  //          let b = originVec
+
+  //          let s = a.Length * V3d.Dot(b,a) / (b.Length * a.Length)
+  //          model.originalCamPos + b*(s/b.Length)
+
+  //      let jumpTargetOffset = (projectedPointOnLine - targetPos)/5.0
+
+  //      let jumpTarget = bezierCurve (1.0-percent) model.originalCamPos projectedPointOnLine (targetPos+jumpTargetOffset)
+
+  //      let cam = CameraView.lookAt (jumpTarget) (model.targetPosition * (1.0-(percent ** (1.0 / 200.0)))) (up * percent + (1.0 - percent) * (model.cameraState.view.Location.Normalized));
+        
+      
+
+  //      let newCamState : CameraControllerState =
+  //                    { model.cameraState with view = cam }
+
+  //      { model with cameraState = newCamState }
+     
+  //  elif model.camJumpAnimRunning && model.cameraAnimEndTime < t then
+  //      let duration = TimeSpan.FromSeconds 0.4
+  //      let total = DateTime.Now.AddTicks (duration.Ticks)
+  //      { model with camJumpAnimRunning = false; camViewAnimRunning = true; cameraAnimEndTime = float total.Ticks; inJumpedPosition = false }     
+  //  else 
+  //      model
+
+  
   let cameraJumpAnimation (model : Model) (t : float) = 
     if model.cameraAnimEndTime > t then 
         let durationTicks = TimeSpan.FromSeconds 2.0 
@@ -150,20 +249,37 @@ module App =
         let targetPos = model.targetPosition + offset
         let camToTarget = targetPos - model.originalCamPos
 
-        //let cam = 
-        //    CameraView(model.cameraState.view.Sky, model.originalCamPos + camToTarget * percent, model.cameraState.view.Forward, model.cameraState.view.Up, model.cameraState.view.Right)
-        //o.Forward * t + (1.0 - t) * p.Forward
-        //up * percent + (1.0 - percent) * (model.cameraState.view.Location.Normalized)
         let up = V3d.OOI 
-        let cam = CameraView.lookAt (model.originalCamPos + camToTarget * percent) (model.targetPosition * percent) ((model.cameraState.view.Location.Normalized) * percent + (1.0 - percent) * up);
 
+        let originVec = V3d.Zero  - model.originalCamPos 
+
+        let projectedPointOnLine = 
+            let a = camToTarget
+            let b = originVec
+
+            let s = a.Length * V3d.Dot(b,a) / (b.Length * a.Length)
+            model.originalCamPos + b*(s/b.Length)
+
+        let jumpTargetOffset = (projectedPointOnLine - targetPos)/5.0
+
+        let bezierCurve (t:float) (b0:V3d) (b1:V3d) (b2:V3d) = 
+            (b0 - 2.0*b1 + b2) * Math.Pow(t,2.0) + (-2.0*b0 + 2.0*b1) * t + b0
+            
+        let jumpTarget = bezierCurve percent model.originalCamPos projectedPointOnLine (targetPos+jumpTargetOffset)
+
+        let cam = CameraView.lookAt (jumpTarget) (model.targetPosition * (percent ** (1.0 / 200.0))) ((model.cameraState.view.Location.Normalized) * percent + (1.0 - percent) * up);
+        
         let newCamState : CameraControllerState =
                       { model.cameraState with view = cam }
 
         { model with cameraState = newCamState }
      
     elif model.camJumpAnimRunning && model.cameraAnimEndTime < t then
-        { model with camJumpAnimRunning = false; camCompAnimRunning = false }     
+        let cam = CameraView.lookAt (model.cameraState.view.Location) (model.targetPosition) (model.cameraState.view.Sky);
+        let newCamState : CameraControllerState =
+                      { model.cameraState with view = cam }
+
+        { model with camJumpAnimRunning = false; camCompAnimRunning = false; cameraState = newCamState }     
     else 
         model
 
@@ -491,30 +607,9 @@ module App =
                 update { model with jumpSelectionActive = false; pickingActive = false } Message.AnimateCameraViewSwitch            
             else 
                 { model with jumpSelectionActive = false; pickingActive = false }
-          | Keys.LeftShift -> 
-            //Log.line "camviewOld  %A" model.cameraState.view
-
-            //let pos = V3d(-2487214.30278583, 2289426.58314977, -276223.545220743)
-
-            //let cam = CameraView.lookAt model.cameraState.view.Location (pos) model.cameraState.view.Location.Normalized;
-            ////CameraView(model.cameraState.view.Sky, model.originalCamPos + camToTarget * percent, model.cameraState.view.Forward, model.cameraState.view.Up, model.cameraState.view.Right)
-
-            ////let cam = CameraView(model.cameraState.view.Location.Normalized, model.cameraState.view.Location, (model.opcCenterPosition-model.cameraState.view.Location).Normalized, model.cameraState.view.Location.Normalized, V3d.Cross(model.cameraState.view.Location.Normalized,(model.opcCenterPosition-model.cameraState.view.Location).Normalized))
-            //Log.line "camviewNew  %A" cam
-            //let newCamState : CameraControllerState =
-            //          { model.cameraState with view = cam }
-            
-
-            { model with pickingActive = false; lineSelectionActive = false; } //cameraState = newCamState}
+          | Keys.LeftShift ->        
+            { model with pickingActive = false; lineSelectionActive = false; } 
           | Keys.LeftCtrl -> 
-            
-            //CameraView.lookAt camPos V3d.Zero up
-            //let cam = CameraView.lookAt model.cameraState.view.Location V3d.Zero V3d.OOI;
-
-            //let newCamState : CameraControllerState =
-            //          { model.cameraState with view = cam }
-
-
             { model with hover3dActive = false; markerCone = { height =0.0; radius = 0.0; color = C4b.Red; trafoRot = Trafo3d.Identity; trafoTrl = Trafo3d.Identity} }
           | Keys.Delete ->            
             { model with picking = PickingApp.update model.picking (PickingAction.ClearPoints) }
@@ -626,7 +721,7 @@ module App =
         let duration = TimeSpan.FromSeconds 2.0
         let total = DateTime.Now.AddTicks (duration.Ticks)
 
-        { model with cameraAnimEndTime = float total.Ticks; camRetAnimRunning = true; camViewAnimRunning = false; camJumpAnimRunning = true; targetPosition = model.originalCamPos; originalCamPos = model.cameraState.view.Location }
+        { model with cameraAnimEndTime = float total.Ticks; camRetAnimRunning = true; camViewAnimRunning = false; camJumpAnimRunning = true; targetPosition = model.cameraState.view.Location; }//originalCamPos = model.cameraState.view.Location }
       | Message.Tick t ->       
         if not model.camCompAnimRunning && not model.camRetAnimRunning && model.camViewAnimRunning then
             orthographicPerspectiveAnimation model t
