@@ -12,7 +12,7 @@
     <OutputPath>..\..\bin\Release</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <EmbeddedResource Include="CutView5.css">
+    <EmbeddedResource Include="CutView6.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
     <Compile Include="Model.fs" />

@@ -850,9 +850,8 @@ module App =
             else 
                 -h
                        
-            
         { model with markerCone = { height = height;
-                                    radius = 1.0; 
+                                    radius = ((pointList.Item(currentHoveredIndex) - model.cameraState.view.Location).Length)/100.0; 
                                     color = C4b.Red; 
                                     trafoRot = Trafo3d.RotateInto(V3d.OOI, model.opcCenterPosition.Normalized ); 
                                     trafoTrl = Trafo3d.Translation(pointList.Item(currentHoveredIndex))
@@ -1122,7 +1121,7 @@ module App =
       let dependencies = 
          Html.semui @ 
          [ 
-            { kind = Stylesheet; name = "CutView5.css"; url = "CutView5.css" }
+            { kind = Stylesheet; name = "CutView6.css"; url = "CutView6.css" }
          ]  
 
       page (fun request -> 
@@ -1273,6 +1272,8 @@ module App =
                     } |> AttributeMap.ofAMap
                  )
 
+              
+
               let containerAttribs = 
                 amap {
                     let! dimensions = m.cutViewDim
@@ -1305,7 +1306,7 @@ module App =
                            
 
                             //contour line (very high)
-                            yield contourLine 0.0 2.5 "1.0"     
+                            yield contourLine 0.0 2.5 lineOpacity   
 
                             //contour line (high)
                             yield contourLine 1.0 1.5 lineOpacity                       
@@ -1320,9 +1321,114 @@ module App =
                             yield contourLine 4.0 1.5 lineOpacity      
 
                             //contour line (very low)
-                            yield contourLine 5.0 2.5 "1.0"      
-                                                                         
-                            
+                            yield contourLine 5.0 2.5 lineOpacity     
+                                       
+                            //yield Incremental.Svg.text ( 
+                            //    amap {
+                            //        let! xOffset = m.offsetUIDrawX
+                            //        let! yOffset = m.offsetUIDrawY
+
+                            //        let! dimensions = m.cutViewDim
+                            //        let xWidth = (float) dimensions.X
+                            //        let yWidth = (float) dimensions.Y
+
+                            //        let sX = (sprintf "%f" (xOffset*0.1 * xWidth)) + px
+                            //        let sY = (sprintf "%f" (yOffset * yWidth + 4.0)) + px
+
+                            //        let wX = (sprintf "%f" ((1.0-xOffset*2.0) * xWidth)) + px
+                            //        let wY = (sprintf "%f" ((1.0-yOffset*2.0) * yWidth)) + px
+
+                            //        yield attribute "x" sX
+                            //        yield attribute "y" sY 
+
+                            //        yield attribute "font-size" "14"
+                            //        yield attribute "fill" "#ffffff"
+                                    
+                            //    } |> AttributeMap.ofAMap
+                            //) (m.maxHeight |> Mod.map(fun x -> if x=0.0 then "" else Math.Round(x,0).ToString() + " m"))
+
+                            //yield Incremental.Svg.text ( 
+                            //    amap {
+                            //        let! xOffset = m.offsetUIDrawX
+                            //        let! yOffset = m.offsetUIDrawY
+
+                            //        let! dimensions = m.cutViewDim
+                            //        let xWidth = (float) dimensions.X
+                            //        let yWidth = (float) dimensions.Y
+
+                            //        let sX = (sprintf "%f" (xOffset*0.1 * xWidth)) + px
+                            //        let sY = (sprintf "%f" (yOffset * yWidth + 4.0)) + px
+
+                            //        let wX = (sprintf "%f" ((1.0-xOffset*2.0) * xWidth)) + px
+                            //        let wY = (sprintf "%f" ((1.0-yOffset) * yWidth)) + px
+
+                            //        yield attribute "x" sX
+                            //        yield attribute "y" wY 
+
+                            //        yield attribute "font-size" "14"
+                            //        yield attribute "fill" "#ffffff"
+                                    
+                            //    } |> AttributeMap.ofAMap
+                            //) (m.minHeight |> Mod.map(fun x -> if x=0.0 then "" else Math.Round(x,0).ToString() + " m"))
+
+                            yield Incremental.Svg.text ( 
+                                amap {
+                                    let! xOffset = m.offsetUIDrawX
+                                    let! yOffset = m.offsetUIDrawY
+
+                                    let! dimensions = m.cutViewDim
+                                    let xWidth = (float) dimensions.X
+                                    let yWidth = (float) dimensions.Y
+
+                                    let sX = (sprintf "%f" (xOffset * 0.8 * xWidth)) 
+                                    let sY = (sprintf "%f" ((1.0-yOffset) * yWidth) )
+
+                                    let wX = (sprintf "%f" ((1.0-xOffset*2.0) * xWidth)) + px
+                                    let wY = (sprintf "%f" ((1.0-yOffset) * yWidth)) + px
+
+                                    yield clazz "label"
+                                    yield attribute "x" sX
+                                    yield attribute "y" sY     
+                                    yield attribute "transform" ("rotate(-90" + "," + sX + "," + sY + ")")
+                                    yield attribute "font-size" "16"
+                                    yield attribute "fill" "#ffffff"
+                                    yield attribute "font-family" "Roboto Mono, sans-serif"
+                                    //yield attribute "font-weight" "300"
+                                   // yield attribute "font-stretch" "ultra-expanded"
+                                    
+                                } |> AttributeMap.ofAMap
+                            ) (Mod.constant "Elevation [m]")
+
+
+                            yield Incremental.Svg.text ( 
+                                amap {
+                                    let! xOffset = m.offsetUIDrawX
+                                    let! yOffset = m.offsetUIDrawY
+
+                                    let! dimensions = m.cutViewDim
+                                    let xWidth = (float) dimensions.X
+                                    let yWidth = (float) dimensions.Y
+
+                                    let sX = (sprintf "%f" (xOffset * 1.0 * xWidth)) 
+                                    let sY = (sprintf "%f" ((1.0-yOffset) * yWidth+30.0) )
+
+                                    let wX = (sprintf "%f" ((1.0-xOffset*2.0) * xWidth)) + px
+                                    let wY = (sprintf "%f" ((1.0-yOffset) * yWidth)) + px
+
+                                    yield clazz "label"
+                                    yield attribute "x" sX
+                                    yield attribute "y" sY     
+                                    yield attribute "font-size" "16"
+                                    yield attribute "fill" "#ffffff"
+                                    yield attribute "font-family" "Roboto Mono, sans-serif"
+                                    //yield attribute "transform" "scaleX(0.5)"
+                                    //yield attribute "font-weight" "500"
+                                   // yield attribute "font-stretch" "ultra-expanded"
+                                    
+                                } |> AttributeMap.ofAMap
+                            ) (Mod.constant "Distance [m]")
+
+
                             //chart curve 
                             yield Incremental.Svg.polyline ( 
                                 amap {
@@ -1459,7 +1565,7 @@ module App =
                                         else
                                             "end"
 
-                                    yield Svg.text ([ attribute "x" x; attribute "y" (sprintf "%f" (yOffset * yWidth - 10.0) + px); attribute "font-size" "16"; attribute "fill" "#ffffff"; clazz "UIText"; attribute "text-anchor" textAnchor]) ( "Altitude: " + sprintf "%.2f" (aL.Item(hoverCircle.Value)) + " m; Distance: " + sprintf "%.2f" (samplingDistance * float (hoverCircle.Value)) + " m") 
+                                    yield Svg.text ([ attribute "x" x; attribute "y" (sprintf "%f" (yOffset * yWidth - 10.0) + px); attribute "font-size" "16"; attribute "fill" "#ffffff"; attribute "font-family" "Raleway, sans-serif"; attribute "font-weight" "600"; attribute "font-stretch" "expanded"; clazz "UIText"; attribute "text-anchor" textAnchor]) ( "Altitude: " + sprintf "%.2f" (aL.Item(hoverCircle.Value)) + " m | Distance: " + sprintf "%.2f" (samplingDistance * float (hoverCircle.Value)) + " m") 
                         }
 
                     onBoot "$(window).trigger('resize')" (
