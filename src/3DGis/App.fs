@@ -144,99 +144,6 @@ module App =
         { model with camJumpAnimRunning = false; camViewAnimRunning = true; cameraAnimEndTime = float total.Ticks; inJumpedPosition = false }     
     else 
         model
-
-  //let cameraReturnJumpAnimation (model : Model) (t : float) = 
-  //      if model.cameraAnimEndTime > t then 
-  //          let durationTicks = TimeSpan.FromSeconds 2.0 
-  //          let remaingTicks = model.cameraAnimEndTime - t
-  //          let percent = 1.0 - (remaingTicks / float durationTicks.Ticks)
-
-  //          let targetToCam = model.originalCamPos - model.targetPosition
-  //          let offset = targetToCam/10.0
-  //          let targetPos = model.targetPosition + offset
-  //          let camToTarget = targetPos - model.originalCamPos
-
-  //          let up = V3d.OOI 
-
-  //          let originVec = V3d.Zero  - model.originalCamPos 
-
-  //          let projectedPointOnLine = 
-  //              let a = camToTarget
-  //              let b = originVec
-
-  //              let s = a.Length * V3d.Dot(b,a) / (b.Length * a.Length)
-  //              model.originalCamPos + b*(s/b.Length)
-
-  //          let jumpTargetOffset = (projectedPointOnLine - targetPos)/5.0
-
-  //          let bezierCurve (t:float) (b0:V3d) (b1:V3d) (b2:V3d) = 
-  //              (b0 - 2.0*b1 + b2) * Math.Pow(t,2.0) + (-2.0*b0 + 2.0*b1) * t + b0
-            
-  //          let jumpTarget = bezierCurve (1.0-percent) (targetPos+jumpTargetOffset) projectedPointOnLine model.originalCamPos 
-
-  //          let cam = CameraView.lookAt (jumpTarget) (model.targetPosition * ((1.0-percent) ** (1.0 / 200.0))) ((model.cameraState.view.Location.Normalized) * (1.0 - percent) + percent * up);
-        
-  //          let newCamState : CameraControllerState =
-  //                        { model.cameraState with view = cam }
-
-  //          { model with cameraState = newCamState }
-     
-  //      elif model.camJumpAnimRunning && model.cameraAnimEndTime < t then
-  //          let duration = TimeSpan.FromSeconds 0.4
-  //          let total = DateTime.Now.AddTicks (duration.Ticks)
-  //          { model with camJumpAnimRunning = false; camViewAnimRunning = true; cameraAnimEndTime = float total.Ticks; inJumpedPosition = false }     
-  //      else 
-  //          model
-
-
-  //let cameraReturnJumpAnimation (model : Model) (t : float) = 
-  //  if model.cameraAnimEndTime > t then 
-  //      let durationTicks = TimeSpan.FromSeconds 2.0 
-  //      let remaingTicks = model.cameraAnimEndTime - t
-  //      let percent = 1.0 - (remaingTicks / float durationTicks.Ticks)
-        
-
-  //      let up = V3d.OOI 
-  //      let sky = model.opcCenterPosition.Normalized
-  //      let r = Trafo3d.RotateInto(V3d.OOI, sky)
-  //     // let camTarget = V3d(model.opcCenterPosition.X,model.opcCenterPosition.Y,model.opcCenterPosition.Z)+r.Forward.TransformPos(V3d(0.0,0.0,10.0*2.0*100.0))
-
-  //      let targetToCam = model.originalCamPos - model.targetPosition
-  //      let offset = targetToCam/10.0
-  //      let targetPos = model.targetPosition + offset
-  //      let camToTarget = targetPos - model.originalCamPos
-
-  //      let bezierCurve (t:float) (b0:V3d) (b1:V3d) (b2:V3d) = 
-  //          (b0 - 2.0*b1 + b2) * Math.Pow(t,2.0) + (-2.0*b0 + 2.0*b1) * t + b0
-
-  //      let originVec = V3d.Zero - model.originalCamPos
-  //      let projectedPointOnLine = 
-  //          let a = camToTarget
-  //          let b = originVec
-
-  //          let s = a.Length * V3d.Dot(b,a) / (b.Length * a.Length)
-  //          model.originalCamPos + b*(s/b.Length)
-
-  //      let jumpTargetOffset = (projectedPointOnLine - targetPos)/5.0
-
-  //      let jumpTarget = bezierCurve (1.0-percent) model.originalCamPos projectedPointOnLine (targetPos+jumpTargetOffset)
-
-  //      let cam = CameraView.lookAt (jumpTarget) (model.targetPosition * (1.0-(percent ** (1.0 / 200.0)))) (up * percent + (1.0 - percent) * (model.cameraState.view.Location.Normalized));
-        
-      
-
-  //      let newCamState : CameraControllerState =
-  //                    { model.cameraState with view = cam }
-
-  //      { model with cameraState = newCamState }
-     
-  //  elif model.camJumpAnimRunning && model.cameraAnimEndTime < t then
-  //      let duration = TimeSpan.FromSeconds 0.4
-  //      let total = DateTime.Now.AddTicks (duration.Ticks)
-  //      { model with camJumpAnimRunning = false; camViewAnimRunning = true; cameraAnimEndTime = float total.Ticks; inJumpedPosition = false }     
-  //  else 
-  //      model
-
   
   let cameraJumpAnimation (model : Model) (t : float) = 
     if model.cameraAnimEndTime > t then 
@@ -377,9 +284,6 @@ module App =
       
 
       { model with svgPointsCoord = drawingAvailableCoord; svgSurfaceUnderLineCoord = surfaceUnderLineCoord; svgPointsErrorCoord = drawingMissingCoord; svgSurfaceUnderLineErrorCoord = drawingMissingSurfaceCoord; svgCircleSize = circleSize }
-      
-
-
 
   let getNumberOfErrors (errorHitList : int list) (index : int) = 
       let mutable keepCounting = true
@@ -439,7 +343,7 @@ module App =
                   (hitpoint :: pointList), (pointHeight.altitude :: altitudeList), (0 :: errorHitList)
                       
               | None -> 
-                  (pointList.Head :: pointList), altitudeList, (-1 :: errorHitList)                 
+                  (pointList.Head :: pointList), altitudeList, (-1 :: errorHitList)                
               )
           |> Option.defaultValue (pointList, altitudeList, errorHitList)
                             
@@ -467,6 +371,14 @@ module App =
       let numSampledPoints = altitudeList.Length
 
       let correctedAltitudeList = correctSamplingErrors altitudeList errorHitList  
+
+      let rec fillSublineDrawing i drawing =
+         if i > 0 then
+            fillSublineDrawing (i-1) (DrawingApp.update drawing (DrawingAction.AddPoint (pointList.Item(i), None)))
+         else
+            DrawingApp.update drawing (DrawingAction.AddPoint (pointList.Item(i), None))
+       
+      let drawing2 = fillSublineDrawing (pointList.Length-1) { DrawingModel.initial with style = { DrawingModel.initial.style with thickness = 1.0; primary = { c = C4b(255,255,255) }; secondary = { c = C4b(205,243,255) } } } 
       
       let rec linearDistance i acc = 
           if i >= 1 then
@@ -541,6 +453,7 @@ module App =
       { model with 
               picking                    = pickingModel 
               drawing                    = drawingModel 
+              drawing2                   = drawing2 
               numSampledPoints           = numSampledPoints 
               samplingDistance           = linDist / float (pointList.Length - 1)
               linearDistance             = Math.Round(linDist,2)
@@ -583,6 +496,7 @@ module App =
                     lineSelectionActive = true; 
                     picking = p; 
                     drawing = clearedDrawingModel; 
+                    drawing2 = clearedDrawingModel; 
                     annotations = AnnotationModel.initial; 
                     numSampledPoints = 0; 
                     stepSampleSize = {min = 0.01; max = 10000.0; value = model.stepSampleSize.value; step = 0.05; format = "{0:0.00}"}; 
@@ -810,7 +724,7 @@ module App =
       | HovereCircleLeave -> 
         if model.hoveredCircleIndex.IsSome then
             { model with hoveredCircleIndex = None; 
-                         drawing2 = DrawingModel.initial;
+                         //drawing2 = DrawingModel.initial;
                          markerCone = { height =0.0; radius = 0.0; color = C4b.Red; trafoRot = Trafo3d.Identity; trafoTrl = Trafo3d.Identity}                
             }
         else
@@ -1040,7 +954,7 @@ module App =
         
       let afterFilledPolygonSg2 = 
         [
-          m.drawing2 |> DrawingApp.viewPointSize near far (Mod.constant 10.0)
+          m.drawing2 |> DrawingApp.viewPointSize near far (Mod.constant 0.0)
         ] 
         |> Sg.ofList
         |> Sg.pass afterFilledPolygonRenderPass
@@ -1322,54 +1236,7 @@ module App =
 
                             //contour line (very low)
                             yield contourLine 5.0 2.5 lineOpacity     
-                                       
-                            //yield Incremental.Svg.text ( 
-                            //    amap {
-                            //        let! xOffset = m.offsetUIDrawX
-                            //        let! yOffset = m.offsetUIDrawY
-
-                            //        let! dimensions = m.cutViewDim
-                            //        let xWidth = (float) dimensions.X
-                            //        let yWidth = (float) dimensions.Y
-
-                            //        let sX = (sprintf "%f" (xOffset*0.1 * xWidth)) + px
-                            //        let sY = (sprintf "%f" (yOffset * yWidth + 4.0)) + px
-
-                            //        let wX = (sprintf "%f" ((1.0-xOffset*2.0) * xWidth)) + px
-                            //        let wY = (sprintf "%f" ((1.0-yOffset*2.0) * yWidth)) + px
-
-                            //        yield attribute "x" sX
-                            //        yield attribute "y" sY 
-
-                            //        yield attribute "font-size" "14"
-                            //        yield attribute "fill" "#ffffff"
-                                    
-                            //    } |> AttributeMap.ofAMap
-                            //) (m.maxHeight |> Mod.map(fun x -> if x=0.0 then "" else Math.Round(x,0).ToString() + " m"))
-
-                            //yield Incremental.Svg.text ( 
-                            //    amap {
-                            //        let! xOffset = m.offsetUIDrawX
-                            //        let! yOffset = m.offsetUIDrawY
-
-                            //        let! dimensions = m.cutViewDim
-                            //        let xWidth = (float) dimensions.X
-                            //        let yWidth = (float) dimensions.Y
-
-                            //        let sX = (sprintf "%f" (xOffset*0.1 * xWidth)) + px
-                            //        let sY = (sprintf "%f" (yOffset * yWidth + 4.0)) + px
-
-                            //        let wX = (sprintf "%f" ((1.0-xOffset*2.0) * xWidth)) + px
-                            //        let wY = (sprintf "%f" ((1.0-yOffset) * yWidth)) + px
-
-                            //        yield attribute "x" sX
-                            //        yield attribute "y" wY 
-
-                            //        yield attribute "font-size" "14"
-                            //        yield attribute "fill" "#ffffff"
-                                    
-                            //    } |> AttributeMap.ofAMap
-                            //) (m.minHeight |> Mod.map(fun x -> if x=0.0 then "" else Math.Round(x,0).ToString() + " m"))
+                            
 
                             yield Incremental.Svg.text ( 
                                 amap {
@@ -1393,8 +1260,7 @@ module App =
                                     yield attribute "font-size" "16"
                                     yield attribute "fill" "#ffffff"
                                     yield attribute "font-family" "Roboto Mono, sans-serif"
-                                    //yield attribute "font-weight" "300"
-                                   // yield attribute "font-stretch" "ultra-expanded"
+
                                     
                                 } |> AttributeMap.ofAMap
                             ) (Mod.constant "Elevation [m]")
@@ -1421,9 +1287,7 @@ module App =
                                     yield attribute "font-size" "16"
                                     yield attribute "fill" "#ffffff"
                                     yield attribute "font-family" "Roboto Mono, sans-serif"
-                                    //yield attribute "transform" "scaleX(0.5)"
-                                    //yield attribute "font-weight" "500"
-                                   // yield attribute "font-stretch" "ultra-expanded"
+
                                     
                                 } |> AttributeMap.ofAMap
                             ) (Mod.constant "Distance [m]")
