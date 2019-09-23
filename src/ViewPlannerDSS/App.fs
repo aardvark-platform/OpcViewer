@@ -239,41 +239,11 @@ module App =
             //        | _ -> model.standardConfig
             //        )
             //    |> Option.defaultValue model.standardConfig
-
-            { model with currentModeOption = msg}//; dockConfig = mode }
+            //reset idx
+            let rover = {model.rover with walkThroughIdx = 0};
+            { model with currentModeOption = msg; rover = rover }//; dockConfig = mode }
             
-            //| Some SaveCameraState -> 
-            //    Log.line "[App] saving camstate"
-            //    model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camerastate" |> ignore 
-            //    model
-            //| Some SavePlaneState ->
-            //    Log.line "[App] saving plane points"
-            //    model.pickingModel.intersectionPoints |> toPlaneCoords |> OpcSelectionViewer.Serialization.save ".\planestate" |> ignore
-            //    model
-            //| Some SaveRoverState ->
-            //    let intersect = model.pickingModel.intersectionPoints |> PList.toList
-            //    let r =
-            //        if intersect |> List.isEmpty then model
-            //        elif intersect.Length < 2 then model
-            //        else
-            //            Log.line "[App] saving rover position and target"
-            //            let n = model.rover.up
-            //            let m = (intersect |> List.item (1)) + n
-            //            let t = intersect |> List.item (0)
-            //            let adaptedList = [m;t] |> PList.ofList
-            //            adaptedList |> toRoverCoords |> OpcSelectionViewer.Serialization.save ".\Roverstate" |> ignore
-                     
-            //            let forward = t-m
-            //            let cam = CameraView.look model.rover.position forward.Normalized model.rover.up
-
-            //            let p = PickingApp.update model.pickingModel (PickingAction.ClearPoints)
-            //            let d = DrawingApp.update model.drawing (DrawingAction.Clear) 
-
-            //            let hrcam = {model.rover.HighResCam with cam = { model.rover.HighResCam.cam with position = m; camera = {model.rover.HighResCam.cam.camera with view = cam}} }
-            //            let r = { model.rover with position = m; target = t; HighResCam = hrcam; projsphere = {model.rover.projsphere with position = m}} 
-            //            { model with rover = r; pickingModel = p; drawing = d}
-
-            //    r
+            
           
         | _ -> model
     
@@ -336,7 +306,7 @@ module App =
        FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
-           attribute "showFPS" "true";       
+           attribute "showFPS" "false";       
            attribute "useMapping" "true"
            attribute "data-renderalways" "false"
            attribute "data-samples" "4"
@@ -523,15 +493,15 @@ module App =
 
               horizontal 23.0 [
                 
-                vertical 14.0 [
-                element {id "render"; title "Main View"; weight 8.0}
-                horizontal 6.0[
-                element {id "leftCam"; title "HR-Cam / WACL"; weight 3.0}
-                element {id "rightCam"; title "WACR"; weight 3.0}
+                vertical 16.0 [
+                element {id "render"; title "Main View"; weight 7.0}
+                horizontal 9.0[
+                element {id "leftCam"; title "HR-Cam / WACL"; weight 4.5}
+                element {id "rightCam"; title "WACR"; weight 4.5}
                 ]
                 
                 ]
-                element {id "controls"; title "Controls"; weight 9.0}
+                element {id "controls"; title "Controls"; weight 7.0}
                 
               
               ]

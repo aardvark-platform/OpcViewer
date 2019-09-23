@@ -127,78 +127,6 @@ module RoverApp =
         //V2d(theta,phi)
 
 
-
-    //points: in world space
-    //let calcPanTiltValues (m:RoverModel) (points:List<V3d>) (cam:CameraView) =
-        
-    //    let rotTrafo = Trafo3d.RotateInto(V3d.OOI, m.up)
-    //    //let rotTrafo = Trafo3d.RotateInto( m.up, V3d.OOI)
-    //    //project points onto projection sphere
-    //    let spherePos = m.projsphere.position
-
-        
-    //    //normal points
-    //    let testPoint = m.target
-    //    let upPoint = m.position + (m.up*1.5)
-    //    let rightPoint = 
-    //        let forw = (testPoint - m.position).Normalized
-    //        let r = forw.Cross(m.up)
-    //        m.position + r
-
-       
-    //    //add target point for testing
-    //    let l2 = [rightPoint;upPoint;testPoint]
-    //    let testList = List.append points l2
-    //    let shiftedPoints = testList  |> List.map (fun p -> (p - spherePos).Normalized)
-    //    //let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotTrafo.Forward.TransformPos p)
-    //    let rotatedPoints = shiftedPoints  |> List.map (fun p -> rotateIntoCoordinateSystem m p)
-
-    //    let r = rotatedPoints.Item(rotatedPoints.Length - 1)
-    //    let thetaOfPointonForwardVec = calcTheta r.X r.Y
-    //    let setR = initializePan m thetaOfPointonForwardVec
-    //    let setR2 = initializeTilt setR ((acos(r.Z))*Constant.DegreesPerRadian)
-
-    //    //calculate theta and phi for coordinates
-    //    //test for the first point in the list
-
-    //    let listOfAngles = rotatedPoints |> List.map(fun pos -> calcThetaPhi pos)
-    //    //debuging
-    //    for p in listOfAngles do
-    //        printfn "theta phi %A %A"  (p.X) (p.Y* Constant.DegreesPerRadian) 
-        
-    //    let index = shiftedPoints.Length - 1 
-    //    let point = rotatedPoints.Item (0)
-    //    let second = rotatedPoints.Item(1)
-    //    let projectionPoint1 = point + spherePos
-    //    let projectionPoint2 = second + spherePos
-    //    let x = point.X
-    //    let y = point.Y
-    //    let z = point.Z
-    //    let theta = calcTheta x y
-    //    let phi = acos(z) //atan2 z (sqrt((pown x 2)+(pown y 2))) 
-
-
-    //    printfn "theta: %A" theta
-    //    printfn "phi: %A" (phi * Constant.DegreesPerRadian)
-
-
-
-
-    //    let panned = setPan setR2 (theta)
-    //    let pannedRover = panning panned
-    //    let tilted = setTilt pannedRover (phi* Constant.DegreesPerRadian)
-    //    let newR = tilting tilted
-
-    //    let projectionPoints = shiftedPoints |> List.map (fun p -> p + spherePos) |> PList.ofList
-    //    {newR with projPoint1 = projectionPoint1; projPoint2 = projectionPoint2; projPoints = projectionPoints }
-
-
-        
-
-        
-
-
-
     //let checkROIFullyInside (m:RoverModel) (region:Option<plist<V3d>>) =
         
     //    //calculate center point of region
@@ -331,7 +259,7 @@ module RoverApp =
 
     
     //calculate the required energy and time for performing the pans/tilts for sampling
-    let rec calculateOutputVars (rover : RoverModel) (values:List<V2d>) (counter:int) (sum:float) (cost:float)  = 
+    let rec calculateOutputVars (values:List<V2d>) (counter:int) (sum:float) (cost:float) (rover : RoverModel)  = 
 
         match counter with 
 
@@ -350,9 +278,28 @@ module RoverApp =
             let deltaPan = Math.Abs(curr.X - prev.X)
             let deltaTilt = Math.Abs(curr.Y - prev.Y)
             let e = deltaPan * cost + deltaTilt * cost
-            calculateOutputVars rover values (counter-1) (sum+e) cost 
+            calculateOutputVars values (counter-1) (sum+e) cost rover
 
-       
+
+    let calculateDataSize (numberOfSamples:int) (rover:RoverModel) =
+        
+        let colordepth = rover.colorDepth
+        let channels = rover.numberOfColorChannels
+        let horzRes = rover.horzRes
+        let vertRes = rover.vertRes
+        let pixel = horzRes * vertRes
+
+        let bitPerPicture = (int)pixel * colordepth * channels
+        let totalByte = (bitPerPicture * numberOfSamples) / 8        
+        let totalKbyte = totalByte / 1024
+        let totalMByte = totalKbyte / 1024
+
+        totalMByte
+
+
+
+
+    
 
     //takes pan and tilt values and calculates a view matrix for frustum visualisation
     let calculateViewMatrix (rover : RoverModel) (pan : float) (tilt : float) (cam:CamVariables) =
@@ -401,20 +348,28 @@ module RoverApp =
         let output = 
                 let cam = camvars |> PList.first
                 let values = cam.samplingValues |> PList.toList
+
+
                 let numSamples = values.Length
+                
                 let energy = 
-                    let res = calculateOutputVars rover values (numSamples-1) 0.0 rover.energyForPanTilt 
+                    let res = calculateOutputVars values (numSamples-1) 0.0 rover.energyForPanTilt rover
                     Math.Round(res, 2)
 
                 let time = 
-                    let res = calculateOutputVars rover values (numSamples-1) 0.0 rover.timeForPanTilt
+                    let res = calculateOutputVars values (numSamples-1) 0.0 rover.timeForPanTilt rover
                     Math.Round(res,2)
                 
+                let countSamples = 
+                    let count = numSamples
+                    if camtype = "WACLR" then count * 2 else count
+
+                let datasize = calculateDataSize countSamples rover
                 {
-                numberOfSamples = numSamples
+                numberOfSamples = countSamples
                 energyRequired = energy
                 timeRequired = time
-                bandwidthRequired = 0.0
+                datasize = datasize
                 }
 
         let id = 
@@ -788,10 +743,6 @@ module RoverApp =
          | None -> rover
 
     
-
-   
-
-
 
     let setRoverPosAndTarget (id:int) (rover:RoverModel) = 
         

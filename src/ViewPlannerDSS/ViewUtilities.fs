@@ -82,7 +82,7 @@ module ViewUtilities =
                         let! numsamples = outputvars.numberOfSamples
                         let! energy = outputvars.energyRequired
                         let! time = outputvars.timeRequired
-                        let! bandwidth = outputvars.bandwidthRequired
+                        let! datasize = outputvars.datasize
 
                         let m = modulo time 0 0.0
 
@@ -97,7 +97,7 @@ module ViewUtilities =
                         let samples = "" + numsamples.ToString()
                         let e = "" + energy.ToString() + " %"
                         let ti = "" + minutes.ToString() + " min " + seconds.ToString() + " sec"
-                        let bw = "" + bandwidth.ToString()
+                        let ds = "" + datasize.ToString() + " MB"
                          
                         yield table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
                             
@@ -144,8 +144,8 @@ module ViewUtilities =
                                 ]
 
                             tr [] [
-                               td [] [text "required bandwidth"]
-                               td [] [text bw]
+                               td [] [text "data volume"]
+                               td [] [text ds]
                                 ]
                           ]
                         
@@ -439,6 +439,8 @@ module ViewUtilities =
             attribute "data-samples" "4"
             ]) 
         
+      
+        
         Incremental.div AttributeMap.Empty (
         
             alist {
@@ -496,7 +498,18 @@ module ViewUtilities =
     
     let selectView (curr:IMod<Option<ModeOption>>) (scene: ISg<Action>) (side:string) (m:MModel) = 
           
-          Incremental.div AttributeMap.Empty (
+        
+          let instrumentViewAttributes =
+                amap {
+                    
+                    let! horz = m.rover.horzRes
+                    let! vert = m.rover.vertRes
+                    let height = "height:" + (vert/uint32(2)).ToString() + ";" 
+                    let width = "width:" + (horz/uint32(2)).ToString() + ";"
+                    yield style ("background: #1B1C1E;" + height + width)
+                } |> AttributeMap.ofAMap
+        
+          Incremental.div instrumentViewAttributes (
         
             alist{
         
@@ -504,7 +517,7 @@ module ViewUtilities =
         
                     match f with
                     | Some ViewPlanMode -> view scene side m
-                    | _ -> div[style " background: transparent"][]
+                    | _ -> div[][]
                 )
 
             yield d

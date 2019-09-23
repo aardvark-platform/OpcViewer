@@ -79,7 +79,7 @@ type ProjectionSphere =
     numberOfSamples     : int
     energyRequired      : float
     timeRequired        : float
-    bandwidthRequired   : float
+    datasize            : int
   }
 
  [<DomainType>]
@@ -133,7 +133,6 @@ type RoverModel =
         //variables
         //! currently dummy values for test purposes
         energy : float
-        bandwidth : float
         time : float        //how long should the rover be in its current place
 
         //requirements
@@ -141,6 +140,13 @@ type RoverModel =
         //! currently dummy values for test purposes
         energyForPanTilt : float
         timeForPanTilt: float
+
+        //required for calculation of data size
+        colorDepth : int    //bit
+        numberOfColorChannels : int //RGB
+        horzRes : uint32
+        vertRes : uint32
+
         
 
     }
@@ -222,6 +228,8 @@ module RoverModel =
             }
 
            currIdx = 0
+         
+
         
            
          
@@ -264,6 +272,7 @@ module RoverModel =
                 overlapBetweenCams = 5.0
                 
                 
+                
    
          }
 
@@ -296,20 +305,15 @@ module RoverModel =
         tiltOverlap = 20.0
 
         energy = 100.0 //percent
-        bandwidth = 120.0 //mbit
         time = 10.0 //hours
 
         energyForPanTilt = 0.2 //percent for 1°
         timeForPanTilt = 0.5 //0.5 sec for 1°
 
-        //output
-        //numberOfSamples = 0
-        //energyRequired = 0.0
-        //timeRequired = 0.0
-        //bandwidthRequired = 0.0
-
-
-
+        colorDepth = 8    //bit
+        numberOfColorChannels = 3 //RGB
+        horzRes = uint32(1024)
+        vertRes = uint32(1024)
 
         }
 
