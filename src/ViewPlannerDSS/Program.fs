@@ -13,7 +13,8 @@ let main argv =
     Aardvark.Init()
     Aardium.init()
 
-    use app = new OpenGlApplication()
+    use app = new OpenGlApplication(true)
+    let runtime = app.Runtime
 
     let argsList = List.fold(fun (x:string) (y : string)-> x + " " + y) String.Empty (argv |> Array.toList)
 
@@ -33,7 +34,7 @@ let main argv =
 
     let rotate = argsList.Contains("-rotate")
     
-    let instance =  ViewPlanner.App.app opcDir rotate |> App.start 
+    let instance =  ViewPlanner.App.app opcDir rotate runtime |> App.start 
 
     WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance

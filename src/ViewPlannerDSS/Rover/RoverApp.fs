@@ -3,10 +3,24 @@
 open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open Aardvark.Base.Rendering
 
 module RoverApp =
+
+    open Aardvark.SceneGraph
+    open FShade
+
+    open Aardvark.Application
+
     open Aardvark.UI
     open Aardvark.UI.Primitives
+
+    
+   
+
+
+
+
 
     let pan (r:RoverModel) (view:CameraView) (pos:V3d)=
         
@@ -297,13 +311,23 @@ module RoverApp =
         totalMByte
 
 
+    //let calculateDpi (views:list<CameraView>) = 
 
+
+        
 
     
 
     //takes pan and tilt values and calculates a view matrix for frustum visualisation
-    let calculateViewMatrix (rover : RoverModel) (pan : float) (tilt : float) (cam:CamVariables) =
-        
+
+    //(runtime :  IRuntime)
+    let calculateViewMatrix  (rover : RoverModel) (pan : float) (tilt : float) (cam:CamVariables) =
+        //runtime.create
+
+
+
+
+
         let panCurr = rover.pan.current
 
         let panDelta = 
@@ -365,11 +389,17 @@ module RoverApp =
                     if camtype = "WACLR" then count * 2 else count
 
                 let datasize = calculateDataSize countSamples rover
+
+
+
+
+
                 {
                 numberOfSamples = countSamples
                 energyRequired = energy
                 timeRequired = time
                 datasize = datasize
+                dpi = 0.0
                 }
 
         let id = 
@@ -471,8 +501,96 @@ module RoverApp =
 
 
 
+    let linearization (value:float32) (zNear:float32) (zFar:float32) = 
+        
+        let two = float32 2.0
+        let one = float32 1.0
+        let zn = two * value - one
+        two * zNear * zFar / (zFar + zNear - zn * (zFar - zNear))
+    
 
-    let sampling (p : Placement) (rover : RoverModel) = 
+    let calculateDpi (runtimeInstance: IRuntime) (renderSg :ISg<_>) (frustum:Frustum) (views:list<CameraView>) =
+        
+            let size = V2i(1024, 1024)
+            //let depth = runtimeInstance.CreateRenderbuffer(size, RenderbufferFormat.Depth24Stencil8, 1);
+        
+            let depth = runtimeInstance.CreateTexture(size, TextureFormat.Depth24Stencil8, 1, 1);
+            let col = runtimeInstance.CreateTexture(size, TextureFormat.Rgba8, 1, 1);
+            let signature = 
+                runtimeInstance.CreateFramebufferSignature [
+                DefaultSemantic.Colors, { format = RenderbufferFormat.Rgba8; samples = 1 }
+                DefaultSemantic.Depth, { format = RenderbufferFormat.Depth24Stencil8; samples = 1 }
+                ]
+
+            let fbo = 
+                runtimeInstance.CreateFramebuffer(
+                    signature, 
+                    Map.ofList [
+                        DefaultSemantic.Colors, col.GetOutputView()
+                        DefaultSemantic.Depth, depth.GetOutputView()
+                    ]
+                )
+        
+            let view = views.Head
+            let projTrafo  = Frustum.projTrafo(frustum);
+            let viewTrafo = view.ViewTrafo
+
+            let render2TextureSg =
+                renderSg
+                    |> Sg.viewTrafo (Mod.constant viewTrafo)
+                    |> Sg.projTrafo (Mod.constant projTrafo)
+                    |> Sg.effect [
+                    toEffect DefaultSurfaces.trafo 
+                    toEffect DefaultSurfaces.diffuseTexture
+                    ]
+
+    
+            let taskclear = runtimeInstance.CompileClear(signature,Mod.constant C4f.Green,Mod.constant 1.0)
+            let task = runtimeInstance.CompileRender(signature, render2TextureSg)
+            
+            taskclear.Run(null, fbo |> OutputDescription.ofFramebuffer) |> ignore
+            task.Run(null, fbo |> OutputDescription.ofFramebuffer) |> ignore
+
+            //let pi = PixImage<byte>(Col.Format.RGBA, size) 
+            //runtimeInstance.Download(depth,0,0, pi)
+            runtimeInstance.Download(col).SaveAsImage(@"C:\Users\schalko\Desktop\color.png")
+            let mat = Matrix<float32>(int64 size.X, int64 size.Y).Data
+            
+            let near = float32 frustum.near
+            let far = float32 frustum.far
+            
+            let mat2 = mat |> Array.map(fun v -> linearization v near far)
+            let test = mat2
+
+
+
+
+
+
+            //runtimeInstance.DownloadDepth(depth,0,0,mat)
+
+            //let pi = PixImage<byte>(Col.Format.RGBA, V2i mat.Size)
+
+            //pi.GetMatrix<C4b>().SetMap(mat, fun v ->
+            //    let gray = float v ** 32.0 |> float32
+            //    C4f(gray, gray, gray, 1.0f).ToC4b()
+            //) |> ignore
+
+            //pi.SaveAsImage(@"C:\Users\schalko\Desktop\depth.png")
+
+            //let matrix = pi.GetMatrix
+            Some mat
+
+
+        
+
+
+
+
+
+
+
+    let sampling (p : Placement) (runtimeInstance: IRuntime) (renderSg : ISg<_>) (rover : RoverModel) = 
         
         let panOverlap = rover.panOverlap
         let tiltOverlap = rover.tiltOverlap
@@ -541,6 +659,10 @@ module RoverApp =
 
                 //for visualising footprints
                 let viewMatrices = values |> List.map(fun m -> calculateViewMatrix rover m.X m.Y camera.cam) |> PList.ofList
+
+                let l = viewMatrices |> PList.toList
+                let testing = calculateDpi runtimeInstance renderSg camera.cam.frustum l
+                let m = testing
 
                 let HR = {rover.HighResCam with cam = { rover.HighResCam.cam with samplingValues = sv; viewList = viewMatrices }}
 
@@ -665,7 +787,7 @@ module RoverApp =
 
 
        
-    let calculateValues (rover:RoverModel)=
+    let calculateValues (runtimeInstance:IRuntime) (renderSg : ISg<_>) (rover:RoverModel)=
         
         let region = rover.reg
         let selectedPos = rover.selectedPosition
@@ -700,7 +822,7 @@ module RoverApp =
                 let roverWithupdatedCam = setCamera setR2
 
                 let r = {roverWithupdatedCam with thetaPhiValues = plist; projPoints = projectionPoints}
-                sampling p r
+                sampling p runtimeInstance renderSg r
 
             | _,_ -> rover
         
@@ -775,7 +897,7 @@ module RoverApp =
     
 
 
-    let sampleAllCombinations (rover:RoverModel) =
+    let sampleAllCombinations (runtimeInstance:IRuntime) (renderSg : ISg<_>) (rover:RoverModel) =
         
         let positions = rover.positionsList
         let cameras = rover.cameraOptions
@@ -810,7 +932,7 @@ module RoverApp =
                                 | Percent_50 -> 50.0
                             
                             let sampleRover = {rover with position = position.position; target = position.target; selectedPosition = Some position; camera = camtype; panOverlap = panO; tiltOverlap = tiltO}
-                            let result = calculateValues sampleRover
+                            let result = calculateValues runtimeInstance renderSg sampleRover
                             let newViewPlan = result.viewplans |> PList.first
                             let vpWithId = {newViewPlan with id = id}
                             id <- id + 1
@@ -823,7 +945,7 @@ module RoverApp =
 
         
 
-    let update (rover:RoverModel) (action:RoverAction) =
+    let update (rover:RoverModel) (action:RoverAction) (runtimeInstance : IRuntime) (renderSg : ISg<_>) =
         
         match action with
             | ChangePosition newPos -> {rover with position = newPos} 
@@ -843,10 +965,10 @@ module RoverApp =
                 changeCam rover cam
             
             | CalculateAngles ->
-                calculateValues rover
+                calculateValues runtimeInstance renderSg rover
 
             | SampleAllCombinations ->
-                sampleAllCombinations rover
+                sampleAllCombinations runtimeInstance renderSg rover
             
             | RotateToPoint ->
                 rotateToPoint rover

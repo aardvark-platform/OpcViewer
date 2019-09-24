@@ -2,7 +2,11 @@
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
+
+open Aardvark.SceneGraph
+
 open Aardvark.UI.Primitives
+
 
 [<DomainType>]
 type CameraInput = 
@@ -80,6 +84,7 @@ type ProjectionSphere =
     energyRequired      : float
     timeRequired        : float
     datasize            : int
+    dpi                 : float
   }
 
  [<DomainType>]

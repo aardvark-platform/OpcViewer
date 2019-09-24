@@ -159,10 +159,8 @@ module App =
         | PickingAction msg -> 
             match msg with
             | HitSurface (a,b) ->
-                //check if roverplacement is active
                 let mode = model.currentModeOption
                 let placement = model.roverPlacement
-                let active = placement.active
                 let counterMax = placement.counterToMax
                 let counter = placement.counter
                 let max = placement.max
@@ -197,11 +195,15 @@ module App =
                             }
                         let newList = model.rover.positionsList.Append newPlacement
                         
+                        
+
                         let rover = {model.rover with position = pos; target = target; positionsList = newList}
                         let updatedRp = {model.roverPlacement with counter = 0; counterToMax = (counterMax + 1)}
                         
                         let pmReset = PickingApp.update pm ClearPoints
                         { model with rover = rover; roverPlacement = updatedRp; pickingModel = pmReset;}
+                    
+                    | _ -> failwith "invalid counter value"
 
                 | Some RoverPlacementMode, true -> //placement is active, maximum number of rovers has been reached
                     let updatedRp = {model.roverPlacement with active = false}
@@ -227,7 +229,8 @@ module App =
             { model with dockConfig = cfg }
 
         | RoverAction msg -> 
-            let r = RoverApp.update model.rover msg
+            let sg = model.sg
+            let r = RoverApp.update model.rover msg model.runtimeInstance sg
             {model with rover = r}
                     
         | Configs msg ->
@@ -243,7 +246,8 @@ module App =
             let rover = {model.rover with walkThroughIdx = 0};
             { model with currentModeOption = msg; rover = rover }//; dockConfig = mode }
             
-            
+        //| SetSg sg -> 
+        //    { model with sg = Some sg }
           
         | _ -> model
     
@@ -262,11 +266,9 @@ module App =
             toEffect DefaultSurfaces.diffuseTexture 
             ]
 
-       //projection points on sphere
-      let ps = Sg.projectionPoints m.rover.projPoints
-   
-     
+      
       //views
+      
 
       let renderViewSg = Sg.setRenderViewScene m.currentModeOption m
 
@@ -282,23 +284,7 @@ module App =
       let camSceneRenderView = 
          m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main rovercamScene
    
-     
-      //show sample button or not
-      //let criteria = 
-      //      adaptive {
-      //          let! pos = m.rover.selectedPosition
-      //          let! reg = m.rover.reg
-      //          let crit = 
-      //             match pos,reg with
-      //             | Some p, Some r -> true
-      //             | _ -> false
-      //          return crit
-      //      }
     
-      //let roverViews = Sg.createView (camSceneRenderView |> Sg.map PickingAction) m.rover.camera m.rover
-      //let viewLeft = fst roverViews 
-      //let viewRight = snd roverViews
-
       let camScene = (camSceneRenderView |> Sg.map PickingAction)
      
 
@@ -330,13 +316,16 @@ module App =
         | Some "render" ->
  
           require Html.semui ( 
-              div [clazz "ui"; style "background: #1B1C1E"] [renderControl] 
+            body [] [
+              div [clazz "ui"; style "background: #1B1C1E"; ] [renderControl] 
+            ]
+            
           )
         
         | Some "leftCam" ->
             require Html.semui (
 
-              body [style "width: 100%; height:100%; background: transparent";] [
+              body [style "width: 100%; height:100%; background: transparent"] [
                 ViewUtilities.selectView m.currentModeOption camScene "left" m
                    ]
 
@@ -389,7 +378,7 @@ module App =
     //---
 
 
-    let app dir (rotate : bool) =
+    let app dir (rotate : bool) (runtime : IRuntime) =
       OpcSelectionViewer.Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
@@ -426,7 +415,19 @@ module App =
         ]
         |> List.map (fun info -> info.globalBB, info)
         |> HMap.ofList      
-                      
+      
+      let infos = opcInfos|> AMap.ofHMap
+      let opc = 
+        infos
+          |> AMap.toASet
+          |> ASet.map(fun info -> Sg.createOPCAlternative info)
+          |> Sg.set
+          |> Sg.effect [ 
+            toEffect Shader.stableTrafo
+            toEffect DefaultSurfaces.diffuseTexture 
+            ]
+
+
       let up = if rotate then (box.Center.Normalized) else V3d.OOI
 
       let restoreCamState : CameraControllerState =
@@ -439,6 +440,7 @@ module App =
 
       let camState = restoreCamState
 
+     
       let restorePlane =
         if File.Exists ".\planestate" then
             Log.line "[App] restoring planestate"
@@ -564,6 +566,7 @@ module App =
 
       let initialModel : Model = 
         { 
+          runtimeInstance    = runtime
           cameraState        = camState
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
@@ -594,6 +597,7 @@ module App =
           //menuOptions        = HMap.ofList [SaveCameraState, "Save camera state"; SaveRoverState, "Save plane state"; RoverPlacementMode, "rover placement mode"; StandardMode, "standard mode"]
           modeOptions        = HMap.ofList [StandardMode, "standard mode"; RoverPlacementMode, "rover placement mode"; SampleMode, "sample mode" ; ViewPlanMode, "view plan mode"] 
           currentModeOption  = Some StandardMode
+          sg = opc
         }
 
       {

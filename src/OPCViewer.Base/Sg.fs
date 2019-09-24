@@ -270,7 +270,42 @@ module Sg =
          )
         |> Sg.ofList        
     sg
+  
+
+
+
+  let createOPCAlternative (data : Box3d*OpcData) =
+
+    let boundingBox, opcData = data
+
+    let leaves = 
+          opcData.patchHierarchy.tree
+            |> QTree.getLeaves 
+            |> Seq.toList 
+            |> List.map(fun y -> (opcData.patchHierarchy.opcPaths.Opc_DirAbsPath, y))
+
+    let loadedPatches = 
+            leaves 
+              |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info "", dir, patch.info)) 
+              |> List.map(fun ((a,_),c,d) -> (a,c,d))
+
     
+    let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
+    let sg = 
+      loadedPatches
+        |> List.map (fun (g,dir,info) ->         
+          let texPath = Patch.extractTexturePath (OpcPaths dir) info 0
+          let tex = FileTexture(texPath,config) :> ITexture
+                    
+          Sg.ofIndexedGeometry g
+              |> Sg.trafo (Mod.constant info.Local2Global)
+              |> Sg.diffuseTexture (Mod.constant tex)       
+          )
+        |> Sg.ofList 
+    
+    sg
+
+
   let createSingleOpcSg (selectedScalar:IMod<Option<MScalarLayer>>) (picking : IMod<bool>) (view : IMod<CameraView>) (data : Box3d*MOpcData) =
     adaptive {
         let boundingBox, opcData = data

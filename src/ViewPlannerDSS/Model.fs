@@ -30,6 +30,7 @@ type Action =
   | PickingAction    of PickingAction
   | RoverAction      of RoverAction
   | Configs          of Option<ModeOption>
+  //| SetSg of Aardvark.UI.ISg<PickingAction>
 
 
 
@@ -71,6 +72,7 @@ type CameraStateLean =
 [<DomainType>]
 type Model =
     {
+        runtimeInstance      : IRuntime
         cameraState          : CameraControllerState 
         fillMode             : FillMode     
         
@@ -94,6 +96,8 @@ type Model =
         roverPlacement       : PlacementInfo
         modeOptions          : hmap<ModeOption, string>
         currentModeOption    : Option<ModeOption>
+        
+        [<NonIncremental>] sg : Aardvark.UI.ISg<PickingAction>
 
     }
 
