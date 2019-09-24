@@ -327,9 +327,9 @@ module App =
       let initialListLength = pointList.Length
 
       let dir = secondPoint - firstPoint
-      let samplingSize = ( Math.Round (firstPoint-secondPoint).Length) * model.stepSampleSize.value
+      let samplingSize = (Math.Round (firstPoint-secondPoint).Length) * model.stepSampleSize.value
       let step = dir / samplingSize  
-    
+        
       let sampleAndFillLists ((pointList : V3d list), (altitudeList : float list), (errorHitList: int list)) i =
           let fray = FastRay3d(V3d.Zero, (firstPoint + (step * float i)).Normalized)         
           model.picking.pickingInfos 
@@ -340,8 +340,7 @@ module App =
                   let hitpoint = fray.Ray.GetPointOnRay t
                   let pointHeight = CooTransformation.getLatLonAlt hitpoint Planet.Mars
     
-                  (hitpoint :: pointList), (pointHeight.altitude :: altitudeList), (0 :: errorHitList)
-                      
+                  (hitpoint :: pointList), (pointHeight.altitude :: altitudeList), (0 :: errorHitList)                  
               | None -> 
                   (pointList.Head :: pointList), altitudeList, (-1 :: errorHitList)                
               )
@@ -594,7 +593,7 @@ module App =
             model
       | Message.Pan pos ->
          if model.persToOrthoValue = 1.0 && not model.hover3dActive then
-             let direction = pos - model.mouseDragStart
+             let direction = -(pos - model.mouseDragStart)
              
              let camPos = model.cameraState.view.Location
 
@@ -947,14 +946,14 @@ module App =
 
       let afterFilledPolygonSg = 
         [
-          m.drawing |> DrawingApp.viewPointSize near far (Mod.constant 2.0)
+          m.drawing |> DrawingApp.viewPointSize near far (Mod.constant 2.0) (Mod.constant 10.0)
         ] 
         |> Sg.ofList
         |> Sg.pass afterFilledPolygonRenderPass
         
       let afterFilledPolygonSg2 = 
         [
-          m.drawing2 |> DrawingApp.viewPointSize near far (Mod.constant 0.0)
+          m.drawing2 |> DrawingApp.viewPointSize near far (Mod.constant 0.0) (Mod.constant 10.0)
         ] 
         |> Sg.ofList
         |> Sg.pass afterFilledPolygonRenderPass
