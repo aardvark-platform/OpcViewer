@@ -394,28 +394,37 @@ module LinkingApp =
                             | None -> ()
                         })
 
-                        let offset = 
-                            m.overlayFeature
-                            |> Mod.map(fun f ->
+                        let offset: IMod<V2d * V2d> = 
+                            Mod.map2(fun f map ->
                                 match f with
-                                | Some(d) -> d.offset
-                                | None -> V2d.Zero
-                            )
+                                | Some(d) -> 
+                                    let sensor = 
+                                        map
+                                        |> HMap.tryFind d.f.instrument
+                                        |> Option.map (fun o -> o.sensorSize)
+                                        |> Option.defaultValue V2i.Zero
+
+                                    (d.offset, (V2d sensor) * d.offset)
+                                | None -> (V2d.Zero, V2d.Zero)
+                            ) m.overlayFeature (m.instrumentParameter |> AMap.toMod)
  
-                        div[][
+                        Html.SemUi.accordion "Offset" "arrows alternate" true [
+                            Incremental.text (offset |> Mod.map (fun (_, o) -> sprintf "FIRST_LINE_SAMPLE (x): %0.0fpx" o.X))
                             slider 
                                 {min = -1.0; max = 1.0; step = 0.01}
                                 [clazz "ui blue slider"]
-                                (offset |> Mod.map (fun o -> o.X))
+                                (offset |> Mod.map (fun (o, _) -> o.X))
                                 (fun x -> ChangeOffsetX x)
 
+                            Incremental.text (offset |> Mod.map (fun (_, o) -> sprintf "FIRST_LINE (y): %0.0fpx" o.Y))
                             slider 
                                 {min = -1.0; max = 1.0; step = 0.01}
                                 [clazz "ui blue slider"]
-                                (offset |> Mod.map (fun o -> o.Y))
+                                (offset |> Mod.map (fun (o, _) -> o.Y))
                                 (fun y -> ChangeOffsetY y)
                         ]
 
+                        Incremental.text (m.frustumOpacity |> Mod.map (fun o -> sprintf "Opacity: %0.2f" o))
                         slider 
                             {min = 0.0; max = 1.0; step = 0.01} 
                             [clazz "ui blue slider"]
