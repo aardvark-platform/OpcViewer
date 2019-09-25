@@ -311,7 +311,6 @@ module RoverApp =
         totalMByte
 
 
-    //let calculateDpi (views:list<CameraView>) = 
 
 
         
@@ -320,7 +319,6 @@ module RoverApp =
 
     //takes pan and tilt values and calculates a view matrix for frustum visualisation
 
-    //(runtime :  IRuntime)
     let calculateViewMatrix  (rover : RoverModel) (pan : float) (tilt : float) (cam:CamVariables) =
         //runtime.create
 
@@ -506,19 +504,36 @@ module RoverApp =
         let two = float32 2.0
         let one = float32 1.0
         let zn = two * value - one
-        two * zNear * zFar / (zFar + zNear - zn * (zFar - zNear))
+        let v = two * zNear * zFar / (zFar + zNear - zn * (zFar - zNear))
+        v
+    
+    
+    //assumption: resolution symmetric (width = height)
+    let pixelSizeCm (plane:float) (res:float) (fov:float) = 
+        
+        let rad = fov.RadiansFromDegrees()
+        let sizeWorld = (tan(rad/2.0) * plane)*2.0
+        let pSize = (sizeWorld / res)*100.0             //in cm
+        pSize  
     
 
-    let calculateDpi (runtimeInstance: IRuntime) (renderSg :ISg<_>) (frustum:Frustum) (views:list<CameraView>) =
-        
-            let size = V2i(1024, 1024)
-            //let depth = runtimeInstance.CreateRenderbuffer(size, RenderbufferFormat.Depth24Stencil8, 1);
-        
+    let interpolatePixelSize (min:float) (max:float) (value:float) (sizeNear:float) (sizeFar:float) = 
+        let normalized = (value - min) / (max-min) // [0,1]
+        //let interpolatedSize = Fun.Lerp(normalized, sizeNear, sizeFar)
+        let interpolatedSize = sizeNear * (1.0 - normalized) + sizeFar * normalized
+        interpolatedSize
+
+
+
+    let calculateDpcm (runtimeInstance: IRuntime) (renderSg :ISg<_>) (frustum:Frustum) (fov:float) (views:list<CameraView>) =
+            
+            let res = 1200.0
+            let size = V2i(res)
+
             let depth = runtimeInstance.CreateTexture(size, TextureFormat.Depth24Stencil8, 1, 1);
-            let col = runtimeInstance.CreateTexture(size, TextureFormat.Rgba8, 1, 1);
+
             let signature = 
                 runtimeInstance.CreateFramebufferSignature [
-                DefaultSemantic.Colors, { format = RenderbufferFormat.Rgba8; samples = 1 }
                 DefaultSemantic.Depth, { format = RenderbufferFormat.Depth24Stencil8; samples = 1 }
                 ]
 
@@ -526,7 +541,6 @@ module RoverApp =
                 runtimeInstance.CreateFramebuffer(
                     signature, 
                     Map.ofList [
-                        DefaultSemantic.Colors, col.GetOutputView()
                         DefaultSemantic.Depth, depth.GetOutputView()
                     ]
                 )
@@ -550,36 +564,45 @@ module RoverApp =
             
             taskclear.Run(null, fbo |> OutputDescription.ofFramebuffer) |> ignore
             task.Run(null, fbo |> OutputDescription.ofFramebuffer) |> ignore
+           
 
-            //let pi = PixImage<byte>(Col.Format.RGBA, size) 
-            //runtimeInstance.Download(depth,0,0, pi)
-            runtimeInstance.Download(col).SaveAsImage(@"C:\Users\schalko\Desktop\color.png")
-            let mat = Matrix<float32>(int64 size.X, int64 size.Y).Data
+            let mat = Matrix<float32>(int64 size.X, int64 size.Y)
+            runtimeInstance.DownloadDepth(depth,0,0,mat)
+
+            let arr = mat.Data
             
             let near = float32 frustum.near
             let far = float32 frustum.far
             
-            let mat2 = mat |> Array.map(fun v -> linearization v near far)
-            let test = mat2
+            let zView = arr |> Array.map(fun v -> linearization v near far)
+            let pixelSizeNear = pixelSizeCm frustum.near res fov
+            let pixelSizeFar = pixelSizeCm frustum.far res fov
+
+            let matPixelSizes = zView |> Array.map(fun v -> interpolatePixelSize frustum.near frustum.far (float v) pixelSizeNear pixelSizeFar)
+
+            let sortedArr = matPixelSizes |> Array.sort |> Array.filter(fun f -> f > 0.0)
+
+            let median = 
+                
+                let length = matPixelSizes.Length
+                let rest = length % 2
+                let idx = int (Math.Floor((float length)/2.0))
+
+                match rest with
+                | 0 -> 
+                    let idx2 = idx + 1
+                    let v1 = sortedArr.[idx]
+                    let v2 = sortedArr.[idx2]
+
+                    (v1 + v2) / 2.0
 
 
+                | _ -> 
+                    matPixelSizes.[idx]
+            
+            let dpcm = 1.0/median    
 
-
-
-
-            //runtimeInstance.DownloadDepth(depth,0,0,mat)
-
-            //let pi = PixImage<byte>(Col.Format.RGBA, V2i mat.Size)
-
-            //pi.GetMatrix<C4b>().SetMap(mat, fun v ->
-            //    let gray = float v ** 32.0 |> float32
-            //    C4f(gray, gray, gray, 1.0f).ToC4b()
-            //) |> ignore
-
-            //pi.SaveAsImage(@"C:\Users\schalko\Desktop\depth.png")
-
-            //let matrix = pi.GetMatrix
-            Some mat
+            dpcm
 
 
         
@@ -661,7 +684,7 @@ module RoverApp =
                 let viewMatrices = values |> List.map(fun m -> calculateViewMatrix rover m.X m.Y camera.cam) |> PList.ofList
 
                 let l = viewMatrices |> PList.toList
-                let testing = calculateDpi runtimeInstance renderSg camera.cam.frustum l
+                let testing = calculateDpcm runtimeInstance renderSg camera.cam.frustum fov l
                 let m = testing
 
                 let HR = {rover.HighResCam with cam = { rover.HighResCam.cam with samplingValues = sv; viewList = viewMatrices }}

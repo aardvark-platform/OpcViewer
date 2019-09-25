@@ -180,7 +180,7 @@ module RoverModel =
         FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
          }
 
-    let initfrustum = Frustum.perspective 5.0 0.1 20.0 1.0
+    let initfrustum = Frustum.perspective 15.0 2.0 1000.0 1.0
 
     //Stereo camera //PanCam FOV 37.0°
     //currently at 10 for testing
@@ -190,8 +190,8 @@ module RoverModel =
     let camR = {
                     FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 6.0) V3d.OOO V3d.OOI
                 }
-    let frustumL = Frustum.perspective 10.0 0.1 20.0 1.0
-    let frustumR = Frustum.perspective 10.0 0.1 20.0 1.0
+    let frustumL = Frustum.perspective 10.0 0.1 100.0 1.0
+    let frustumR = Frustum.perspective 10.0 0.1 100.0 1.0
     
     let initial = 
         {
