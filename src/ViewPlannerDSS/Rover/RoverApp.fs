@@ -365,13 +365,12 @@ module RoverApp =
         view
 
     
-    let createNewViewPlan (camvars:plist<CamVariables>) (p:Placement) (camtype: string) (rover:RoverModel) =
+    let createNewViewPlan (camvars:plist<CamVariables>) (p:Placement) (camtype: string) (spatialRes:float) (rover:RoverModel) =
 
         let output = 
                 let cam = camvars |> PList.first
                 let values = cam.samplingValues |> PList.toList
-
-
+    
                 let numSamples = values.Length
                 
                 let energy = 
@@ -389,15 +388,12 @@ module RoverApp =
                 let datasize = calculateDataSize countSamples rover
 
 
-
-
-
                 {
                 numberOfSamples = countSamples
                 energyRequired = energy
                 timeRequired = time
                 datasize = datasize
-                dpi = 0.0
+                spatialRes = spatialRes
                 }
 
         let id = 
@@ -522,10 +518,28 @@ module RoverApp =
         //let interpolatedSize = Fun.Lerp(normalized, sizeNear, sizeFar)
         let interpolatedSize = sizeNear * (1.0 - normalized) + sizeFar * normalized
         interpolatedSize
+   
+
+    let median (arr:float[]) =
+         
+        let length = arr.Length
+        let rest = length % 2
+        let idx = int (Math.Floor((float length)/2.0))
+
+        match rest with
+        | 0 -> 
+                    let idx2 = idx + 1
+                    let v1 = arr.[idx]
+                    let v2 = arr.[idx2]
+
+                    (v1 + v2) / 2.0
 
 
+        | _ -> 
+                    arr.[idx]
 
-    let calculateDpcm (runtimeInstance: IRuntime) (renderSg :ISg<_>) (frustum:Frustum) (fov:float) (views:list<CameraView>) =
+
+    let calculateDpcm (runtimeInstance: IRuntime) (renderSg :ISg<_>) (frustum:Frustum) (fov:float) (view:CameraView) =
             
             let res = 1200.0
             let size = V2i(res)
@@ -545,7 +559,6 @@ module RoverApp =
                     ]
                 )
         
-            let view = views.Head
             let projTrafo  = Frustum.projTrafo(frustum);
             let viewTrafo = view.ViewTrafo
 
@@ -582,24 +595,8 @@ module RoverApp =
 
             let sortedArr = matPixelSizes |> Array.sort |> Array.filter(fun f -> f > 0.0)
 
-            let median = 
-                
-                let length = matPixelSizes.Length
-                let rest = length % 2
-                let idx = int (Math.Floor((float length)/2.0))
-
-                match rest with
-                | 0 -> 
-                    let idx2 = idx + 1
-                    let v1 = sortedArr.[idx]
-                    let v2 = sortedArr.[idx2]
-
-                    (v1 + v2) / 2.0
-
-
-                | _ -> 
-                    matPixelSizes.[idx]
-            
+            let median = median sortedArr
+   
             let dpcm = 1.0/median    
 
             dpcm
@@ -684,13 +681,13 @@ module RoverApp =
                 let viewMatrices = values |> List.map(fun m -> calculateViewMatrix rover m.X m.Y camera.cam) |> PList.ofList
 
                 let l = viewMatrices |> PList.toList
-                let testing = calculateDpcm runtimeInstance renderSg camera.cam.frustum fov l
-                let m = testing
+                let listOfdpcms = l |> List.map(fun e -> calculateDpcm runtimeInstance renderSg camera.cam.frustum fov e)
+                let median = listOfdpcms |> Array.ofList |> median
 
                 let HR = {rover.HighResCam with cam = { rover.HighResCam.cam with samplingValues = sv; viewList = viewMatrices }}
 
                 let camVars = PList.ofList [HR.cam]
-                let newVP = createNewViewPlan camVars p "High Resolution Camera" rover
+                let newVP = createNewViewPlan camVars p "High Resolution Camera" median rover
                 let newViewPlanList = rover.viewplans.Append newVP
 
                 {rover with HighResCam = HR; viewplans = newViewPlanList} //numberOfSamples = numberOfSamples; energyRequired = energy; timeRequired = time}
@@ -722,10 +719,11 @@ module RoverApp =
                 //{rover with WACLR = st}
 
                 let camVars = PList.ofList [cL; cR]
-                let newVP = createNewViewPlan camVars p "WACLR" rover
-                let newViewPlanList = rover.viewplans.Append newVP
+                //let newVP = createNewViewPlan camVars p "WACLR" rover
+                //let newViewPlanList = rover.viewplans.Append newVP
 
-                {rover with WACLR = st; viewplans = newViewPlanList}
+                //{rover with WACLR = st; viewplans = newViewPlanList}
+                {rover with WACLR = st}
 
                 
         newRover

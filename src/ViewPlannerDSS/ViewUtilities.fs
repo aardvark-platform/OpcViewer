@@ -83,6 +83,7 @@ module ViewUtilities =
                         let! energy = outputvars.energyRequired
                         let! time = outputvars.timeRequired
                         let! datasize = outputvars.datasize
+                        let! spatialRes = outputvars.spatialRes
 
                         let m = modulo time 0 0.0
 
@@ -98,6 +99,7 @@ module ViewUtilities =
                         let e = "" + energy.ToString() + " %"
                         let ti = "" + minutes.ToString() + " min " + seconds.ToString() + " sec"
                         let ds = "" + datasize.ToString() + " MB"
+                        let sr = "" + spatialRes.ToString() + "cm/pixel"
                          
                         yield table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
                             
@@ -146,6 +148,11 @@ module ViewUtilities =
                             tr [] [
                                td [] [text "data volume"]
                                td [] [text ds]
+                                ]
+                            
+                            tr [] [
+                               td [] [text "spatial resolution"]
+                               td [] [text sr]
                                 ]
                           ]
                         

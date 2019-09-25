@@ -84,7 +84,7 @@ type ProjectionSphere =
     energyRequired      : float
     timeRequired        : float
     datasize            : int
-    dpi                 : float
+    spatialRes          : float
   }
 
  [<DomainType>]
@@ -190,8 +190,8 @@ module RoverModel =
     let camR = {
                     FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 6.0) V3d.OOO V3d.OOI
                 }
-    let frustumL = Frustum.perspective 10.0 0.1 100.0 1.0
-    let frustumR = Frustum.perspective 10.0 0.1 100.0 1.0
+    let frustumL = Frustum.perspective 10.0 0.1 20.0 1.0
+    let frustumR = Frustum.perspective 10.0 0.1 20.0 1.0
     
     let initial = 
         {
