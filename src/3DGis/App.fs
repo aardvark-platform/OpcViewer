@@ -345,6 +345,21 @@ module App =
                   (pointList.Head :: pointList), altitudeList, (-1 :: errorHitList)                
               )
           |> Option.defaultValue (pointList, altitudeList, errorHitList)
+
+      //let hitFunc (point: V3d) : Option<V3d> =
+      //    let fray = FastRay3d(V3d.Zero, firstPoint.Normalized)         
+          
+      //    model.picking.pickingInfos 
+      //    |> HMap.tryFind model.opcBox
+      //    |> Option.map (fun opcData -> 
+      //        match OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some opcData.kdTree) fray with
+      //        | Some t -> 
+      //            let hitpoint = fray.Ray.GetPointOnRay t
+      //            (Some hitpoint)
+      //        | None ->  None            
+      //        )
+      //    |> Option.defaultValue None
+
                             
       let pL, aL, eL = List.fold sampleAndFillLists (pointList, altitudeList, errorHitList) [0.0..samplingSize]
       let numofElemBtw2Points = pL.Length - initialListLength
@@ -371,13 +386,19 @@ module App =
 
       let correctedAltitudeList = correctSamplingErrors altitudeList errorHitList  
 
+
+      //////
       let rec fillSublineDrawing i drawing =
          if i > 0 then
             fillSublineDrawing (i-1) (DrawingApp.update drawing (DrawingAction.AddPoint (pointList.Item(i), None)))
          else
             DrawingApp.update drawing (DrawingAction.AddPoint (pointList.Item(i), None))
        
-      let drawing2 = fillSublineDrawing (pointList.Length-1) { DrawingModel.initial with style = { DrawingModel.initial.style with thickness = 1.0; primary = { c = C4b(255,255,255) }; secondary = { c = C4b(205,243,255) } } } 
+      let drawing2 = 
+        if pointList.Length > 0 then
+            fillSublineDrawing (pointList.Length-1) { DrawingModel.initial with style = { DrawingModel.initial.style with thickness = 1.0; primary = { c = C4b(255,255,255) }; secondary = { c = C4b(205,243,255) } } } 
+        else
+            model.drawing2
       
       let rec linearDistance i acc = 
           if i >= 1 then
@@ -668,7 +689,7 @@ module App =
         
         let newDrawingModel = { drawingModel with style = { drawingModel.style with thickness = 2.0; primary = { c = C4b(50,208,255) }; secondary = { c = C4b(132,226,255) } } } 
         
-        if model.jumpSelectionActive && not model.camViewAnimRunning then
+        if model.jumpSelectionActive && not model.camViewAnimRunning && pickingModel.intersectionPoints.AsList.Length > 0 then
             update { model with selectedJumpPosition = pickingModel.intersectionPoints.Item(0); jumpSelectionActive = false; inJumpedPosition = true } Message.AnimateCameraJump            
         elif model.camViewAnimRunning then
             model
@@ -1199,7 +1220,7 @@ module App =
                 } |> AttributeMap.ofAMap
 
               
-
+              
               body [style "width: 100%; height: 100%; background: transparent; overflow-x: scroll "; onResize (Message.ResizeCutView >> id)] [
                     
                     Incremental.Svg.svg containerAttribs <|
@@ -1290,6 +1311,62 @@ module App =
                                     
                                 } |> AttributeMap.ofAMap
                             ) (Mod.constant "Distance [m]")
+
+                            yield Incremental.Svg.text ( 
+                                amap {
+                                    let! xOffset = m.offsetUIDrawX
+                                    let! yOffset = m.offsetUIDrawY
+
+                                    let! dimensions = m.cutViewDim
+                                    let xWidth = (float) dimensions.X
+                                    let yWidth = (float) dimensions.Y
+
+                                    let sX = (sprintf "%f" (xOffset * 0.9 * xWidth)) 
+                                    let sY = (sprintf "%f" ((yOffset) * yWidth + 6.0) )
+
+                                    yield clazz "label"
+                                    yield attribute "x" sX
+                                    yield attribute "y" sY     
+                                    yield attribute "text-anchor" "end"     
+                                    yield attribute "font-size" "12"
+                                    yield attribute "font-style" "italic"
+                                    yield attribute "fill" "#ffffff"
+                                    yield attribute "font-family" "Roboto Mono, sans-serif"
+
+                                    
+                                } |> AttributeMap.ofAMap
+                            ) ( Mod.map2 (fun f g -> 
+                                            if not (f = 0.0) && not (g = 0.0) then
+                                                let diff = Math.Round((f : float) - (g : float), 2)
+                                                diff.ToString() + " m"
+                                            else 
+                                                ""
+                                            ) m.maxHeight m.minHeight)
+
+                            yield Incremental.Svg.text ( 
+                                amap {
+                                    let! xOffset = m.offsetUIDrawX
+                                    let! yOffset = m.offsetUIDrawY
+
+                                    let! dimensions = m.cutViewDim
+                                    let xWidth = (float) dimensions.X
+                                    let yWidth = (float) dimensions.Y
+
+                                    let sX = (sprintf "%f" ((1.0-xOffset) * xWidth+5.0))
+                                    let sY = (sprintf "%f" ((1.0-yOffset) * yWidth+18.0))
+
+                                    yield clazz "label"
+                                    yield attribute "x" sX
+                                    yield attribute "y" sY     
+                                    yield attribute "text-anchor" "end"     
+                                    yield attribute "font-size" "12"
+                                    yield attribute "font-style" "italic"
+                                    yield attribute "fill" "#ffffff"
+                                    yield attribute "font-family" "Roboto Mono, sans-serif"
+
+                                    
+                                } |> AttributeMap.ofAMap
+                            ) (m.linearDistance |> Mod.map (fun f ->  if not (f = 0.0) then Math.Round(f,2).ToString() + " m" else ""))
 
 
                             //chart curve 
@@ -1449,16 +1526,97 @@ module App =
               onLayoutChanged UpdateDockConfig ]
         )
 
+  module Discover = 
+    open System.IO
+    
+    type DiscoverFolder = 
+        | OpcFolder of string
+        | Directory of string 
+
+    
+
+    /// <summary>
+    /// checks if "path" is a valid opc folder containing "images", "patches", and patchhierarchy.xml
+    /// </summary>
+    let isOpcFolder (path : string) = 
+        let imagePath = Path.combine [path; "images"]
+        let patchPath = Path.combine [path; "patches"]
+        (Directory.Exists imagePath) &&
+        (Directory.Exists patchPath) && 
+         File.Exists(patchPath + "\\patchhierarchy.xml")
+    
+    /// <summary>
+    /// checks if "path" is a valid surface folder
+    /// </summary>        
+    let isSurfaceFolder (path : string) =
+        Directory.GetDirectories(path) |> Seq.forall isOpcFolder
+    
+    let toDiscoverFolder path = 
+     if path |> isOpcFolder then
+       OpcFolder path
+     else
+       Directory path
+
+    let discover (p : string -> bool) path : list<string> =
+      if Directory.Exists path then
+        Directory.EnumerateDirectories path                     
+          |> Seq.filter p            
+          |> Seq.toList
+      else List.empty
+    
+    let rec superDiscovery (input : string) :  string * list<string> =
+        match input |> toDiscoverFolder with
+        | Directory path -> 
+          let opcs = 
+            path 
+              |> Directory.EnumerateDirectories 
+              |> Seq.toList 
+              |> List.map(fun x -> superDiscovery x |> snd) |> List.concat 
+          input, opcs
+        | OpcFolder p -> input,[p]
+
+    /// returns all valid surface folders in "path"   
+    let discoverSurfaces path =
+      discover isSurfaceFolder path
+    
+    let discoverOpcs path =
+      discover isOpcFolder path
+
   let app dir axisFile (rotate : bool) =
       OpcSelectionViewer.Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
       
+      let _, phDirs = Discover.superDiscovery dir
+      Log.line "[Ahmed] found %d elements" phDirs.Length
+
+
+      //for i in 0 .. phDirs.Length - 1 do
+      //  let isGale x = phDirs[i] |> String.contains "MslGaleDem"
+
+     // let galeBounds = Box2i(V2i(3,9), V2i(19,16))
+      //let galeBounds = Box2i(V2i(3,9), V2i(15,9))
+     // let galeBounds = Box2i(V2i(12,9), V2i(12,9))
+      let galeBounds = Box2i(V2i(1,3), V2i(1,3))
+      //let isGale x = x.importPath |> String.contains "MslGaleDem"
+
+      //let phDirs =
+      //    phDirs           
+      //    |> List.filter (String.contains "MslGaleDem")
+      //    |> List.filter(fun x ->
+      //        let parts = x |> System.IO.Path.GetFileName |> String.split('_')
+      //        let gridCoord = new V2i((parts.[1] |> Int32.Parse), (parts.[2] |> Int32.Parse))
+      //        let inside = galeBounds.Contains(gridCoord)
+      //        inside
+      //    )
+
+      //Log.line "[Ahmed] found %d elements" phDirs
+
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
 
       let axis = 
         axisFile |> Option.map(fun fileName -> OpcSelectionViewer.AxisFunctions.loadAxis fileName)
                  |> Option.defaultValue None
 
-      let patchHierarchies =
+      let patchHierarchies =         
         [ 
           for h in phDirs do
             yield PatchHierarchy.load OpcSelectionViewer.Serialization.binarySerializer.Pickle OpcSelectionViewer.Serialization.binarySerializer.UnPickle (h |> OpcPaths)
@@ -1493,11 +1651,11 @@ module App =
       let camPos = V3d(box.Center.X,box.Center.Y,box.Center.Z)+r.Forward.TransformPos(V3d(0.0,0.0,10.0*2.0*100.0))
       
       let restoreCamState : CameraControllerState =
-        if File.Exists ".\camstate" then          
-          Log.line "[App] restoring camstate"
-          let csLight : CameraStateLean = OpcSelectionViewer.Serialization.loadAs ".\camstate"
-          { FreeFlyController.initial with view = csLight |> fromCameraStateLean }
-        else 
+        //if File.Exists ".\camstate" then          
+        //  Log.line "[App] restoring camstate"
+        //  let csLight : CameraStateLean = OpcSelectionViewer.Serialization.loadAs ".\camstate"
+        //  { FreeFlyController.initial with view = csLight |> fromCameraStateLean }
+        //else 
           { FreeFlyController.initial with view = CameraView.lookAt camPos V3d.Zero up; } 
 
 
