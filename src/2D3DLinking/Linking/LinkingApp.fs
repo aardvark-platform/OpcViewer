@@ -38,7 +38,8 @@ module LinkingApp =
             //r3 - r2 |> toPlane  // far
         |]
 
-    // only called once at initialization time
+    /// called once at initialization time, takes minerva features
+    /// and populates the linking model with used feature representations
     let initFeatures (features: plist<Feature>) (m: LinkingModel) : LinkingModel =
 
         // sensor sizes
@@ -67,7 +68,7 @@ module LinkingApp =
 
         ]
         
-        // only interested in MastcamL and MastcamR products
+        // only interested in products of known instruments
         let reducedFeatures = features.Filter (fun _ f -> instrumentParameter.ContainsKey f.instrument)
 
         // creating frustums by specifying fov 
@@ -101,8 +102,6 @@ module LinkingApp =
                 let position = originTrafoInv.TransformPos(f.geometry.positions.Head)
                 let angles = f.geometry.coordinates.Head
 
-                let color = f.instrument |> MinervaModel.instrumentColor
-
                 let frustumTrafo, frustumTrafoInv, fullFrustum, sensorSize = 
                     frustumData
                     |> HMap.tryFind f.instrument
@@ -119,11 +118,6 @@ module LinkingApp =
 
                 let hull = trafoInv |> toHull3d 
 
-                let imageOffset =
-                    match f.instrument with
-                    | Instrument.MastcamL -> V2i(305 + 48, 385) // ATTENTION/TODO hardcoded data value, replace with database!
-                    | _ -> (sensorSize - f.dimensions) / 2 // TODO: hardcoded center
-
                 (f.id, {
                     id = f.id
                     hull = hull
@@ -133,10 +127,9 @@ module LinkingApp =
                     trafoInv = trafoInv
                     camTrafo = originTrafo.Inverse * rotTranslateTrafo.Inverse
                     camFrustum = fullFrustum
-                    color = color
                     instrument = f.instrument
                     imageDimensions = f.dimensions
-                    imageOffset = imageOffset
+                    imageOffset = f.offset
                 })
             )
             |> PList.toList
@@ -149,6 +142,9 @@ module LinkingApp =
 
         { m with frustums = linkingFeatures; trafo = originTrafo; instrumentParameter = instrumentParameter; filterProducts = filterProducts }
 
+    /// intersects given point (p) with all frustums specified by their id from "filtered"
+    /// emits linking action and minerva action which have to be delivered to their respective models
+    /// by upper level app
     let checkPoint (p: V3d) (filtered: hset<string>) (m: LinkingModel) : (LinkingAction * MinervaAction) =
 
         let originP = m.trafo.Backward.TransformPos p
@@ -172,6 +168,7 @@ module LinkingApp =
         let minervaAction = MinervaAction.SelectByIds (intersected.Keys |> HSet.toList)
         (linkingAction, minervaAction)
 
+
     //---UPDATE
     let rec update (m: LinkingModel) (msg: LinkingAction) : LinkingModel =
             
@@ -186,23 +183,38 @@ module LinkingApp =
         | OpenFrustum f -> { m with overlayFeature = Some(f) }  // also handled by upper app
         | CloseFrustum -> { m with overlayFeature = None }
         | ChangeFrustumOpacity v -> { m with frustumOpacity = v }
+        | ChangeOffsetX x ->
+            match m.overlayFeature with
+            | Some(f) -> { m with overlayFeature = Some({ f with offset = V2d(x, f.offset.Y) }) }
+            | None -> m
+        | ChangeOffsetY y ->
+            match m.overlayFeature with
+            | Some(f) -> { m with overlayFeature = Some({ f with offset = V2d(f.offset.X, y) }) }
+            | None -> m
         | _ -> failwith "Not implemented yet"
 
+
     //---Helpers
+
+    /// resource dependencies for linking view
     let dependencies =
         Html.semui @ [
             { kind = Stylesheet; name = "linkingstyle.css"; url = "./resources/linkingstyle.css" }
         ]
-    
+
+    /// takes C4b color and returns string color value useable by css
     let cssColor (c: C4b) =
         sprintf "rgba(%d, %d, %d, %f)" c.R c.G c.B c.Opacity
 
+    /// takes insrtument and returns string color value useable by css
     let instrumentColor (i: Instrument) =
         i |> MinervaModel.instrumentColor |> cssColor
 
+    /// takes LinkingFeature and returns fitting image source path
     let imageSrc (f: LinkingFeature) =
         sprintf "MinervaData/%s.png" (f.id.ToLower())
 
+    /// takes two float tuples as well as a color and a storke width and returns an svg line object
     let svgLine (p1: float * float) (p2: float * float) (color: string) (storkeWidth: float) =
         let (x1, y1) = p1
         let (x2, y2) = p2
@@ -215,22 +227,29 @@ module LinkingApp =
             attribute "stroke-width" (string storkeWidth)
         ]
         
+    /// takes two V2ds as well as a color and a storke width and returns an svg line object
     let svgLine' (p1: V2d) (p2: V2d) (color: C4b) (storkeWidth: float) =
         svgLine (p1.X, p1.Y) (p2.X, p2.Y) (color |> cssColor) storkeWidth
 
+
     //---VIEWS
+
+    /// main view function (3d view) 
+    /// hoveredFrustum: if Some, visualizes hovered frustum in a thicker line style
+    /// selectedFrustums: set of frustum ids that will be rendered in the 3d view
     let view (hoveredFrustum: IMod<Option<SelectedProduct>>) (selectedFrustums: aset<string>) (m: MLinkingModel) =
 
+        /// helper function creating frustum box for given LinkingFeature
         let sgFrustum (f: LinkingFeature) =
-            Sg.wireBox' f.color (Box3d(V3d.NNN,V3d.III))
+            Sg.wireBox' (f.instrument |> MinervaModel.instrumentColor) (Box3d(V3d.NNN,V3d.III))
             |> Sg.noEvents
             |> Sg.transform f.trafo
 
+        // frustum that is currently hovered
         let hoverFrustum =
             hoveredFrustum
             |> Mod.bind (fun f -> 
-                f 
-                //|> Option.map (fun x -> m.frustums |> AMap.tryFind x.id)
+                f
                 |> Option.map (fun x -> m.frustums |> Mod.map (fun f -> f |> HMap.tryFind x.id))
                 |> Option.defaultValue (Mod.constant None)
             )
@@ -242,43 +261,15 @@ module LinkingApp =
                     do! DefaultSurfaces.stableTrafo
                     do! DefaultSurfaces.vertexColor
                     do! DefaultSurfaces.thickLine
-                    //do! Aardvark.GeoSpatial.Opc.Shader.Shaders.thickLine
                     do! DefaultSurfaces.thickLineRoundCaps
                 }
                 |> Sg.uniform "LineWidth" (Mod.constant 5.0)
             )
             |> Sg.dynamic
-            
-        //let frustra =
-        //    m.frustums
-        //    |> AMap.toASet
-        //    |> ASet.map (fun (k, v) ->
-        //        v
-        //        |> sgFrustum'
-        //        |> Sg.trafo (
-        //            selectedFrustums 
-        //            |> ASet.contains k
-        //            |> Mod.map (fun s -> if s then v.trafo else Trafo3d.Scale 0.0) 
-        //        )
-        //    )
-        //    |> Sg.set
 
-
-        //let frustums =
-        //    Array.init 1000 (fun i -> Sg.wireBox' C4b.Yellow (Box3d(V3d.NNN,V3d.III)))
-
-        //let getSelectedFrustumssg
-        //selectedFrustums 
-        //    |> ASet.toMod 
-        //    |> Mod.map (fun s -> 
-        //        s |> HRefSet.toArray 
-        //          |> Array.mapi (fun i v -> frustums.[i])
-        //       )
-        //    |> 
-
+        // selected frustums
         let frustra =
             selectedFrustums
-            //|> ASet.chooseM (fun s -> AMap.tryFind s m.frustums)
             |> ASet.chooseM (fun s -> m.frustums |> Mod.map (fun f -> f |> HMap.tryFind s))
             |> ASet.map sgFrustum 
             |> Sg.set
@@ -287,6 +278,7 @@ module LinkingApp =
                 do! DefaultSurfaces.vertexColor
             }
 
+        // point on the opc that was picked
         let pickingIndicator =
             Sg.sphere 3 (Mod.constant C4b.VRVisGreen) (Mod.constant 0.05)
             |> Sg.noEvents
@@ -303,6 +295,7 @@ module LinkingApp =
                 )
             )
 
+        // scene with frustums (hidden when in overlay mode)
         let defaultScene = 
             [|
                 frustra
@@ -310,6 +303,7 @@ module LinkingApp =
             |]
             |> Sg.ofArray 
 
+        // scene that is always shown (in both normal 3d and overlay mode)
         let commonScene =
             [|
                 pickingIndicator
@@ -323,7 +317,7 @@ module LinkingApp =
                     |> Mod.map(fun o ->
                         match o with
                         | None -> defaultScene
-                        | Some x -> Sg.empty) // featureScene
+                        | Some _ -> Sg.empty) // featureScene
                     |> Sg.dynamic
                 )
                 commonScene
@@ -333,6 +327,7 @@ module LinkingApp =
 
         scene
 
+    /// side bar view containing controls for overlay mode
     let viewSideBar (m: MLinkingModel) =
 
         let modD = 
@@ -348,6 +343,7 @@ module LinkingApp =
                                 before = d.before.Remove f
                                 f = f
                                 after = d.after.Prepend d.f
+                                offset = V2d.Zero
                             }
                         )
 
@@ -358,6 +354,7 @@ module LinkingApp =
                                 before = d.before.Append d.f
                                 f = f
                                 after = d.after.Remove f
+                                offset = V2d.Zero
                             }
                         )
 
@@ -366,10 +363,6 @@ module LinkingApp =
 
         require dependencies (
             div [][
-                //div [clazz "inverted fluid ui vertical buttons"] [
-                //    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.SelectByIds(m.frustums |> AMap.keys |> ASet.toList)))][text "Select All"]         
-                //    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.ClearSelection))][text "Clear Selection"]                 
-                //]
                 Incremental.div 
                     (AttributeMap.ofAMap (amap { 
                         let! d = m.overlayFeature
@@ -400,6 +393,28 @@ module LinkingApp =
                                 ]
                             | None -> ()
                         })
+
+                        let offset = 
+                            m.overlayFeature
+                            |> Mod.map(fun f ->
+                                match f with
+                                | Some(d) -> d.offset
+                                | None -> V2d.Zero
+                            )
+ 
+                        div[][
+                            slider 
+                                {min = -1.0; max = 1.0; step = 0.01}
+                                [clazz "ui blue slider"]
+                                (offset |> Mod.map (fun o -> o.X))
+                                (fun x -> ChangeOffsetX x)
+
+                            slider 
+                                {min = -1.0; max = 1.0; step = 0.01}
+                                [clazz "ui blue slider"]
+                                (offset |> Mod.map (fun o -> o.Y))
+                                (fun y -> ChangeOffsetY y)
+                        ]
 
                         slider 
                             {min = 0.0; max = 1.0; step = 0.01} 
@@ -446,19 +461,13 @@ module LinkingApp =
             ]
         )
 
+    /// html scene overlay for the 3d scene, showing the selected product
     let sceneOverlay (m: MLinkingModel) : DomNode<LinkingAction> =
 
-        let overlayDom (f: LinkingFeature, dim: V2i) : DomNode<LinkingAction> =
+        let overlayDom (f: LinkingFeature, dim: V2i, changeOffset: V2d) : DomNode<LinkingAction> =
 
-            let offset = f.imageOffset //let border = (dim - V2d(f.imageDimensions)) * 0.5
-            let sensor = 
-                m.instrumentParameter
-                |> AMap.tryFind f.instrument 
-                |> Mod.map (fun i -> 
-                    i 
-                    |> Option.map (fun o -> o.sensorSize) 
-                    |> Option.defaultValue V2i.One
-                )
+            //let offset = f.imageOffset //let border = (dim - V2d(f.imageDimensions)) * 0.5
+            let offset = changeOffset * (V2d dim)
 
             let frustumRect = [
                 attribute "x" (string offset.X) //border.x
@@ -468,17 +477,15 @@ module LinkingApp =
             ]
 
             div [clazz "ui scene-overlay"] [
-                Incremental.Svg.svg (AttributeMap.ofAMap (amap {
-                    yield clazz "frustum-svg"
-                    yield attribute "id" "frustum-overlay-svg"
-                    yield style (sprintf "border-color: %s" (instrumentColor f.instrument))
-
-                    let! s = sensor
-                    yield attribute "viewBox" (sprintf "0 0 %d %d" s.X s.Y)
-                })) (AList.ofList [
+                Svg.svg [
+                    clazz "frustum-svg"
+                    attribute "id" "frustum-overlay-svg"
+                    style (sprintf "border-color: %s" (instrumentColor f.instrument))
+                    attribute "viewBox" (sprintf "0 0 %d %d" dim.X dim.Y)
+                ][
                     Svg.path [
                         attribute "fill" "rgba(0,0,0,0.5)"
-                        attribute "d" (sprintf "M0 0 h%d v%d h-%dz M%d %d v%d h%d v-%dz"
+                        attribute "d" (sprintf "M0 0 h%d v%d h-%dz M%f %f v%d h%d v-%dz"
                             dim.X dim.Y dim.X offset.X offset.Y f.imageDimensions.Y f.imageDimensions.X f.imageDimensions.Y)
                     ]
                     DomNode.Node ("g", "http://www.w3.org/2000/svg",
@@ -492,7 +499,7 @@ module LinkingApp =
                             ])
                         ]
                     )
-                ])
+                ]
             ]
 
         let dom =
@@ -502,27 +509,29 @@ module LinkingApp =
                 |> Option.map (fun d -> 
                     m.instrumentParameter 
                     |> AMap.tryFind d.f.instrument
-                    |> Mod.map (fun ip -> (d.f, ip))
+                    |> Mod.map (fun ip -> (d.f, ip, d.offset))
                 )
-                |> Option.defaultValue (Mod.constant (LinkingFeature.initial, None))
+                |> Option.defaultValue (Mod.constant (LinkingFeature.initial, None, V2d.Zero))
             )
-            |> Mod.map(fun (f: LinkingFeature, s: Option<InstrumentParameter>) ->
+            |> Mod.map(fun (f: LinkingFeature, s: Option<InstrumentParameter>, offset: V2d) ->
                 match s with
                 | None -> div[][] // DomNode.empty requires unit?
-                | Some(o) -> overlayDom (f, o.sensorSize)
+                | Some(o) -> overlayDom (f, o.sensorSize, offset)
             )
             |> AList.ofModSingle
             |> Incremental.div AttributeMap.empty
             
         require dependencies dom
 
+    /// horizontal "film strip" showing the images of the products given in selectedFrustums
     let viewHorizontalBar (selectedFrustums: aset<string>) (m: MLinkingModel) =
         
+        // getting LinkingFeature from given ids
         let products =
             selectedFrustums
-            //|> ASet.chooseM (fun k -> AMap.tryFind k m.frustums)
             |> ASet.chooseM (fun s -> m.frustums |> Mod.map (fun f -> f |> HMap.tryFind s))
 
+        // applying filter from checkbox-labels in film strip (single insrtument toggles)
         let filteredProducts =
             products
             |> ASet.filterM (fun p -> 
@@ -530,6 +539,7 @@ module LinkingApp =
                 |> AMap.tryFind p.instrument
                 |> Mod.map (fun m -> m |> Option.defaultValue false))
 
+        // getting the projected picking point position in image space for every product
         let productsAndPoints =
             filteredProducts
             |> ASet.map(fun prod ->
@@ -545,6 +555,7 @@ module LinkingApp =
             )
             |> ASet.mapM id
 
+        // counts per instrument for display in the toggle buttons
         let countStringPerInstrument =
             products
             |> ASet.groupBy (fun f -> f.instrument)
@@ -653,7 +664,7 @@ module LinkingApp =
 
                             Incremental.div (AttributeMap.ofAMap (amap {
                                 yield style (sprintf "border-color: %s" (instrumentColor f.instrument))
-                                yield onClick (fun _ -> OpenFrustum { before = before; f = f; after = after })
+                                yield onClick (fun _ -> OpenFrustum { before = before; f = f; after = after; offset = V2d.Zero })
                                 yield onMouseEnter (fun _ -> MinervaAction (HoverProduct (Some { id = f.id; pos = f.position })))
                                 yield onMouseLeave (fun _ -> MinervaAction (HoverProduct None))
 

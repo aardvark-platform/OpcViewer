@@ -95,6 +95,7 @@ type Feature =
         geometry    : Geometry
         sol         : int
         dimensions  : V2i
+        offset      : V2i
     }
 
 type RootProperties = 
@@ -454,7 +455,18 @@ module MinervaModel =
 
 
             let w = (row.GetColumn "{Value}Image_width") |> intOrDefault 0            
-            let h = (row.GetColumn "{Value}Image_height") |> intOrDefault 0            
+            let h = (row.GetColumn "{Value}Image_height") |> intOrDefault 0
+
+            // TODO: replace offset labels
+            // comment the following lines in:
+            //let ox = (row.GetColumn "{Value}Image_X_offset") |> intOrDefault 0            
+            //let oy = (row.GetColumn "{Value}Image_Y_offset") |> intOrDefault 0
+
+            // comment the following lines out:
+            let ox, oy = 
+                match instrument with
+                | Instrument.MastcamL -> (305 + 48, 385) // ATTENTION/TODO hardcoded data value, replace with database!
+                | _ -> (0,0) // TODO: hardcoded
 
             let instName = row.GetColumn "{Category}Instrument_name"
 
@@ -477,6 +489,7 @@ module MinervaModel =
                   geometry    = geo
                   sol         = sol'
                   dimensions  = V2i(w, h)
+                  offset      = V2i(ox, oy)
                 } 
             Some feature   
 
@@ -488,7 +501,6 @@ module MinervaModel =
             match (File.Exists path, File.Exists cachePath) with
              | (true, false) -> 
                 let allData = CsvFile.Load(path).Cache()
-
                 let features = 
                     allData.Rows
                         |> Seq.toList

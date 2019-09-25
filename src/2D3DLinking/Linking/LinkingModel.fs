@@ -1,10 +1,10 @@
 ﻿namespace PRo3D.Linking
 
 open Aardvark.Base
-open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
 open PRo3D.Minerva
 
+/// represents one product and the camera parametes from its selection
 type LinkingFeature =
     {
         id: string
@@ -15,27 +15,29 @@ type LinkingFeature =
         trafoInv: Trafo3d
         camTrafo: Trafo3d
         camFrustum: Frustum
-        color: C4b
         instrument: Instrument
         imageDimensions: V2i
         imageOffset: V2i
     }
-
+    
+/// type used to enable switching between images (previous / next)
 type LinkingFeatureDisplay =
     {
         before:   plist<LinkingFeature>
         f:        LinkingFeature
         after:    plist<LinkingFeature>
+        offset:   V2d
     }
 
 type LinkingAction =
     | MinervaAction of MinervaAction
     | UpdatePickingPoint of Option<V3d> * hmap<Instrument, bool>
-    //| CheckPoint of V3d
     | ToggleView of Instrument
     | OpenFrustum of LinkingFeatureDisplay
     | ChangeFrustumOpacity of float
     | CloseFrustum
+    | ChangeOffsetX of float
+    | ChangeOffsetY of float
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module LinkingFeature =
@@ -48,7 +50,6 @@ module LinkingFeature =
         trafoInv = Trafo3d.Identity
         camTrafo = Trafo3d.Identity
         camFrustum = Frustum.perspective 60.0 0.01 1000.0 1.0
-        color = C4b.Black
         instrument = Instrument.NotImplemented
         imageDimensions = V2i.Zero
         imageOffset = V2i.Zero
@@ -72,8 +73,6 @@ type LinkingModel =
         [<TreatAsValue>]
         frustums:               hmap<string,LinkingFeature>
         instrumentParameter:    hmap<Instrument, InstrumentParameter>
-        //selectedFrustums:       hset<string>
-        //hoveredFrustrum:        Option<LinkingFeature>
         trafo:                  Trafo3d
         pickingPos:             Option<V3d>
         filterProducts:         hmap<Instrument, bool>
@@ -86,8 +85,6 @@ module LinkingModel =
     let initial = {
         frustums            = hmap.Empty
         instrumentParameter = hmap.Empty
-        //selectedFrustums    = hset.Empty
-        //hoveredFrustrum     = None
         trafo               = Trafo3d.Identity
         pickingPos          = None
         filterProducts      = hmap.Empty
