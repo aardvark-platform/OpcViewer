@@ -26,7 +26,6 @@ type LinkingFeatureDisplay =
         before:   plist<LinkingFeature>
         f:        LinkingFeature
         after:    plist<LinkingFeature>
-        offset:   V2d
     }
 
 type LinkingAction =
@@ -78,6 +77,7 @@ type LinkingModel =
         filterProducts:         hmap<Instrument, bool>
         overlayFeature:         Option<LinkingFeatureDisplay>
         frustumOpacity:         float
+        offsetChange:           V2d
     }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -90,4 +90,5 @@ module LinkingModel =
         filterProducts      = hmap.Empty
         overlayFeature      = None
         frustumOpacity      = 0.5
+        offsetChange        = V2d.Zero
     }

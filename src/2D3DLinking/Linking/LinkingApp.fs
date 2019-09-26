@@ -180,17 +180,11 @@ module LinkingApp =
             | None -> m
 
         | UpdatePickingPoint (pos, filterProducts) -> { m with pickingPos = pos; filterProducts = filterProducts }
-        | OpenFrustum f -> { m with overlayFeature = Some(f) }  // also handled by upper app
+        | OpenFrustum f -> { m with overlayFeature = Some(f); offsetChange = V2d(f.f.imageOffset) }  // also handled by upper app
         | CloseFrustum -> { m with overlayFeature = None }
         | ChangeFrustumOpacity v -> { m with frustumOpacity = v }
-        | ChangeOffsetX x ->
-            match m.overlayFeature with
-            | Some(f) -> { m with overlayFeature = Some({ f with offset = V2d(x, f.offset.Y) }) }
-            | None -> m
-        | ChangeOffsetY y ->
-            match m.overlayFeature with
-            | Some(f) -> { m with overlayFeature = Some({ f with offset = V2d(f.offset.X, y) }) }
-            | None -> m
+        | ChangeOffsetX x -> { m with offsetChange = V2d(x, m.offsetChange.Y) }
+        | ChangeOffsetY y -> { m with offsetChange = V2d(m.offsetChange.X, y) }
         | _ -> failwith "Not implemented yet"
 
 
@@ -343,7 +337,6 @@ module LinkingApp =
                                 before = d.before.Remove f
                                 f = f
                                 after = d.after.Prepend d.f
-                                offset = V2d.Zero
                             }
                         )
 
@@ -354,7 +347,6 @@ module LinkingApp =
                                 before = d.before.Append d.f
                                 f = f
                                 after = d.after.Remove f
-                                offset = V2d.Zero
                             }
                         )
 
@@ -372,6 +364,7 @@ module LinkingApp =
                     (AList.ofList [
                         Incremental.div AttributeMap.empty (alist {
                             let! df = m.overlayFeature
+                            let! pars = m.instrumentParameter |> AMap.toMod
 
                             match df with
                             | Some(d) -> 
@@ -391,40 +384,42 @@ module LinkingApp =
                                         td[][ text (sprintf "%d x %d" f.imageDimensions.X f.imageDimensions.Y) ]
                                     ]
                                 ]
+                                
+                                let sensor = 
+                                    pars 
+                                    |> HMap.tryFind f.instrument 
+                                    |> Option.map (fun o -> V2d(o.sensorSize))
+                                    |> Option.defaultValue V2d.Zero
+                                
+                                yield Html.SemUi.accordion "Offset" "arrows alternate" true [
+                                    text "FIRST_LINE_SAMPLE (x): "
+                                    numeric
+                                        {min = -sensor.X; max = sensor.X; smallStep = 1.0; largeStep = 10.0 }
+                                        [clazz "ui inverted input"]
+                                        (m.offsetChange |> Mod.map (fun o -> o.X))
+                                        (fun x -> ChangeOffsetX x)
+                                    slider 
+                                        {min = -sensor.X; max = sensor.X; step = 1.0}
+                                        [clazz "ui blue slider"]
+                                        (m.offsetChange |> Mod.map (fun o -> o.X))
+                                        (fun x -> ChangeOffsetX x)
+
+                                    text "FIRST_LINE (y): "
+                                    numeric
+                                        {min = -sensor.Y; max = sensor.Y; smallStep = 1.0; largeStep = 10.0 }
+                                        [clazz "ui inverted input"]
+                                        (m.offsetChange |> Mod.map (fun o -> o.Y))
+                                        (fun y -> ChangeOffsetY y)
+                                    slider 
+                                        {min = -sensor.Y; max = sensor.Y; step = 1.0}
+                                        [clazz "ui blue slider"]
+                                        (m.offsetChange |> Mod.map (fun o -> o.Y))
+                                        (fun y -> ChangeOffsetY y)
+                                ]
                             | None -> ()
                         })
 
-                        let offset: IMod<V2d * V2d> = 
-                            Mod.map2(fun f map ->
-                                match f with
-                                | Some(d) -> 
-                                    let sensor = 
-                                        map
-                                        |> HMap.tryFind d.f.instrument
-                                        |> Option.map (fun o -> o.sensorSize)
-                                        |> Option.defaultValue V2i.Zero
-
-                                    (d.offset, (V2d sensor) * d.offset)
-                                | None -> (V2d.Zero, V2d.Zero)
-                            ) m.overlayFeature (m.instrumentParameter |> AMap.toMod)
- 
-                        Html.SemUi.accordion "Offset" "arrows alternate" true [
-                            Incremental.text (offset |> Mod.map (fun (_, o) -> sprintf "FIRST_LINE_SAMPLE (x): %0.0fpx" o.X))
-                            slider 
-                                {min = -1.0; max = 1.0; step = 0.01}
-                                [clazz "ui blue slider"]
-                                (offset |> Mod.map (fun (o, _) -> o.X))
-                                (fun x -> ChangeOffsetX x)
-
-                            Incremental.text (offset |> Mod.map (fun (_, o) -> sprintf "FIRST_LINE (y): %0.0fpx" o.Y))
-                            slider 
-                                {min = -1.0; max = 1.0; step = 0.01}
-                                [clazz "ui blue slider"]
-                                (offset |> Mod.map (fun (o, _) -> o.Y))
-                                (fun y -> ChangeOffsetY y)
-                        ]
-
-                        Incremental.text (m.frustumOpacity |> Mod.map (fun o -> sprintf "Opacity: %0.2f" o))
+                        Incremental.text (m.frustumOpacity |> Mod.map (fun o -> sprintf "Opacity: %f" o))
                         slider 
                             {min = 0.0; max = 1.0; step = 0.01} 
                             [clazz "ui blue slider"]
@@ -476,7 +471,7 @@ module LinkingApp =
         let overlayDom (f: LinkingFeature, dim: V2i, changeOffset: V2d) : DomNode<LinkingAction> =
 
             //let offset = f.imageOffset //let border = (dim - V2d(f.imageDimensions)) * 0.5
-            let offset = changeOffset * (V2d dim)
+            let offset = changeOffset
 
             let frustumRect = [
                 attribute "x" (string offset.X) //border.x
@@ -512,16 +507,15 @@ module LinkingApp =
             ]
 
         let dom =
-            m.overlayFeature
-            |> Mod.bind (fun op -> 
+            Mod.bind2 (fun op oc -> 
                 op 
                 |> Option.map (fun d -> 
                     m.instrumentParameter 
                     |> AMap.tryFind d.f.instrument
-                    |> Mod.map (fun ip -> (d.f, ip, d.offset))
+                    |> Mod.map (fun ip -> (d.f, ip, oc))
                 )
                 |> Option.defaultValue (Mod.constant (LinkingFeature.initial, None, V2d.Zero))
-            )
+            ) m.overlayFeature m.offsetChange
             |> Mod.map(fun (f: LinkingFeature, s: Option<InstrumentParameter>, offset: V2d) ->
                 match s with
                 | None -> div[][] // DomNode.empty requires unit?
@@ -673,7 +667,7 @@ module LinkingApp =
 
                             Incremental.div (AttributeMap.ofAMap (amap {
                                 yield style (sprintf "border-color: %s" (instrumentColor f.instrument))
-                                yield onClick (fun _ -> OpenFrustum { before = before; f = f; after = after; offset = V2d.Zero })
+                                yield onClick (fun _ -> OpenFrustum { before = before; f = f; after = after })
                                 yield onMouseEnter (fun _ -> MinervaAction (HoverProduct (Some { id = f.id; pos = f.position })))
                                 yield onMouseLeave (fun _ -> MinervaAction (HoverProduct None))
 

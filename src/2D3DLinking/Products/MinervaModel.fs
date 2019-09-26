@@ -463,7 +463,7 @@ module MinervaModel =
             //let oy = (row.GetColumn "{Value}Image_Y_offset") |> intOrDefault 0
 
             // comment the following lines out:
-            let ox, oy = 
+            let ox, oy =
                 match instrument with
                 | Instrument.MastcamL -> (305 + 48, 385) // ATTENTION/TODO hardcoded data value, replace with database!
                 | _ -> (0,0) // TODO: hardcoded
