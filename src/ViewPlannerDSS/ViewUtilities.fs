@@ -85,21 +85,26 @@ module ViewUtilities =
                         let! datasize = outputvars.datasize
                         let! spatialRes = outputvars.spatialRes
 
-                        let m = modulo time 0 0.0
+                        let min, sec = 
+                            
+                            if time < 60.0 then 
+                                (0, time) 
+                            else
+                                let m = modulo time 0 0.0
+                                (fst m, snd m)
+                                
 
-                        let minutes = fst m
-                        let seconds = snd m
-
-        
                         //text
                         let ins = instrument.ToString()
                         let p = "" + pan.ToString() + " %"
                         let t = "" + tilt.ToString() + " %"
                         let samples = "" + numsamples.ToString()
                         let e = "" + energy.ToString() + " %"
-                        let ti = "" + minutes.ToString() + " min " + seconds.ToString() + " sec"
+                        let ti = "" + min.ToString() + " min " + sec.ToString() + " sec"
                         let ds = "" + datasize.ToString() + " MB"
-                        let sr = "" + spatialRes.ToString() + "cm/pixel"
+                        let sr = 
+                            if spatialRes = 0.0 then "sampling without dpi" else "" + spatialRes.ToString() + "cm/pixel"
+                           
                          
                         yield table [clazz "ui celled unstackable inverted table"; style "border-radius: 0;"] [
                             
@@ -346,6 +351,10 @@ module ViewUtilities =
 
 
 
+                ]
+
+                div [ clazz "item"; style "margin-top:5px ; margin-bottom:10px"] [ 
+                checkbox [clazz "ui inverted checkbox"] m.rover.samplingWithDpi RoverAction.ToggleDpiSampling "sample with dpi" |> UI.map RoverAction
                 ]
 
                 button [clazz "ui inverted labeled basic icon button"; onClick (fun _ -> RoverAction.CalculateAngles)]  [

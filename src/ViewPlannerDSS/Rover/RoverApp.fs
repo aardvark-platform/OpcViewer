@@ -523,11 +523,22 @@ module RoverApp =
     let median (arr:float[]) =
          
         let length = arr.Length
-        let rest = length % 2
-        let idx = int (Math.Floor((float length)/2.0))
 
-        match rest with
-        | 0 -> 
+        match length with
+        | 1 -> arr.[0]
+
+        | 2 -> 
+            let v1 = arr.[0]
+            let v2 = arr.[1]
+            (v1 + v2) / 2.0
+
+        | _ -> 
+
+            let rest = length % 2
+            let idx = int (Math.Floor((float length)/2.0))
+
+            match rest with
+            | 0 -> 
                     let idx2 = idx + 1
                     let v1 = arr.[idx]
                     let v2 = arr.[idx2]
@@ -535,13 +546,13 @@ module RoverApp =
                     (v1 + v2) / 2.0
 
 
-        | _ -> 
+            | _ -> 
                     arr.[idx]
 
 
     let calculateDpcm (runtimeInstance: IRuntime) (renderSg :ISg<_>) (frustum:Frustum) (fov:float) (view:CameraView) =
             
-            let res = 1200.0
+            let res = 1024.0
             let size = V2i(res)
 
             let depth = runtimeInstance.CreateTexture(size, TextureFormat.Depth24Stencil8, 1, 1);
@@ -572,7 +583,7 @@ module RoverApp =
                     ]
 
     
-            let taskclear = runtimeInstance.CompileClear(signature,Mod.constant C4f.Green,Mod.constant 1.0)
+            let taskclear = runtimeInstance.CompileClear(signature,Mod.constant C4f.Black,Mod.constant 1.0)
             let task = runtimeInstance.CompileRender(signature, render2TextureSg)
             
             taskclear.Run(null, fbo |> OutputDescription.ofFramebuffer) |> ignore
@@ -591,9 +602,20 @@ module RoverApp =
             let pixelSizeNear = pixelSizeCm frustum.near res fov
             let pixelSizeFar = pixelSizeCm frustum.far res fov
 
+            
+            //uncomment to see depth image
+            //let pi = PixImage<byte>(Col.Format.RGBA, V2i mat.Size)
+
+            //pi.GetMatrix<C4b>().SetMap(mat, fun v ->
+            //    let gray = float v ** 32.0 |> float32
+            //    C4f(gray, gray, gray, 1.0f).ToC4b()
+            //) |> ignore
+
+            //pi.SaveAsImage(@"C:\Users\schalko\Desktop\depth.png")
+
             let matPixelSizes = zView |> Array.map(fun v -> interpolatePixelSize frustum.near frustum.far (float v) pixelSizeNear pixelSizeFar)
 
-            let sortedArr = matPixelSizes |> Array.sort |> Array.filter(fun f -> f > 0.0)
+            let sortedArr = matPixelSizes |> Array.sort |> Array.filter(fun f -> f < frustum.far)
 
             let median = median sortedArr
    
@@ -658,7 +680,7 @@ module RoverApp =
         let firstPair = V2d(minPan, maxTilt) //pair with min pan value and max tilt value (equals left bottom corner of bounding box)
         let samplingValues = [firstPair] //initial list
         
-       
+        let sampleWithDpi = rover.samplingWithDpi
 
         let newRover = 
          match currentCamera with
@@ -673,21 +695,26 @@ module RoverApp =
 
                 let refPan = if cross360 then (panRef * -1.0) else panRef
 
-
                 let values = buildList samplingValues panningRate tiltingRate tiltingRate refPan -tiltRef cross360 
                 let sv = values |> PList.ofList
 
                 //for visualising footprints
                 let viewMatrices = values |> List.map(fun m -> calculateViewMatrix rover m.X m.Y camera.cam) |> PList.ofList
 
-                let l = viewMatrices |> PList.toList
-                let listOfdpcms = l |> List.map(fun e -> calculateDpcm runtimeInstance renderSg camera.cam.frustum fov e)
-                let median = listOfdpcms |> Array.ofList |> median
+                let medValue = 
+                    if sampleWithDpi then
+
+                        let l = viewMatrices |> PList.toList
+                        let listOfdpcms = l |> List.map(fun e -> calculateDpcm runtimeInstance renderSg camera.cam.frustum fov e)
+                        let median = listOfdpcms |> Array.ofList |> Array.sort |> median 
+                        Math.Round(median,2)
+                    
+                    else 0.0
 
                 let HR = {rover.HighResCam with cam = { rover.HighResCam.cam with samplingValues = sv; viewList = viewMatrices }}
 
                 let camVars = PList.ofList [HR.cam]
-                let newVP = createNewViewPlan camVars p "High Resolution Camera" median rover
+                let newVP = createNewViewPlan camVars p "High Resolution Camera" medValue rover
                 let newViewPlanList = rover.viewplans.Append newVP
 
                 {rover with HighResCam = HR; viewplans = newViewPlanList} //numberOfSamples = numberOfSamples; energyRequired = energy; timeRequired = time}
@@ -716,14 +743,27 @@ module RoverApp =
 
                 let st = {rover.WACLR with camL = cL; camR = cR}
 
-                //{rover with WACLR = st}
+                let medValue = 
+                    if sampleWithDpi then
+                        let leftV = viewMatricesLeft |> PList.toList
+                        let rightV = viewMatricesRight |> PList.toList
+                        let listOfdpcmsLeft = leftV |> List.map(fun e -> calculateDpcm runtimeInstance renderSg cL.frustum fov e)
+                        let listOfdpcmsRight = rightV |> List.map(fun e -> calculateDpcm runtimeInstance renderSg cR.frustum fov e)
+
+                        let medianL = listOfdpcmsLeft |> Array.ofList |> Array.sort |> median
+                        let medianR = listOfdpcmsRight |> Array.ofList |> Array.sort |> median
+                        let medianFinal = (medianL + medianR) / 2.0
+                        Math.Round(medianFinal,2)
+                      
+                    else 0.0
+                
 
                 let camVars = PList.ofList [cL; cR]
-                //let newVP = createNewViewPlan camVars p "WACLR" rover
-                //let newViewPlanList = rover.viewplans.Append newVP
 
-                //{rover with WACLR = st; viewplans = newViewPlanList}
-                {rover with WACLR = st}
+                let newVP = createNewViewPlan camVars p "WACLR" medValue rover
+                let newViewPlanList = rover.viewplans.Append newVP
+
+                {rover with WACLR = st; viewplans = newViewPlanList}
 
                 
         newRover
@@ -916,6 +956,11 @@ module RoverApp =
         | None -> rover
 
     
+    let toggleDpiSampling (rover:RoverModel) = 
+        
+        let sampling = rover.samplingWithDpi
+        {rover with samplingWithDpi = not sampling}
+
 
 
     let sampleAllCombinations (runtimeInstance:IRuntime) (renderSg : ISg<_>) (rover:RoverModel) =
@@ -1005,6 +1050,9 @@ module RoverApp =
             
             | ShowViewPlan id ->
                 showViewPlan id rover
+            
+            | ToggleDpiSampling ->
+                toggleDpiSampling rover
                 
                 
                 
