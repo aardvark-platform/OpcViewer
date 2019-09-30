@@ -44,19 +44,20 @@ module IndexHelper =
 
                     if invalidFace then
                         counter <- counter + 1
+                        k <- k + 6
                     else 
-                    indexArray.[k] <- a1
-                    indexArray.[k + 1] <- b1
-                    indexArray.[k + 2] <- c1
+                        indexArray.[k] <- a1
+                        indexArray.[k + 1] <- b1
+                        indexArray.[k + 2] <- c1
 
-                    indexArray.[k + 3] <- a2
-                    indexArray.[k + 4] <- b2
-                    indexArray.[k + 5] <- c2 
+                        indexArray.[k + 3] <- a2
+                        indexArray.[k + 4] <- b2
+                        indexArray.[k + 5] <- c2 
 
-                    k <- k + 6
+                        k <- k + 6
 
                 if (counter > 0) then
-                    Report.Line(5, "Invalid faces found: {0}", counter)
+                    Log.warn "Invalid faces found: %i" counter
 
         indexArray
 
