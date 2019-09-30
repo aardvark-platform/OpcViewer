@@ -54,7 +54,6 @@ open Aardvark.VRVis.Opc
 
 
 
-
 module App = 
   open Rabbyte.Drawing
   open Rabbyte.Annotation
@@ -73,7 +72,7 @@ module App =
       }    
 
     { cam with freeFlyConfig = config }
-
+  
   let toCameraStateLean (view : CameraView) : CameraStateLean = 
     {
       location = view.Location
@@ -102,391 +101,6 @@ module App =
 
     animations
 
-  let cameraReturnJumpAnimation (model : Model) (t : float) = 
-    if model.cameraAnimEndTime > t then 
-        let durationTicks = TimeSpan.FromSeconds 2.0 
-        let remaingTicks = model.cameraAnimEndTime - t
-        let percent = 1.0 - (remaingTicks / float durationTicks.Ticks)
-
-        let targetToCam = model.originalCamPos - model.targetPosition
-        let offset = targetToCam/10.0
-        let targetPos = model.targetPosition + offset
-        let camToTarget = targetPos - model.originalCamPos
-
-        let up = V3d.OOI 
-
-        let originVec = V3d.Zero  - model.originalCamPos 
-
-        let projectedPointOnLine = 
-            let a = camToTarget
-            let b = originVec
-
-            let s = a.Length * V3d.Dot(b,a) / (b.Length * a.Length)
-            model.originalCamPos + b*(s/b.Length)
-
-        let jumpTargetOffset = (projectedPointOnLine - targetPos)/5.0
-
-        let bezierCurve (t:float) (b0:V3d) (b1:V3d) (b2:V3d) = 
-            (b0 - 2.0*b1 + b2) * Math.Pow(t,2.0) + (-2.0*b0 + 2.0*b1) * t + b0
-            
-        let jumpTarget = bezierCurve (1.0-percent) model.originalCamPos projectedPointOnLine (targetPos+jumpTargetOffset)
-
-        let cam = CameraView.lookAt (jumpTarget) (model.targetPosition * ((1.0-percent) ** (1.0 / 200.0))) (up * percent + (1.0 - percent) * (model.cameraState.view.Location.Normalized));
-        
-        let newCamState : CameraControllerState =
-                      { model.cameraState with view = cam }
-
-        { model with cameraState = newCamState }
-     
-    elif model.camJumpAnimRunning && model.cameraAnimEndTime < t then
-        let duration = TimeSpan.FromSeconds 0.4
-        let total = DateTime.Now.AddTicks (duration.Ticks)
-        { model with camJumpAnimRunning = false; camViewAnimRunning = true; cameraAnimEndTime = float total.Ticks; inJumpedPosition = false }     
-    else 
-        model
-  
-  let cameraJumpAnimation (model : Model) (t : float) = 
-    if model.cameraAnimEndTime > t then 
-        let durationTicks = TimeSpan.FromSeconds 2.0 
-        let remaingTicks = model.cameraAnimEndTime - t
-        let percent = 1.0 - (remaingTicks / float durationTicks.Ticks)
-
-        let targetToCam = model.originalCamPos - model.targetPosition
-        let offset = targetToCam/10.0
-        let targetPos = model.targetPosition + offset
-        let camToTarget = targetPos - model.originalCamPos
-
-        let up = V3d.OOI 
-
-        let originVec = V3d.Zero  - model.originalCamPos 
-
-        let projectedPointOnLine = 
-            let a = camToTarget
-            let b = originVec
-
-            let s = a.Length * V3d.Dot(b,a) / (b.Length * a.Length)
-            model.originalCamPos + b*(s/b.Length)
-
-        let jumpTargetOffset = (projectedPointOnLine - targetPos)/5.0
-
-        let bezierCurve (t:float) (b0:V3d) (b1:V3d) (b2:V3d) = 
-            (b0 - 2.0*b1 + b2) * Math.Pow(t,2.0) + (-2.0*b0 + 2.0*b1) * t + b0
-            
-        let jumpTarget = bezierCurve percent model.originalCamPos projectedPointOnLine (targetPos+jumpTargetOffset)
-
-        let cam = CameraView.lookAt (jumpTarget) (model.targetPosition * (percent ** (1.0 / 200.0))) ((model.cameraState.view.Location.Normalized) * percent + (1.0 - percent) * up);
-        
-        let newCamState : CameraControllerState =
-                      { model.cameraState with view = cam }
-
-        { model with cameraState = newCamState }
-     
-    elif model.camJumpAnimRunning && model.cameraAnimEndTime < t then
-        let cam = CameraView.lookAt (model.cameraState.view.Location) (model.targetPosition) (model.cameraState.view.Sky);
-        let newCamState : CameraControllerState =
-                      { model.cameraState with view = cam }
-
-        { model with camJumpAnimRunning = false; camCompAnimRunning = false; cameraState = newCamState }     
-    else 
-        model
-
-  let orthographicPerspectiveAnimation (model : Model) (t: float) = 
-      if model.cameraAnimEndTime > t then
-         if model.perspectiveView then
-            let durationTicks = TimeSpan.FromSeconds 0.4 
-            let remaingTicks = model.cameraAnimEndTime - t
-
-            let percent = 1.0 - (remaingTicks / float durationTicks.Ticks)
-
-            { model with persToOrthoValue = percent }
-
-         else
-            let durationTicks = TimeSpan.FromSeconds 0.4 
-            let remaingTicks = model.cameraAnimEndTime - t
-
-            let percent = 1.0 - (remaingTicks / float durationTicks.Ticks)
-
-            { model with persToOrthoValue = 1.0 - percent }
-
-
-      elif model.camViewAnimRunning && model.cameraAnimEndTime < t then
-        if model.perspectiveView then
-            { model with perspectiveView = false; persToOrthoValue = 1.0; camViewAnimRunning = false; currentOption = Some O }
-        else
-            let duration = TimeSpan.FromSeconds 2.0
-            let total = DateTime.Now.AddTicks (duration.Ticks)
-            { model with perspectiveView = true; persToOrthoValue = 0.0; camViewAnimRunning = false; camJumpAnimRunning = model.camCompAnimRunning; camRetAnimRunning = false; cameraAnimEndTime = float total.Ticks;  currentOption = Some P }
-      else
-        model
-
-  let caluculateSVGDrawingPositions (model : Model) = 
-      let xOffset = model.offsetUIDrawX
-      let yOffset = model.offsetUIDrawY
-                                          
-      let dimensions = model.cutViewDim
-      let xWidth = (float) dimensions.X 
-      let yWidth = (float) dimensions.Y
-     
-      let space = " "
-      let comma = ","
-
-      let sX = (sprintf "%f" (xOffset * xWidth)) 
-
-      let wX = (sprintf "%f" ((1.0-xOffset) * xWidth)) 
-      let wY = (sprintf "%f" ((1.0-yOffset) * yWidth))
-     
-      let altitudeList = model.altitudeList
-      let errorHitList = model.errorHitList
-     
-      let maxAltitude = model.maxHeight
-      let minAltitude = model.minHeight
-      let range = maxAltitude - minAltitude
-                                      
-      let drawingAvailableCoord, drawingMissingCoord, drawingMissingSurfaceCoord = 
-          let mutable currentCorrectPoints = ""
-          let mutable currentErrorPoints = ""
-          let mutable currentErrorSurfacePoints = ""
-
-          for i = 0 to altitudeList.Length-1 do
-              let currentX = (100.0/ (float) (altitudeList.Length-1)) * (float i)
-              let currentY = (altitudeList.Item(i) - minAltitude) / range
-     
-              let normalizeX = (sprintf "%f" ((xOffset+ (currentX/100.0) * (1.0-xOffset*2.0)) * xWidth) )
-              let normalizeY = (sprintf "%f" ((yOffset+ (1.0-currentY) * (1.0-yOffset*2.0)) * yWidth) )
-              currentCorrectPoints <- currentCorrectPoints + normalizeX + comma + normalizeY + space
-
-              if errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = 0 then
-                  currentErrorPoints <- currentErrorPoints + normalizeX + comma + normalizeY + space
-                  let initY = (sprintf "%f" ((1.0-yOffset) * yWidth))
-                  let initialPointsCoord = normalizeX + comma + initY + space + normalizeX + comma + normalizeY + space
-                  currentErrorSurfacePoints <- currentErrorSurfacePoints + initialPointsCoord
-              elif errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = -1 && errorHitList.Item(i+1) = -1 then
-                  currentErrorPoints <- currentErrorPoints + normalizeX + comma + normalizeY + space
-                  currentErrorSurfacePoints <- currentErrorSurfacePoints + normalizeX + comma + normalizeY + space
-              elif errorHitList.Item(i) = -1 && errorHitList.Item(i+1) = 0 then
-                  currentErrorPoints <- currentErrorPoints + normalizeX + comma + normalizeY + space + space
-                  let endY = (sprintf "%f" ((1.0-yOffset) * yWidth))
-                  let endPointsCoord = normalizeX + comma + normalizeY + space + normalizeX + comma + endY + space
-                  currentErrorSurfacePoints <- currentErrorSurfacePoints + endPointsCoord
-
-          currentCorrectPoints, currentErrorPoints, currentErrorSurfacePoints                       
-                                      
-      let initialPointsCoord = wX + comma + wY + space + sX + comma + wY + space
-      let surfaceUnderLineCoord =  initialPointsCoord + drawingAvailableCoord 
-
-      let circleSize = 
-          let x1, x2 =
-              if altitudeList.Length > 2 then
-                  ((100.0/ (float) (altitudeList.Length-1)) * 1.0), ((100.0/ (float) (altitudeList.Length-1)) * 2.0)
-              else  
-                  0.0, 0.0
-          x2-x1
-      
-
-      { model with svgPointsCoord = drawingAvailableCoord; svgSurfaceUnderLineCoord = surfaceUnderLineCoord; svgPointsErrorCoord = drawingMissingCoord; svgSurfaceUnderLineErrorCoord = drawingMissingSurfaceCoord; svgCircleSize = circleSize }
-
-  let getNumberOfErrors (errorHitList : int list) (index : int) = 
-      let mutable keepCounting = true
-      let mutable i = index
-      let mutable numErrors = 0
-
-      while keepCounting && i < errorHitList.Length do
-          if errorHitList.Item(i) = -1 then
-                 numErrors <- numErrors + 1
-                 i <- i + 1
-             else 
-                 keepCounting <- false
-      numErrors
-      
-  let createInterpolatedSubList (min : float) (max : float) (amount : int) =
-      let mutable subList = []
-      for i = 1 to amount do
-          subList <- subList @ [min + ((max-min)/float (amount + 1)) * float i]
-      subList
-
-  let correctSamplingErrors (altitudeList : float list) (errorHitList : int list) =
-      let correctedList = 
-          let mutable finalList = altitudeList
-          let mutable i = 0
-          while i < finalList.Length do
-              if errorHitList.Item(i) = -1 && errorHitList.Item(i-1) = 0 then
-                  let newArray = finalList |> List.toArray                
-                  let leftArray, rightArray = newArray |> Array.splitAt i
-                  let leftList = leftArray |> Array.toList
-                  let rightList = rightArray |> Array.toList
-                  
-                  let numMissingValues = getNumberOfErrors errorHitList i
-                  let interpolatedSubList = createInterpolatedSubList (leftList.Item(leftList.Length-1)) rightList.Head numMissingValues
-                  finalList <- (leftList @ interpolatedSubList @ rightList)
-              i <- i + 1
-          finalList   
-                                    
-      correctedList
-  
-  let sampleBetweenTwoPoints (model : Model) (firstPoint : V3d) (secondPoint : V3d) (pointList : V3d list) (altitudeList : float list) (errorHitList: int list) = 
-      let initialListLength = pointList.Length
-
-      let dir = secondPoint - firstPoint
-      let samplingSize = (Math.Round (firstPoint-secondPoint).Length) * model.stepSampleSize.value
-      let step = dir / samplingSize  
-        
-      let sampleAndFillLists ((pointList : V3d list), (altitudeList : float list), (errorHitList: int list)) i =
-          let fray = FastRay3d(V3d.Zero, (firstPoint + (step * float i)).Normalized)         
-          model.picking.pickingInfos 
-          |> HMap.tryFind model.opcBox
-          |> Option.map (fun opcData -> 
-              match OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some opcData.kdTree) fray with
-              | Some t -> 
-                  let hitpoint = fray.Ray.GetPointOnRay t
-                  let pointHeight = CooTransformation.getLatLonAlt hitpoint Planet.Mars
-    
-                  (hitpoint :: pointList), (pointHeight.altitude :: altitudeList), (0 :: errorHitList)                  
-              | None -> 
-                  (pointList.Head :: pointList), altitudeList, (-1 :: errorHitList)                
-              )
-          |> Option.defaultValue (pointList, altitudeList, errorHitList)
-
-      //let hitFunc (point: V3d) : Option<V3d> =
-      //    let fray = FastRay3d(V3d.Zero, firstPoint.Normalized)         
-          
-      //    model.picking.pickingInfos 
-      //    |> HMap.tryFind model.opcBox
-      //    |> Option.map (fun opcData -> 
-      //        match OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some opcData.kdTree) fray with
-      //        | Some t -> 
-      //            let hitpoint = fray.Ray.GetPointOnRay t
-      //            (Some hitpoint)
-      //        | None ->  None            
-      //        )
-      //    |> Option.defaultValue None
-
-                            
-      let pL, aL, eL = List.fold sampleAndFillLists (pointList, altitudeList, errorHitList) [0.0..samplingSize]
-      let numofElemBtw2Points = pL.Length - initialListLength
-
-      pL, aL, eL, numofElemBtw2Points
-     
-
-
-  let sampleSurfacePointsForCutView (model : Model) (pickingModel : PickingModel) (drawingModel : DrawingModel) = 
-    
-      let numIntersectionPoints = pickingModel.intersectionPoints.Count
-        
-      let rec sampleBetweenMultiplePoints i pL aL eL numElemList=
-          if (numIntersectionPoints-1) > i then 
-              let pl, aL, eL, numElem = sampleBetweenTwoPoints model (pickingModel.intersectionPoints.Item(i)) (pickingModel.intersectionPoints.Item(i+1) ) pL aL eL 
-              sampleBetweenMultiplePoints (i+1) pl aL eL (numElem :: numElemList)
-          else 
-            pL, aL, eL, numElemList
-
-
-      let pointList, altitudeList, errorHitList, numofElemsBtw2PointsList = sampleBetweenMultiplePoints 0 [] [] [] []
-
-      let numSampledPoints = altitudeList.Length
-
-      let correctedAltitudeList = correctSamplingErrors altitudeList errorHitList  
-
-
-      //////
-      let rec fillSublineDrawing i drawing =
-         if i > 0 then
-            fillSublineDrawing (i-1) (DrawingApp.update drawing (DrawingAction.AddPoint (pointList.Item(i), None)))
-         else
-            DrawingApp.update drawing (DrawingAction.AddPoint (pointList.Item(i), None))
-       
-      let drawing2 = 
-        if pointList.Length > 0 then
-            fillSublineDrawing (pointList.Length-1) { DrawingModel.initial with style = { DrawingModel.initial.style with thickness = 1.0; primary = { c = C4b(255,255,255) }; secondary = { c = C4b(205,243,255) } } } 
-        else
-            model.drawing2
-      
-      let rec linearDistance i acc = 
-          if i >= 1 then
-              let A = pickingModel.intersectionPoints.Item(i)
-              let B = pickingModel.intersectionPoints.Item(i-1)
-              let distance = (A-B).Length
-              linearDistance (i-1) (acc+distance)
-          else 
-              acc
-
-      let linDist = linearDistance (numIntersectionPoints-1) 0.0
-
-      let rec accDistance i acc = 
-          if i >= 1 then
-              let A = pointList.Item(i)
-              let B = pointList.Item(i-1)
-              let distance = (A-B).Length
-              accDistance (i-1) (acc+distance)
-          else 
-              acc
-
-      let camLoc = model.cameraState.view.Location
-
-      let rec createTriangleStrips i arr = 
-          if i >= 1 then
-              let a = pickingModel.intersectionPoints.Item(i)
-              let b = pickingModel.intersectionPoints.Item(i-1)
-
-              let aDir = b-a
-              let bDir = a-b
-
-              let aCorrected = a + bDir / 5.0 
-              let bCorrected = b + aDir / 5.0 
-
-              let aV = aCorrected - camLoc
-              let bV = bCorrected - camLoc
-
-              let aDublicated1 = V4d(aCorrected,0.0)
-              let aDublicated2 = V4d(aCorrected,1.0)
-
-              let bDublicated1 = V4d(bCorrected,0.0)
-              let bDublicated2 = V4d(bCorrected,1.0)
-
-              let stripWidth = (aV.Length + bV.Length)  / 10.0
-
-              let aCross, bCross = 
-                  if numIntersectionPoints > 2 then
-                      if i > 1 then
-                          (V3d.Cross(bDir,b)).Normalized, (V3d.Cross(bDir,b)).Normalized
-                      else 
-                          (V3d.Cross(aDir,a)).Normalized, (V3d.Cross(aDir,a)).Normalized
-                  else
-                      (V3d.Cross(bDir,bV)).Normalized, (V3d.Cross(aV,aDir)).Normalized
-                
-
-              let a0Moved = aDublicated1.XYZ + aCross * (aDublicated1.W - 0.5) * stripWidth 
-              let a1Moved = aDublicated2.XYZ + aCross * (aDublicated2.W - 0.5) * stripWidth 
-
-              let b0Moved = bDublicated1.XYZ + bCross * (bDublicated1.W - 0.5) * stripWidth 
-              let b1Moved = bDublicated2.XYZ + bCross * (bDublicated2.W - 0.5) * stripWidth 
-             
-              let triangle1 = Triangle3d(a0Moved,a1Moved,b0Moved)
-              let triangle2 = Triangle3d(a1Moved,b0Moved,b1Moved)
-
-              createTriangleStrips (i-1) (Array.append [|triangle1;triangle2|] arr)
-          else 
-              arr 
-
-
-      let triangleStrips = createTriangleStrips (numIntersectionPoints-1) [||]
-            
-      { model with 
-              picking                    = pickingModel 
-              drawing                    = drawingModel 
-              drawing2                   = drawing2 
-              numSampledPoints           = numSampledPoints 
-              samplingDistance           = linDist / float (pointList.Length - 1)
-              linearDistance             = Math.Round(linDist,2)
-              minHeight                  = altitudeList.Min (altitudeList.Item(0))
-              maxHeight                  = altitudeList.Max (altitudeList.Item(0))
-              accDistance                = Math.Round(accDistance (pointList.Length-1) 0.0,2)
-              pointList                  = pointList
-              altitudeList               = correctedAltitudeList  
-              errorHitList               = errorHitList
-              numofPointsinLineList      = numofElemsBtw2PointsList
-              hoverTriangles             = triangleStrips
-            
-      }
     
   let rec update (model : Model) (msg : Message) =   
     match msg with
@@ -521,6 +135,7 @@ module App =
                     numSampledPoints = 0; 
                     stepSampleSize = {min = 0.01; max = 10000.0; value = model.stepSampleSize.value; step = 0.05; format = "{0:0.00}"}; 
                     linearDistance = 0.0; 
+                    samplingDistance = 0.0;
                     minHeight = 0.0; 
                     maxHeight = 0.0; 
                     accDistance = 0.0; 
@@ -532,7 +147,7 @@ module App =
                     hoveredCircleIndex = None
                     markerCone = { height = 0.0; radius = 0.0; color = C4b.Red; trafoRot = Trafo3d.Identity; trafoTrl = Trafo3d.Identity}
 
-                } |> caluculateSVGDrawingPositions
+                } |> SurfaceSampling.caluculateSVGDrawingPositions
           | _ -> model
       | Message.KeyUp m ->
         match m with
@@ -658,17 +273,17 @@ module App =
         { model with cameraAnimEndTime = float total.Ticks; camRetAnimRunning = true; camViewAnimRunning = false; camJumpAnimRunning = true; targetPosition = model.cameraState.view.Location; }//originalCamPos = model.cameraState.view.Location }
       | Message.Tick t ->       
         if not model.camCompAnimRunning && not model.camRetAnimRunning && model.camViewAnimRunning then
-            orthographicPerspectiveAnimation model t
+            CameraAnimation.orthographicPerspectiveAnimation model t
         elif not model.camCompAnimRunning && not model.camRetAnimRunning && model.camJumpAnimRunning then
-            cameraJumpAnimation model t
+            CameraAnimation.cameraJumpAnimation model t
         elif model.camCompAnimRunning && model.camViewAnimRunning then
-            orthographicPerspectiveAnimation model t
+            CameraAnimation.orthographicPerspectiveAnimation model t
         elif model.camCompAnimRunning && model.camJumpAnimRunning then
-            cameraJumpAnimation model t
+            CameraAnimation.cameraJumpAnimation model t
         elif model.camRetAnimRunning && model.camJumpAnimRunning then
-            cameraReturnJumpAnimation model t
+            CameraAnimation.cameraReturnJumpAnimation model t
         elif model.camRetAnimRunning && model.camViewAnimRunning then
-            orthographicPerspectiveAnimation model t
+            CameraAnimation.orthographicPerspectiveAnimation model t
         else 
             model
       
@@ -694,7 +309,7 @@ module App =
         elif model.camViewAnimRunning then
             model
         elif model.lineSelectionActive && pickingModel.intersectionPoints.AsList.Length >= 2 then       
-           caluculateSVGDrawingPositions <| sampleSurfacePointsForCutView model pickingModel newDrawingModel
+           SurfaceSampling.caluculateSVGDrawingPositions <| SurfaceSampling.sampleSurfacePointsForCutView model pickingModel newDrawingModel
         else
             { model with picking = pickingModel; drawing = newDrawingModel }
 
@@ -713,7 +328,7 @@ module App =
             { model with currentOption = a }
       | SetSamplingRate f -> 
         if model.picking.intersectionPoints.AsList.Length >= 2 then 
-            caluculateSVGDrawingPositions <| sampleSurfacePointsForCutView { model with stepSampleSize = Numeric.update model.stepSampleSize f } model.picking model.drawing
+            SurfaceSampling.caluculateSVGDrawingPositions <| SurfaceSampling.sampleSurfacePointsForCutView { model with stepSampleSize = Numeric.update model.stepSampleSize f } model.picking model.drawing
         else 
             { model with stepSampleSize = Numeric.update model.stepSampleSize f }
       | MouseWheel v ->       
@@ -729,7 +344,7 @@ module App =
         let orignalOffset = model.offsetUIDrawX * (float) model.cutViewDim.X / originalXDim
         let newXOffset = (orignalOffset * float originalXDim) / float newXDim
          
-        caluculateSVGDrawingPositions { model with cutViewZoom = newCutViewZoom; cutViewDim = V2i(newXDim, model.cutViewDim.Y); offsetUIDrawX = newXOffset }
+        SurfaceSampling.caluculateSVGDrawingPositions { model with cutViewZoom = newCutViewZoom; cutViewDim = V2i(newXDim, model.cutViewDim.Y); offsetUIDrawX = newXOffset }
       | ResizeRenderView d ->
         { model with renderViewDim = d}
       | ResizeCutView d ->
@@ -744,7 +359,6 @@ module App =
       | HovereCircleLeave -> 
         if model.hoveredCircleIndex.IsSome then
             { model with hoveredCircleIndex = None; 
-                         //drawing2 = DrawingModel.initial;
                          markerCone = { height =0.0; radius = 0.0; color = C4b.Red; trafoRot = Trafo3d.Identity; trafoTrl = Trafo3d.Identity}                
             }
         else
@@ -978,8 +592,6 @@ module App =
         ] 
         |> Sg.ofList
         |> Sg.pass afterFilledPolygonRenderPass
-        
-
 
       let trafo =
         adaptive {
@@ -988,9 +600,7 @@ module App =
                 let! t = projTrafo
                 return Some t 
             else return None
-        }
-      
-      
+        }   
 
       let markerCone = 
         Sg.cone 16  (m.markerCone |> Mod.map ( fun x -> x.color)) (m.markerCone |> Mod.map ( fun x -> x.radius)) (m.markerCone |> Mod.map ( fun x -> x.height))
@@ -1097,416 +707,10 @@ module App =
               ]       
         | Some "cutview" ->
             require dependencies ( 
-
-              let percent = "%"
-              let px = "px"
-              let strokeWidthMainRect = "0.1px"
-              let strokeColor = "rgb(255,255,255)"
-              //let strokeWidthContorLineEdge = "1.5px"
-              let lineOpacity = "0.15"
-              let polygonOpacity = "0.25"
-              let polygonColor = "rgb( 132,226,255)"
-              let heightRectOpacity = "0.15"
-
-              let inline (=>) a b = Attributes.attribute a b
- 
-              let mainBoxRect =
-                 Incremental.Svg.rect (
-                    amap {                     
-                        let! xOffset = m.offsetUIDrawX
-                        let! yOffset = m.offsetUIDrawY
-
-                        let! dimensions = m.cutViewDim
-                        let xWidth = (float) dimensions.X
-                        let yWidth = (float) dimensions.Y
-
-                        let sX = (sprintf "%f" (xOffset * xWidth)) + px
-                        let sY = (sprintf "%f" (yOffset * yWidth)) + px
-
-                        let wX = (sprintf "%f" ((1.0-xOffset*2.0) * xWidth)) + px
-                        let wY = (sprintf "%f" ((1.0-yOffset*2.0) * yWidth)) + px
-
-                        yield attribute "x" sX
-                        yield attribute "y" sY 
-                        yield attribute "rx" "1px"
-                        yield attribute "ry" "1px" 
-                        yield attribute "width" wX
-                        yield attribute "height" wY
-                        yield attribute "fill" "url(#grad2)"
-                        yield attribute "opacity" "0.25"
-                        yield attribute "stroke" strokeColor
-                        yield attribute "stroke-width" strokeWidthMainRect
-                        yield onMouseLeave (fun _ -> HovereCircleLeave)
-                    } |> AttributeMap.ofAMap
-                 )
-    
-
-              let contourLine (order : float) (strokeWidth : float) (opacity : string) =
-                  Incremental.Svg.line ( 
-                    amap {
-
-                        let! xOffset = m.offsetUIDrawX
-                        let! yOffset = m.offsetUIDrawY
-                        
-                        let! dimensions = m.cutViewDim
-                        let xWidth = (float) dimensions.X
-                        let yWidth = (float) dimensions.Y
-
-                        let heightRectH = (1.0-yOffset*2.0)/5.0
-
-                        let sX = (sprintf "%f" ((xOffset) * xWidth-5.0)) + px
-                        let sY = (sprintf "%f" ((yOffset + heightRectH * order) * yWidth)) + px
-
-                        let wX = (sprintf "%f" ((1.0-xOffset) * xWidth+5.0)) + px
-
-                        yield attribute "x1" sX
-                        yield attribute "y1" sY  
-                        yield attribute "x2" wX
-                        yield attribute "y2" sY 
-                        yield attribute "stroke" strokeColor
-                        yield attribute "stroke-width" (sprintf "%f" strokeWidth)
-                        yield attribute "stroke-opacity" opacity
-                    } |> AttributeMap.ofAMap
-                )
-
-              let verticalLine (i : int) (numofPointsinLineList : int list) (coordArray : string[])=
-                  Incremental.Svg.line ( 
-                    amap {
-                        let rec countElemOffset i acc = 
-                            if i >= 1 then
-                                countElemOffset (i-1) (acc + numofPointsinLineList.Item(i))
-                            else 
-                                acc + numofPointsinLineList.Item(0)
-                        
-                        let numElemOffset = countElemOffset i 0
-
-                        let xy1 = coordArray.[numElemOffset-1].Split([|","|], StringSplitOptions.None)
-                        let xy2 = coordArray.[numElemOffset].Split([|","|], StringSplitOptions.None)
-                        
-                        let avgX = ((xy1.[0] |> float) + (xy2.[0] |> float)) / 2.0
-
-                        let! yOffset = m.offsetUIDrawY
-
-                        let! dimensions = m.cutViewDim
-                        let yWidth = (float) dimensions.Y
-                            
-                        let sX = sprintf "%f" avgX
-                        
-                        let sY = (sprintf "%f" ((yOffset - 0.025) * yWidth)) + px
-
-                        let wY = (sprintf "%f" ((1.0-yOffset+0.025) * yWidth)) + px
-
-                        yield attribute "x1" sX
-                        yield attribute "y1" sY
-                        yield attribute "x2" sX
-                        yield attribute "y2" wY
-                        yield attribute "stroke" strokeColor
-                        yield attribute "stroke-width" "1.0"
-                        yield attribute "stroke-opacity" "0.6"
-                    } |> AttributeMap.ofAMap
-                 )
-
-              
-
-              let containerAttribs = 
-                amap {
-                    let! dimensions = m.cutViewDim
-
-                    let widthValue = (sprintf "%i" (dimensions.X))
-
-                    yield onWheelPrevent true (fun x -> id (Message.MouseWheel x))
-                    yield clazz "mySvg"
-                    yield style ("width: " + widthValue + "px; height: 100%; user-select: none;")
-                } |> AttributeMap.ofAMap
-
-              
               
               body [style "width: 100%; height: 100%; background: transparent; overflow-x: scroll "; onResize (Message.ResizeCutView >> id)] [
                     
-                    Incremental.Svg.svg containerAttribs <|
-                        alist {
-                            
-                            //Gradient Color
-                            yield Svg.defs[][                
-                                Svg.linearGradient [attribute "id" "grad2"; attribute "x1" "0%"; attribute "y1" "0%"; attribute "x2" "0%"; attribute "y2" "100%"]   [
-                                    Svg.stop [attribute "offset" "0%"; attribute "style" "stop-color:rgb(255,255,255);stop-opacity:1.0" ]
-                                    Svg.stop [attribute "offset" "100%"; attribute "style" "stop-color:rgb(16,16,16);stop-opacity:1.0"] 
-                                ]
-                            ]
-                            
-                            
-                            //Box
-                            yield mainBoxRect
-                           
-
-                            //contour line (very high)
-                            yield contourLine 0.0 2.5 lineOpacity   
-
-                            //contour line (high)
-                            yield contourLine 1.0 1.5 lineOpacity                       
-
-                            //contour line (medium high)
-                            yield contourLine 2.0 1.5 lineOpacity      
-
-                            //contour line (medium low)
-                            yield contourLine 3.0 1.5 lineOpacity      
-
-                            //contour line (low)
-                            yield contourLine 4.0 1.5 lineOpacity      
-
-                            //contour line (very low)
-                            yield contourLine 5.0 2.5 lineOpacity     
-                            
-
-                            yield Incremental.Svg.text ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-
-                                    let! dimensions = m.cutViewDim
-                                    let xWidth = (float) dimensions.X
-                                    let yWidth = (float) dimensions.Y
-
-                                    let sX = (sprintf "%f" (xOffset * 0.8 * xWidth)) 
-                                    let sY = (sprintf "%f" ((1.0-yOffset) * yWidth) )
-
-                                    let wX = (sprintf "%f" ((1.0-xOffset*2.0) * xWidth)) + px
-                                    let wY = (sprintf "%f" ((1.0-yOffset) * yWidth)) + px
-
-                                    yield clazz "label"
-                                    yield attribute "x" sX
-                                    yield attribute "y" sY     
-                                    yield attribute "transform" ("rotate(-90" + "," + sX + "," + sY + ")")
-                                    yield attribute "font-size" "16"
-                                    yield attribute "fill" "#ffffff"
-                                    yield attribute "font-family" "Roboto Mono, sans-serif"
-
-                                    
-                                } |> AttributeMap.ofAMap
-                            ) (Mod.constant "Elevation [m]")
-
-
-                            yield Incremental.Svg.text ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-
-                                    let! dimensions = m.cutViewDim
-                                    let xWidth = (float) dimensions.X
-                                    let yWidth = (float) dimensions.Y
-
-                                    let sX = (sprintf "%f" (xOffset * 1.0 * xWidth)) 
-                                    let sY = (sprintf "%f" ((1.0-yOffset) * yWidth+30.0) )
-
-                                    let wX = (sprintf "%f" ((1.0-xOffset*2.0) * xWidth)) + px
-                                    let wY = (sprintf "%f" ((1.0-yOffset) * yWidth)) + px
-
-                                    yield clazz "label"
-                                    yield attribute "x" sX
-                                    yield attribute "y" sY     
-                                    yield attribute "font-size" "16"
-                                    yield attribute "fill" "#ffffff"
-                                    yield attribute "font-family" "Roboto Mono, sans-serif"
-
-                                    
-                                } |> AttributeMap.ofAMap
-                            ) (Mod.constant "Distance [m]")
-
-                            yield Incremental.Svg.text ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-
-                                    let! dimensions = m.cutViewDim
-                                    let xWidth = (float) dimensions.X
-                                    let yWidth = (float) dimensions.Y
-
-                                    let sX = (sprintf "%f" (xOffset * 0.9 * xWidth)) 
-                                    let sY = (sprintf "%f" ((yOffset) * yWidth + 6.0) )
-
-                                    yield clazz "label"
-                                    yield attribute "x" sX
-                                    yield attribute "y" sY     
-                                    yield attribute "text-anchor" "end"     
-                                    yield attribute "font-size" "12"
-                                    yield attribute "font-style" "italic"
-                                    yield attribute "fill" "#ffffff"
-                                    yield attribute "font-family" "Roboto Mono, sans-serif"
-
-                                    
-                                } |> AttributeMap.ofAMap
-                            ) ( Mod.map2 (fun f g -> 
-                                            if not (f = 0.0) && not (g = 0.0) then
-                                                let diff = Math.Round((f : float) - (g : float), 2)
-                                                diff.ToString() + " m"
-                                            else 
-                                                ""
-                                            ) m.maxHeight m.minHeight)
-
-                            yield Incremental.Svg.text ( 
-                                amap {
-                                    let! xOffset = m.offsetUIDrawX
-                                    let! yOffset = m.offsetUIDrawY
-
-                                    let! dimensions = m.cutViewDim
-                                    let xWidth = (float) dimensions.X
-                                    let yWidth = (float) dimensions.Y
-
-                                    let sX = (sprintf "%f" ((1.0-xOffset) * xWidth+5.0))
-                                    let sY = (sprintf "%f" ((1.0-yOffset) * yWidth+18.0))
-
-                                    yield clazz "label"
-                                    yield attribute "x" sX
-                                    yield attribute "y" sY     
-                                    yield attribute "text-anchor" "end"     
-                                    yield attribute "font-size" "12"
-                                    yield attribute "font-style" "italic"
-                                    yield attribute "fill" "#ffffff"
-                                    yield attribute "font-family" "Roboto Mono, sans-serif"
-
-                                    
-                                } |> AttributeMap.ofAMap
-                            ) (m.linearDistance |> Mod.map (fun f ->  if not (f = 0.0) then Math.Round(f,2).ToString() + " m" else ""))
-
-
-                            //chart curve 
-                            yield Incremental.Svg.polyline ( 
-                                amap {
-                                    let! drawingCoord = m.svgPointsCoord
-
-                                    yield attribute "points" drawingCoord
-                                    yield attribute "fill" "none"
-                                    yield attribute "opacity" "0.8"
-                                    yield attribute "stroke" "rgb(50,208,255)"
-                                    yield attribute "stroke-width" "2.0"
-                                } |> AttributeMap.ofAMap
-                            )
-
-                            let! drawingErrorCoord = m.svgPointsErrorCoord                                  
-                            let errorCoordArray = drawingErrorCoord.Split([|"  "|], StringSplitOptions.None)
-                            for i in 0 .. errorCoordArray.Length - 1 do
-                                //chart curve error
-                                yield Incremental.Svg.polyline ( 
-                                    amap {
-                                        let drawingCoord = errorCoordArray.[i]
-
-                                        yield attribute "points" drawingCoord
-                                        yield attribute "fill" "none"
-                                        yield attribute "opacity" "0.8"
-                                        yield attribute "stroke" "rgb(255,71,50)"
-                                        yield attribute "stroke-width" "2.0"
-                                    } |> AttributeMap.ofAMap
-                                )
-
-                            //chart surface under curve
-                            yield Incremental.Svg.polygon ( 
-                                amap {
-                                    let! drawingCoord = m.svgSurfaceUnderLineCoord
-
-                                    yield attribute "points" drawingCoord
-                                    yield attribute "fill" polygonColor
-                                    yield attribute "opacity" polygonOpacity
-                                    yield attribute "stroke-width" "0.0"
-                                } |> AttributeMap.ofAMap
-                            )
-
-                            //chart surface under curve error
-                            yield Incremental.Svg.polygon ( 
-                                amap {
-                                    let! drawingCoord = m.svgSurfaceUnderLineErrorCoord
-                                   
-                                    yield attribute "points" drawingCoord
-                                    yield attribute "fill" "rgb(255,132,132)"
-                                    yield attribute "opacity" polygonOpacity
-                                    yield attribute "stroke-width" "0.0"
-                                } |> AttributeMap.ofAMap
-                            )    
-
-
-                            
-
-                            let! circleSize = m.svgCircleSize
-                            let! dim = m.cutViewDim
-                            
-                            let r = sprintf "%f" (Math.Min(circleSize/4.0 * float dim.X/100.0, 6.8))                              
-                            let stw = sprintf "%f" (Math.Min(circleSize/12.0 * float dim.X/100.0, 2.25) |> (fun x -> if x >= 1.0 then x else 0.0)) + "px"       
-
-                            //draw correct circles
-                            let! drawingCoord = m.svgPointsCoord                                  
-                            let coordArray = drawingCoord.Split([|" "|], StringSplitOptions.None)                                
-                            for i in 0 .. coordArray.Length - 2 do
-                                let xy = coordArray.[i].Split([|","|], StringSplitOptions.None)
-                                if xy.Length > 1 then
-                                    let x = xy.[0]
-                                    let y = xy.[1]
-                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(50,208,255)"; onMouseEnter (fun _ -> HovereCircleEnter i) ] |> AttributeMap.ofList)      
-
-                                    let boxX = x |> float
-                                    
-                                    let boxR = r |> float
-                                    let! yOffset = m.offsetUIDrawY
-                                    let! dimensions = m.cutViewDim
-                                    let yWidth = (float) dimensions.Y
-
-                                    let sY = (sprintf "%f" (yOffset * yWidth)) + px
-
-                                    let wY = (sprintf "%f" ((1.0-yOffset*2.0) * yWidth)) + px
-
-                                    yield Incremental.Svg.rect ([attribute "x" (sprintf "%f" (boxX-boxR)); attribute "y" sY; attribute "width" (sprintf "%f" (boxR * 2.0)); attribute "height" wY; attribute "stroke-width" "0"; attribute "fill" "rgba(50,208,255,0)"; clazz "hoverRect" ;onMouseEnter (fun _ -> HovereCircleEnter i);] |> AttributeMap.ofList)      
-                                    
-                            // draw separating vertical lines
-                            let! numofPointsinLineList = m.numofPointsinLineList
-                            for i in 0 .. numofPointsinLineList.Length-2 do
-                                yield verticalLine i numofPointsinLineList coordArray
-
-                            // draw error circles
-                            let! drawingErrorCoord = m.svgPointsErrorCoord                                  
-                            let coordArray = drawingErrorCoord.Split([|" "|], StringSplitOptions.None)
-                            for i in 0 .. coordArray.Length - 2 do
-                                let xy = coordArray.[i].Split([|","|], StringSplitOptions.None)
-                                if xy.Length > 1 then
-                                    let x = xy.[0]
-                                    let y = xy.[1]
-                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(255,71,50)" ] |> AttributeMap.ofList)                              
-
-                            let! hoverCircle = m.hoveredCircleIndex
-                            
-                            if hoverCircle.IsSome then 
-                                let! yOffset = m.offsetUIDrawY
-
-                                let! dimensions = m.cutViewDim
-                                let xWidth = (float) dimensions.X
-                                let yWidth = (float) dimensions.Y
-
-                                let! aL = m.altitudeList
-
-                                let! samplingDistance = m.samplingDistance
-
-                                let coordArray = drawingCoord.Split([|" "|], StringSplitOptions.None) 
-
-                                let xy = coordArray.[hoverCircle.Value].Split([|","|], StringSplitOptions.None)
-                                if xy.Length > 1 then
-                                    let x = xy.[0]
-                                    let y = xy.[1]
-                                    
-                                    let boxR = r |> float
-                                    let sY = (sprintf "%f" (yOffset * yWidth)) + px
-                                    let wY = (sprintf "%f" ((1.0-yOffset*2.0) * yWidth)) + px
-                                    yield Incremental.Svg.rect ([attribute "x" (sprintf "%f" ((x |> float)-boxR)); attribute "y" sY; attribute "width" (sprintf "%f" (boxR * 2.0)); attribute "height" wY; attribute "stroke-width" "0"; attribute "fill" "rgba(237,55,66,0.9)";  ] |> AttributeMap.ofList)      
-                                    
-                                    yield Incremental.Svg.circle ([attribute "cx" x; attribute "cy" y; attribute "r" r; attribute "stroke" "black"; attribute "stroke-width" stw; attribute "fill" "rgb(225,225,225)"; onMouseLeave (fun _ -> HovereCircleLeave) ] |> AttributeMap.ofList)                              
-                                    
-                                    let textAnchor = 
-                                        let textPosition = (x |> float) / xWidth
-                                        if textPosition < 0.15 then
-                                            "begin"
-                                        elif textPosition < 0.85 then
-                                            "middle"
-                                        else
-                                            "end"
-
-                                    yield Svg.text ([ attribute "x" x; attribute "y" (sprintf "%f" (yOffset * yWidth - 10.0) + px); attribute "font-size" "16"; attribute "fill" "#ffffff"; attribute "font-family" "Raleway, sans-serif"; attribute "font-weight" "600"; attribute "font-stretch" "expanded"; clazz "UIText"; attribute "text-anchor" textAnchor]) ( "Altitude: " + sprintf "%.2f" (aL.Item(hoverCircle.Value)) + " m | Distance: " + sprintf "%.2f" (samplingDistance * float (hoverCircle.Value)) + " m") 
-                        }
+                    DrawingProfileView.drawSVGElements m
 
                     onBoot "$(window).trigger('resize')" (
                         body [onResize (Message.ResizeCutView >> id)] [
@@ -1526,95 +730,12 @@ module App =
               onLayoutChanged UpdateDockConfig ]
         )
 
-  module Discover = 
-    open System.IO
-    
-    type DiscoverFolder = 
-        | OpcFolder of string
-        | Directory of string 
-
-    
-
-    /// <summary>
-    /// checks if "path" is a valid opc folder containing "images", "patches", and patchhierarchy.xml
-    /// </summary>
-    let isOpcFolder (path : string) = 
-        let imagePath = Path.combine [path; "images"]
-        let patchPath = Path.combine [path; "patches"]
-        (Directory.Exists imagePath) &&
-        (Directory.Exists patchPath) && 
-         File.Exists(patchPath + "\\patchhierarchy.xml")
-    
-    /// <summary>
-    /// checks if "path" is a valid surface folder
-    /// </summary>        
-    let isSurfaceFolder (path : string) =
-        Directory.GetDirectories(path) |> Seq.forall isOpcFolder
-    
-    let toDiscoverFolder path = 
-     if path |> isOpcFolder then
-       OpcFolder path
-     else
-       Directory path
-
-    let discover (p : string -> bool) path : list<string> =
-      if Directory.Exists path then
-        Directory.EnumerateDirectories path                     
-          |> Seq.filter p            
-          |> Seq.toList
-      else List.empty
-    
-    let rec superDiscovery (input : string) :  string * list<string> =
-        match input |> toDiscoverFolder with
-        | Directory path -> 
-          let opcs = 
-            path 
-              |> Directory.EnumerateDirectories 
-              |> Seq.toList 
-              |> List.map(fun x -> superDiscovery x |> snd) |> List.concat 
-          input, opcs
-        | OpcFolder p -> input,[p]
-
-    /// returns all valid surface folders in "path"   
-    let discoverSurfaces path =
-      discover isSurfaceFolder path
-    
-    let discoverOpcs path =
-      discover isOpcFolder path
+ 
 
   let app dir axisFile (rotate : bool) =
       OpcSelectionViewer.Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
-      
-      let _, phDirs = Discover.superDiscovery dir
-      Log.line "[Ahmed] found %d elements" phDirs.Length
-
-
-      //for i in 0 .. phDirs.Length - 1 do
-      //  let isGale x = phDirs[i] |> String.contains "MslGaleDem"
-
-     // let galeBounds = Box2i(V2i(3,9), V2i(19,16))
-      //let galeBounds = Box2i(V2i(3,9), V2i(15,9))
-     // let galeBounds = Box2i(V2i(12,9), V2i(12,9))
-      let galeBounds = Box2i(V2i(1,3), V2i(1,3))
-      //let isGale x = x.importPath |> String.contains "MslGaleDem"
-
-      //let phDirs =
-      //    phDirs           
-      //    |> List.filter (String.contains "MslGaleDem")
-      //    |> List.filter(fun x ->
-      //        let parts = x |> System.IO.Path.GetFileName |> String.split('_')
-      //        let gridCoord = new V2i((parts.[1] |> Int32.Parse), (parts.[2] |> Int32.Parse))
-      //        let inside = galeBounds.Contains(gridCoord)
-      //        inside
-      //    )
-
-      //Log.line "[Ahmed] found %d elements" phDirs
 
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
-
-      let axis = 
-        axisFile |> Option.map(fun fileName -> OpcSelectionViewer.AxisFunctions.loadAxis fileName)
-                 |> Option.defaultValue None
 
       let patchHierarchies =         
         [ 
@@ -1651,11 +772,6 @@ module App =
       let camPos = V3d(box.Center.X,box.Center.Y,box.Center.Z)+r.Forward.TransformPos(V3d(0.0,0.0,10.0*2.0*100.0))
       
       let restoreCamState : CameraControllerState =
-        //if File.Exists ".\camstate" then          
-        //  Log.line "[App] restoring camstate"
-        //  let csLight : CameraStateLean = OpcSelectionViewer.Serialization.loadAs ".\camstate"
-        //  { FreeFlyController.initial with view = csLight |> fromCameraStateLean }
-        //else 
           { FreeFlyController.initial with view = CameraView.lookAt camPos V3d.Zero up; } 
 
 
