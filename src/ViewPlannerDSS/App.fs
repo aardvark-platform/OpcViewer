@@ -546,7 +546,7 @@ module App =
      
       //stereo camera
       let rightV = (forward.Normalized).Cross(box.Center.Normalized)
-      let shift = rightV * 0.3
+      let shift = rightV * 0.2
       let positionCamL = initialRoverPos - shift
       let positionCamR = initialRoverPos + shift
       let forwardL = forward - shift

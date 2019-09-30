@@ -504,13 +504,20 @@ module RoverApp =
         v
     
     
-    //assumption: resolution symmetric (width = height)
-    let pixelSizeCm (plane:float) (res:float) (fov:float) = 
+    let pixelSizeCm (plane:float) (horzRes:float) (vertRes:float) (fovH:float) (fovV:float) = 
         
-        let rad = fov.RadiansFromDegrees()
+        let rad = fovV.RadiansFromDegrees()
         let sizeWorld = (tan(rad/2.0) * plane)*2.0
-        let pSize = (sizeWorld / res)*100.0             //in cm
-        pSize  
+        let height = (sizeWorld / vertRes) *100.0      
+
+        //test
+        //let fH = Math.Round((fovH), 0)
+        //let rad2 = fH.RadiansFromDegrees()
+        //let sizeWorld2 = (tan(rad2/2.0) * plane)*2.0
+        //let width = (sizeWorld2 / horzRes) *100.0 
+        //let test = width
+
+        height  
     
 
     let interpolatePixelSize (min:float) (max:float) (value:float) (sizeNear:float) (sizeFar:float) = 
@@ -550,10 +557,15 @@ module RoverApp =
                     arr.[idx]
 
 
-    let calculateDpcm (runtimeInstance: IRuntime) (renderSg :ISg<_>) (frustum:Frustum) (fov:float) (view:CameraView) =
+    let calculateDpcm (runtimeInstance: IRuntime) (renderSg :ISg<_>) (frustum:Frustum) (view:CameraView) (rover:RoverModel) =
             
-            let res = 1024.0
-            let size = V2i(res)
+            let horzRes = rover.horzRes
+            let vertRes = rover.vertRes
+            let size = V2i(horzRes, vertRes)
+
+            let fovH = frustum |> Frustum.horizontalFieldOfViewInDegrees
+            let asp = frustum |> Frustum.aspect
+            let fovV = Math.Round((fovH / asp), 0)
 
             let depth = runtimeInstance.CreateTexture(size, TextureFormat.Depth24Stencil8, 1, 1);
 
@@ -599,8 +611,12 @@ module RoverApp =
             let far = float32 frustum.far
             
             let zView = arr |> Array.map(fun v -> linearization v near far)
-            let pixelSizeNear = pixelSizeCm frustum.near res fov
-            let pixelSizeFar = pixelSizeCm frustum.far res fov
+
+            //let pixelSizeCm (plane:float) (horzRes:float) (vertRes:float) (fovH:float) (fovV:float)
+            let hR = float (horzRes)
+            let vR = float (vertRes)
+            let pixelSizeNear = pixelSizeCm frustum.near hR vR fovH fovV
+            let pixelSizeFar = pixelSizeCm frustum.far hR vR fovH fovV
 
             
             //uncomment to see depth image
@@ -686,10 +702,12 @@ module RoverApp =
          match currentCamera with
             | HighResCam -> 
                 let camera = rover.HighResCam
-                let fov = camera.cam.frustum |> Frustum.horizontalFieldOfViewInDegrees
+                let fovH = camera.cam.frustum |> Frustum.horizontalFieldOfViewInDegrees
+                let ratio = camera.cam.frustum |> Frustum.aspect
+                let fovV = Math.Round((fovH / ratio), 0)
 
-                let panRef = fov * (1.0 - (panOverlap/100.0))            
-                let tiltRef = fov * (1.0 - (tiltOverlap/100.0))
+                let panRef = fovH * (1.0 - (panOverlap/100.0))            
+                let tiltRef = fovV * (1.0 - (tiltOverlap/100.0))
                 let panningRate = int(Math.Round((Math.Abs(deltaPan)) / panRef))
                 let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / tiltRef))
 
@@ -705,7 +723,7 @@ module RoverApp =
                     if sampleWithDpi then
 
                         let l = viewMatrices |> PList.toList
-                        let listOfdpcms = l |> List.map(fun e -> calculateDpcm runtimeInstance renderSg camera.cam.frustum fov e)
+                        let listOfdpcms = l |> List.map(fun e -> calculateDpcm runtimeInstance renderSg camera.cam.frustum e rover)
                         let median = listOfdpcms |> Array.ofList |> Array.sort |> median 
                         Math.Round(median,2)
                     
@@ -721,10 +739,17 @@ module RoverApp =
 
             | WACLR -> 
                 let camera = rover.WACLR
-                let fov = camera.camL.frustum |> Frustum.horizontalFieldOfViewInDegrees //equal for both left and right cams
-                let ol = camera.overlapBetweenCams
-                let panRef = ((fov+fov) - ol) * (1.0 - (panOverlap/100.0)) 
-                let tiltRef = fov * (1.0 - (tiltOverlap/100.0))
+                let fovH = camera.camL.frustum |> Frustum.horizontalFieldOfViewInDegrees 
+                let ratio = camera.camL.frustum |> Frustum.aspect
+                let fovV = Math.Round((fovH / ratio), 0)
+
+
+                //let ol = camera.overlapBetweenCams / 100.0
+                //let rest = fovH - (fovH * ol)
+                //let jointFov = fovH + rest
+                //let panRef = (jointFov * (1.0 - (panOverlap/100.0))) 
+                let panRef = (fovH * (1.0 - (panOverlap/100.0))) 
+                let tiltRef = fovV * (1.0 - (tiltOverlap/100.0))
                 let panningRate = int(Math.Round(deltaPan / panRef))
                 let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / (tiltRef)))
 
@@ -747,8 +772,8 @@ module RoverApp =
                     if sampleWithDpi then
                         let leftV = viewMatricesLeft |> PList.toList
                         let rightV = viewMatricesRight |> PList.toList
-                        let listOfdpcmsLeft = leftV |> List.map(fun e -> calculateDpcm runtimeInstance renderSg cL.frustum fov e)
-                        let listOfdpcmsRight = rightV |> List.map(fun e -> calculateDpcm runtimeInstance renderSg cR.frustum fov e)
+                        let listOfdpcmsLeft = leftV |> List.map(fun e -> calculateDpcm runtimeInstance renderSg cL.frustum  e rover)
+                        let listOfdpcmsRight = rightV |> List.map(fun e -> calculateDpcm runtimeInstance renderSg cR.frustum  e rover)
 
                         let medianL = listOfdpcmsLeft |> Array.ofList |> Array.sort |> median
                         let medianR = listOfdpcmsRight |> Array.ofList |> Array.sort |> median
@@ -800,7 +825,7 @@ module RoverApp =
     let updateStereoCam (forward:V3d) (pos:V3d) (r:RoverModel)=
 
       let rightV = (forward.Normalized).Cross(r.up)
-      let shift = rightV * 0.3
+      let shift = rightV * 0.2
       let positionCamL = pos - shift
       let positionCamR = pos + shift
       let forwardL = forward - shift

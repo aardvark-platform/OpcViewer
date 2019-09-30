@@ -520,8 +520,8 @@ module ViewUtilities =
                     
                     let! horz = m.rover.horzRes
                     let! vert = m.rover.vertRes
-                    let height = "height:" + (vert/uint32(2)).ToString() + ";" 
-                    let width = "width:" + (horz/uint32(2)).ToString() + ";"
+                    let height = "height:" + (vert/2).ToString() + ";" 
+                    let width = "width:" + (horz/2).ToString() + ";"
                     yield style ("background: #1B1C1E;" + height + width)
                 } |> AttributeMap.ofAMap
         

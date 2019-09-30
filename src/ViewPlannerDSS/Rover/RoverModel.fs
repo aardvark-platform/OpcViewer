@@ -3,8 +3,6 @@
 open Aardvark.Base
 open Aardvark.Base.Incremental
 
-open Aardvark.SceneGraph
-
 open Aardvark.UI.Primitives
 
 
@@ -34,7 +32,6 @@ type CamVariables =
 
     }
 
-//PanCam; both cameras with equal FOV
 [<DomainType>]
 type Stereo = 
  {
@@ -149,8 +146,8 @@ type RoverModel =
         //required for calculation of data size
         colorDepth : int    //bit
         numberOfColorChannels : int //RGB
-        horzRes : uint32
-        vertRes : uint32
+        horzRes : int
+        vertRes : int
 
         //sampling with dpi
         samplingWithDpi : bool
@@ -184,7 +181,7 @@ module RoverModel =
         FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
          }
 
-    let initfrustum = Frustum.perspective 5.0 0.1 20.0 1.0
+    let initfrustum = Frustum.perspective 6.0 2.0 100.0 1.2
 
     //Stereo camera //PanCam FOV 37.0°
     //currently at 10 for testing
@@ -194,8 +191,8 @@ module RoverModel =
     let camR = {
                     FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 6.0) V3d.OOO V3d.OOI
                 }
-    let frustumL = Frustum.perspective 37.0 0.1 20.0 1.0
-    let frustumR = Frustum.perspective 37.0 0.1 20.0 1.0
+    let frustumL = Frustum.perspective 23.0 0.1 100.0 1.3
+    let frustumR = Frustum.perspective 23.0 0.1 100.0 1.3
     
     let initial = 
         {
@@ -278,7 +275,7 @@ module RoverModel =
                     }
 
                 currIdx = 0
-                overlapBetweenCams = 5.0
+                overlapBetweenCams = 80.0   //%
                 
                 
                 
@@ -321,8 +318,8 @@ module RoverModel =
 
         colorDepth = 8    //bit
         numberOfColorChannels = 3 //RGB
-        horzRes = uint32(1024)
-        vertRes = uint32(1024)
+        horzRes = 1600
+        vertRes = 1200
 
         samplingWithDpi = false
 
