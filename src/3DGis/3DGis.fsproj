@@ -12,7 +12,13 @@
     <OutputPath>..\..\bin\Release</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="CutView6.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
     <Compile Include="Model.fs" />
+    <Compile Include="DrawingProfileView.fs" />
+    <Compile Include="SurfaceSampling.fs" />
+    <Compile Include="CameraAnimation.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />

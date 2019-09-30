@@ -197,27 +197,28 @@ module DrawingApp =
 
         AList.append allButLast lastPoint
 
-    let drawContour (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: IMod<float>) (far: IMod<float>) =  
+
+    let drawContourWithPointSize (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: IMod<float>) (far: IMod<float>) (pointSize: IMod<float>) (depthOffset : IMod<float>)=  
 
         let pointsSg = 
             points 
-            |> SgUtilities.drawPointList style.primary.c (Mod.constant 10.0) (Mod.constant 0.1) near far
+            |> SgUtilities.drawPointList style.primary.c pointSize depthOffset near far
 
         let pointsInnerSg = 
             segments
             |> AList.map (fun x -> x.innerPoints |> AList.ofPList) 
             |> AList.concat 
-            |> SgUtilities.drawPointList (style.primary.c |> Mod.map (fun c -> SgUtilities.createSecondaryColor c)) (Mod.constant 8.0) (Mod.constant 0.1) near far
+            |> SgUtilities.drawPointList (style.primary.c |> Mod.map (fun c -> SgUtilities.createSecondaryColor c)) (pointSize |> Mod.map (fun x -> x * 0.8)) depthOffset near far
 
         let edgesSg = 
             let lineWidth = style.thickness |> Mod.map (fun x -> x * 1.1)
             let sPoints = allSegmentPoints segments
             sPoints
-            |> SgUtilities.lines' (Mod.constant 0.06) style.secondary.c lineWidth near far
+            |> SgUtilities.lines' (depthOffset|> Mod.map (fun x -> x / 1.9)) style.secondary.c lineWidth near far
 
         let edgesDirectSg = 
             points 
-            |> SgUtilities.lines' (Mod.constant 0.05) style.primary.c style.thickness near far
+            |> SgUtilities.lines' (depthOffset|> Mod.map (fun x -> x / 2.0)) style.primary.c style.thickness near far
         
         // drawing order does not fix overlappings (offset in worldspace could fix this...)
         //let edgesSg = [edges; edgesDirect] |> Sg.group |> Sg.noEvents |> Sg.pass RenderPass.main
@@ -226,8 +227,14 @@ module DrawingApp =
         
         [edgesSg; edgesDirectSg; pointsSg; pointsInnerSg] |> Sg.group
 
-    let view (near: IMod<float>) (far: IMod<float>) (model: MDrawingModel) = 
-        drawContour model.points model.segments model.style near far |> Sg.noEvents
+    let drawContour (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: IMod<float>) (far: IMod<float>) =  
+        drawContourWithPointSize points segments style near far (Mod.constant 10.0) (Mod.constant 0.1)
+
+    let view (near: IMod<float>) (far: IMod<float>) (model: MDrawingModel)  = 
+        drawContourWithPointSize model.points model.segments model.style near far (Mod.constant 10.0) (Mod.constant 0.1) |> Sg.noEvents
+
+    let viewPointSize (near: IMod<float>) (far: IMod<float>) (pointSize: IMod<float>) (depthOffset: IMod<float>) (model: MDrawingModel) = 
+        drawContourWithPointSize model.points model.segments model.style near far pointSize depthOffset |> Sg.noEvents
 
     let viewGui (model: MDrawingModel) = 
         
