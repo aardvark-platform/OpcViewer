@@ -46,8 +46,8 @@ type Message =
   | MouseWheel              of V2d
   | ResizeRenderView        of V2i
   | ResizeCutView           of V2i
-  | HovereCircleEnter       of int
-  | HovereCircleLeave       
+  | HoveredCircleEnter       of int
+  | HoveredCircleLeave       
   | HighlightIn3DView           
   | Hoverin3D               of V3d
   | UpdateTriagleStrips     of V2i
