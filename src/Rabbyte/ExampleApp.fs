@@ -1,4 +1,4 @@
-﻿module App
+﻿module ExampleApp
 
 open System
 open Aardvark.Base
@@ -11,11 +11,11 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.Geometry
 
-open SimpleDrawingModel
+open ExampleModel
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 
-type Action =
+type ExampleAction =
     | CameraMessage of ArcBallController.Message
     | Move          of V3d
     | KeyDown       of key : Keys
@@ -24,41 +24,41 @@ type Action =
     | UpdateDrawing of DrawingAction
     | UpdateAnnotation of AnnotationAction
 
-let update (model: SimpleDrawingModel) (act: Action) =
+let update (model: ExampleModel) (act: ExampleAction) =
 
-    let drawingUpdate (model: SimpleDrawingModel) (act: DrawingAction) = 
-       { model with drawing = DrawingApp.update model.drawing act }
+    let drawingUpdate (model: ExampleModel) (act: DrawingAction) = 
+        { model with drawing = DrawingApp.update model.drawing act }
 
     match act, model.drawingEnabled with
-        | CameraMessage m, false -> 
-            { model with camera = ArcBallController.update model.camera m }
-        | KeyUp Keys.LeftCtrl, _ -> 
-            { model with drawingEnabled = false; hoverPosition = None }
-        | KeyDown k, _ -> 
-            match k with 
-            | Keys.LeftCtrl -> { model with drawingEnabled = true }
-            | Keys.Z -> drawingUpdate model DrawingAction.Undo
-            | Keys.Y -> drawingUpdate model DrawingAction.Redo
-            | Keys.Back -> drawingUpdate model DrawingAction.RemoveLastPoint
-            | Keys.Delete -> drawingUpdate model DrawingAction.Clear
-            | Keys.F -> 
-                let finished = drawingUpdate model (DrawingAction.FinishClose None) // TODO add dummy-hitF
-                let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some (ClippingVolumeType.Direction V3d.ZAxis)))
-                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
-            | Keys.Enter -> 
-                let finished = drawingUpdate model DrawingAction.Finish
-                let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
-                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
-            | _ -> model
-        | Move p, true -> { model with hoverPosition = Some (Trafo3d.Translation p) }
-        | UpdateDrawing a, _ -> 
-            match a with
-            | DrawingAction.AddPoint _ -> if model.drawingEnabled then drawingUpdate model a else model
-            | _ -> drawingUpdate model a
-        | UpdateAnnotation a, _ ->
-            { model with annotations = AnnotationApp.update model.annotations a }
-        | Exit, _ -> { model with hoverPosition = None }
+    | CameraMessage m, false -> 
+        { model with camera = ArcBallController.update model.camera m }
+    | KeyUp Keys.LeftCtrl, _ -> 
+        { model with drawingEnabled = false; hoverPosition = None }
+    | KeyDown k, _ -> 
+        match k with 
+        | Keys.LeftCtrl -> { model with drawingEnabled = true }
+        | Keys.Z -> drawingUpdate model DrawingAction.Undo
+        | Keys.Y -> drawingUpdate model DrawingAction.Redo
+        | Keys.Back -> drawingUpdate model DrawingAction.RemoveLastPoint
+        | Keys.Delete -> drawingUpdate model DrawingAction.Clear
+        | Keys.F -> 
+            let finished = drawingUpdate model (DrawingAction.FinishClose None) // TODO add dummy-hitF
+            let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some (ClippingVolumeType.Direction V3d.ZAxis)))
+            { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
+        | Keys.Enter -> 
+            let finished = drawingUpdate model DrawingAction.Finish
+            let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
+            { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
         | _ -> model
+    | Move p, true -> { model with hoverPosition = Some (Trafo3d.Translation p) }
+    | UpdateDrawing a, _ -> 
+        match a with
+        | DrawingAction.AddPoint _ -> if model.drawingEnabled then drawingUpdate model a else model
+        | _ -> drawingUpdate model a
+    | UpdateAnnotation a, _ ->
+        { model with annotations = AnnotationApp.update model.annotations a }
+    | Exit, _ -> { model with hoverPosition = None }
+    | _ -> model
   
 let testScene =  
     let box1 = PolyMeshPrimitives.Box(new Box3d(V3d(-2.0,-0.5,-2.0), V3d(2.0,0.5,2.0)), C4b(241,238,246))
@@ -104,7 +104,7 @@ let far = Mod.init 100.0
 let frustum =
     Mod.map2 (fun near far -> Frustum.perspective 60.0 near far 1.0) near far
 
-let scene3D (model: MSimpleDrawingModel) =
+let scene3D (model: MExampleModel) =
                                  
     let cursorTrafo = 
         model.hoverPosition 
@@ -145,7 +145,7 @@ let scene3D (model: MSimpleDrawingModel) =
     |> Sg.fillMode (Mod.constant FillMode.Fill)
     |> Sg.cullMode (Mod.constant CullMode.None)
 
-let view (model: MSimpleDrawingModel) =            
+let view (model: MExampleModel) =            
     require (Html.semui) (
         div [clazz "ui"; style "background: #1B1C1E"] [
             ArcBallController.controlledControl model.camera CameraMessage frustum
