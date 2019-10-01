@@ -33,9 +33,6 @@
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="System.Drawing.Common" Version="4.5.1" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\OPCViewer.Base\OPCViewer.Base.fsproj" />
     <ProjectReference Include="..\ViewerMain\ViewerMain.fsproj" />
   </ItemGroup>
