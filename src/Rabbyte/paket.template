@@ -1,0 +1,11 @@
+type file
+id Rabbyte
+authors Aardvark Platform Team
+owners Aardvark Platform Team
+projectUrl http://github.com/aardvark-platform
+licenseUrl http://www.apache.org/licenses/LICENSE-2.0.txt
+description
+    Rabbyte - Drawing Tool
+files
+    ..\..\bin\Release\netcoreapp2.0\Rabbyte.dll ==> lib\netstandard2.0
+	..\..\bin\Release\netcoreapp2.0\Rabbyte.pdb ==> lib\netstandard2.0

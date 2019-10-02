@@ -33,7 +33,7 @@ let main argv =
             app.Runtime :> IRuntime, app :> IDisposable
     use __ = disposable
     
-    let app = App.app
+    let app = ExampleApp.app
 
     let instance = 
         app |> App.start

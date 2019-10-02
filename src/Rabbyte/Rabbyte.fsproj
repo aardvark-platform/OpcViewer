@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\bin\Debug\</OutputPath>
@@ -16,8 +16,8 @@
     <Compile Include="Annotation\AnnotationModel.fs" />
     <Compile Include="Annotation\AnnotationSg.fs" />
     <Compile Include="Annotation\AnnotationApp.fs" />
-    <Compile Include="Model.fs" />
-    <Compile Include="App.fs" />
+    <Compile Include="ExampleModel.fs" />
+    <Compile Include="ExampleApp.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
   </ItemGroup>

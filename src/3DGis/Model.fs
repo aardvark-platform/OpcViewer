@@ -13,6 +13,7 @@ open Rabbyte.Drawing
 open Rabbyte.Annotation
 open OpenTK.Input
 open System
+open ProviderImplementation.ProvidedTypes
 
 
 
@@ -45,6 +46,11 @@ type Message =
   | MouseWheel              of V2d
   | ResizeRenderView        of V2i
   | ResizeCutView           of V2i
+  | HoveredCircleEnter       of int
+  | HoveredCircleLeave       
+  | HighlightIn3DView           
+  | Hoverin3D               of V3d
+  | UpdateTriagleStrips     of V2i
 
 
 
@@ -67,6 +73,15 @@ type CameraStateLean =
       position              : V3d
       stationing            : Stationing
   }
+
+type Cone = {
+    height : float
+    radius : float
+    color : C4b
+    trafoRot : Trafo3d
+    trafoTrl : Trafo3d
+}
+
 
 [<DomainType>]
 type Axis = {
@@ -93,6 +108,7 @@ type Model =
         dockConfig                     : DockConfig
         picking                        : PickingModel
         drawing                        : DrawingModel
+        drawing2                       : DrawingModel
         annotations                    : AnnotationModel
         pickingActive                  : bool
                                        
@@ -136,6 +152,7 @@ type Model =
         pointList                      : V3d list   
         altitudeList                   : float list
         errorHitList                   : int list
+        numofPointsinLineList          : int list
                                        
         svgPointsCoord                 : string
         svgPointsErrorCoord            : string
@@ -147,6 +164,13 @@ type Model =
                                        
         renderViewDim                  : V2i
         cutViewDim                     : V2i
+
+        hoveredCircleIndex             : Option<int>
+        hover3dActive                  : bool
+        hoverTriangles                 : Triangle3d []
+
+        markerCone                     : Cone
+
 
     }
 

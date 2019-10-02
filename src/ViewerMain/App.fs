@@ -106,11 +106,23 @@ module App =
             //  let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
             //  PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
             //| None -> PickingApp.update model.picking msg
+
+            let hitF (queryPoint: V3d) = 
+                let fray = FastRay3d(V3d.Zero, (queryPoint).Normalized)
+                model.picking.pickingInfos 
+                |> HMap.tryFind model.boundingBox   // WRONG use local boundingbox
+                |> Option.bind (fun kk -> 
+                    OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some kk.kdTree) fray 
+                    |> Option.map (fun closest ->
+                        fray.Ray.GetPointOnRay closest
+                    )
+                )
+
             let updatePickM = PickingApp.update model.picking (HitSurface (a,b))
             let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
             let updatedDrawM =
                 match lastPick with
-                | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
+                | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, Some hitF))
                 | None -> model.drawing
             updatePickM, updatedDrawM
           | _ -> PickingApp.update model.picking msg, model.drawing
@@ -127,11 +139,11 @@ module App =
                     
   let view (m : MModel) =
                                              
-      //let box = 
-      //  m.patchHierarchies
-      //    |> List.map(fun x -> x.tree |> QTree.getRoot) 
-      //    |> List.map(fun x -> x.info.LocalBoundingBox)
-      //    |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
+      let box = 
+        m.patchHierarchies
+          |> List.map(fun x -> x.tree |> QTree.getRoot) 
+          |> List.map(fun x -> x.info.LocalBoundingBox)
+          |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
       
       let opcs = 
         m.opcInfos
@@ -327,7 +339,8 @@ module App =
           cameraState        = camState
           mainFrustum        = Frustum.perspective 60.0 0.01 1000.0 1.0
           fillMode           = FillMode.Fill                    
-          patchHierarchies   = patchHierarchies          
+          patchHierarchies   = patchHierarchies    
+          boundingBox        = box
           axis               = axis
           
           threads            = FreeFlyController.threads camState |> ThreadPool.map Camera

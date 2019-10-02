@@ -1,29 +1,29 @@
-﻿namespace OpcSelectionViewer
+﻿namespace LinkingView
+
+open Linking
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
-open Aardvark.Base.Geometry
 open Aardvark.SceneGraph.Opc
-open Aardvark.Geometry
-open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.Application
 
 open OpcViewer.Base.Picking
-open OpcViewer.Base.Attributes
-open Rabbyte.Drawing
+open PRo3D.Minerva
 open Rabbyte.Annotation
+open Rabbyte.Drawing
 
-type Message =
+type Action =
   | Camera           of FreeFlyController.Message
   | KeyUp            of key : Keys
   | KeyDown          of key : Keys  
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
-  | AttributeAction  of AttributeAction
   | DrawingAction    of DrawingAction
   | AnnotationAction of AnnotationAction
+  | LinkingAction    of LinkingAction
+  | PickPoint        of V3d
 
 type CameraStateLean = 
   { 
@@ -44,33 +44,33 @@ type CameraStateLean =
       stationing            : Stationing
   }
 
-[<DomainType>]
-type Axis = {
-    positions       : list<V3d>
-    selectionOnAxis : Option<V3d>
-    pointList       : plist<OrientedPoint>
-    length          : float
-    rangeSv         : Range1d
-}
+  type PlaneCoordinates =
+    {
+    points : plist<V3d>
+    }
 
 [<DomainType>]
 type Model =
     {
-        cameraState          : CameraControllerState
+        cameraState          : CameraControllerState     
         mainFrustum          : Frustum
+        overlayFrustum       : Option<Frustum>
         fillMode             : FillMode                                
         [<NonIncremental>]
-        patchHierarchies     : list<PatchHierarchy> 
-        boundingBox          : Box3d
-        axis                 : Option<Axis>
+        patchHierarchies     : list<PatchHierarchy>        
         boxes                : list<Box3d>        
         opcInfos             : hmap<Box3d, OpcData>
-        threads              : ThreadPool<Message>
+        threads              : ThreadPool<Action>
         dockConfig           : DockConfig
-        picking              : PickingModel
-        pickingActive        : bool
-
-        opcAttributes        : AttributeModel
-        drawing              : DrawingModel
+        pickingModel         : PickingModel
         annotations          : AnnotationModel
-    }  
+        drawing              : DrawingModel
+        pickedPoint          : Option<V3d>
+        planePoints          : Option<plist<V3d>>
+        pickingActive        : bool
+        linkingModel         : LinkingModel
+        //minervaModel         : MinervaModel
+    }
+
+   
+

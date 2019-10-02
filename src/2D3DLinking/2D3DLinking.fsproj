@@ -12,8 +12,29 @@
     <OutputPath>..\..\bin\Release</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="resources\testsvg.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\linkingstyle.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Products\KdTreeFinds.fs" />
+    <Compile Include="Products\Serialization.fs" />
+    <Compile Include="Products\Model.fs" />
+    <Compile Include="Products\Utilities.fs" />
+    <Compile Include="Products\App.fs" />
+    <Compile Include="Linking\Model.fs" />
+    <Compile Include="Linking\App.fs" />
+    <Compile Include="Model.fs" />
+    <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OPCViewer.Base\OPCViewer.Base.fsproj" />
+    <ProjectReference Include="..\ViewerMain\ViewerMain.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

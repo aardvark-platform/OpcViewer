@@ -1,4 +1,4 @@
-﻿namespace SimpleDrawingModel
+﻿namespace ExampleModel
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
@@ -7,7 +7,7 @@ open Rabbyte.Drawing
 open Rabbyte.Annotation
 
 [<DomainType>]
-type SimpleDrawingModel = {
+type ExampleModel = {
     camera        : CameraControllerState
     drawingEnabled: bool 
     hoverPosition : option<Trafo3d>
