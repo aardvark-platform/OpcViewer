@@ -75,28 +75,6 @@ module Sg =
             
         let isSelected = selectedScalar |> Mod.map( fun s -> s.IsSome )
 
-        //let upperBound = 
-        //    adaptive {
-        //        let! scalar = selectedScalar
-            
-        //        match scalar with 
-        //         | Some s -> 
-        //            let! range = s.actualRange
-        //            return range.Max
-        //         | None -> return 1.0
-        //    }
-
-        //let lowerBound = 
-        //    adaptive {
-        //        let! scalar = selectedScalar
-            
-        //        match scalar with 
-        //         | Some s -> 
-        //            let! range = s.actualRange
-        //            return range.Min
-        //         | None -> return 1.0
-        //    }
-
         let interval = selectedScalar |> Mod.bind ( fun x ->
                         match x with 
                             | Some s -> s.colorLegend.interval.value

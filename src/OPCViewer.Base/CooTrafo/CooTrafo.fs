@@ -46,7 +46,7 @@ module CooTransformation =
         let test = @".\coo" 
         let t = System.IO.Path.GetFullPath(test)
         Log.line "%A" t
-        let errorCode = CooTrafoWrapper.Init(test, directory)
+        let errorCode = CooTrafoWrapper.Init(t, directory)
         printfn "%A" errorCode
 
     let deInitCooTrafo () = 
