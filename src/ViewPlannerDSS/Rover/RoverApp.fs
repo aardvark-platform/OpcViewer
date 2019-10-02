@@ -159,14 +159,20 @@ module RoverApp =
         match counter with 
         | 0 -> 
             let next = values.Item(0)
-            let deltaPan = Math.Abs(next.X - rover.pan.current)
+            let deltaPan = 
+                let d = Math.Abs(next.X - rover.pan.current)
+                if d > 180.0 then 360.0 - d else d
+
             let deltaTilt = Math.Abs(next.Y - rover.tilt.current)
             let e = deltaPan * cost + deltaTilt * cost
             (sum + e)
         | _ -> 
             let curr = values.Item(counter)
             let prev = values.Item(counter-1)
-            let deltaPan = Math.Abs(curr.X - prev.X)
+            let deltaPan = 
+                let d = Math.Abs(curr.X - prev.X)
+                if d > 180.0 then 360.0 - d else d
+
             let deltaTilt = Math.Abs(curr.Y - prev.Y)
             let e = deltaPan * cost + deltaTilt * cost
             calculateOutputVars values (counter-1) (sum+e) cost rover
