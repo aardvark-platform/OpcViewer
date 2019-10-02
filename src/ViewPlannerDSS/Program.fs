@@ -31,7 +31,6 @@ let main argv =
       | Some dir -> dir
       | None -> failwith "need opc directory ... opc=\"[opcfilepath]\" "
 
-
     let rotate = argsList.Contains("-rotate")
     
     let instance =  ViewPlanner.App.app opcDir rotate runtime |> App.start 

@@ -13,54 +13,48 @@ open Rabbyte.Drawing
 open Rabbyte.Annotation
 
 type ModeOption =
-    //| SaveCameraState   
-    //| SaveRoverState   
-    //| SavePlaneState
-    | StandardMode 
-    | RoverPlacementMode
-    | SampleMode
-    | ViewPlanMode
-
+| StandardMode 
+| RoverPlacementMode
+| SampleMode
+| ViewPlanMode
 
 type Action =
-  | Camera           of FreeFlyController.Message
-  | KeyUp            of key : Keys
-  | KeyDown          of key : Keys  
-  | UpdateDockConfig of DockConfig    
-  | PickingAction    of PickingAction
-  | RoverAction      of RoverAction
-  | Configs          of Option<ModeOption>
-  //| SetSg of Aardvark.UI.ISg<PickingAction>
-
-
-
+| Camera           of FreeFlyController.Message
+| KeyUp            of key : Keys
+| KeyDown          of key : Keys  
+| UpdateDockConfig of DockConfig    
+| PickingAction    of PickingAction
+| RoverAction      of RoverAction
+| Configs          of Option<ModeOption>
 
 type CameraStateLean = 
-  { 
-     location : V3d
-     forward  : V3d
-     sky      : V3d
-  }
+    { 
+    location : V3d
+    forward  : V3d
+    sky      : V3d
+    }
 
-  type Stationing = {
-      sh : double
-      sv : double
-  }
+type Stationing = 
+    {
+    sh : double
+    sv : double
+    }
 
-  type OrientedPoint = {
-      direction             : V3d
-      offsetToMainAxisPoint : V3d
-      position              : V3d
-      stationing            : Stationing
-  }
+type OrientedPoint = 
+    {
+    direction             : V3d
+    offsetToMainAxisPoint : V3d
+    position              : V3d
+    stationing            : Stationing
+    }
 
-  type PlaneCoordinates =
+type PlaneCoordinates =
     {
     points : plist<V3d>
     }
 
-  [<DomainType>]
-  type PlacementInfo = 
+[<DomainType>]
+type PlacementInfo = 
     {
     active : bool
     counterToMax : int
@@ -72,32 +66,31 @@ type CameraStateLean =
 [<DomainType>]
 type Model =
     {
-        runtimeInstance      : IRuntime
-        cameraState          : CameraControllerState 
-        fillMode             : FillMode     
+    runtimeInstance      : IRuntime
+    cameraState          : CameraControllerState 
+    fillMode             : FillMode     
         
-        [<NonIncremental>]
-        patchHierarchies     : list<PatchHierarchy>        
-        boxes                : list<Box3d>        
-        opcInfos             : hmap<Box3d, OpcData>
-        threads              : ThreadPool<Action>
-        dockConfig           : DockConfig
-        standardConfig       : DockConfig
-        viewPlanModeConfig   : DockConfig
-        pickingModel         : PickingModel
-        drawing              : DrawingModel
-        annotations          : AnnotationModel
-        pickedPoint          : Option<V3d>
-        planePoints          : Option<plist<V3d>>
-        pickingActive        : bool
-        rover                : RoverModel
-        region               : Option<plist<V3d>>
-        roiBboxFull          : bool
-        roverPlacement       : PlacementInfo
-        modeOptions          : hmap<ModeOption, string>
-        currentModeOption    : Option<ModeOption>
+    [<NonIncremental>]
+    patchHierarchies     : list<PatchHierarchy>        
+    boxes                : list<Box3d>        
+    opcInfos             : hmap<Box3d, OpcData>
+    threads              : ThreadPool<Action>
+    dockConfig           : DockConfig
+    standardConfig       : DockConfig
+    viewPlanModeConfig   : DockConfig
+    pickingModel         : PickingModel
+    drawing              : DrawingModel
+    annotations          : AnnotationModel
+    pickedPoint          : Option<V3d>
+    planePoints          : Option<plist<V3d>>
+    pickingActive        : bool
+    rover                : RoverModel
+    region               : Option<plist<V3d>>
+    roverPlacement       : PlacementInfo
+    modeOptions          : hmap<ModeOption, string>
+    currentModeOption    : Option<ModeOption>
         
-        [<NonIncremental>] sg : Aardvark.UI.ISg<PickingAction>
+    [<NonIncremental>] sg : Aardvark.UI.ISg<PickingAction>
 
     }
 

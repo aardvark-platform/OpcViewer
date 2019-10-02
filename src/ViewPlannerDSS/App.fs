@@ -54,7 +54,6 @@ module App =
         CameraView.lookAt c.location (c.location + c.forward) c.sky    
     //---
 
-
     //---saving and restoring plane state
     let toPlaneCoords (coords : plist<V3d>): PlaneCoordinates =
         {
@@ -73,11 +72,6 @@ module App =
     
     let fromRoverCoords(c:initialRoverCoords) : plist<V3d> = 
         c.coordinates
-
-
-
-
-
 
     //---UPDATE
     let update (model : Model) (msg : Action) =   
@@ -106,43 +100,6 @@ module App =
                 Log.line "[App] saving camstate"
                 model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camerastate" |> ignore 
                 model
-
-            | Keys.V ->
-                Log.line "[App] saving plane points"
-                model.pickingModel.intersectionPoints |> toPlaneCoords |> OpcSelectionViewer.Serialization.save ".\planestate" |> ignore
-                model
-            
-
-            | Keys.L -> 
-                let intersect = model.pickingModel.intersectionPoints
-                let l = intersect |> PList.toList
-                let t = 
-                    match l.IsEmpty with
-                        | true -> V3d.OOO
-                        | false -> l.Head
-                let p = PickingApp.update model.pickingModel (PickingAction.RemoveLastPoint)
-                let d = DrawingApp.update model.drawing (DrawingAction.RemoveLastPoint)
-                let forward = t-model.rover.position
-                let cam = CameraView.look model.rover.position forward.Normalized model.rover.up
-                let r = { model.rover with target = t; HighResCam = { model.rover.HighResCam with cam = { model.rover.HighResCam.cam with camera = {model.rover.HighResCam.cam.camera with view = cam}}}}
-                { model with rover = r; pickingModel = p; drawing = d}
-
-
-            | Keys.R -> 
-                let intersect = model.pickingModel.intersectionPoints
-                let n = model.rover.up
-                let l = intersect |> PList.toList
-                let m = 
-                    match l.IsEmpty with
-                        | true -> V3d.OOO
-                        | false -> l.Head
-                let p = PickingApp.update model.pickingModel (PickingAction.RemoveLastPoint)
-                let d = DrawingApp.update model.drawing (DrawingAction.RemoveLastPoint)
-                let pos = m+n
-                let r = { model.rover with position = pos; projsphere = {model.rover.projsphere with position = pos}; HighResCam = {model.rover.HighResCam with cam = {model.rover.HighResCam.cam with position = pos}}} 
-                { model with rover = r; pickingModel = p; drawing = d}
-                        
-
             | Keys.Enter ->
                 let points = model.pickingModel.intersectionPoints
                 let rover = { model.rover with reg = Some model.pickingModel.intersectionPoints }
@@ -150,10 +107,6 @@ module App =
                 let dir = Direction (model.drawing.points |> PList.toSeq |> fun x -> PlaneFitting.planeFit x).Normal
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some dir))
                 { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing; region = Some points; rover = rover} // reset drawingApp, but keep brush-style
-                
-
-            | Keys.F1 -> {model with roiBboxFull = not model.roiBboxFull}
-
             | _ -> model
 
         | PickingAction msg -> 
@@ -167,7 +120,6 @@ module App =
                 let reachedMax = (counterMax = max)
                 match mode,reachedMax with
                 | Some RoverPlacementMode, false -> //placement is active, new rovers can be placed
-                    
                     match counter with 
                     | 0 -> //position
                        let pm = PickingApp.update model.pickingModel (HitSurface (a,b))
@@ -179,7 +131,6 @@ module App =
                            let rover = {model.rover with position = (pick+up)}
                            let updatedRp = {model.roverPlacement with counter = (counter + 1)}
                            {model with rover = rover; roverPlacement = updatedRp; pickingModel = pm}
-
                        | None -> model
 
                     | 1 -> //target
@@ -195,8 +146,6 @@ module App =
                             }
                         let newList = model.rover.positionsList.Append newPlacement
                         
-                        
-
                         let rover = {model.rover with position = pos; target = target; positionsList = newList}
                         let updatedRp = {model.roverPlacement with counter = 0; counterToMax = (counterMax + 1)}
                         
@@ -210,13 +159,13 @@ module App =
                     { model with pickingModel = model.pickingModel; drawing = model.drawing; roverPlacement = updatedRp}
 
                 | _, _  -> 
-                            let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
-                            let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
-                            let updatedDrawM =
-                                match lastPick with
-                                | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
-                                | None -> model.drawing
-                            { model with pickingModel = updatePickM; drawing = updatedDrawM }
+                    let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
+                    let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
+                    let updatedDrawM =
+                        match lastPick with
+                        | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
+                        | None -> model.drawing
+                    { model with pickingModel = updatePickM; drawing = updatedDrawM }
 
             | PickPointOnPlane p ->
                         let pm = PickingApp.update model.pickingModel (PickPointOnPlane p) 
@@ -224,33 +173,18 @@ module App =
 
             | _ -> { model with pickingModel = model.pickingModel; drawing = model.drawing }
 
-            
         | UpdateDockConfig cfg ->
             { model with dockConfig = cfg }
 
         | RoverAction msg -> 
-            let sg = model.sg
-            let r = RoverApp.update model.rover msg model.runtimeInstance sg
+            let r = RoverApp.update model.rover msg model.runtimeInstance model.sg
             {model with rover = r}
                     
         | Configs msg ->
-            //let mode = 
-            //    msg 
-            //    |> Option.map (fun x -> 
-            //        match x with
-            //        | ModeOption.ViewPlanMode -> model.viewPlanModeConfig
-            //        | _ -> model.standardConfig
-            //        )
-            //    |> Option.defaultValue model.standardConfig
-            //reset idx
             let rover = {model.rover with walkThroughIdx = 0};
-            { model with currentModeOption = msg; rover = rover }//; dockConfig = mode }
-            
-        //| SetSg sg -> 
-        //    { model with sg = Some sg }
-          
+            { model with currentModeOption = msg; rover = rover }
+
         | _ -> model
-    
     //---
 
     //---VIEW
@@ -266,16 +200,11 @@ module App =
             toEffect DefaultSurfaces.diffuseTexture 
             ]
 
-      
-      //views
-      
-
       let renderViewSg = Sg.setRenderViewScene m.currentModeOption m
 
       let rovercamScene = 
        [
           m.drawing |> DrawingApp.view
-          //ps
        ] |> Sg.ofList
 
       let fullSceneRenderView = 
@@ -284,9 +213,7 @@ module App =
       let camSceneRenderView = 
          m.annotations |> AnnotationApp.viewGrouped opcs RenderPass.main rovercamScene
    
-    
       let camScene = (camSceneRenderView |> Sg.map PickingAction)
-     
 
       let renderControl =
        FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
@@ -301,67 +228,47 @@ module App =
          ]) 
          (fullSceneRenderView |> Sg.map PickingAction)
       
-     
       let dependencies =   
         Html.semui @ [        
           { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
           { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
           ]
 
-     
       let mode = ViewUtilities.selectMode m.currentModeOption m
 
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
- 
-          require Html.semui ( 
-            body [] [
+            require Html.semui ( 
+             body [] [
               div [clazz "ui"; style "background: #1B1C1E"; ] [renderControl] 
-            ]
-            
-          )
-        
+                ]
+            )
         | Some "leftCam" ->
             require Html.semui (
-
               body [style "width: 100%; height:100%; background: transparent"] [
                 ViewUtilities.selectView m.currentModeOption camScene "left" m
                    ]
-
-               
-          )
-        
+            )
          | Some "rightCam" ->
             require Html.semui (
-                
                 body [style "width: 100%; height:100%; background: transparent";] [
                  ViewUtilities.selectView m.currentModeOption camScene "right" m
                 ]
-
-
-               
             )
-
         | Some "controls" -> 
-
             require dependencies (
                 body [style "width: 100%; height:100%; background: transparent";] [
-                    
                     div[style "color:white; margin: 5px 15px 5px 5px"][
-
                         h4[][text "Mode Options"]
                         div [ clazz "item" ] [ 
                         dropdown { placeholder = ""; allowEmpty = false } [ clazz "ui inverted selection dropdown" ] (m.modeOptions |> AMap.map (fun k v -> text v)) m.currentModeOption Action.Configs 
                         ]
                     ]
                     br []
-                    
                     mode
-            ]
-          )
-            
- 
+                ]
+            )
         | Some other -> 
           let msg = sprintf "Unknown page: %A" other
           body [] [
@@ -375,14 +282,10 @@ module App =
         )
 
 
-    //---
-
-
     let app dir (rotate : bool) (runtime : IRuntime) =
       OpcSelectionViewer.Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
-
 
       let patchHierarchies =
         [ 
@@ -427,7 +330,6 @@ module App =
             toEffect DefaultSurfaces.diffuseTexture 
             ]
 
-
       let up = if rotate then (box.Center.Normalized) else V3d.OOI
 
       let restoreCamState : CameraControllerState =
@@ -440,7 +342,6 @@ module App =
 
       let camState = restoreCamState
 
-     
       let restorePlane =
         if File.Exists ".\planestate" then
             Log.line "[App] restoring planestate"
@@ -453,10 +354,9 @@ module App =
 
       let setPlaneForPicking =
         match planeState.IsEmpty() with
-            | true -> None
-            | false -> Some planeState
+        | true -> None
+        | false -> Some planeState
         
-
       let restoreRoverCoords = 
          if File.Exists ".\Roverstate" then
             Log.line "[App] restoring roverstate"
@@ -469,22 +369,19 @@ module App =
 
       let initialRoverPos = 
          match roverState.IsEmpty() with
-            | true -> V3d.OOO
-            | false -> roverState |> PList.toList |> List.item (0)
+         | true -> V3d.OOO
+         | false -> roverState |> PList.toList |> List.item (0)
       
       let initialRoverTarget = 
          match roverState.IsEmpty() with
-            | true -> V3d.OOI
-            | false -> roverState |> PList.toList |> List.item (1)
-      
+         | true -> V3d.OOI
+         | false -> roverState |> PList.toList |> List.item (1)
       
       let forward = initialRoverTarget - initialRoverPos
 
       let roverinitialCamera = {
-        
         FreeFlyController.initial with view = CameraView.look initialRoverPos forward.Normalized box.Center.Normalized
       }
-
 
       let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
       let camState = camState |> OpcSelectionViewer.Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
@@ -492,9 +389,7 @@ module App =
       let viewPlanDockConfig = 
         config {
           content (
-
               horizontal 23.0 [
-                
                 vertical 16.0 [
                 element {id "render"; title "Main View"; weight 7.0}
                 horizontal 9.0[
@@ -504,10 +399,7 @@ module App =
                 
                 ]
                 element {id "controls"; title "Controls"; weight 7.0}
-                
-              
               ]
-
           )
           appName "ViewPlanner"
           useCachedConfig true
@@ -516,9 +408,7 @@ module App =
       let standardDockConfig = 
         config {
           content (
-
-              horizontal 23.0 [
-                
+              horizontal 23.0 [ 
                 vertical 14.0 [
                 element {id "render"; title "Main View"; weight 14.0}
                 horizontal 0.0[
@@ -528,10 +418,7 @@ module App =
                 
                 ]
                 element {id "controls"; title "Controls"; weight 9.0}
-                
-              
               ]
-
           )
           appName "ViewPlanner"
           useCachedConfig true
@@ -543,7 +430,6 @@ module App =
         let camVar = {RoverModel.initial.HighResCam.cam with camera = camState; position = initialRoverPos}
         {RoverModel.initial.HighResCam with cam = camVar}
       
-     
       //stereo camera
       let rightV = (forward.Normalized).Cross(box.Center.Normalized)
       let shift = rightV * 0.2
@@ -562,18 +448,15 @@ module App =
        
         {RoverModel.initial.WACLR with camL = camVarL; camR = camVarR }
 
-      
-
+  
       let initialModel : Model = 
         { 
           runtimeInstance    = runtime
           cameraState        = camState
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
-          
           threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
           boxes              = List.empty 
-      
           pickingActive      = false
           opcInfos           = opcInfos
           pickingModel       = { PickingModel.initial with pickingInfos = opcInfos }
@@ -581,12 +464,11 @@ module App =
           annotations        = AnnotationModel.initial
           pickedPoint        = None
           planePoints        = setPlaneForPicking
-          rover              = { RoverModel.initial with up = box.Center.Normalized; HighResCam = hrcam; WACLR = stcam; position = initialRoverPos; target = initialRoverTarget; projsphere = {RoverModel.initial.projsphere with position = initialRoverPos}}
+          rover              = { RoverModel.initial with up = box.Center.Normalized; HighResCam = hrcam; WACLR = stcam; position = initialRoverPos; target = initialRoverTarget}
           dockConfig         = viewPlanDockConfig//standardDockConfig    
           standardConfig     = standardDockConfig
           viewPlanModeConfig = viewPlanDockConfig
           region             = None
-          roiBboxFull        = false
           roverPlacement     = 
             {
             active = false
@@ -594,7 +476,6 @@ module App =
             counterToMax = 0
             max = 4
             }
-          //menuOptions        = HMap.ofList [SaveCameraState, "Save camera state"; SaveRoverState, "Save plane state"; RoverPlacementMode, "rover placement mode"; StandardMode, "standard mode"]
           modeOptions        = HMap.ofList [StandardMode, "standard mode"; RoverPlacementMode, "rover placement mode"; SampleMode, "sample mode" ; ViewPlanMode, "view plan mode"] 
           currentModeOption  = Some StandardMode
           sg = opc
