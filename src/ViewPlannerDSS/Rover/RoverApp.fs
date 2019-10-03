@@ -395,8 +395,9 @@ module RoverApp =
                 arr.[idx]
 
 
-    let calculateDpcm (runtimeInstance: IRuntime) (renderSg :ISg<_>) (frustum:Frustum) (view:CameraView) (rover:RoverModel) =
-            
+
+    let initDpcm (runtimeInstance: IRuntime) (frustum:Frustum) (renderSg :ISg<_>) (vT:IMod<Trafo3d>) (rover:RoverModel) =
+        
         let horzRes = rover.horzRes
         let vertRes = rover.vertRes
         let size = V2i(horzRes, vertRes)
@@ -420,52 +421,73 @@ module RoverApp =
                 ]
             )
         
+        let description = fbo |> OutputDescription.ofFramebuffer
         let projTrafo  = Frustum.projTrafo(frustum);
-        let viewTrafo = view.ViewTrafo
 
         let render2TextureSg =
             renderSg
-            |> Sg.viewTrafo (Mod.constant viewTrafo)
+            |> Sg.viewTrafo vT
             |> Sg.projTrafo (Mod.constant projTrafo)
             |> Sg.effect [
                 toEffect DefaultSurfaces.trafo 
                 toEffect DefaultSurfaces.diffuseTexture
             ]
 
-        let taskclear = runtimeInstance.CompileClear(signature,Mod.constant C4f.Black,Mod.constant 1.0)
-        let task = runtimeInstance.CompileRender(signature, render2TextureSg)
-            
-        taskclear.Run(null, fbo |> OutputDescription.ofFramebuffer) |> ignore
-        task.Run(null, fbo |> OutputDescription.ofFramebuffer) |> ignore
-
-        let mat = Matrix<float32>(int64 size.X, int64 size.Y)
-        runtimeInstance.DownloadDepth(depth,0,0,mat)
-
-        let near = float32 frustum.near
-        let far = float32 frustum.far
-            
-        let zView = mat.Data |> Array.map(fun v -> linearization v near far)
-
-        //let pixelSizeCm (plane:float) (horzRes:float) (vertRes:float) (fovH:float) (fovV:float)
         let hR = float (horzRes)
         let vR = float (vertRes)
         let pixelSizeNear = pixelSizeCm frustum.near hR vR fovH fovV
         let pixelSizeFar = pixelSizeCm frustum.far hR vR fovH fovV
 
+        let mat = Matrix<float32>(int64 size.X, int64 size.Y)
+
+        //let range = pixelSizeFar - pixelSizeNear
+        //let count = mat.Data |> Array.length
+        //let classWidth = range / Math.Sqrt(float count)
+        //let numberOfClasses = range / classWidth
+
+        let task : IRenderTask =  runtimeInstance.CompileRender(signature, render2TextureSg)
+        let taskclear : IRenderTask = runtimeInstance.CompileClear(signature,Mod.constant C4f.Black,Mod.constant 1.0)
+        let realTask = RenderTask.ofList [taskclear; task]
+
+        (depth, description, signature, pixelSizeNear, pixelSizeFar, mat, realTask)
+
+
+
+    let calculateDpcm (runtimeInstance: IRuntime) (frustum:Frustum) (view:CameraView) (depth:IBackendTexture) 
+        (description:OutputDescription) (pixelSizeNear:float) (pixelSizeFar:float) (mat:Matrix<float32>)
+            (task : IRenderTask) (viewTrafo : IModRef<Trafo3d>) =
+
+        transact (fun _ -> viewTrafo.Value <- view.ViewTrafo)
+        task.Run (null, description)
+        
+        runtimeInstance.DownloadDepth(depth,0,0,mat)
+        //runtimeInstance.Download(col).SaveAsImage(@"C:\Users\schalko\Desktop\color.png")
+
+        let near = float32 frustum.near
+        let far = float32 frustum.far
+        
+        let zView = mat.Data |> Array.map(fun v -> linearization v near far)
+
         //uncomment to see depth image
         //let pi = PixImage<byte>(Col.Format.RGBA, V2i mat.Size)
 
+        //let s = 16.0
         //pi.GetMatrix<C4b>().SetMap(mat, fun v ->
-        //    let gray = float v ** 32.0 |> float32
+        //    let gray = float v ** s |> float32
         //    C4f(gray, gray, gray, 1.0f).ToC4b()
         //) |> ignore
 
         //pi.SaveAsImage(@"C:\Users\schalko\Desktop\depth.png")
 
         let matPixelSizes = zView |> Array.map(fun v -> interpolatePixelSize frustum.near frustum.far (float v) pixelSizeNear pixelSizeFar)
-        let sortedArr = matPixelSizes |> Array.sort |> Array.filter(fun f -> f < frustum.far)
+
+        let filteredArr = matPixelSizes |> Array.filter(fun f -> f < frustum.far) 
+     
+        let sortedArr = filteredArr |> Array.sort
+
         let median = median sortedArr
         let dpcm = 1.0/median    
+
         dpcm
 
 
@@ -525,12 +547,20 @@ module RoverApp =
                 let values = createSamplingList cam samplingValues deltaPan deltaTilt cross360 rover |> PList.ofList
                 let viewMatrices = values |> PList.map(fun m -> calculateViewMatrix rover m.X m.Y cam)
 
+                let vT = viewMatrices |> PList.first |> CameraView.viewTrafo |> Mod.init
+                let depth, des, sign, psNear, psFar, mat, task = initDpcm runtimeInstance cam.frustum renderSg vT rover
+       
+                ////let calculateDpcm (runtimeInstance: IRuntime) (frustum:Frustum) (view:CameraView) (depth:IBackendTexture) 
+                //    (description:OutputDescription) (pixelSizeNear:float) (pixelSizeFar:float) (mat:Matrix<float32>)
+                //        (task : IRenderTask) (viewTrafo : IModRef<Trafo3d>)
+                Report.BeginTimed "start dpcm median hr "
                 let medValue = 
                     if sampleWithDpi then
-                        let listOfdpcms = viewMatrices |> PList.map(fun e -> calculateDpcm runtimeInstance renderSg cam.frustum e rover)
+                        let listOfdpcms = viewMatrices |> PList.map(fun e -> calculateDpcm runtimeInstance cam.frustum e depth des psNear psFar mat task vT)
                         let median = listOfdpcms |> PList.toArray |> Array.sort |> median 
                         Math.Round(median,2)
                     else 0.0
+                Report.EndTimed "end dpcm median hr" |> ignore
 
                 let HR = {rover.HighResCam with cam = { rover.HighResCam.cam with samplingValues = values; viewList = viewMatrices }}
                 let camVars = PList.ofList [HR.cam]
@@ -550,16 +580,26 @@ module RoverApp =
                 let cR = {rover.WACLR.camR with samplingValues = values; viewList = viewMatricesRight }
                 let st = {rover.WACLR with camL = cL; camR = cR}
 
+
+                let vT = viewMatricesLeft |> PList.first |> CameraView.viewTrafo |> Mod.init
+                
+                //let initDpcm (runtimeInstance: IRuntime) (frustum:Frustum) (renderSg :ISg<_>) (vT:Trafo3d) (rover:RoverModel)
+                let depth, des, sign, psNear, psFar, mat, task = initDpcm runtimeInstance cam.camL.frustum renderSg vT rover
+                //let vt = Mod.init viewTrafo
+
+                Report.BeginTimed "start dpcm median stereo "
                 let medValue = 
                     if sampleWithDpi then
-                        let listOfdpcmsLeft = viewMatricesLeft |> PList.map(fun e -> calculateDpcm runtimeInstance renderSg cL.frustum  e rover)
-                        let listOfdpcmsRight = viewMatricesRight |> PList.map(fun e -> calculateDpcm runtimeInstance renderSg cR.frustum  e rover)
+                        let listOfdpcmsLeft = viewMatricesLeft |> PList.map(fun e -> calculateDpcm runtimeInstance cL.frustum e depth des psNear psFar mat task vT)
+                        let listOfdpcmsRight = viewMatricesRight |> PList.map(fun e -> calculateDpcm runtimeInstance cR.frustum e depth des psNear psFar mat task vT)
                         let medianL = listOfdpcmsLeft |> PList.toArray |> Array.sort |> median
                         let medianR = listOfdpcmsRight |> PList.toArray |> Array.sort |> median
                         let medianFinal = (medianL + medianR) / 2.0
                         Math.Round(medianFinal,2)
                       
                     else 0.0
+                
+                Report.EndTimed "end dpcm median stereo" |> ignore
 
                 let camVars = PList.ofList [cL; cR]
                 let newVP = createNewViewPlan camVars p "WACLR" medValue rover

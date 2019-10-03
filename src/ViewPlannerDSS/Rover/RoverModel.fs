@@ -91,6 +91,23 @@ type HighRes =
     panOverlap      : float
     tiltOverlap     : float
     outputParams    : OutputVars
+    //histogram       : Histogram
+    }
+
+ [<DomainType>]
+ type Bin = 
+    {
+    counter         : int
+    min             : float
+    max             : float
+    }
+
+ [<DomainType>]
+ type Histogram = 
+    {
+    numberOfBins    : int
+    binWidth        : float
+    bins            : Map<int,Bin>
     }
 
 
@@ -144,6 +161,9 @@ type RoverModel =
 
     //sampling with dpi
     samplingWithDpi       : bool
+
+    histogram             : Histogram
+
     }
 
 type RoverAction = 
@@ -166,7 +186,8 @@ module RoverModel =
         FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
         }
 
-    let initfrustum = Frustum.perspective 6.0 0.1 100.0 1.2
+    //let initfrustum = Frustum.perspective 6.0 0.1 100.0 1.2
+    let initfrustum = Frustum.perspective 5.0 0.1 10.0 1.0
 
     //Stereo camera //PanCam FOV 37.0°
     //currently at 10 for testing
@@ -276,10 +297,18 @@ module RoverModel =
 
         colorDepth = 8    //bit
         numberOfColorChannels = 3 //RGB
-        horzRes = 1600
+        horzRes = 1200
         vertRes = 1200
 
         samplingWithDpi = false
+
+
+        histogram =
+        {
+        numberOfBins = 0
+        binWidth = 0.0
+        bins = Map.empty
+        }
 
         }
 
