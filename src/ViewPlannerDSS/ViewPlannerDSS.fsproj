@@ -17,6 +17,7 @@
     <Compile Include="Minerva\KdTreeFinds.fs" />
     <Compile Include="Minerva\MinervaApp.fs" />
     <Compile Include="Rover\RoverModel.fs" />
+    <Compile Include="Rover\RoverCalculations.fs" />
     <Compile Include="Rover\RoverApp.fs" />
     <Compile Include="Shading.fs" />
     <Compile Include="Model.fs" />
