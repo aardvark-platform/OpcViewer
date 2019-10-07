@@ -16,10 +16,10 @@ open Aardvark.UI.Primitives
 module RoverApp =
 
 
-    let initializeTilt (m:RoverModel) (value:float) = 
+    let initializeTilt (value:float) (m:RoverModel) = 
         {m with tilt = {m.tilt with previous = value; current = value}}
     
-    let initializePan (m:RoverModel) (value:float) = 
+    let initializePan (value:float) (m:RoverModel) = 
         {m with pan = {m.pan with previous = value; current = value}}
 
   
@@ -120,6 +120,54 @@ module RoverApp =
         buildList values panningRate tiltingRate tiltingRate refPan -tiltRef cross
 
 
+
+
+
+
+
+    //let calculateSamplingValues (thetaPhiValues : plist<V2d>) (frustum : Frustum) (overlaps : V2d) =
+        
+    //    let pans = thetaPhiValues |> PList.map (fun l -> l.X) 
+    //    let tilts = thetaPhiValues |> PList.map (fun l -> l.Y) 
+    //    let panList = pans |> PList.toList
+    //    let tiltList = tilts |> PList.toList
+
+    //    let minPan, maxPan, cross360 = RoverCalculations.calculatePanValues panList
+
+    //    let deltaPan = 
+    //        match cross360 with
+    //        | true -> 
+    //            //maxPan - (minPan + 360.0) // maybe next time...
+    //            let deltaToZero = minPan
+    //            let deltaToMaxFromZero = 360.0 - maxPan
+    //            deltaToZero + deltaToMaxFromZero
+    //        | false -> 
+    //            Math.Abs(maxPan - minPan)
+
+    //    //sort tilt values
+    //    let sortedTilts = List.sort tiltList
+    //    let minTilt = sortedTilts.Head
+    //    let maxTilt = sortedTilts.Item(sortedTilts.Length - 1)
+    //    let deltaTilt = maxTilt - minTilt
+    
+    //    let fovH = frustum |> Frustum.horizontalFieldOfViewInDegrees
+    //    let ratio = frustum |> Frustum.aspect
+    //    let fovV = Math.Round((fovH / ratio), 0)
+
+    //    let panRef = fovH * (1.0 - (overlaps.X/100.0))            
+    //    let tiltRef = fovV * (1.0 - (overlaps.Y/100.0))
+    //    let panningRate = int(Math.Round((Math.Abs(deltaPan)) / panRef))
+    //    let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / tiltRef))
+
+    //    let refPan = if cross360 then (panRef * -1.0) else panRef
+
+    //    buildList [V2d(minPan, maxTilt)] panningRate tiltingRate tiltingRate refPan -tiltRef cross360
+
+    
+
+
+
+
     let sampling (p : Placement) (runtimeInstance: IRuntime) (renderSg : ISg<_>) (rover : RoverModel) = 
         
         let currentCamera = rover.camera
@@ -152,16 +200,17 @@ module RoverApp =
         let samplingValues = [firstPair] //initial list
         
         let sampleWithDpi = rover.samplingWithDpi
+        let res = V2d(rover.horzRes, rover.vertRes)
 
         let newRover = 
             match currentCamera with
             | HighResCam -> 
                 let cam = rover.HighResCam.cam
                 let values = createSamplingList cam samplingValues deltaPan deltaTilt cross360 rover |> PList.ofList
-                let viewMatrices = values |> PList.map(fun m -> RoverCalculations.calculateViewMatrix rover m.X m.Y cam)
+                let viewMatrices = values |> PList.map(fun m -> RoverCalculations.calculateViewMatrix  m.X m.Y cam rover)
 
                 let vT = viewMatrices |> PList.first |> CameraView.viewTrafo |> Mod.init
-                let dpcmVariables = RoverCalculations.initDpcm runtimeInstance cam.frustum renderSg vT rover
+                let dpcmVariables = RoverCalculations.initDpcm runtimeInstance cam.frustum renderSg vT res
   
                 let medValue = 
                     if sampleWithDpi then
@@ -181,8 +230,8 @@ module RoverApp =
                 let cam = rover.WACLR
                 let values = createSamplingList cam.camL samplingValues deltaPan deltaTilt cross360 rover |> PList.ofList
 
-                let viewMatricesLeft = values |> PList.map(fun m -> RoverCalculations.calculateViewMatrix rover m.X m.Y cam.camL) 
-                let viewMatricesRight = values |> PList.map(fun m -> RoverCalculations.calculateViewMatrix rover m.X m.Y cam.camR)
+                let viewMatricesLeft = values |> PList.map(fun m -> RoverCalculations.calculateViewMatrix  m.X m.Y cam.camL rover) 
+                let viewMatricesRight = values |> PList.map(fun m -> RoverCalculations.calculateViewMatrix  m.X m.Y cam.camR rover)
 
                 let cL = {rover.WACLR.camL with samplingValues = values; viewList = viewMatricesLeft }
                 let cR = {rover.WACLR.camR with samplingValues = values; viewList = viewMatricesRight }
@@ -190,7 +239,7 @@ module RoverApp =
 
                 let vT = viewMatricesLeft |> PList.first |> CameraView.viewTrafo |> Mod.init
                 
-                let dpcmVariables = RoverCalculations.initDpcm runtimeInstance cam.camL.frustum renderSg vT rover
+                let dpcmVariables = RoverCalculations.initDpcm runtimeInstance cam.camL.frustum renderSg vT res
 
                 let medValue = 
                     if sampleWithDpi then
@@ -299,13 +348,34 @@ module RoverApp =
                 let r = rotateIntoCoordinateSystem rover shifted
                 let thetaPhi = RoverCalculations.calcThetaPhi r
                 printfn "thetaOnForward %A phiOnForward %A"  thetaPhi.X thetaPhi.Y
-                let setR = initializePan rover thetaPhi.X
-                let setR2 = initializeTilt setR thetaPhi.Y
+                let setR = initializePan thetaPhi.X rover
+                let setR2 = initializeTilt thetaPhi.Y setR
 
                 //set the camera according to the selected placement
                 let roverWithupdatedCam = setCamera setR2
 
+                //let overlaps = V2d (rover.panOverlap, rover.tiltOverlap)
+
+                //let camVariables = 
+                //    match rover.camera with
+                //    | HighResCam ->roverWithupdatedCam.HighResCam.cam
+                //    | WACLR -> roverWithupdatedCam.WACLR.camL
+                
+                //let samplingValues = calculateSamplingValues thetaPhiValues camVariables.frustum overlaps
+                //let viewMatrices = samplingValues |> List.map(fun m -> RoverCalculations.calculateViewMatrix  m.X m.Y camVariables roverWithupdatedCam)
+
+
+
                 let r = {roverWithupdatedCam with thetaPhiValues = thetaPhiValues; projPoints = projectionPoints}
+
+                //step1: sampling returns list of theta/phi values
+                //step2: create view matrices --> actual sampling
+                //new viewplan
+
+
+
+
+
                 sampling p runtimeInstance renderSg r
 
             | _,_ -> rover

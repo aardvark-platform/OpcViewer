@@ -141,8 +141,8 @@ module RoverCalculations =
 
 
 
-    let initDpcm (runtimeInstance: IRuntime) (frustum:Frustum) (renderSg :ISg<_>) (vT:IMod<Trafo3d>) (rover:RoverModel) =
-        let size = V2i(rover.horzRes, rover.vertRes)
+    let initDpcm (runtimeInstance: IRuntime) (frustum:Frustum) (renderSg :ISg<_>) (vT:IMod<Trafo3d>) (res:V2d) =
+        let size = V2i(res.X, res.Y)
 
         let fovH = frustum |> Frustum.horizontalFieldOfViewInDegrees
         let asp = frustum |> Frustum.aspect
@@ -175,7 +175,7 @@ module RoverCalculations =
                 toEffect DefaultSurfaces.diffuseTexture
             ]
 
-        let vR = float rover.vertRes
+        let vR = float res.Y
         let pixelSizeNear = pixelSizeCm frustum.near vR fovV
         let pixelSizeFar = pixelSizeCm frustum.far vR fovV
 
@@ -218,7 +218,7 @@ module RoverCalculations =
         dpcm
 
 
-    let calculateViewMatrix  (rover : RoverModel) (pan : float) (tilt : float) (cam:CamVariables) =
+    let calculateViewMatrix (pan : float) (tilt : float) (cam:CamVariables) (rover : RoverModel)  =
 
         let panDelta = 
             let d = pan - rover.pan.current
