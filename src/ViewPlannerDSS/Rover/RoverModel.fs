@@ -47,6 +47,9 @@ type HighRes =
     currIdx         : int
     }
 
+//type Cameras = 
+//| HighResCam  of CamVariables * int
+//| WACLR of left:CamVariables * right:CamVariables * int
    
 
  type Overlap =
@@ -91,7 +94,6 @@ type HighRes =
     panOverlap      : float
     tiltOverlap     : float
     outputParams    : OutputVars
-    //histogram       : Histogram
     }
 
  [<DomainType>]
@@ -131,7 +133,7 @@ type RoverModel =
     cameraOptions         : hmap<CameraType, string>
     panOverlapOptions     : hmap<Overlap, string>
     tiltOverlapOptions    : hmap<Overlap, string>
-    reg                   : Option<plist<V3d>>
+    selectedRegion        : Option<plist<V3d>>
     projPoints            : plist<V3d>
     thetaPhiValues        : plist<V2d>
 
@@ -275,7 +277,7 @@ module RoverModel =
         panOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
         tiltOverlapOptions = HMap.ofList [Percent_20, "20%"; Percent_30, "30%"; Percent_40, "40%"; Percent_50, "50%"]
         
-        reg = None
+        selectedRegion = None
 
         projPoints = PList.empty
         thetaPhiValues = PList.empty
@@ -297,8 +299,8 @@ module RoverModel =
 
         colorDepth = 8    //bit
         numberOfColorChannels = 3 //RGB
-        horzRes = 1200
-        vertRes = 1200
+        horzRes = 1024
+        vertRes = 1024
 
         samplingWithDpi = false
 

@@ -102,7 +102,7 @@ module App =
                 model
             | Keys.Enter ->
                 let points = model.pickingModel.intersectionPoints
-                let rover = { model.rover with reg = Some model.pickingModel.intersectionPoints }
+                let rover = { model.rover with selectedRegion = Some model.pickingModel.intersectionPoints }
                 let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
                 let dir = Direction (model.drawing.points |> PList.toSeq |> fun x -> PlaneFitting.planeFit x).Normal
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some dir))

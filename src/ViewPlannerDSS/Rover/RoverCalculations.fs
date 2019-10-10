@@ -85,7 +85,7 @@ module RoverCalculations =
         
         let result = 
             pans 
-            |> List.groupBy (fun p -> (int (1.0 + (p/90.0))) % 4)
+            |> List.groupBy (fun p -> if p = 360.0 then 0 else (int (1.0 + (p/90.0))) % 4)
             |> HMap.ofList
             |> HMap.map (fun _ values -> values |> List.sort)
 
@@ -93,7 +93,7 @@ module RoverCalculations =
             let q1Values = result |> HMap.tryFind 1
             let q2Values = result |> HMap.tryFind 2
             let q3Values = result |> HMap.tryFind 3
-            let q4Values = result |> HMap.tryFind 4
+            let q4Values = result |> HMap.tryFind 0 //4 % 4 = 0
 
             match q1Values, q2Values, q3Values, q4Values with
             | Some q1, None, None, Some q4 -> (q1 |> List.last), (q4 |> List.head), true

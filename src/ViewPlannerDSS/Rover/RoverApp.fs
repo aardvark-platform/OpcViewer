@@ -302,85 +302,55 @@ module RoverApp =
 
     let setCamera (rover:RoverModel) =
         
-        let currentCam = rover.camera
         let pos = rover.position
-        let tar = rover.target
-        let up = rover.up
+        let forward = rover.target - pos
 
-        match currentCam with
+        match rover.camera with
         | HighResCam -> 
-            let forward = tar - pos
-            let cam = CameraView.look pos forward.Normalized up
+            let cam = CameraView.look pos forward.Normalized rover.up
             let view = {rover.HighResCam.cam.camera with view = cam}
             let vars = {rover.HighResCam.cam with position = pos; camera = view}
             let hr = {rover.HighResCam with cam = vars}
             {rover with HighResCam = hr}
 
         | WACLR -> 
-            let forward = (tar - pos)
-            let vars = updateStereoCam forward pos rover
-            let camL = fst vars
-            let camR = snd vars
+            let camL, camR = updateStereoCam forward pos rover
             let stc = {rover.WACLR with camL = camL; camR = camR}
             {rover with  WACLR = stc}
 
   
     let calculateValues (runtimeInstance:IRuntime) (renderSg : ISg<_>) (rover:RoverModel)=
         
-        let region = rover.reg
-        let selectedPos = rover.selectedPosition
-        let newRover = 
-            match region,selectedPos with
-            | Some reg, Some p -> 
-                let spherePos = p.position
-                let shiftedPoints = reg  |> PList.map (fun p -> (p - spherePos).Normalized)
-                let rotatedPoints = shiftedPoints  |> PList.map (fun p -> rotateIntoCoordinateSystem rover p)
-                let projectionPoints = shiftedPoints |> PList.map (fun p -> p + spherePos)
-                let thetaPhiValues = rotatedPoints |> PList.map(fun p -> RoverCalculations.calcThetaPhi p) 
+        match rover.selectedRegion, rover.selectedPosition with
+        | Some reg, Some p -> 
+            let spherePos = p.position
+            let shiftedPoints = reg  |> PList.map (fun p -> (p - spherePos).Normalized)
+            let rotatedPoints = shiftedPoints  |> PList.map (fun p -> rotateIntoCoordinateSystem rover p)
+            let projectionPoints = shiftedPoints |> PList.map (fun p -> p + spherePos)
+            let thetaPhiValues = rotatedPoints |> PList.map(fun p -> RoverCalculations.calcThetaPhi p) 
 
-                //debugging
-                for p in thetaPhiValues do
-                    printfn "theta %A phi %A"  (p.X) (p.Y) 
+            //debugging
+            for p in thetaPhiValues do
+                printfn "theta %A phi %A"  (p.X) (p.Y) 
 
-                //point on forward vector
-                let referencePoint = p.target
-                let shifted = (referencePoint-spherePos).Normalized
-                let r = rotateIntoCoordinateSystem rover shifted
-                let thetaPhi = RoverCalculations.calcThetaPhi r
-                printfn "thetaOnForward %A phiOnForward %A"  thetaPhi.X thetaPhi.Y
-                let setR = initializePan thetaPhi.X rover
-                let setR2 = initializeTilt thetaPhi.Y setR
+            //point on forward vector
+            let referencePoint = p.target
+            let shifted = (referencePoint-spherePos).Normalized
+            let r = rotateIntoCoordinateSystem rover shifted
+            let thetaPhi = RoverCalculations.calcThetaPhi r
+            printfn "thetaOnForward %A phiOnForward %A"  thetaPhi.X thetaPhi.Y
+            let setR = initializePan thetaPhi.X rover
+            let setR2 = initializeTilt thetaPhi.Y setR
 
-                //set the camera according to the selected placement
-                let roverWithupdatedCam = setCamera setR2
+            //set the camera according to the selected placement
+            let roverWithupdatedCam = setCamera setR2
 
-                //let overlaps = V2d (rover.panOverlap, rover.tiltOverlap)
+            let r = {roverWithupdatedCam with thetaPhiValues = thetaPhiValues; projPoints = projectionPoints}
 
-                //let camVariables = 
-                //    match rover.camera with
-                //    | HighResCam ->roverWithupdatedCam.HighResCam.cam
-                //    | WACLR -> roverWithupdatedCam.WACLR.camL
-                
-                //let samplingValues = calculateSamplingValues thetaPhiValues camVariables.frustum overlaps
-                //let viewMatrices = samplingValues |> List.map(fun m -> RoverCalculations.calculateViewMatrix  m.X m.Y camVariables roverWithupdatedCam)
+            sampling p runtimeInstance renderSg r
 
-
-
-                let r = {roverWithupdatedCam with thetaPhiValues = thetaPhiValues; projPoints = projectionPoints}
-
-                //step1: sampling returns list of theta/phi values
-                //step2: create view matrices --> actual sampling
-                //new viewplan
-
-
-
-
-
-                sampling p runtimeInstance renderSg r
-
-            | _,_ -> rover
+        | _ -> rover
         
-        newRover
    
         
     let changeCam (rover:RoverModel) (camtype:Option<CameraType>)=
