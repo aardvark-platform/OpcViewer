@@ -31,24 +31,11 @@ module RoverCalculations =
         let theta = (atan2 position.X position.Y)* Constant.DegreesPerRadian 
         let phi = (acos(position.Z)) * Constant.DegreesPerRadian
 
-        //// Maybe easier... 
-        //bring theta to interval [0, 360]... [-180, 180] ...range old + 180 => [0, 360] % 360 -> [0, 360[ 0 => 0; 360 => 0; 370 => 10; 45 => 45
-        //V2d((theta+180.0)% 360.0, phi)
-        
-        //both sphere halfs are independent
-        //let thetaShifted = 
-        //    if theta < 0.0 then
-        //        theta * (-1.0)
-        //    else 
-        //        let delta = 180.0 - theta
-        //        180.0 + delta
-        
         let thetaShifted = (theta + 180.0) % 360.0
 
- 
-        
-
         V2d(thetaShifted,phi)
+
+        
 
 
 //calculate the required energy and time for performing the pans/tilts for sampling

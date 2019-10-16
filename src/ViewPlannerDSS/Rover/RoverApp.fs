@@ -121,53 +121,6 @@ module RoverApp =
 
 
 
-
-
-
-
-    //let calculateSamplingValues (thetaPhiValues : plist<V2d>) (frustum : Frustum) (overlaps : V2d) =
-        
-    //    let pans = thetaPhiValues |> PList.map (fun l -> l.X) 
-    //    let tilts = thetaPhiValues |> PList.map (fun l -> l.Y) 
-    //    let panList = pans |> PList.toList
-    //    let tiltList = tilts |> PList.toList
-
-    //    let minPan, maxPan, cross360 = RoverCalculations.calculatePanValues panList
-
-    //    let deltaPan = 
-    //        match cross360 with
-    //        | true -> 
-    //            //maxPan - (minPan + 360.0) // maybe next time...
-    //            let deltaToZero = minPan
-    //            let deltaToMaxFromZero = 360.0 - maxPan
-    //            deltaToZero + deltaToMaxFromZero
-    //        | false -> 
-    //            Math.Abs(maxPan - minPan)
-
-    //    //sort tilt values
-    //    let sortedTilts = List.sort tiltList
-    //    let minTilt = sortedTilts.Head
-    //    let maxTilt = sortedTilts.Item(sortedTilts.Length - 1)
-    //    let deltaTilt = maxTilt - minTilt
-    
-    //    let fovH = frustum |> Frustum.horizontalFieldOfViewInDegrees
-    //    let ratio = frustum |> Frustum.aspect
-    //    let fovV = Math.Round((fovH / ratio), 0)
-
-    //    let panRef = fovH * (1.0 - (overlaps.X/100.0))            
-    //    let tiltRef = fovV * (1.0 - (overlaps.Y/100.0))
-    //    let panningRate = int(Math.Round((Math.Abs(deltaPan)) / panRef))
-    //    let tiltingRate = int(Math.Round((Math.Abs(deltaTilt)) / tiltRef))
-
-    //    let refPan = if cross360 then (panRef * -1.0) else panRef
-
-    //    buildList [V2d(minPan, maxTilt)] panningRate tiltingRate tiltingRate refPan -tiltRef cross360
-
-    
-
-
-
-
     let sampling (p : Placement) (runtimeInstance: IRuntime) (renderSg : ISg<_>) (rover : RoverModel) = 
         
         let currentCamera = rover.camera
@@ -182,7 +135,6 @@ module RoverApp =
         let deltaPan = 
             match cross360 with
             | true -> 
-                //maxPan - (minPan + 360.0) // maybe next time...
                 let deltaToZero = minPan
                 let deltaToMaxFromZero = 360.0 - maxPan
                 deltaToZero + deltaToMaxFromZero
