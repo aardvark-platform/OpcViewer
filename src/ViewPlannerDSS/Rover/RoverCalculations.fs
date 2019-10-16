@@ -36,12 +36,17 @@ module RoverCalculations =
         //V2d((theta+180.0)% 360.0, phi)
         
         //both sphere halfs are independent
-        let thetaShifted = 
-            if theta < 0.0 then
-                theta * (-1.0)
-            else 
-                let delta = 180.0 - theta
-                180.0 + delta
+        //let thetaShifted = 
+        //    if theta < 0.0 then
+        //        theta * (-1.0)
+        //    else 
+        //        let delta = 180.0 - theta
+        //        180.0 + delta
+        
+        let thetaShifted = (theta + 180.0) % 360.0
+
+ 
+        
 
         V2d(thetaShifted,phi)
 
@@ -221,7 +226,8 @@ module RoverCalculations =
     let calculateViewMatrix (pan : float) (tilt : float) (cam:CamVariables) (rover : RoverModel)  =
 
         let panDelta = 
-            let d = pan - rover.pan.current
+            //let d = pan - rover.pan.current
+            let d = rover.pan.current - pan
             let sign = float (Math.Sign(d))
             let dA = Math.Abs(d)
             let p = if dA > 180.0 then dA - 360.0 else dA

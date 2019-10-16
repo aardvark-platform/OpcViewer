@@ -337,7 +337,7 @@ module Sg =
         return [
           opcSg loadedPatches selectedScalar picking boundingBox
           //boxSg  loadedPatches m boundingBox;
-          textSg loadedPatches view
+          //textSg loadedPatches view
           //globalBB
         ] |> Sg.ofList 
     } |> Sg.dynamic 
