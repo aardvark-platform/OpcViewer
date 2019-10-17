@@ -30,32 +30,32 @@ module RoverApp =
         rotatedbyZ
     
   
-    let rec buildList (l:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (deltaPan:float) (deltaTilt:float) (cross360:bool)=
+    let rec buildList (l:List<V2d>) (panR:int) (tiltR:int) (originalTiltR:int) (panReference:float) (tiltReference:float) (cross360:bool)=
         match panR,tiltR with 
         | (p,t) when  p = 0 && t = 0 -> l
         | (p,t) when  p >= 0 && t > 0 -> 
                     let lastItem = l.Item(l.Length-1)
-                    let newTilt = lastItem.Y + deltaTilt
+                    let newTilt = lastItem.Y + tiltReference
                     let listItem = [V2d(lastItem.X, newTilt)]
                     let newList = List.append l listItem
-                    buildList newList panR (tiltR-1) originalTiltR deltaPan deltaTilt cross360
+                    buildList newList panR (tiltR-1) originalTiltR panReference tiltReference cross360
         | (p,t) when p > 0 && t = 0 -> 
                     let lastItem = l.Item(l.Length-1)
                     let newPan = 
                         if cross360 then                    //if the 0/360 point will be crossed at some point
-                            let p = lastItem.X + deltaPan
+                            let p = lastItem.X + panReference
                             let newP = 
                                 if (p < 0.0) then 
                                     360.0 - p
                                 else p
                             newP
 
-                        else lastItem.X + deltaPan
+                        else lastItem.X + panReference
                                 
-                    let newDeltaTilt = deltaTilt * (-1.0) 
+                    let newTiltRef = tiltReference * (-1.0) 
                     let listItem = [V2d(newPan, lastItem.Y)]
                     let newList = List.append l listItem
-                    buildList newList (panR-1) originalTiltR originalTiltR deltaPan newDeltaTilt cross360
+                    buildList newList (panR-1) originalTiltR originalTiltR panReference newTiltRef cross360
         | _,_ -> l //this case should never be reached
                 
    
