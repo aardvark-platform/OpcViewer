@@ -104,15 +104,7 @@ type HighRes =
     max             : float
     }
 
- [<DomainType>]
- type Histogram = 
-    {
-    numberOfBins    : int
-    binWidth        : float
-    bins            : Map<int,Bin>
-    }
-
-
+ 
 
 [<DomainType; ReferenceEquality>]
 type RoverModel =
@@ -163,8 +155,6 @@ type RoverModel =
 
     //sampling with dpi
     samplingWithDpi       : bool
-
-    histogram             : Histogram
 
     }
 
@@ -303,14 +293,6 @@ module RoverModel =
         vertRes = 1024
 
         samplingWithDpi = false
-
-
-        histogram =
-        {
-        numberOfBins = 0
-        binWidth = 0.0
-        bins = Map.empty
-        }
 
         }
 

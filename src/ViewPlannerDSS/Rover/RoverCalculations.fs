@@ -63,7 +63,7 @@ module RoverCalculations =
             calculateOutputVars values (counter-1) (sum+e) cost rover
 
 
-    let calculateDataSize (numberOfSamples:int) (rover:RoverModel) =
+    let calculateDataSize (numberOfSamples:int) (rover:RoverModel) = 
   
         let pixel = rover.horzRes * rover.vertRes
         let bitPerPicture = (int)pixel * rover.colorDepth * rover.numberOfColorChannels
@@ -213,7 +213,6 @@ module RoverCalculations =
     let calculateViewMatrix (pan : float) (tilt : float) (cam:CamVariables) (rover : RoverModel)  =
 
         let panDelta = 
-            //let d = pan - rover.pan.current
             let d = rover.pan.current - pan
             let sign = float (Math.Sign(d))
             let dA = Math.Abs(d)
