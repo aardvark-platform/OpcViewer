@@ -38,16 +38,20 @@ module CooTrafoWrapper =
         extern int LatLonAlt2Xyz(string pcPlanet, double dLat, double dLon, double dAlt, double& pdX, double& pdY, double& pdZ )
 
 module CooTransformation = 
+    open System.IO
     
     let init = 0.0
 
     let initCooTrafo () = 
-        let directory = @".\coo" 
-        let test = @".\coo" 
-        let t = System.IO.Path.GetFullPath(test)
-        Log.line "%A" t
-        let errorCode = CooTrafoWrapper.Init(test, directory)
-        printfn "%A" errorCode
+        let logDir = @".\coo" 
+        let configDir = @".\coo"                 
+        Log.line "[CooTrafo] cootrafo directory %A" (System.IO.Path.GetFullPath(configDir))
+        if (Directory.Exists logDir) && (Directory.Exists configDir) then
+            let errorCode = CooTrafoWrapper.Init(configDir, logDir)
+            if errorCode > 0 then
+                Log.line "[CooTrafo] cootrafo directory %d" errorCode
+        else
+            Log.error "[CooTrafo] init paths %A or %A not found" logDir configDir
 
     let deInitCooTrafo () = 
         CooTrafoWrapper.DeInit()

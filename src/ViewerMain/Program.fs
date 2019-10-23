@@ -17,14 +17,14 @@ let main argv =
     Aardvark.Init()
     Aardium.init()
 
-    //cootrafo testing
-    CooTransformation.initCooTrafo ()
+    ////cootrafo testing
+    //CooTransformation.initCooTrafo ()
     
-    let pos = V3d(10000,1000,10000)
-    let sc = CooTransformation.getLatLonAlt pos Planet.Mars
-    Log.line "altitude: %f" sc.altitude
+    //let pos = V3d(10000,1000,10000)
+    //let sc = CooTransformation.getLatLonAlt pos Planet.Mars
+    //Log.line "altitude: %f" sc.altitude
 
-    CooTransformation.deInitCooTrafo()
+    //CooTransformation.deInitCooTrafo()
 
     use app = new OpenGlApplication()
     //let opcDir = "C:\Users\laura\VRVis\Data\CapeDesire\Surface\Cape_Desire_RGB"
