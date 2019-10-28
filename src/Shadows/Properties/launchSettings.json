@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Shadows": {
+      "commandName": "Project",
+      "commandLineArgs": "opc=c:\\Users\\rnowak\\Desktop\\20190717_VictoriaCrater\\HiRISE_VictoriaCrater_SuperResolution\\"
+    }
+  }
+}
