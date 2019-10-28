@@ -59,7 +59,7 @@ let main argv =
 
     let rotate = argsList.Contains("-rotate")
     
-    let instance =  OpcSelectionViewer.App.app opcDir axisFile rotate |> App.start 
+    let instance =  Shadows.App.app opcDir axisFile rotate |> App.start 
     //let instance = OpcOutlineTest.OutlineApp.appOutlines opcDir |> App.start 
 
     // use can use whatever suave server to start you mutable app. 
