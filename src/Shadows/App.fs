@@ -1,4 +1,4 @@
-﻿namespace OpcSelectionViewer
+﻿namespace Shadows
 
 open System
 open System.IO
@@ -53,10 +53,17 @@ module App =
   let fromCameraStateLean (c : CameraStateLean) : CameraView = 
     CameraView.lookAt c.location (c.location + c.forward) c.sky    
 
+  let updateCamSpeed (c : CameraControllerState) (s: float) =
+    let cState = CameraControllerState.Lens.freeFlyConfig.Set(c, {c.freeFlyConfig with moveSensitivity = s})
+    cState
+        
+    
   let rec update (model : Model) (msg : Message) =   
     match msg with
       | Camera m when model.pickingActive = false -> 
         { model with cameraState = FreeFlyController.update model.cameraState m; }
+      | Message.MoveSensitivity s when model.pickingActive = false ->
+        { model with cameraState = updateCamSpeed model.cameraState s } 
       | Message.KeyDown m ->
         match m with
           | Keys.LeftCtrl -> 
@@ -78,7 +85,7 @@ module App =
             { model with cameraState = model.cameraState |>  updateFreeFlyConfig -0.5 }
           | Keys.Space ->    
             Log.line "[App] saving camstate"
-            model.cameraState.view |> toCameraStateLean |> Serialization.save ".\camstate" |> ignore
+            model.cameraState.view |> toCameraStateLean |> OpcSelectionViewer.Serialization.save ".\camstate" |> ignore
             model
           | Keys.Enter ->
             //let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
@@ -164,19 +171,19 @@ module App =
         m.annotations 
         |> AnnotationApp.viewGrouped near far (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
 
-      let afterFilledPolygonSg = 
-        [
-          m.drawing |> DrawingApp.view near far
-          m |> AxisSg.axisSgs
-        ] 
-        |> Sg.ofList
-        |> Sg.pass afterFilledPolygonRenderPass
+      //let afterFilledPolygonSg = 
+      //  [
+      //    m.drawing |> DrawingApp.view near far
+      //    m |> OpcSelectionViewer.AxisSg.axisSgs
+      //  ] 
+      //  |> Sg.ofList
+      //  |> Sg.pass afterFilledPolygonRenderPass
 
       let scene = 
         [
             opcs
             filledPolygonSg
-            afterFilledPolygonSg
+            //afterFilledPolygonSg
         ]
         |> Sg.ofList
 
@@ -220,6 +227,17 @@ module App =
                 { kind = Stylesheet; name = "spectrum.css";  url = "spectrum.css"}
           ]
 
+      let addGui =
+        let sliderGui =
+          slider { min = 0.0; max = 10.0; step = 0.1 } [clazz "ui inverted green slider"] m.cameraState.freeFlyConfig.moveSensitivity Message.MoveSensitivity
+        let style' = "color: white; font-family:Consolas; min-width:10em"
+        table [clazz "item"] [
+                    tr[][
+                        td[style style'][text "CameraSpeed:    "]
+                        td[style style'][sliderGui]
+                    ]
+         ]
+
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
         | Some "render" ->
@@ -238,16 +256,12 @@ module App =
                 h3[][text "NIOBE"]
                 p[][text "Hold Ctrl-Left to add Point"]
                 p[][text "Press Enter to close Polygon"]
-                //p[][div[][text "VolumeGeneration: "; dropdown { allowEmpty = false; placeholder = "" } [ clazz "ui inverted selection dropdown" ] (m.picking.volumeGenerationOptions |> AMap.map (fun k v -> text v)) m.picking.volumeGeneration PickingAction.SetVolumeGeneration ]] |> UI.map PickingAction
-                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.debugShadowVolume PickingAction.ShowDebugVis "Show Debug Vis"] |> UI.map PickingAction
-                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.useGrouping PickingAction.UseGrouping "Use Grouping"] |> UI.map PickingAction
-                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showOutline PickingAction.ShowOutline "Show Outline"] |> UI.map PickingAction
-                //p[][checkbox [clazz "ui inverted toggle checkbox"] m.picking.showDetailOutline PickingAction.ShowOutlineDetail "Show Outline Detail"] |> UI.map PickingAction
-                //p[][div[][text "Alpha: "; slider { min = 0.0; max = 1.0; step = 0.05 } [clazz "ui inverted blue slider"] m.picking.alpha PickingAction.SetAlpha]] |> UI.map PickingAction
-                //p[][div[][text "Extrusion: "; slider { min = 0.05; max = 500.0; step = 5.0 } [clazz "ui inverted blue slider"] m.picking.extrusionOffset PickingAction.SetExtrusionOffset]] |> UI.map PickingAction
               ]
               div[style "color:white; margin: 5px 15px 5px 5px"][
                 DrawingApp.viewGui m.drawing |> UI.map DrawingAction
+              ]
+              div[style "color:white; margin: 5px 15px 5px 5px"][
+                addGui
               ]
             ]
           )
@@ -268,18 +282,18 @@ module App =
         )
 
   let app dir axisFile (rotate : bool) =
-      Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
+      OpcSelectionViewer.Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
 
       let axis = 
-        axisFile |> Option.map(fun fileName -> AxisFunctions.loadAxis fileName)
+        axisFile |> Option.map(fun fileName -> OpcSelectionViewer.AxisFunctions.loadAxis fileName)
                  |> Option.defaultValue None
 
       let patchHierarchies =
         [ 
           for h in phDirs do
-            yield PatchHierarchy.load Serialization.binarySerializer.Pickle Serialization.binarySerializer.UnPickle (h |> OpcPaths)
+            yield PatchHierarchy.load OpcSelectionViewer.Serialization.binarySerializer.Pickle OpcSelectionViewer.Serialization.binarySerializer.UnPickle (h |> OpcPaths)
         ]    
 
       let box = 
@@ -296,7 +310,7 @@ module App =
 
             let kdtrees = 
                 try 
-                    KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer
+                    KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ OpcSelectionViewer.Serialization.binarySerializer
                 with e -> 
                     Log.warn "omg could not load kd trees. whyy?? %A" e
                     HMap.empty
@@ -317,15 +331,15 @@ module App =
       let restoreCamState : CameraControllerState =
         if File.Exists ".\camstate" then          
           Log.line "[App] restoring camstate"
-          let csLight : CameraStateLean = Serialization.loadAs ".\camstate"
+          let csLight : CameraStateLean = OpcSelectionViewer.Serialization.loadAs ".\camstate"
           { FreeFlyController.initial with view = csLight |> fromCameraStateLean }
         else 
           { FreeFlyController.initial with view = CameraView.lookAt (box.Max) box.Center up; }                    
 
       let camState = restoreCamState
 
-      let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
-      let camState = camState |> Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
+      let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 1.0}
+      let camState = camState |> OpcSelectionViewer.Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
 
       let initialDockConfig = 
         config {
@@ -348,7 +362,7 @@ module App =
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies    
           boundingBox        = box
-          axis               = axis
+          axis               = None
           
           threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
           boxes              = List.empty //kdTrees |> HMap.toList |> List.map fst

@@ -17,6 +17,7 @@ open Rabbyte.Annotation
 
 type Message =
   | Camera           of FreeFlyController.Message
+  | MoveSensitivity  of float
   | KeyUp            of key : Keys
   | KeyDown          of key : Keys  
   | UpdateDockConfig of DockConfig    
