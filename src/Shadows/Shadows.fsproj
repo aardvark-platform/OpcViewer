@@ -8,6 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Shaders\SSAOShader.fs" />
+    <Compile Include="Shaders\SimpleShader.fs" />
+    <Compile Include="Shaders\Precision.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />

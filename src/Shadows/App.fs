@@ -157,9 +157,11 @@ module App =
           |> AMap.toASet
           |> ASet.map(fun info -> Sg.createSingleOpcSg m.opcAttributes.selectedScalar m.pickingActive m.cameraState.view info)
           |> Sg.set
+          //|> Sg.uniform "lightLocation" lightPos
           |> Sg.effect [ 
             toEffect Shader.stableTrafo
-            toEffect DefaultSurfaces.diffuseTexture  
+            //toEffect Precision.Shader.lighting
+            toEffect DefaultSurfaces.diffuseTexture
             toEffect Shader.AttributeShader.falseColorLegend //falseColorLegendGray
             ]
 
