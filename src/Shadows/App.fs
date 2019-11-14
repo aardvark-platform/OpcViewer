@@ -314,7 +314,7 @@ module App =
                 try 
                     KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ OpcSelectionViewer.Serialization.binarySerializer
                 with e -> 
-                    Log.warn "omg could not load kd trees. whyy?? %A" e
+                    Log.warn "Could not load kd trees. %A" e
                     HMap.empty
 
             yield {
@@ -340,7 +340,7 @@ module App =
 
       let camState = restoreCamState
 
-      let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 1.0}
+      let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 4.0}
       let camState = camState |> OpcSelectionViewer.Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
 
       let initialDockConfig = 
