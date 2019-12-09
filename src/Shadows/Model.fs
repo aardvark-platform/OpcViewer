@@ -57,12 +57,14 @@ type Axis = {
 [<DomainType>]
 type Model =
     {
+        debug                : bool
         cameraState          : CameraControllerState
         mainFrustum          : Frustum
         fillMode             : FillMode                                
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy> 
         boundingBox          : Box3d
+        lightPos             : V3d
         axis                 : Option<Axis>
         boxes                : list<Box3d>        
         opcInfos             : hmap<Box3d, OpcData>

@@ -15,6 +15,8 @@ open Aardvark.Rendering.Text
 open Aardvark.UI.Primitives
 open Aardvark.UI.Trafos
 open FShade
+open FShade.Imperative
+open FShade.``Reflection Helpers``
 open Aardvark.Base.Geometry
 open Aardvark.Geometry
 open ``F# Sg``
@@ -28,6 +30,7 @@ open Rabbyte.Annotation
 module App =   
   open Aardvark.Application
   open Aardvark.VRVis.Opc
+  open Aardvark.Application.Slim
   
   let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
     let s' = cam.freeFlyConfig.moveSensitivity + incr
@@ -143,8 +146,74 @@ module App =
       | AnnotationAction msg -> 
             { model with annotations = AnnotationApp.update model.annotations msg }
       | _ -> model
+
+
+  let sg (model : MModel)
+         (opc   : ISg<PickingAction>) 
+         (runtime : Aardvark.Rendering.GL.Runtime) =
+    let shadowMapSize = Mod.init (V2i(4096, 4096))
+
+    let shadowCam = CameraView.lookAt (V3d.III * 2.0) V3d.Zero V3d.OOI
+    let shadowProj = Frustum.perspective 60.0 0.1 100.0 1.0
+    let camView = model.cameraState.view
+    
+    //let initialView = CameraView.lookAt (V3d(9.3, 9.9, 8.6)) V3d.Zero V3d.OOI
+    //let view = initialView |> DefaultCameraController.control win.Mouse win.Keyboard win.Time
+    // let proj = win.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 1000.0 (float s.X / float s.Y))
+
+    // Sg.projTrafo (Frustum.ortho (Box3d.Unit) |> Frustum.projTrafo |> Mod.constant)
+    let proj = Frustum.ortho (Box3d.Unit) |> Mod.constant
+
+    //let angle = Mod.init 0.0
+    let rotation =
+        controller {
+            let! dt = differentiate Mod.time
+            return fun f -> f + dt.TotalSeconds * 0.6
+        }
+  
+    let angle = AFun.integrate rotation 0.0
+    let lightSpaceView =
+        angle |> Mod.map (fun angle -> Trafo3d.RotationZ(angle) * (shadowCam |> CameraView.viewTrafo))
+    let lightSpaceViewProjTrafo = lightSpaceView |> Mod.map (fun view -> view * (shadowProj |> Frustum.projTrafo))
+    let lightPos = lightSpaceView |> Mod.map (fun t -> t.GetViewPosition())
+
+
+    let eff = Effect.ofFunction Precision.Shader.trafo
+    Helpers.printShader eff
+    
+
+    let sceneSg (fragmentShader : list<FShadeEffect>) =
+      opc
+        |> Sg.cullMode (Mod.constant CullMode.None)
+        |> Sg.effect ( (Precision.Shader.trafo |> toEffect) :: fragmentShader )
+        |> Sg.uniform "LightViewMatrix" lightSpaceViewProjTrafo
+        |> Sg.trafo ( Trafo3d.Translation(V3d(0.0,0.0,0.3)) |> Mod.constant )
+
+
+
+    let signature = 
+        runtime.CreateFramebufferSignature [
+            DefaultSemantic.Depth, { format = RenderbufferFormat.DepthComponent32; samples = 1 }
+        ]
+ 
+    let shadowDepth =
+        sceneSg [ DefaultSurfaces.vertexColor |> toEffect ]
+            |> Sg.viewTrafo lightSpaceView
+            |> Sg.projTrafo (shadowProj |> Frustum.projTrafo |> Mod.constant)
+            |> Sg.compile runtime signature   
+            |> RenderTask.renderToDepth shadowMapSize
+
+    sceneSg [ Precision.Shader.shadowShader |> toEffect; Precision.Shader.lighting |> toEffect ]
+        |> Sg.uniform "lightLocation" lightPos
+        |> Sg.texture DefaultSemantic.DiffuseColorTexture shadowDepth
+        |> Sg.viewTrafo (camView |> Mod.map CameraView.viewTrafo)
+        |> Sg.projTrafo (proj |> Mod.map Frustum.projTrafo)
+
+    
+
+
                     
-  let view (m : MModel) =
+  let view (runtime : Aardvark.Rendering.GL.Runtime) (m : MModel) =
                                              
       let box = 
         m.patchHierarchies
@@ -152,42 +221,34 @@ module App =
           |> List.map(fun x -> x.info.LocalBoundingBox)
           |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
       
+      let tmpOpc = m.opcInfos
+
       let opcs = 
-        m.opcInfos
+        tmpOpc
           |> AMap.toASet
           |> ASet.map(fun info -> Sg.createSingleOpcSg m.opcAttributes.selectedScalar m.pickingActive m.cameraState.view info)
           |> Sg.set
-          //|> Sg.uniform "lightLocation" lightPos
-          |> Sg.effect [ 
-            toEffect Shader.stableTrafo
-            //toEffect Precision.Shader.lighting
-            toEffect DefaultSurfaces.diffuseTexture
-            toEffect Shader.AttributeShader.falseColorLegend //falseColorLegendGray
+          |> Sg.uniform "lightLocation" m.lightPos
+          //|> Sg.uniform "LightDir" (Mod.constant (-1.0 * V3d.OOI))
+          |> Sg.effect [
+            TestShader.simpleOpcColourShader
             ]
+          //|> Sg.effect [ 
+          //  toEffect Shader.stableTrafo
+          //  toEffect DefaultSurfaces.diffuseTexture
+          //  ]
 
       let near = m.mainFrustum |> Mod.map(fun x -> x.near)
       let far = m.mainFrustum |> Mod.map(fun x -> x.far)
 
 
-      let filledPolygonSg, afterFilledPolygonRenderPass = 
-        m.annotations 
-        |> AnnotationApp.viewGrouped near far (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
-
-      //let afterFilledPolygonSg = 
-      //  [
-      //    m.drawing |> DrawingApp.view near far
-      //    m |> OpcSelectionViewer.AxisSg.axisSgs
-      //  ] 
-      //  |> Sg.ofList
-      //  |> Sg.pass afterFilledPolygonRenderPass
-
-      let scene = 
-        [
-            opcs
-            filledPolygonSg
-            //afterFilledPolygonSg
-        ]
-        |> Sg.ofList
+      let eff = Effect.ofFunction Precision.Shader.trafo
+      Helpers.printShader eff
+      let scene = opcs //sg m opcs runtime
+        //[
+        //    opcs
+        //]
+        //|> Sg.ofList
 
       let textOverlays (cv : IMod<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
@@ -283,8 +344,12 @@ module App =
               onLayoutChanged UpdateDockConfig ]
         )
 
-  let app dir axisFile (rotate : bool) =
+  let app (debug : bool) (glApp : OpenGlApplication) (dir : string) 
+          (axisFile : option<string>) (rotate : bool) =
+
       OpcSelectionViewer.Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
+
+      let runtime = glApp.Runtime
 
       let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
 
@@ -336,7 +401,9 @@ module App =
           let csLight : CameraStateLean = OpcSelectionViewer.Serialization.loadAs ".\camstate"
           { FreeFlyController.initial with view = csLight |> fromCameraStateLean }
         else 
-          { FreeFlyController.initial with view = CameraView.lookAt (box.Max) box.Center up; }                    
+          { FreeFlyController.initial with view = CameraView.lookAt (box.Max) box.Center up; }  
+      
+      let lightPos = box.Center + V3d(box.Size.X, box.Size.Y, box.Size.Z)
 
       let camState = restoreCamState
 
@@ -344,7 +411,7 @@ module App =
       let camState = camState |> OpcSelectionViewer.Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
 
       let initialDockConfig = 
-        config {
+        config { 
           content (
               horizontal 10.0 [
                   element { id "render"; title "Render View"; weight 7.0 }
@@ -359,11 +426,13 @@ module App =
       let initialModel : Model = 
 
         { 
+          debug              = debug
           cameraState        = camState
           mainFrustum        = Frustum.perspective 60.0 0.01 1000.0 1.0
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies    
           boundingBox        = box
+          lightPos           = lightPos
           axis               = None
           
           threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
@@ -382,7 +451,7 @@ module App =
       {
           initial = initialModel             
           update = update
-          view   = view          
+          view   = view runtime         
           threads = fun m -> m.threads
           unpersist = Unpersist.instance<Model, MModel>
       }
