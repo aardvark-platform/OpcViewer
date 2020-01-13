@@ -18,7 +18,9 @@ open Rabbyte.Drawing
 open ViewPlanner.Rover
 
 module Sg =
- 
+  let sphereRadius = 0.05
+
+
    //---RENDERVIEWS
   let createView (sg:ISg<Action>) (cam:IMod<CameraType>) (rover:MRoverModel) = 
       
@@ -167,6 +169,8 @@ module Sg =
             lineBetweenPoints arr color 2.0 shift
         )
 
+  let lineLength = 1.0
+
   let cameraAxes  (view:IMod<CameraView>) (rover:MRoverModel) = 
    
     let pos = Mod.map (fun (c:CameraView) -> c.Location) view
@@ -175,15 +179,15 @@ module Sg =
     let shift = Mod.map(fun p -> Trafo3d.Translation(p)) pos
 
     let rightAxis = 
-        let list = lineList pos right 5.0
+        let list = lineList pos right lineLength
         axisVisualisation list C4b.White shift
 
     let forwardAxis = 
-        let list = lineList pos forward 10.0
+        let list = lineList pos forward lineLength
         axisVisualisation list C4b.Green shift
 
     let upAxis = 
-        let list = lineList pos rover.up 5.0
+        let list = lineList pos rover.up lineLength
         axisVisualisation list C4b.Blue shift
     
     let set:ISg<PickingAction> = 
@@ -243,7 +247,7 @@ module Sg =
 
     alist {
         let placement = vp.placement
-        let target = sphereVisualisation C4b.Magenta 0.2 placement.target
+        let target = sphereVisualisation C4b.Magenta 0.01 placement.target
 
         let cam = vp.cameraVariables
         let axes = cam |> AList.map (fun a -> cameraAxes a.camera.view r)
@@ -256,8 +260,8 @@ module Sg =
                 activeFrustum active f.frustum
                 )
 
-        let positions = cam |> AList.map (fun p -> sphereVisualisation C4b.Red 0.2 p.position)
-        let projPoints = vp.projPoints |> AList.map (fun pr -> sphereVisualisation C4b.DarkYellow 0.1 (Mod.constant pr) )
+        let positions = cam |> AList.map (fun p -> sphereVisualisation C4b.Red sphereRadius p.position)
+        let projPoints = vp.projPoints |> AList.map (fun pr -> sphereVisualisation C4b.DarkYellow sphereRadius (Mod.constant pr) )
 
         for a in axes do
           yield a
@@ -284,12 +288,14 @@ module Sg =
     let rover = m.rover
     let placements = rover.positionsList
     
+    
+
     let sgs = 
         alist{
             for p in placements do
      
-            let p1 = sphereVisualisation C4b.Red 0.2 p.position
-            let p2 = sphereVisualisation C4b.Magenta 0.2 p.target
+            let p1 = sphereVisualisation C4b.Red sphereRadius p.position
+            let p2 = sphereVisualisation C4b.Magenta sphereRadius p.target
 
             let! po = p.position
             let! t = p.target
@@ -320,8 +326,8 @@ module Sg =
         | true, None -> yield draw
         | true, Some placement -> 
             
-            let p1 = sphereVisualisation C4b.Red 0.2 placement.position
-            let p2 = sphereVisualisation C4b.Magenta 0.2 placement.target
+            let p1 = sphereVisualisation C4b.Red sphereRadius placement.position
+            let p2 = sphereVisualisation C4b.Magenta sphereRadius placement.target
 
             yield p1
             yield p2
