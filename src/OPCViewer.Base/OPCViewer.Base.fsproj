@@ -19,6 +19,8 @@
     <Compile Include="Picking\IntersectionController.fs" />
     <Compile Include="Picking\Picking.fs" />
     <Compile Include="CooTrafo\CooTrafo.fs" />
+    <Compile Include="CrackDetection-Model.fs" />
+    <Compile Include="CrackDetection.fs" />
     <Compile Include="FalseColorLegend-Model.fs" />
     <Compile Include="FalseColorLegendApp.fs" />
     <Compile Include="OPCAttributes-Model.fs" />

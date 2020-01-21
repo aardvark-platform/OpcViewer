@@ -61,6 +61,8 @@ module App =
         match m with
           | Keys.LeftCtrl -> 
             { model with pickingActive = true }
+          | Keys.F1 -> { model with picking = { model.picking with interaction = Interactions.DrawAnnotation }}
+          | Keys.F2 -> { model with picking = { model.picking with interaction = Interactions.PickCrackDetection }}
           | _ -> model
       | Message.KeyUp m ->
         match m with
@@ -86,9 +88,16 @@ module App =
             //let axis = AxisFunctions.calcDebuggingPosition model.picking.intersectionPoints model.axis
             //{ model with axis = axis; drawing = updatedDrawing }
 
-            let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
-            let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
-            { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
+            match model.picking.interaction with
+              | Interactions.DrawAnnotation ->
+                    let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
+                    let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
+                    { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
+              | Interactions.PickCrackDetection -> 
+                    let crackd = CrackDetection.update model.crackDetection (FinishCrack)
+                    { model with crackDetection = crackd }
+              | _-> model
+              
           //| Keys.T ->
           //  let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
           //  //let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
@@ -98,9 +107,10 @@ module App =
           | _ -> model
       | PickingAction msg -> 
         // TODO...refactor this!
-        let pickingModel, drawingModel =
+        //let pickingModel, drawingModel =
+
           match msg with
-          | HitSurface (a,b) -> //,_) -> 
+          | HitSurface (a,b) | HitSurfaceWithTexCoords (a,b) -> //,_) -> 
             //match model.axis with
             //| Some axis -> 
             //  let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
@@ -117,16 +127,32 @@ module App =
                         fray.Ray.GetPointOnRay closest
                     )
                 )
-
-            let updatePickM = PickingApp.update model.picking (HitSurface (a,b))
-            let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
-            let updatedDrawM =
-                match lastPick with
-                | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, Some hitF))
-                | None -> model.drawing
-            updatePickM, updatedDrawM
-          | _ -> PickingApp.update model.picking msg, model.drawing
-        { model with picking = pickingModel; drawing = drawingModel }
+            
+            match model.picking.interaction with
+              | Interactions.DrawAnnotation ->
+                let updatePickM = PickingApp.update model.picking (HitSurface (a,b))
+                let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
+                let updatedDrawM =
+                    match lastPick with
+                    | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, Some hitF))
+                    | None -> model.drawing
+                { model with picking = updatePickM; drawing = updatedDrawM }
+              | Interactions.PickCrackDetection -> 
+                let updatePickM = PickingApp.update model.picking (HitSurfaceWithTexCoords (a,b))
+                let lastPick   = updatePickM.intersectionPoints |> PList.tryFirst
+                let crackDetection = 
+                    match lastPick with
+                        | Some p -> CrackDetection.update model.crackDetection (AddCrackPoint (p,updatePickM.texCoords,updatePickM.attributeValue))
+                        | None -> model.crackDetection 
+                let updatedDrawM =
+                    match lastPick with
+                    | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, Some hitF))
+                    | None -> model.drawing
+                { model with picking = updatePickM; crackDetection = crackDetection; drawing = updatedDrawM }
+              | _-> model
+            
+          | _ -> { model with picking = (PickingApp.update model.picking msg); drawing = model.drawing }  
+        
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | AttributeAction msg ->
@@ -138,17 +164,18 @@ module App =
       | _ -> model
                     
   let view (m : MModel) =
-                                             
       let box = 
         m.patchHierarchies
           |> List.map(fun x -> x.tree |> QTree.getRoot) 
           |> List.map(fun x -> x.info.LocalBoundingBox)
           |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
       
+      let interaction = m.picking.interaction
+
       let opcs = 
         m.opcInfos
           |> AMap.toASet
-          |> ASet.map(fun info -> Sg.createSingleOpcSg m.opcAttributes.selectedScalar m.pickingActive m.cameraState.view info)
+          |> ASet.map(fun info -> Sg.createSingleOpcSg m.opcAttributes.selectedScalar m.pickingActive interaction m.cameraState.view info)
           |> Sg.set
           |> Sg.effect [ 
             toEffect Shader.stableTrafo
@@ -172,11 +199,14 @@ module App =
         |> Sg.ofList
         |> Sg.pass afterFilledPolygonRenderPass
 
+      let cracks = CrackDetection.drawCracks m.crackDetection near far (Mod.constant 10.0) (Mod.constant 0.1)
+
       let scene = 
         [
             opcs
             filledPolygonSg
             afterFilledPolygonSg
+            cracks
         ]
         |> Sg.ofList
 
@@ -351,9 +381,11 @@ module App =
           picking            = { PickingModel.initial with pickingInfos = opcInfos }
           dockConfig         = initialDockConfig       
           
+          //interaction        = Interactions.DrawAnnotation
           opcAttributes      = SurfaceAttributes.initModel dir
           drawing            = DrawingModel.initial
           annotations        = AnnotationModel.initial
+          crackDetection     = CrackDetection.initModel
         }
 
       {

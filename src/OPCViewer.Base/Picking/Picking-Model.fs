@@ -13,8 +13,15 @@ type AxisPointInfo = {
   midPoint     : V3d
 }
 
+type Interactions =
+    | NoAction           = 0
+    | DrawAnnotation     = 1
+    | PickCrackDetection = 2  
+
+
 type PickingAction = 
   | HitSurface of Box3d*SceneHit //*(V3d -> V3d)
+  | HitSurfaceWithTexCoords of Box3d*SceneHit
   | RemoveLastPoint
   | ClearPoints
 
@@ -38,6 +45,9 @@ type PickingModel = {
   pickingInfos         : hmap<Box3d, OpcData>
   hitPointsInfo        : hmap<V3d, Box3d>
   intersectionPoints   : plist<V3d>                 // TODO...change to LastIntersectionPoint : Option<V3d> 
+  interaction          : Interactions
+  texCoords            : V2f
+  attributeValue       : float
 }  
 
 module PickingModel =
@@ -47,4 +57,7 @@ module PickingModel =
       pickingInfos       = HMap.empty
       hitPointsInfo      = HMap.empty
       intersectionPoints = PList.empty
+      interaction        = Interactions.DrawAnnotation
+      texCoords          = V2f.II
+      attributeValue     = 0.0
     }

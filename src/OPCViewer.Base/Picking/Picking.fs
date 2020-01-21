@@ -13,6 +13,8 @@ module PickingApp =
     match msg with
     | HitSurface (box, sceneHit) -> 
       Intersect.perform model sceneHit box
+    | HitSurfaceWithTexCoords (box, sceneHit) -> 
+      Intersect.performTexCoords model sceneHit box
     | RemoveLastPoint ->
       let points, infos = 
         match model.intersectionPoints.AsList with

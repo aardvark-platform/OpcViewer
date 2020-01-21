@@ -10,6 +10,7 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.Application
 
+open OpcViewer.Base
 open OpcViewer.Base.Picking
 open OpcViewer.Base.Attributes
 open Rabbyte.Drawing
@@ -24,6 +25,11 @@ type Message =
   | AttributeAction  of AttributeAction
   | DrawingAction    of DrawingAction
   | AnnotationAction of AnnotationAction
+
+//type Interactions =
+//    | DrawAnnotation     = 0
+//    | PickCrackDetection = 1  
+
 
 type CameraStateLean = 
   { 
@@ -70,7 +76,9 @@ type Model =
         picking              : PickingModel
         pickingActive        : bool
 
+        //interaction          : Interactions
         opcAttributes        : AttributeModel
         drawing              : DrawingModel
         annotations          : AnnotationModel
+        crackDetection       : CrackDetectionModel
     }  

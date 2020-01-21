@@ -152,7 +152,7 @@ module Sg =
   let pickable' (pick :IMod<Pickable>) (sg: ISg) =
     Sg.PickableApplicator (pick, Mod.constant sg)
 
-  let opcSg loadedHierarchies (selectedScalar:IMod<Option<MScalarLayer>>) (picking : IMod<bool>) (bb : Box3d) = 
+  let opcSg loadedHierarchies (selectedScalar:IMod<Option<MScalarLayer>>) (picking : IMod<bool>)  (interaction:Interactions) (bb : Box3d) = 
     
     let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
     let sg = 
@@ -172,7 +172,8 @@ module Sg =
       adaptive {
        // let! bb = opcData.globalBB
         return { shape = PickShape.Box bb; trafo = Trafo3d.Identity }
-      }       
+      } 
+      
     
     sg    
       |> addAttributeFalsecolorMappingParameters selectedScalar
@@ -184,7 +185,12 @@ module Sg =
               let intersect = picking |> Mod.force
               if intersect then              
                 Log.line "hit an opc? %A" bb
-                true, Seq.ofList[(HitSurface (bb,sceneHit))] //, fun a -> a))]
+                let pickingAction = 
+                    match interaction with
+                     | Interactions.DrawAnnotation -> (HitSurface (bb,sceneHit))
+                     | Interactions.PickCrackDetection -> (HitSurfaceWithTexCoords (bb,sceneHit))
+                     | _ -> (HitSurface (bb,sceneHit))
+                true, Seq.ofList[pickingAction] //, fun a -> a))] //(HitSurface (bb,sceneHit))
               else 
                 false, Seq.ofList[]
           )      
@@ -249,7 +255,7 @@ module Sg =
         |> Sg.ofList        
     sg
     
-  let createSingleOpcSg (selectedScalar:IMod<Option<MScalarLayer>>) (picking : IMod<bool>) (view : IMod<CameraView>) (data : Box3d*MOpcData) =
+  let createSingleOpcSg (selectedScalar:IMod<Option<MScalarLayer>>) (picking : IMod<bool>) (interaction:IMod<Interactions>) (view : IMod<CameraView>) (data : Box3d*MOpcData) =
     adaptive {
         let boundingBox, opcData = data
     
@@ -275,10 +281,10 @@ module Sg =
         //    |> Sg.effect [ 
         //      toEffect Shader.stableTrafo
         //      toEffect DefaultSurfaces.vertexColor       
-        //    ]  
-
+        //    ]
+        let! intera = interaction
         return [
-          opcSg loadedPatches selectedScalar picking boundingBox
+          opcSg loadedPatches selectedScalar picking intera boundingBox
           //boxSg  loadedPatches m boundingBox;
           textSg loadedPatches view
           //globalBB

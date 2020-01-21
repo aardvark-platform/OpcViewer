@@ -575,10 +575,11 @@ module App =
     
     
     let view (m : MModel) =
+        let interaction = m.picking.interaction
         let opcs = 
             m.opcInfos
                 |> AMap.toASet
-                |> ASet.map(fun info -> Sg.createSingleOpcSg (Mod.constant None) m.pickingActive m.cameraState.view info)
+                |> ASet.map(fun info -> Sg.createSingleOpcSg (Mod.constant None) m.pickingActive interaction m.cameraState.view info)
                 |> Sg.set
                 |> Sg.effect [ 
                   toEffect Shader.stableTrafo
