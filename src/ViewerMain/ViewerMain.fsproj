@@ -43,5 +43,10 @@
     <ProjectReference Include="..\OPCViewer.Base\OPCViewer.Base.fsproj" />
     <ProjectReference Include="..\Rabbyte\Rabbyte.fsproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="CSharpUtils">
+      <HintPath>..\CSharpUtils\bin\Debug\netcoreapp2.0\CSharpUtils.dll</HintPath>
+    </Reference>
+  </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

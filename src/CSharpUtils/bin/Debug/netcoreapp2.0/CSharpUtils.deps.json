@@ -1,0 +1,158 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v2.0",
+    "signature": "aade4cc62f0df7141f9a702e059a973142ae13ab"
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v2.0": {
+      "CSharpUtils/1.0.0": {
+        "dependencies": {
+          "Aardvark.Base": "4.5.11",
+          "Aardvark.Base.Telemetry": "4.5.11",
+          "DevILSharp": "0.2.5",
+          "FSharp.Core": "4.6.2",
+          "System.Collections.Immutable": "1.5.0",
+          "Uncodium.Eigensystems": "1.0.2"
+        },
+        "runtime": {
+          "CSharpUtils.dll": {}
+        }
+      },
+      "Aardvark.Base/4.5.11": {
+        "dependencies": {
+          "Aardvark.Base.Telemetry": "4.5.11",
+          "DevILSharp": "0.2.5",
+          "System.Collections.Immutable": "1.5.0"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Aardvark.Base.dll": {}
+        }
+      },
+      "Aardvark.Base.Telemetry/4.5.11": {
+        "runtime": {
+          "lib/netstandard2.0/Aardvark.Base.Telemetry.dll": {}
+        }
+      },
+      "DevILSharp/0.2.5": {
+        "dependencies": {
+          "FSharp.Core": "4.6.2"
+        },
+        "runtime": {
+          "lib/netstandard2.0/DevILSharp.dll": {}
+        }
+      },
+      "FSharp.Core/4.6.2": {
+        "runtime": {
+          "lib/netstandard1.6/FSharp.Core.dll": {}
+        },
+        "resources": {
+          "lib/netstandard1.6/cs/FSharp.Core.resources.dll": {
+            "locale": "cs"
+          },
+          "lib/netstandard1.6/de/FSharp.Core.resources.dll": {
+            "locale": "de"
+          },
+          "lib/netstandard1.6/en/FSharp.Core.resources.dll": {
+            "locale": "en"
+          },
+          "lib/netstandard1.6/es/FSharp.Core.resources.dll": {
+            "locale": "es"
+          },
+          "lib/netstandard1.6/fr/FSharp.Core.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/netstandard1.6/it/FSharp.Core.resources.dll": {
+            "locale": "it"
+          },
+          "lib/netstandard1.6/ja/FSharp.Core.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/netstandard1.6/ko/FSharp.Core.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/netstandard1.6/pl/FSharp.Core.resources.dll": {
+            "locale": "pl"
+          },
+          "lib/netstandard1.6/pt-BR/FSharp.Core.resources.dll": {
+            "locale": "pt-BR"
+          },
+          "lib/netstandard1.6/ru/FSharp.Core.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/netstandard1.6/tr/FSharp.Core.resources.dll": {
+            "locale": "tr"
+          },
+          "lib/netstandard1.6/zh-Hans/FSharp.Core.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/netstandard1.6/zh-Hant/FSharp.Core.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "System.Collections.Immutable/1.5.0": {
+        "runtime": {
+          "lib/netstandard2.0/System.Collections.Immutable.dll": {}
+        }
+      },
+      "Uncodium.Eigensystems/1.0.2": {
+        "dependencies": {
+          "Aardvark.Base": "4.5.11"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Uncodium.Eigensystems.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "CSharpUtils/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Aardvark.Base/4.5.11": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-svSG30Jq6a91haSqR/sivpBzEeWMo+M+x9F25YEHC5r6YKEMn8wPp3QaKjcSAQQ4XZ0ZLxjmq3vXfi2nNdMegA==",
+      "path": "aardvark.base/4.5.11",
+      "hashPath": "aardvark.base.4.5.11.nupkg.sha512"
+    },
+    "Aardvark.Base.Telemetry/4.5.11": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-CEUWmO+c+aqfn3PpURw51zRBmxQAQwO4H5z7N0+w0hY345BDD6Agt4KeFsjizGEDJ57ZGXxz3ZD2PEctGS8Phw==",
+      "path": "aardvark.base.telemetry/4.5.11",
+      "hashPath": "aardvark.base.telemetry.4.5.11.nupkg.sha512"
+    },
+    "DevILSharp/0.2.5": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ppARINoNQUVvRLaxwjJQouVOeLv3E1lftgaOWee3NStg1NJ9fP6V2hN/f6dPrmqAo3yO6s9pA8uc+7Xh8GUe6A==",
+      "path": "devilsharp/0.2.5",
+      "hashPath": "devilsharp.0.2.5.nupkg.sha512"
+    },
+    "FSharp.Core/4.6.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-LKE5pmENO+YxcMI2tNEPK22SpOBtLdWjd/3pDkBC/L8cXM+We99P9kyoyY2aT85o8i7Xtt4SQJnUhMg7klm3tQ==",
+      "path": "fsharp.core/4.6.2",
+      "hashPath": "fsharp.core.4.6.2.nupkg.sha512"
+    },
+    "System.Collections.Immutable/1.5.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-erLSnZLBCA8EKIE2bKtXynjWBWSoMlmCFrOOYN+sPKCeYd3oGj9h8hqRPODtsRlPANkOW7L8tEQlEadHbUXC6A==",
+      "path": "system.collections.immutable/1.5.0",
+      "hashPath": "system.collections.immutable.1.5.0.nupkg.sha512"
+    },
+    "Uncodium.Eigensystems/1.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hOunpwu3d69JRduYx6sop7cs3xBmQwYfwdK40sTB2l756GMXhKlo1/g2lWcRFgTzHATkso0Sl7URtjEfscwjnw==",
+      "path": "uncodium.eigensystems/1.0.2",
+      "hashPath": "uncodium.eigensystems.1.0.2.nupkg.sha512"
+    }
+  }
+}
