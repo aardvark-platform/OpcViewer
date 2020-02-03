@@ -27,8 +27,8 @@ nuget Aardvark.UI.Primitives                ~> 5.0.0-prerelease
 
 nuget Adaptify.MSBuild                      ~> 0.0.10
 
-nuget Aardium                               ~> 1.0.21
-nuget Uncodium.Eigensystems                 ~> 1.0.1
+nuget Aardium                               ~> 1.0.27
+nuget Uncodium.Eigensystems                 ~> 1.1.0-prerelease0001
 
 nuget FsPickler                             ~> 5.2.2
 nuget FsPickler.Json                        ~> 5.2.2

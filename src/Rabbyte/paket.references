@@ -10,9 +10,10 @@ Aardvark.Application.Slim.GL
 Aardvark.SceneGraph
 Aardvark.SceneGraph.IO
 Aardvark.SceneGraph.Opc
-Aardvark.Compiler.DomainTypes.MSBuild
 Aardvark.Geometry.Intersection
 Aardvark.Geometry.PolyMesh
+
+Adaptify.MSBuild
 
 FsPickler
 FsPickler.Json
