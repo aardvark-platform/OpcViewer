@@ -1,7 +1,7 @@
-﻿namespace Rabbyte.Annotation
+namespace Rabbyte.Annotation
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.UI
@@ -31,19 +31,19 @@ module StencilAreaMasking =
     let private maskSG maskPass sg = 
         sg
         |> Sg.pass maskPass
-        |> Sg.stencilMode (Mod.constant writeZFail)
-        |> Sg.cullMode (Mod.constant CullMode.None)
+        |> Sg.stencilMode (AVal.constant writeZFail)
+        |> Sg.cullMode (AVal.constant CullMode.None)
         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
 
     let private fillSG areaPass sg =
         sg
         |> Sg.pass areaPass
-        |> Sg.stencilMode (Mod.constant readMaskAndReset)
-        //|> Sg.cullMode (Mod.constant CullMode.CounterClockwise)  // for zpass -> backface-culling
-        //|> Sg.depthTest (Mod.constant DepthTestMode.Less)        // for zpass -> active depth-test
-        |> Sg.cullMode (Mod.constant CullMode.None)
-        |> Sg.depthTest (Mod.constant DepthTestMode.None)
-        |> Sg.blendMode (Mod.constant BlendMode.Blend)
+        |> Sg.stencilMode (AVal.constant readMaskAndReset)
+        //|> Sg.cullMode (AVal.constant CullMode.CounterClockwise)  // for zpass -> backface-culling
+        //|> Sg.depthTest (AVal.constant DepthTestMode.Less)        // for zpass -> active depth-test
+        |> Sg.cullMode (AVal.constant CullMode.None)
+        |> Sg.depthTest (AVal.constant DepthTestMode.None)
+        |> Sg.blendMode (AVal.constant BlendMode.Blend)
         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
 
     let stencilArea (pass1: RenderPass) (pass2: RenderPass) sg1 sg2 =
@@ -55,7 +55,7 @@ module StencilAreaMasking =
     let stencilArea' (pass1: RenderPass) (pass2: RenderPass) sg=
         stencilArea pass1 pass2 sg sg
 
-    let stencilAreaGrouped (pass1: RenderPass) (pass2: RenderPass) (color: IMod<V4f>) sg =
+    let stencilAreaGrouped (pass1: RenderPass) (pass2: RenderPass) (color: aval<V4f>) sg =
 
         let fullscreenSg =     
           Aardvark.SceneGraph.SgPrimitives.Sg.fullScreenQuad
@@ -69,10 +69,10 @@ module ClippingVolume =
     
     open OpcViewer.Base
 
-    let private createPlaneFittedExtrusionVolume (points: plist<V3d>) extrusionOffset = 
+    let private createPlaneFittedExtrusionVolume (points: IndexList<V3d>) extrusionOffset = 
         let plane = PlaneFitting.planeFit points
         let extrudeNormal = plane.Normal
-        let projPointsOnPlane = points |> PList.map(plane.Project) |> PList.toList
+        let projPointsOnPlane = points |> IndexList.map(plane.Project) |> IndexList.toList
 
         // Top and Bottom triangle-fan startPoint
         let startPoint = projPointsOnPlane |> List.head
@@ -102,45 +102,45 @@ module ClippingVolume =
                 ]
             ) |> List.concat
 
-    let planeFittedClippingVolume (colorAlpha: IMod<V4f>) (extrusionOffset: IMod<float>) (points: alist<V3d>) =
+    let planeFittedClippingVolume (colorAlpha: aval<V4f>) (extrusionOffset: aval<float>) (points: alist<V3d>) =
 
         let generatePolygonTriangles (extrusionOffset : float) (points:alist<V3d>) =
             let shiftAndPosAndCol =
                 points 
                 |> AList.toMod
-                |> Mod.bind(fun x -> 
+                |> AVal.bind(fun x -> 
                   // increase Precision
-                  let shift = x |> PList.tryAt 0 |> Option.defaultValue V3d.Zero
-                  let shiftedPoints = x |> PList.toSeq |> Seq.map (fun (y:V3d) -> (y-shift)) |> PList.ofSeq
+                  let shift = x |> IndexList.tryAt 0 |> Option.defaultValue V3d.Zero
+                  let shiftedPoints = x |> IndexList.toSeq |> Seq.map (fun (y:V3d) -> (y-shift)) |> IndexList.ofSeq
 
                   let triangles = createPlaneFittedExtrusionVolume shiftedPoints extrusionOffset
                   let pos = triangles |> Seq.collect (fun t -> [| V3f t.P0; V3f t.P1; V3f t.P2 |]) |> Seq.toArray
-                  colorAlpha |> Mod.map (fun cc -> shift, pos, cc))
+                  colorAlpha |> AVal.map (fun cc -> shift, pos, cc))
 
             Sg.draw IndexedGeometryMode.TriangleList
-            |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.map (fun (_,p,_) -> p) shiftAndPosAndCol)
-            |> Sg.vertexBufferValue DefaultSemantic.Colors (Mod.map (fun (_,_,c) -> c) shiftAndPosAndCol)
-            |> Sg.translate' (Mod.map (fun (s,_,_) -> s) shiftAndPosAndCol)
+            |> Sg.vertexAttribute DefaultSemantic.Positions (AVal.map (fun (_,p,_) -> p) shiftAndPosAndCol)
+            |> Sg.vertexBufferValue DefaultSemantic.Colors (AVal.map (fun (_,_,c) -> c) shiftAndPosAndCol)
+            |> Sg.translate' (AVal.map (fun (s,_,_) -> s) shiftAndPosAndCol)
 
-        let sg = extrusionOffset |> Mod.map (fun o -> generatePolygonTriangles o points) 
+        let sg = extrusionOffset |> AVal.map (fun o -> generatePolygonTriangles o points) 
   
-        sg |> Mod.toASet |> Sg.set
+        sg |> AVal.toASet |> Sg.set
 
-    let clippingVolume (colorAlpha: IMod<V4f>) (extrusionOffset: IMod<float>) (creation: IMod<ClippingVolumeType>) (points: alist<V3d>) = 
+    let clippingVolume (colorAlpha: aval<V4f>) (extrusionOffset: aval<float>) (creation: aval<ClippingVolumeType>) (points: alist<V3d>) = 
         
-        let offsetAndCreation = Mod.map2 (fun o c -> o,c) extrusionOffset creation
+        let offsetAndCreation = AVal.map2 (fun o c -> o,c) extrusionOffset creation
         
         points 
         |> AList.toMod
-        |> Mod.bind (fun pxs -> 
-            offsetAndCreation |> Mod.map(fun (extOff, creation) -> 
+        |> AVal.bind (fun pxs -> 
+            offsetAndCreation |> AVal.map(fun (extOff, creation) -> 
           
                 // increase Precision
                 let shift = 
-                    pxs |> PList.tryFirst |> Option.defaultValue V3d.Zero
+                    pxs |> IndexList.tryFirst |> Option.defaultValue V3d.Zero
 
                 let shiftsPoints p =
-                    p |> PList.map (fun (x:V3d) -> V3f(x-shift)) |> PList.toArray
+                    p |> IndexList.map (fun (x:V3d) -> V3f(x-shift)) |> IndexList.toArray
 
                 let pointsF = 
                     shiftsPoints pxs |> Array.skip 1 // undo closing polygon (duplicates not needed) // TODO CHECK THIS!
@@ -210,13 +210,13 @@ module ClippingVolume =
                     indices.ToArray()
 
                 Sg.draw IndexedGeometryMode.TriangleList
-                |> Sg.vertexAttribute DefaultSemantic.Positions (Mod.constant vertices) 
+                |> Sg.vertexAttribute DefaultSemantic.Positions (AVal.constant vertices) 
                 |> Sg.vertexBufferValue DefaultSemantic.Colors colorAlpha
-                |> Sg.index (Mod.constant indexArray)
-                |> Sg.translate' (Mod.constant shift)
+                |> Sg.index (AVal.constant indexArray)
+                |> Sg.translate' (AVal.constant shift)
             )
         ) 
-        |> Mod.toASet 
+        |> AVal.toASet 
         |> Sg.set
 
     let drawClippingVolumeDebug clippingVolume = 
@@ -230,15 +230,15 @@ module ClippingVolume =
 
         let debugShadowVolume =
             debugVolume
-            |> Sg.uniform "UseDebugColor" (Mod.constant false)
-            |> Sg.depthTest (Mod.constant DepthTestMode.Always)
-            |> Sg.cullMode (Mod.constant CullMode.Front)
-            |> Sg.blendMode (Mod.constant BlendMode.Blend)
+            |> Sg.uniform "UseDebugColor" (AVal.constant false)
+            |> Sg.depthTest (AVal.constant DepthTestMode.Always)
+            |> Sg.cullMode (AVal.constant CullMode.Front)
+            |> Sg.blendMode (AVal.constant BlendMode.Blend)
         
         let debugShadowVolumeLines =
             debugVolume
-            |> Sg.uniform "UseDebugColor" (Mod.constant true)
-            |> Sg.fillMode (Mod.constant FillMode.Line)
+            |> Sg.uniform "UseDebugColor" (AVal.constant true)
+            |> Sg.fillMode (AVal.constant FillMode.Line)
 
         [ debugShadowVolume; debugShadowVolumeLines] |> Sg.ofList
 
@@ -257,7 +257,7 @@ module AnnotationSg =
         let sg = 
             model.annotationsGrouped 
             |> AMap.map (fun groupColor annotations -> 
-                let colorAlpha = SgUtilities.colorAlpha (Mod.constant groupColor) (Mod.constant 0.5)
+                let colorAlpha = SgUtilities.colorAlpha (AVal.constant groupColor) (AVal.constant 0.5)
                 let groupedSg = 
                     annotations
                     |> AList.map (fun x -> clippingVolume colorAlpha model.extrusionOffset x.clippingVolume x.points)
@@ -276,7 +276,7 @@ module AnnotationSg =
                 
                 [
                     coloredPolygon
-                    model.showDebug |> Mod.map (fun show -> if show then groupedSg |> drawClippingVolumeDebug else Sg.empty) |> Sg.dynamic
+                    model.showDebug |> AVal.map (fun show -> if show then groupedSg |> drawClippingVolumeDebug else Sg.empty) |> Sg.dynamic
                 ] |> Sg.ofList)
             |> AMap.toASet
             |> ASet.map snd
@@ -295,7 +295,7 @@ module AnnotationSg =
         let sg = 
             model.annotations 
             |> AList.map (fun x -> 
-                let colorAlpha = SgUtilities.colorAlpha x.style.primary.c (Mod.constant 0.5)
+                let colorAlpha = SgUtilities.colorAlpha x.style.primary.c (AVal.constant 0.5)
                 let sg = 
                     clippingVolume colorAlpha model.extrusionOffset x.clippingVolume x.points
                     |> Sg.effect [
@@ -310,7 +310,7 @@ module AnnotationSg =
                 
                 [
                     coloredPolygon
-                    model.showDebug |> Mod.map (fun show -> if show then sg |> drawClippingVolumeDebug else Sg.empty) |> Sg.dynamic
+                    model.showDebug |> AVal.map (fun show -> if show then sg |> drawClippingVolumeDebug else Sg.empty) |> Sg.dynamic
                 ] |> Sg.ofList)
             |> AList.toASet
             |> Sg.set

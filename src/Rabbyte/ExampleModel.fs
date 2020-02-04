@@ -1,12 +1,12 @@
-﻿namespace ExampleModel
+namespace ExampleModel
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 
-[<DomainType>]
+[<ModelType>]
 type ExampleModel = {
     camera        : CameraControllerState
     drawingEnabled: bool 

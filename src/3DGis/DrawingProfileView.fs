@@ -1,10 +1,10 @@
-﻿namespace  ElevationProfileViewer
+namespace  ElevationProfileViewer
 
 open System
 open Aardvark.UI
 open Aardvark.Base
 open OpcViewer.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open OpcViewer.Base.Picking
 open Rabbyte.Drawing
 
@@ -178,7 +178,7 @@ module DrawingProfileView =
 
                                     
                     } |> AttributeMap.ofAMap
-                ) (Mod.constant "Elevation [m]")
+                ) (AVal.constant "Elevation [m]")
 
                 yield Incremental.Svg.text ( 
                     amap {
@@ -201,7 +201,7 @@ module DrawingProfileView =
 
                                     
                     } |> AttributeMap.ofAMap
-                ) (Mod.constant "Distance [m]")
+                ) (AVal.constant "Distance [m]")
 
                 yield Incremental.Svg.text ( 
                     amap {
@@ -224,7 +224,7 @@ module DrawingProfileView =
                         yield attribute "fill" "#ffffff"
                         yield attribute "font-family" "Roboto Mono, sans-serif"                         
                     } |> AttributeMap.ofAMap
-                ) ( Mod.map2 (fun f g -> 
+                ) ( AVal.map2 (fun f g -> 
                                  if not (f = 0.0) && not (g = 0.0) then
                                      let diff = Math.Round((f : float) - (g : float), 2)
                                      diff.ToString() + " m"
@@ -254,7 +254,7 @@ module DrawingProfileView =
                         yield attribute "font-family" "Roboto Mono, sans-serif"
                            
                     } |> AttributeMap.ofAMap
-                ) (m.linearDistance |> Mod.map (fun f ->  if not (f = 0.0) then Math.Round(f,2).ToString() + " m" else ""))
+                ) (m.linearDistance |> AVal.map (fun f ->  if not (f = 0.0) then Math.Round(f,2).ToString() + " m" else ""))
 
                 //chart curve 
                 yield Incremental.Svg.polyline ( 
@@ -452,7 +452,7 @@ module DrawingProfileView =
                                 yield attribute "text-anchor" textAnchor
                            
                             } |> AttributeMap.ofAMap
-                        ) ( Mod.constant ("Altitude: " + sprintf "%.2f" (aL.Item(hoverCircle.Value)) + " m | Distance: " + sprintf "%.2f" (samplingDistance * float (hoverCircle.Value)) + " m") )
+                        ) ( AVal.constant ("Altitude: " + sprintf "%.2f" (aL.Item(hoverCircle.Value)) + " m | Distance: " + sprintf "%.2f" (samplingDistance * float (hoverCircle.Value)) + " m") )
 
             }
         

@@ -1,4 +1,4 @@
-﻿
+
 open System
 open Aardvark.Base
 open Aardvark.Application.Slim
@@ -23,10 +23,10 @@ let main argv =
         |> Array.map(fun x -> 
               let kv = x.Split [|'='|]
               kv.[0],kv.[1])
-        |> HMap.ofArray
+        |> HashMap.ofArray
 
     let opcDir =
-      match argsKv |> HMap.tryFind "opc" with
+      match argsKv |> HashMap.tryFind "opc" with
       | Some dir -> dir
       | None -> failwith "need opc directory ... opc=\"[opcfilepath]\" "
 

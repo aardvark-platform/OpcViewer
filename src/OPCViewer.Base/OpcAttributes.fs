@@ -1,9 +1,9 @@
-﻿namespace OpcViewer.Base.Attributes
+namespace OpcViewer.Base.Attributes
 
 open System
 open System.IO
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.Rendering.Text
@@ -15,26 +15,28 @@ open Aardvark.SceneGraph.Opc
 
 open OpcViewer.Base.FalseColors //OpcSelectionViewer.Picking
 
+open Adaptify.FSharp.Core
+
 module UI = 
-    let dropDown'' (values : alist<'a>)(selected : IMod<Option<'a>>) (change : Option<'a> -> 'msg) (f : 'a ->string)  =
+    let dropDown'' (values : alist<'a>)(selected : aval<AdaptiveOptionCase<_,_,_>>) (change : Option<'a> -> 'msg) (f : 'a ->string)  =
 
         let attributes (name : string) =
             AttributeMap.ofListCond [
                 always (attribute "value" (name))
                 onlyWhen (
                         selected 
-                            |> Mod.map (
+                            |> AVal.map (
                                 fun x -> 
                                     match x with
-                                        | Some s -> name = f s
-                                        | None   -> name = "-None-"
+                                        | AdaptiveSome s -> name = f s
+                                        | AdaptiveNone   -> name = "-None-"
                             )) (attribute "selected" "selected")
             ]
 
         let customOnChange  = 
             let cb (i : int) =
-                let currentState = values.Content |> Mod.force
-                change (PList.tryAt (i-1) currentState)
+                let currentState = values.Content |> AVal.force
+                change (IndexList.tryAt (i-1) currentState)
                     
             onEvent "onchange" ["event.target.selectedIndex"] (fun x -> x |> List.head |> Int32.Parse |> cb)
 
@@ -89,20 +91,20 @@ module SurfaceAttributes =
         layers 
           |> Seq.choose (fun x -> match x with | TextureLayer l -> Some l | _ -> None) 
           |> Seq.mapi(fun i x -> { x with index = i}) 
-          |> PList.ofSeq
+          |> IndexList.ofSeq
 
     let getScalars (layers : seq<AttributeLayer>) =
         layers 
           |> Seq.choose (fun x -> match x with | ScalarLayer l -> Some l | _ -> None) 
           |> Seq.mapi(fun i x -> { x with index = i}) 
-          |> PList.ofSeq
+          |> IndexList.ofSeq
 
     let getScalarsHmap (layers : seq<AttributeLayer>) =
         layers 
           |> Seq.choose (fun x -> match x with | ScalarLayer l -> Some l | _ -> None) 
           //|> Seq.mapi(fun i x -> { x with index = i}) 
           |> Seq.map(fun x -> x.label, x)
-          |> HMap.ofSeq
+          |> HashMap.ofSeq
 
     let getOPCxPath (surfacePath : string) = 
         let parent = Path.GetFileName surfacePath
@@ -110,19 +112,19 @@ module SurfaceAttributes =
         //let path = surfacePath + "\" + parent + ".opcx"
         Path.ChangeExtension(Path.Combine(surfacePath, parent), ".opcx")
 
-    let addSurfaceAttributes (path:string) : (hmap<string, ScalarLayer> * plist<TextureLayer>)  = 
+    let addSurfaceAttributes (path:string) : (HashMap<string, ScalarLayer> * IndexList<TextureLayer>)  = 
       match (System.IO.File.Exists path) with
         | true ->        
             let layers = read path
             let textures = layers |> getTextures
             ((layers |> getScalarsHmap),textures)
-        | false -> (hmap.Empty,PList.empty)
+        | false -> (HashMap.Empty,IndexList.empty)
         
 
     let mapTolist (input : amap<_,'a>) : alist<'a> = 
         input |> AMap.toASet |> AList.ofASet |> AList.map snd 
     
-    let scalarLayerList (layers:amap<string, MScalarLayer>) = 
+    let scalarLayerList (layers:amap<string, AdaptiveScalarLayer>) = 
         (layers |> mapTolist)
 
     
@@ -139,7 +141,7 @@ module SurfaceAttributes =
     let update (model : AttributeModel) (msg : AttributeAction) =   
         match msg with
             | SetScalarMap a ->
-                //let test = model.scalarLayers |> HMap.tryFind("B")
+                //let test = model.scalarLayers |> HashMap.tryFind("B")
                 match a with
                     | Some s -> { model with selectedScalar = Some s;} 
                     | None -> { model with selectedScalar = None }
@@ -147,20 +149,20 @@ module SurfaceAttributes =
                 match model.selectedScalar with
                   | Some s -> 
                     let sc = { s with colorLegend = (FalseColorLegendApp.update s.colorLegend msg) }                        
-                    let scs = model.scalarLayers |> HMap.alter sc.label (Option.map(fun _ -> sc))
+                    let scs = model.scalarLayers |> HashMap.alter sc.label (Option.map(fun _ -> sc))
                     { model with selectedScalar = Some sc; scalarLayers = scs; }
                   | None -> model
             | _ -> model
 
-    let showColorLegend (model:MAttributeModel) =
+    let showColorLegend (model: AdaptiveAttributeModel) =
         alist {
                 let! scalar = model.selectedScalar
                 match scalar with
-                    | Some s -> yield FalseColorLegendApp.Draw.createColorLegendScalars s.colorLegend
-                    | None -> yield div[ style "font-style:italic"][ text "no scalar selected" ]
+                    | AdaptiveSome s -> yield FalseColorLegendApp.Draw.createColorLegendScalars s.colorLegend
+                    | AdaptiveNone -> yield div[ style "font-style:italic"][ text "no scalar selected" ]
         }  
 
-    let scalarsColorLegend (m:MAttributeModel) =
+    let scalarsColorLegend (m:AdaptiveAttributeModel) =
         let attr = 
             AttributeMap.ofList[ 
                 "display"               => "block"; 
@@ -171,21 +173,21 @@ module SurfaceAttributes =
             ]
         Incremental.Svg.svg attr (showColorLegend m)  
         
-    let viewColorLegendTools (scalar:IMod<Option<MScalarLayer>>) =
+    let viewColorLegendTools (scalar:aval<_>) =
         adaptive {
-                      let! scalar = scalar
-                      match scalar with
-                          | Some s -> return FalseColorLegendApp.UI.viewDefinedScalarsLegendTools s.colorLegend |> UI.map ScalarsColorLegendMessage
-                          | None -> return div[ style "font-style:italic"][ text "no scalar in properties selected" ] |> UI.map ScalarsColorLegendMessage 
+            let! scalar = scalar
+            match scalar with
+                | AdaptiveSome s -> return FalseColorLegendApp.UI.viewDefinedScalarsLegendTools s.colorLegend |> UI.map ScalarsColorLegendMessage
+                | AdaptiveNone -> return div[ style "font-style:italic"][ text "no scalar in properties selected" ] |> UI.map ScalarsColorLegendMessage 
         }                    
 
-    let view (m:MAttributeModel) =
+    let view (m:AdaptiveAttributeModel) =
         //require FalseColorLegendApp.UI.myCss (
             body [style "width: 100%; height:100%; background: transparent";] [
               div[style "color:white; margin: 5px 15px 5px 5px"][
                 h3[][text "FalseColors"]
-                div[][text "Scalars: "; UI.dropDown'' (m.scalarLayers |> scalarLayerList)  m.selectedScalar   (fun x -> SetScalarMap (x |> Option.map(fun y -> y.Current |> Mod.force)))   (fun x -> x.label |> Mod.force)]
-                Incremental.div AttributeMap.empty (AList.ofModSingle(viewColorLegendTools m.selectedScalar)) 
+                div[][text "Scalars: "; UI.dropDown'' (m.scalarLayers |> scalarLayerList)  m.selectedScalar   (fun x -> SetScalarMap (x |> Option.map(fun y -> y.Current |> AVal.force)))   (fun x -> x.label |> AVal.force)]
+                Incremental.div AttributeMap.empty (AList.ofAVal(AVal.map Seq.singleton <| viewColorLegendTools m.selectedScalar)) 
               ]
             ]
           //)

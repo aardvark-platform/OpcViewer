@@ -1,15 +1,15 @@
-﻿namespace OpcViewer.Base
+namespace OpcViewer.Base
 
 module SgUtilities = 
     
     open Aardvark.Base
-    open Aardvark.Base.Incremental
+    open FSharp.Data.Adaptive
     open Aardvark.Base.Rendering
     open Aardvark.SceneGraph
 
     // Color
-    let colorAlpha (color:IMod<C4b>) (alpha:IMod<float>) : IMod<V4f> = 
-        Mod.map2 (fun (c:C4b) a -> c.ToC4f() |> fun x -> C4f(x.R, x.G, x.B, float32 a).ToV4f()) color alpha
+    let colorAlpha (color:aval<C4b>) (alpha:aval<float>) : aval<V4f> = 
+        AVal.map2 (fun (c:C4b) a -> c.ToC4f() |> fun x -> C4f(x.R, x.G, x.B, float32 a).ToV4f()) color alpha
 
     let createSecondaryColor (c: C4b) : C4b = 
         let primary = c.ToC3f().ToHSVf()
@@ -26,24 +26,24 @@ module SgUtilities =
         secondary
 
     // Improve numerical stabilty
-    let stablePoints (trafo: IMod<Trafo3d>) (positions: IMod<V3d[]>) : IMod<V3f[]> =
+    let stablePoints (trafo: aval<Trafo3d>) (positions: aval<V3d[]>) : aval<V3f[]> =
         positions 
-        |> Mod.map2 (fun (t: Trafo3d) x -> 
+        |> AVal.map2 (fun (t: Trafo3d) x -> 
             x |> Array.map(fun p -> (t.Backward.TransformPos(p)) |> V3f)) trafo
 
-    let stablePoints' (positions : IMod<V3d[]>) : (IMod<V3f[]> * IMod<Trafo3d>) = 
+    let stablePoints' (positions : aval<V3d[]>) : (aval<V3f[]> * aval<Trafo3d>) = 
         let trafo =
             positions 
-            |> Mod.map Array.tryHead 
-            |> Mod.map (function | Some p -> Trafo3d.Translation p | None -> Trafo3d.Identity)
+            |> AVal.map Array.tryHead 
+            |> AVal.map (function | Some p -> Trafo3d.Translation p | None -> Trafo3d.Identity)
 
         stablePoints trafo positions, trafo
 
-    let stableLines (close: bool) (trafo: IMod<Trafo3d>) (points: alist<V3d>) : IMod<Line3d[]> =
+    let stableLines (close: bool) (trafo: aval<Trafo3d>) (points: alist<V3d>) : aval<Line3d[]> =
       points
-        |> AList.toMod 
-        |> Mod.map2 (fun (t:Trafo3d) l ->
-            let list = l |> PList.map(fun x -> t.Backward.TransformPos x) |> PList.toList
+        |> AList.toAVal 
+        |> AVal.map2 (fun (t:Trafo3d) l ->
+            let list = l |> IndexList.map(fun x -> t.Backward.TransformPos x) |> IndexList.toList
             let head = list |> List.tryLast  
             match head with
                 | Some h -> 
@@ -54,12 +54,12 @@ module SgUtilities =
                 | None -> [||]) trafo
 
     // Old version of stableLines...TODO Orti is this behavior intended?
-    //let edgeLines (close : bool) (points : alist<V3d>) (trafo:IMod<Trafo3d>) =
+    //let edgeLines (close : bool) (points : alist<V3d>) (trafo:aval<Trafo3d>) =
     //  points
     //    |> AList.map(fun d -> trafo.GetValue().Backward.TransformPos d)
     //    |> AList.toMod 
-    //    |> Mod.map (fun l ->
-    //        let list = PList.toList l
+    //    |> AVal.map (fun l ->
+    //        let list = IndexList.toList l
     //        let head = list |> List.tryHead              
     //        match head with
     //            | Some h -> if close then list @ [h] else list
@@ -69,7 +69,7 @@ module SgUtilities =
     //            | None -> [||])   
 
     // Points
-    let private drawPoints (pointSize: IMod<float>) (offsetNormalized: IMod<float>) (pointsF: IMod<V3f[]>) =
+    let private drawPoints (pointSize: aval<float>) (offsetNormalized: aval<float>) (pointsF: aval<V3f[]>) =
         Sg.draw IndexedGeometryMode.PointList
         |> Sg.vertexAttribute DefaultSemantic.Positions pointsF
         |> Sg.uniform "PointSize" pointSize
@@ -82,24 +82,24 @@ module SgUtilities =
         ] 
         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
 
-    let drawSingleColorPoints (color: IMod<V4f>) (pointSize: IMod<float>) (offsetNormalized: IMod<float>) (pointsF: IMod<V3f[]>) =
+    let drawSingleColorPoints (color: aval<V4f>) (pointSize: aval<float>) (offsetNormalized: aval<float>) (pointsF: aval<V3f[]>) =
         drawPoints pointSize offsetNormalized pointsF
         |> Sg.vertexBufferValue DefaultSemantic.Colors color
 
-    let drawColoredPoints (colors: IMod<V4f[]>) (pointSize: IMod<float>) (offsetNormalized: IMod<float>) (pointsF: IMod<V3f[]>) = 
+    let drawColoredPoints (colors: aval<V4f[]>) (pointSize: aval<float>) (offsetNormalized: aval<float>) (pointsF: aval<V3f[]>) = 
         drawPoints pointSize offsetNormalized pointsF
         |> Sg.vertexAttribute DefaultSemantic.Colors colors
 
-    let drawPointList (color: IMod<C4b>) (pointSize: IMod<float>) (offsetWorld: IMod<float>) (near: IMod<float>) (far: IMod<float>)  (positions: alist<V3d>) = 
-        let nearFar = Mod.map2 (fun near far -> near,far) near far
-        let offsetNormalized = Mod.map2 (fun (near, far) offsetWorld -> offsetWorld / (far - near)) nearFar offsetWorld
-        let positions = positions |> AList.toMod |> Mod.map PList.toArray
+    let drawPointList (color: aval<C4b>) (pointSize: aval<float>) (offsetWorld: aval<float>) (near: aval<float>) (far: aval<float>)  (positions: alist<V3d>) = 
+        let nearFar = AVal.map2 (fun near far -> near,far) near far
+        let offsetNormalized = AVal.map2 (fun (near, far) offsetWorld -> offsetWorld / (far - near)) nearFar offsetWorld
+        let positions = positions |> AList.toAVal |> AVal.map IndexList.toArray
         let shiftedPoints, shiftTrafo  = stablePoints' positions
 
-        drawSingleColorPoints (color |> Mod.map(fun x -> x.ToC4f().ToV4f())) pointSize offsetNormalized shiftedPoints
+        drawSingleColorPoints (color |> AVal.map(fun x -> x.ToC4f().ToV4f())) pointSize offsetNormalized shiftedPoints
         |> Sg.trafo shiftTrafo
                      
-    let lines (offsetNormalized: IMod<float>) (color: IMod<C4b>) (width: IMod<float>) (trafo: IMod<Trafo3d>) (points: alist<V3d>) = 
+    let lines (offsetNormalized: aval<float>) (color: aval<C4b>) (width: aval<float>) (trafo: aval<Trafo3d>) (points: alist<V3d>) = 
         let edges = stableLines false trafo points // refactored edgeLine
         edges
         |> Sg.lines color
@@ -113,26 +113,26 @@ module SgUtilities =
         |> Sg.trafo trafo
         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
 
-    let lines' (offsetWorld: IMod<float>) (color: IMod<C4b>) (width: IMod<float>) (near: IMod<float>) (far: IMod<float>) (points: alist<V3d>) =
-        let nearFar = Mod.map2 (fun near far -> near,far) near far
-        let offsetNormalized = Mod.map2 (fun (near, far) offsetWorld -> offsetWorld / (far - near)) nearFar offsetWorld
+    let lines' (offsetWorld: aval<float>) (color: aval<C4b>) (width: aval<float>) (near: aval<float>) (far: aval<float>) (points: alist<V3d>) =
+        let nearFar = AVal.map2 (fun near far -> near,far) near far
+        let offsetNormalized = AVal.map2 (fun (near, far) offsetWorld -> offsetWorld / (far - near)) nearFar offsetWorld
         
         let trafo =
             points 
-            |> AList.toMod
-            |> Mod.map (fun l -> 
-               match l |> PList.tryFirst with
+            |> AList.toAVal
+            |> AVal.map (fun l -> 
+               match l |> IndexList.tryFirst with
                | Some p -> Trafo3d.Translation p
                | None -> Trafo3d.Identity)
         lines offsetNormalized color width trafo points
                                
-    let scaledLines (color: IMod<C4b>) (width: IMod<float>) (trafo: IMod<Trafo3d>) (points: alist<V3d>) = 
+    let scaledLines (color: aval<C4b>) (width: aval<float>) (trafo: aval<Trafo3d>) (points: alist<V3d>) = 
         let edges = stableLines false trafo points
-        let size = edges |> Mod.map (fun line -> (float line.Length) * 100.0)                                             
+        let size = edges |> AVal.map (fun line -> (float line.Length) * 100.0)                                             
         
         edges
         |> Sg.lines color
-        |> Sg.uniform "WorldPos" (trafo |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
+        |> Sg.uniform "WorldPos" (trafo |> AVal.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
         |> Sg.uniform "Size" size
         |> Sg.effect [
             Shader.StableTrafo.Effect
@@ -142,20 +142,20 @@ module SgUtilities =
         |> Sg.trafo trafo
         |> Sg.uniform "LineWidth" width  
 
-    let scaledLines' (color: IMod<C4b>) (width: IMod<float>) (points: alist<V3d>) =
+    let scaledLines' (color: aval<C4b>) (width: aval<float>) (points: alist<V3d>) =
         let trafo =
             points 
-            |> AList.toMod
-            |> Mod.map (fun l -> 
-               match l |> PList.tryFirst with
+            |> AList.toAVal
+            |> AVal.map (fun l -> 
+               match l |> IndexList.tryFirst with
                | Some p -> Trafo3d.Translation p
                | None -> Trafo3d.Identity)
         scaledLines color width trafo points
 
     // Geometries
-    let discISg (color: IMod<C4b>) (size: IMod<float>) (height: IMod<float>) (trafo: IMod<Trafo3d>) =
+    let discISg (color: aval<C4b>) (size: aval<float>) (height: aval<float>) (trafo: aval<Trafo3d>) =
         Sg.cylinder 30 color size height              
-        |> Sg.uniform "WorldPos" (trafo |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
+        |> Sg.uniform "WorldPos" (trafo |> AVal.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
         |> Sg.uniform "Size" size
         |> Sg.effect [
             Shader.StableTrafo.Effect
@@ -164,7 +164,7 @@ module SgUtilities =
         ]
         |> Sg.trafo trafo
 
-    let coneISg (color: IMod<C4b>) (radius: IMod<float>) (height: IMod<float>) (trafo: IMod<Trafo3d>) =  
+    let coneISg (color: aval<C4b>) (radius: aval<float>) (height: aval<float>) (trafo: aval<Trafo3d>) =  
         Sg.cone 30 color radius height
         |> Sg.effect [
             Shader.StableTrafo.Effect

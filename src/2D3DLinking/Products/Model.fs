@@ -1,8 +1,8 @@
-﻿namespace PRo3D.Minerva
+namespace PRo3D.Minerva
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 
 open Aardvark.Geometry
@@ -100,13 +100,13 @@ type RootProperties =
     published    : DateTime
   }
 
-[<DomainType>]
+[<ModelType>]
 type FeatureCollection = 
   {
     name : string
     typus       : Typus
     boundingBox : Box2d    
-    features    : plist<Feature>
+    features    : IndexList<Feature>
   }
 
 type QueryAction =
@@ -149,7 +149,7 @@ type MinervaAction =
   | LoadTifs of string
   //| ChangeInstrumentColor of ColorPicker.Action * Instrument
 
-[<DomainType>]
+[<ModelType>]
 type SgFeatures = {
     names       : string[]
     positions   : V3d[]
@@ -157,7 +157,7 @@ type SgFeatures = {
     trafo       : Trafo3d
 }
 
-[<DomainType>]
+[<ModelType>]
 type InstrumentColor = {
     mahli        : C4b    
     frontHazcam  : C4b 
@@ -172,14 +172,14 @@ type InstrumentColor = {
     color        : ColorInput
 }
 
-[<DomainType>]
+[<ModelType>]
 type FeatureProperties = {
     pointSize   : NumericInput
     textSize    : NumericInput
     //instrumentColor : InstrumentColor
 }
 
-[<DomainType>]
+[<ModelType>]
 type QueryModel = {
     minSol               : NumericInput
     maxSol               : NumericInput
@@ -199,26 +199,26 @@ type QueryModel = {
     checkChemRmi         : bool        
 }
 
-[<DomainType>]
+[<ModelType>]
 type SelectionModel = {
-    selectedProducts     : hset<string> 
+    selectedProducts     : HashSet<string> 
     singleSelectProduct  : option<string>
-    [<NonIncremental>]
+    [<NonAdaptive>]
     kdTree               : PointKdTreeD<V3d[],V3d>
-    [<NonIncremental>]
+    [<NonAdaptive>]
     flatPos              : array<V3d>
-    [<NonIncremental>]
+    [<NonAdaptive>]
     flatID               : array<string>
     selectionMinDist     : float
 }
 
   
-[<DomainType>]
+[<ModelType>]
 type MinervaModel = 
   {
     data             : FeatureCollection
     queryFilter      : QueryModel
-    filteredFeatures : plist<Feature>
+    filteredFeatures : IndexList<Feature>
 
     vplMessages : ThreadPool<MinervaAction>
 
@@ -226,7 +226,7 @@ type MinervaModel =
     selection               : SelectionModel
     kdTreeBounds         : Box3d
     hoveredProduct       : Option<V3d>
-    solLabels            : hmap<string,V3d>
+    solLabels            : HashMap<string,V3d>
     sgFeatures           : SgFeatures
     selectedSgFeatures   : SgFeatures
     picking              : bool
@@ -296,7 +296,7 @@ module Initial =
       name = "initial"
       boundingBox = Box2d.Invalid
       typus       = Typus.Feature
-      features    = PList.empty
+      features    = IndexList.empty
     }
   let minS = 
         {
@@ -408,7 +408,7 @@ module Initial =
       filteredFeatures = data.features
       kdTreeBounds = Box3d.Invalid
       hoveredProduct = None
-      solLabels = HMap.empty
+      solLabels = HashMap.empty
       sgFeatures =  sgfeatures
       selectedSgFeatures = sgSelfeatures
       picking = false

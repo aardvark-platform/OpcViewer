@@ -1,7 +1,7 @@
-﻿namespace Rabbyte.Drawing
+namespace Rabbyte.Drawing
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
@@ -17,7 +17,7 @@ module DrawingApp =
 
     let private finalPrimitiveType close model  = 
         let primitiveType = 
-            match model.points |> PList.count, close with
+            match model.points |> IndexList.count, close with
             | 0, _ -> PrimitiveType.Empty
             | 1, _ -> PrimitiveType.Point
             | 2, _ -> PrimitiveType.Line
@@ -59,12 +59,12 @@ module DrawingApp =
         // Undo-Able Commands
         | RecalculateSegments hitF -> failwith "" // TODO?
         | AddPoint (p, hitF) -> 
-            match model.points |> PList.isEmpty with
+            match model.points |> IndexList.isEmpty with
             | true -> 
-                syncPrimType { model with points = model.points |> PList.prepend p; past = Some model}
+                syncPrimType { model with points = model.points |> IndexList.prepend p; past = Some model}
             | false ->
                 let startP = p
-                let endP = model.points |> PList.first 
+                let endP = model.points |> IndexList.first 
                 let innerSegPoints = 
                     match hitF with
                     | Some f -> 
@@ -76,15 +76,15 @@ module DrawingApp =
                         |> List.map(fun x -> startP + x * dir)
                         |> List.map f
                         |> List.choose id
-                        |> PList.ofList
-                    | None -> PList.empty
+                        |> IndexList.ofList
+                    | None -> IndexList.empty
 
                 let segment = {
                     startPoint = startP
                     endPoint = endP
                     innerPoints = innerSegPoints
                 }
-                syncPrimType { model with points = model.points |> PList.prepend p; segments = model.segments |> PList.prepend segment; past = Some model}
+                syncPrimType { model with points = model.points |> IndexList.prepend p; segments = model.segments |> IndexList.prepend segment; past = Some model}
         //| AddTestBrushes pointsOnAxisFunc ->
         //  if model.intersectionPoints.Count > 0 then
         //    let rand = RandomSystem()
@@ -98,7 +98,7 @@ module DrawingApp =
         //        let mutable dir = rand.UniformV3dDirection()
         //        if dir.Z < 0.0 then dir.Z <- -dir.Z
         //        let p0 = (model.intersectionPoints.[rand.UniformInt(model.intersectionPoints.Count)])
-        //        match pointsOnAxisFunc (PList.single p0) with
+        //        match pointsOnAxisFunc (IndexList.single p0) with
         //        | Some center ->
         //          let center = center.midPoint
         //          let dir = p0 - center |> Vec.normalize
@@ -109,14 +109,14 @@ module DrawingApp =
         //          let p0 = t.Forward.TransformPos(V3d(o, 0.0))
         //          let p1 = t.Forward.TransformPos(V3d(p1, 0.0))
         //          let p2 = t.Forward.TransformPos(V3d(p2, 0.0))
-        //          let pts = PList.ofList [ p0; p1; p2; p0]
-        //          match pointsOnAxisFunc (pts |> PList.skip 1) with
+        //          let pts = IndexList.ofList [ p0; p1; p2; p0]
+        //          match pointsOnAxisFunc (pts |> IndexList.skip 1) with
         //          | Some aps ->
         //            Some { 
         //              // 1m shift for scene with axis outside of tunnel....REMOVE
         //              pointsOnAxis = Some aps
         //              points = pts
-        //              segments = PList.empty
+        //              segments = IndexList.empty
         //              color = colors.[rand.UniformInt colors.Length]
         //            }
         //          | None ->
@@ -125,31 +125,31 @@ module DrawingApp =
         //          None)
         //      |> Seq.choose id
         //      |> Seq.take 200
-        //      |> PList.ofSeq
+        //      |> IndexList.ofSeq
         //    let newGrouped =
         //      testBrushes |> Seq.fold (fun groupedBrushes newBrush -> 
-        //        groupedBrushes|> HMap.alter newBrush.color (fun x -> 
+        //        groupedBrushes|> HashMap.alter newBrush.color (fun x -> 
         //          match x with 
-        //          | Some y -> Some (y |> PList.append newBrush)
-        //          | None -> Some (PList.single newBrush))
+        //          | Some y -> Some (y |> IndexList.append newBrush)
+        //          | None -> Some (IndexList.single newBrush))
         //       ) model.groupedBrushes
-        //    { model with brush = model.brush |> PList.concat2 testBrushes; intersectionPoints = PList.empty; segments = PList.empty; groupedBrushes = newGrouped }
+        //    { model with brush = model.brush |> IndexList.concat2 testBrushes; intersectionPoints = IndexList.empty; segments = IndexList.empty; groupedBrushes = newGrouped }
         //  else 
         //    model
         | RemoveLastPoint ->
-            match model.points |> PList.count with
+            match model.points |> IndexList.count with
             | 0 -> model
-            | 1 -> syncPrimType { model with points = model.points |> PList.skip 1; past = Some model}
-            | _ -> syncPrimType { model with points = model.points |> PList.skip 1; segments = model.segments |> PList.skip 1; past = Some model }
+            | 1 -> syncPrimType { model with points = model.points |> IndexList.skip 1; past = Some model}
+            | _ -> syncPrimType { model with points = model.points |> IndexList.skip 1; segments = model.segments |> IndexList.skip 1; past = Some model }
         | DrawingAction.Clear -> 
-            syncPrimType { model with points = PList.empty; segments = PList.empty; past = Some model}
+            syncPrimType { model with points = IndexList.empty; segments = IndexList.empty; past = Some model}
         | Finish -> 
             let m = finalPrimitiveType false model 
             { m with past = Some model}
         | FinishClose hitF -> 
             match model.primitiveType with
             | PolyLine -> 
-                let newM = update model (AddPoint ((model.points |> PList.last), hitF))
+                let newM = update model (AddPoint ((model.points |> IndexList.last), hitF))
                 let updateType = finalPrimitiveType true newM
                 // TODO -> FIX WINDING ORDER FOR GROUPED ANNOTATIONS!
                 //    let p, pa = 
@@ -158,10 +158,10 @@ module DrawingApp =
                 //      | None -> (p,pa)
                 //      | Some paa -> 
                 //        // for higher Precision shift by AxisPoint
-                //        let axisPoint = paa.pointsOnAxis |> PList.skip 1 |> PList.first
-                //        let p0 = p |> PList.first                  |> fun x -> x - axisPoint
-                //        let p1 = p |> PList.skip 1 |> PList.first  |> fun x -> x - axisPoint
-                //        let p2 = p |> PList.skip 2 |> PList.first  |> fun x -> x - axisPoint
+                //        let axisPoint = paa.pointsOnAxis |> IndexList.skip 1 |> IndexList.first
+                //        let p0 = p |> IndexList.first                  |> fun x -> x - axisPoint
+                //        let p1 = p |> IndexList.skip 1 |> IndexList.first  |> fun x -> x - axisPoint
+                //        let p2 = p |> IndexList.skip 2 |> IndexList.first  |> fun x -> x - axisPoint
 
                 //        let dir1 = p1.Normalized  // already shifted by axisPoint
                 //        let x1 = (p0-p1).Normalized
@@ -169,8 +169,8 @@ module DrawingApp =
                 //        let dir2 = (x1.Cross(x2)).Normalized
 
                 //        if dir1.Dot(dir2) |> sign < 0 then
-                //          let pRev = p |> PList.toList |> List.rev |> PList.ofList
-                //          let aRev = { paa with pointsOnAxis = paa.pointsOnAxis |> PList.toList |> List.rev |> PList.ofList }
+                //          let pRev = p |> IndexList.toList |> List.rev |> IndexList.ofList
+                //          let aRev = { paa with pointsOnAxis = paa.pointsOnAxis |> IndexList.toList |> List.rev |> IndexList.ofList }
                 //          printfn "\n\n\nFixed winding order \n\n\n"
                 //          (pRev, Some aRev)
                 //        else 
@@ -183,22 +183,22 @@ module DrawingApp =
         let lastPoint = 
             segments 
             |> AList.toMod
-            |> Mod.map (fun x -> 
+            |> AVal.map (fun x -> 
                 x 
-                |> PList.tryLast 
-                |> Option.map (fun x -> x.endPoint |> PList.single)
-                |> Option.defaultValue PList.empty)
+                |> IndexList.tryLast 
+                |> Option.map (fun x -> x.endPoint |> IndexList.single)
+                |> Option.defaultValue IndexList.empty)
             |> AList.ofMod
 
         let allButLast = 
             segments 
-            |> AList.map (fun x -> x.innerPoints |> PList.prepend x.startPoint |> AList.ofPList) 
+            |> AList.map (fun x -> x.innerPoints |> IndexList.prepend x.startPoint |> AList.ofPList) 
             |> AList.concat
 
         AList.append allButLast lastPoint
 
 
-    let drawContourWithPointSize (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: IMod<float>) (far: IMod<float>) (pointSize: IMod<float>) (depthOffset : IMod<float>)=  
+    let drawContourWithPointSize (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: aval<float>) (far: aval<float>) (pointSize: aval<float>) (depthOffset : aval<float>)=  
 
         let pointsSg = 
             points 
@@ -208,17 +208,17 @@ module DrawingApp =
             segments
             |> AList.map (fun x -> x.innerPoints |> AList.ofPList) 
             |> AList.concat 
-            |> SgUtilities.drawPointList (style.primary.c |> Mod.map (fun c -> SgUtilities.createSecondaryColor c)) (pointSize |> Mod.map (fun x -> x * 0.8)) depthOffset near far
+            |> SgUtilities.drawPointList (style.primary.c |> AVal.map (fun c -> SgUtilities.createSecondaryColor c)) (pointSize |> AVal.map (fun x -> x * 0.8)) depthOffset near far
 
         let edgesSg = 
-            let lineWidth = style.thickness |> Mod.map (fun x -> x * 1.1)
+            let lineWidth = style.thickness |> AVal.map (fun x -> x * 1.1)
             let sPoints = allSegmentPoints segments
             sPoints
-            |> SgUtilities.lines' (depthOffset|> Mod.map (fun x -> x / 1.9)) style.secondary.c lineWidth near far
+            |> SgUtilities.lines' (depthOffset|> AVal.map (fun x -> x / 1.9)) style.secondary.c lineWidth near far
 
         let edgesDirectSg = 
             points 
-            |> SgUtilities.lines' (depthOffset|> Mod.map (fun x -> x / 2.0)) style.primary.c style.thickness near far
+            |> SgUtilities.lines' (depthOffset|> AVal.map (fun x -> x / 2.0)) style.primary.c style.thickness near far
         
         // drawing order does not fix overlappings (offset in worldspace could fix this...)
         //let edgesSg = [edges; edgesDirect] |> Sg.group |> Sg.noEvents |> Sg.pass RenderPass.main
@@ -227,13 +227,13 @@ module DrawingApp =
         
         [edgesSg; edgesDirectSg; pointsSg; pointsInnerSg] |> Sg.group
 
-    let drawContour (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: IMod<float>) (far: IMod<float>) =  
-        drawContourWithPointSize points segments style near far (Mod.constant 10.0) (Mod.constant 0.1)
+    let drawContour (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: aval<float>) (far: aval<float>) =  
+        drawContourWithPointSize points segments style near far (AVal.constant 10.0) (AVal.constant 0.1)
 
-    let view (near: IMod<float>) (far: IMod<float>) (model: MDrawingModel)  = 
-        drawContourWithPointSize model.points model.segments model.style near far (Mod.constant 10.0) (Mod.constant 0.1) |> Sg.noEvents
+    let view (near: aval<float>) (far: aval<float>) (model: MDrawingModel)  = 
+        drawContourWithPointSize model.points model.segments model.style near far (AVal.constant 10.0) (AVal.constant 0.1) |> Sg.noEvents
 
-    let viewPointSize (near: IMod<float>) (far: IMod<float>) (pointSize: IMod<float>) (depthOffset: IMod<float>) (model: MDrawingModel) = 
+    let viewPointSize (near: aval<float>) (far: aval<float>) (pointSize: aval<float>) (depthOffset: aval<float>) (model: MDrawingModel) = 
         drawContourWithPointSize model.points model.segments model.style near far pointSize depthOffset |> Sg.noEvents
 
     let viewGui (model: MDrawingModel) = 
@@ -244,7 +244,7 @@ module DrawingApp =
             tr[][
                 td[style style'][text "Type:"]
                 td[style style'][
-                    Incremental.text (model.primitiveType |> Mod.map (fun x -> 
+                    Incremental.text (model.primitiveType |> AVal.map (fun x -> 
                         match x with
                         | PrimitiveType.Empty -> "Empty"
                         | PrimitiveType.Point -> "Point"

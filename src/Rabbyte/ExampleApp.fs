@@ -1,8 +1,8 @@
-﻿module ExampleApp
+module ExampleApp
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
@@ -98,20 +98,20 @@ let testScene =
         Sg.onLeave (fun _ -> Exit)
     ]    
 
-let near = Mod.init 0.1
-let far = Mod.init 100.0
+let near = AVal.init 0.1
+let far = AVal.init 100.0
 
 let frustum =
-    Mod.map2 (fun near far -> Frustum.perspective 60.0 near far 1.0) near far
+    AVal.map2 (fun near far -> Frustum.perspective 60.0 near far 1.0) near far
 
 let scene3D (model: MExampleModel) =
                                  
     let cursorTrafo = 
         model.hoverPosition 
-        |> Mod.map (Option.defaultValue(Trafo3d.Scale(V3d.Zero)))
+        |> AVal.map (Option.defaultValue(Trafo3d.Scale(V3d.Zero)))
 
     let cursorSg color size trafo =         
-        Sg.sphere 5 (Mod.constant color) (Mod.constant size)
+        Sg.sphere 5 (AVal.constant color) (AVal.constant size)
         |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
@@ -142,8 +142,8 @@ let scene3D (model: MExampleModel) =
 
 
     finalComposed
-    |> Sg.fillMode (Mod.constant FillMode.Fill)
-    |> Sg.cullMode (Mod.constant CullMode.None)
+    |> Sg.fillMode (AVal.constant FillMode.Fill)
+    |> Sg.cullMode (AVal.constant CullMode.None)
 
 let view (model: MExampleModel) =            
     require (Html.semui) (

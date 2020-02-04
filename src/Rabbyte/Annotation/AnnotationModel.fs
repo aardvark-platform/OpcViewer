@@ -1,8 +1,8 @@
-﻿namespace Rabbyte.Annotation
+namespace Rabbyte.Annotation
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 
 open Rabbyte.Drawing
@@ -10,9 +10,9 @@ open Rabbyte.Drawing
 type ClippingVolumeType = 
     | Direction of V3d
     | Point of V3d
-    | Points of plist<V3d>
+    | Points of IndexList<V3d>
 
-[<DomainType>]
+[<ModelType>]
 type Annotation = 
     {
         version     : int
@@ -26,8 +26,8 @@ type Annotation =
         //projection  : Projection // Pro3D
         //semantic    : Semantic   // Pro3D
 
-        points          : plist<V3d>
-        segments        : plist<Segment>
+        points          : IndexList<V3d>
+        segments        : IndexList<Segment>
         style           : BrushStyle
         primitiveType   : PrimitiveType // similar to Geometry of Pro3D
         clippingVolume  : ClippingVolumeType
@@ -51,11 +51,11 @@ type Annotation =
         static member current = 1
 
 
-[<DomainType>]
+[<ModelType>]
 type AnnotationModel = 
     {
-        annotations         : plist<Annotation>
-        annotationsGrouped  : hmap<C4b, plist<Annotation>>
+        annotations         : IndexList<Annotation>
+        annotationsGrouped  : HashMap<C4b, IndexList<Annotation>>
         showDebug           : bool
         extrusionOffset     : float
     }
@@ -81,7 +81,7 @@ module AnnotationModel =
             points      = plist.Empty
             segments    = plist.Empty //[]
             style       = DrawingModel.defaultStyle
-            clippingVolume = Direction V3d.ZAxis //Points ([V3d.IOO; V3d.OIO; -V3d.OIO; -V3d.IOO] |> PList.ofList)//Point V3d.Zero// Direction (V3d.ZAxis)
+            clippingVolume = Direction V3d.ZAxis //Points ([V3d.IOO; V3d.OIO; -V3d.OIO; -V3d.IOO] |> IndexList.ofList)//Point V3d.Zero// Direction (V3d.ZAxis)
             //color       = color
             //thickness   = thickness
             //results     = None

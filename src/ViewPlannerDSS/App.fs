@@ -1,9 +1,9 @@
-﻿namespace ViewPlanner
+namespace ViewPlanner
 
 open System.IO
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 
 open Aardvark.Rendering.Text
@@ -56,12 +56,12 @@ module App =
 
 
     //---saving and restoring plane state
-    let toPlaneCoords (coords : plist<V3d>): PlaneCoordinates =
+    let toPlaneCoords (coords : IndexList<V3d>): PlaneCoordinates =
         {
         points = coords
         }
 
-    let fromPlaneCoords (c : PlaneCoordinates) : plist<V3d> =
+    let fromPlaneCoords (c : PlaneCoordinates) : IndexList<V3d> =
         c.points
     //---
 
@@ -115,7 +115,7 @@ module App =
 
             | Keys.Enter ->
                 let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
-                let dir = Direction (model.drawing.points |> PList.toSeq |> fun x -> PlaneFitting.planeFit x).Normal
+                let dir = Direction (model.drawing.points |> IndexList.toSeq |> fun x -> PlaneFitting.planeFit x).Normal
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, Some dir))
                 { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
                 
@@ -130,7 +130,7 @@ module App =
                 match msg with
                     | HitSurface (a,b) -> //,_) -> 
                         let updatePickM = PickingApp.update model.pickingModel (HitSurface (a,b))
-                        let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
+                        let lastPick = updatePickM.intersectionPoints |> IndexList.tryFirst
                         let updatedDrawM =
                             match lastPick with
                             | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, None))
@@ -166,7 +166,7 @@ module App =
       let opcs = 
         m.opcInfos
           |> AMap.toASet
-          |> ASet.map(fun info -> Sg.createSingleOpcSg (Mod.constant None) m.pickingActive m.cameraState.view info)
+          |> ASet.map(fun info -> Sg.createSingleOpcSg (AVal.constant None) m.pickingActive m.cameraState.view info)
           |> Sg.set
           |> Sg.effect [ 
             toEffect Shader.stableTrafo
@@ -175,21 +175,21 @@ module App =
 
       let myPlane = 
         m.planePoints
-            |> Mod.map (fun n ->
+            |> AVal.map (fun n ->
                 match n with
                     | None -> Sg.empty
                     | Some points -> 
                         points 
                             |> AList.toMod
-                            |> Mod.map (fun p ->
+                            |> AVal.map (fun p ->
                                 p
-                                    |> PList.toSeq
+                                    |> IndexList.toSeq
                                     |> PlaneFitting.planeFit
                                     |> fun t ->
                                          let box = Aardvark.SceneGraph.SgPrimitives.Sg.box' C4b.Cyan (Box3d(V3d.NNN, V3d.III))
                                          let scaleT = Trafo3d.Scale(10.0, 20.0, 0.2)
                                          let sum = p.Sum()
-                                         let c = p |> PList.count
+                                         let c = p |> IndexList.count
                                          let average = sum / (float c)
                                          let pos = V3d(average.X, average.Y, average.Z)
                             
@@ -202,7 +202,7 @@ module App =
                                                 true, Seq.ofList [(RoverAction.ChangePosition (sh.globalPosition))]
                                                                             )
                                                               ]
-                                            |> Sg.trafo (Mod.constant(trafo)) 
+                                            |> Sg.trafo (AVal.constant(trafo)) 
                                     |> Sg.effect [
                                             toEffect DefaultSurfaces.stableTrafo
                                             toEffect (DefaultSurfaces.constantColor C4f.DarkRed)
@@ -215,8 +215,8 @@ module App =
 
 
 
-      let near = m.mainFrustum |> Mod.map(fun x -> x.near)
-      let far = m.mainFrustum |> Mod.map(fun x -> x.far)
+      let near = m.mainFrustum |> AVal.map(fun x -> x.near)
+      let far = m.mainFrustum |> AVal.map(fun x -> x.far)
 
       let filledPolygonSg, afterFilledPolygonRenderPass = 
         m.annotations 
@@ -238,14 +238,14 @@ module App =
         ]
         |> Sg.ofList
 
-      let textOverlays (cv : IMod<CameraView>) = 
+      let textOverlays (cv : aval<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
            let style' = "color: white; font-family:Consolas;"
     
            yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left" ] [          
               yield table [] [
                 tr[][
-                    td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
+                    td[style style'][Incremental.text(cv |> AVal.map(fun x -> x.Location.ToString("0.00")))]
                 ]
               ]
            ]
@@ -278,7 +278,7 @@ module App =
                 h3[][text "ROVER CONTROL"]
                 p[][text "Press R to place rover at picked point"]
                 p[][text "Press L to select picked point as rover target"]
-                p[][Incremental.text (m.rover.position |> Mod.map (fun f -> f.ToString())) ]
+                p[][Incremental.text (m.rover.position |> AVal.map (fun f -> f.ToString())) ]
                     //    match f with
                     //        |Some point -> "picked position:" + point.ToString()
                     //        |None -> "Double-click on plane to pick position"
@@ -346,11 +346,11 @@ module App =
               kdTree         = Aardvark.VRVis.Opc.KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath (KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ OpcSelectionViewer.Serialization.binarySerializer)
               localBB        = rootTree.info.LocalBoundingBox 
               globalBB       = rootTree.info.GlobalBoundingBox
-              neighborMap    = HMap.empty
+              neighborMap    = HashMap.empty
             }
         ]
         |> List.map (fun info -> info.globalBB, info)
-        |> HMap.ofList      
+        |> HashMap.ofList      
                       
       let up = if rotate then (box.Center.Normalized) else V3d.OOI
 
@@ -370,7 +370,7 @@ module App =
             let p : PlaneCoordinates = OpcSelectionViewer.Serialization.loadAs ".\planestate"
             p |> fromPlaneCoords
         else
-        PList.empty
+        IndexList.empty
 
       let planeState = restorePlane
 

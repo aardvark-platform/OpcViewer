@@ -1,8 +1,9 @@
-﻿namespace OpcViewer.Base.Attributes
+namespace OpcViewer.Base.Attributes
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
+open Adaptify
 
 open OpcViewer.Base.FalseColors
 
@@ -11,7 +12,7 @@ type TextureLayer = {
     index : int
 }
 
-[<DomainType>]
+[<ModelType>]
 type ScalarLayer = {
     label        : string
     actualRange  : Range1d
@@ -29,12 +30,12 @@ type AttributeAction =
 
 
 
-[<DomainType>]
+[<ModelType>]
 type AttributeModel =
     {
-        scalarLayers         : hmap<string, ScalarLayer> 
+        scalarLayers         : HashMap<string, ScalarLayer> 
         selectedScalar       : option<ScalarLayer>
-        textureLayers        : plist<TextureLayer>
+        textureLayers        : IndexList<TextureLayer>
     }
 
 

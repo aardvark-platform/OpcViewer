@@ -3,7 +3,7 @@ namespace OpcViewer.Base.Picking
 open Aardvark.UI
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 open OpcViewer.Base
 
@@ -16,14 +16,14 @@ module PickingApp =
     | RemoveLastPoint ->
       let points, infos = 
         match model.intersectionPoints.AsList with
-          | [] -> [], HMap.empty
+          | [] -> [], HashMap.empty
           | first :: rest -> 
             rest, model.hitPointsInfo.Remove first
-      { model with intersectionPoints = points |> PList.ofList; hitPointsInfo = infos }
+      { model with intersectionPoints = points |> IndexList.ofList; hitPointsInfo = infos }
     | ClearPoints -> 
-      { model with intersectionPoints = PList.empty; hitPointsInfo = HMap.empty}
+      { model with intersectionPoints = IndexList.empty; hitPointsInfo = HashMap.empty}
 
-  let view (model : MPickingModel) =
+  let view (model : AdaptivePickingModel) =
     
     // TODO...maybe add last click point as animation?
     failwith ""

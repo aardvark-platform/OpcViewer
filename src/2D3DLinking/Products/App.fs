@@ -1,4 +1,4 @@
-﻿namespace PRo3D.Minerva
+namespace PRo3D.Minerva
 
 open System
 
@@ -33,9 +33,9 @@ module MinervaApp =
   let take' (n : int) (input : list<'a>) : list<'a> =
        if n >= input.Length then input else input |> List.take n
 
-  let updateSgFeatures (features:plist<Feature>) =
+  let updateSgFeatures (features:IndexList<Feature>) =
     
-    let array = features |> PList.toArray
+    let array = features |> IndexList.toArray
     
     let names     = array |> Array.map(fun f -> f.id)            
     let positions = array |> Array.map(fun f -> f.geometry.positions.Head)
@@ -55,18 +55,18 @@ module MinervaApp =
         trafo = trafo
     }
 
-  let updateSelectedSgFeature (features:plist<Feature>) (selected:hset<string>) =
+  let updateSelectedSgFeature (features:IndexList<Feature>) (selected:HashSet<string>) =
     features
-        |> PList.filter( fun x -> HSet.contains x.id selected)
+        |> IndexList.filter( fun x -> HashSet.contains x.id selected)
         |> updateSgFeatures
      
   let updateSelectionToggle (names:list<string>) (model: MinervaModel) =
     let newSelection = 
       List.fold(fun set name -> 
-        if set |> HSet.contains name then
-          set |> HSet.remove name
+        if set |> HashSet.contains name then
+          set |> HashSet.remove name
         else 
-          set |> HSet.add name) model.selection.selectedProducts names
+          set |> HashSet.add name) model.selection.selectedProducts names
 
     let selectedSgs = updateSelectedSgFeature model.filteredFeatures newSelection
     { model with selection = { model.selection with selectedProducts = newSelection}; selectedSgFeatures = selectedSgs}
@@ -97,16 +97,16 @@ module MinervaApp =
         | SendScreenSpaceCoordinates ->  failwith "[2D3DLiniking] not implemented"
           | PerformQueries -> failwith "[Minerva] not implemented"
           | UpdateSelection selectionIds ->
-            let selection = selectionIds |> HSet.ofList
+            let selection = selectionIds |> HashSet.ofList
             let selectedSgs = updateSelectedSgFeature model.filteredFeatures selection
             { model with selection = { model.selection with selectedProducts = selection}; selectedSgFeatures = selectedSgs} 
           | UpdateFiltering idList ->
             Log.line "[Minerva] filtering data to set of %d" idList.Length
 
-            let filterSet = idList |> HSet.ofList
-            let filtered = model.data.features |> PList.filter(fun x -> x.id |> filterSet.Contains)
+            let filterSet = idList |> HashSet.ofList
+            let filtered = model.data.features |> IndexList.filter(fun x -> x.id |> filterSet.Contains)
         
-            let blarg = filtered |> PList.toList |> List.map (fun x -> sprintf "%A %A %A %A" x.id x.instrument x.sol x.geometry.positions.[0])
+            let blarg = filtered |> IndexList.toList |> List.map (fun x -> sprintf "%A %A %A %A" x.id x.instrument x.sol x.geometry.positions.[0])
 
             System.IO.File.WriteAllLines(@".\minervaIds",blarg)
 
@@ -135,8 +135,8 @@ module MinervaApp =
             Log.line "[Minerva] found %d entries" data.features.Count   
             let flatList = 
               data.features 
-                |> PList.map(fun x -> x.geometry.positions |> List.head, x.id) 
-                |> PList.toArray
+                |> IndexList.map(fun x -> x.geometry.positions |> List.head, x.id) 
+                |> IndexList.toArray
 
             let input = flatList |> Array.map fst
             let flatId = flatList |> Array.map snd
@@ -163,7 +163,7 @@ module MinervaApp =
           | SingleSelectProduct name ->
             { model with selection = { model.selection with singleSelectProduct = Some name }}
           | ClearSelection ->
-            { model with selection = { model.selection with singleSelectProduct = None; selectedProducts = HSet.empty}; selectedSgFeatures = updateSgFeatures PList.empty}
+            { model with selection = { model.selection with singleSelectProduct = None; selectedProducts = HashSet.empty}; selectedSgFeatures = updateSgFeatures IndexList.empty}
           | AddProductToSelection name ->
             updateSelectionToggle [name] model
           | PickProducts hit -> 

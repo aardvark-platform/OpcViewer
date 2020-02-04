@@ -1,8 +1,8 @@
-﻿namespace OpcSelectionViewer
+namespace OpcSelectionViewer
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.Rendering.Text
@@ -47,8 +47,8 @@ module OutlineSg =
           let tex = FileTexture(texPath,config) :> ITexture
                     
           Sg.ofIndexedGeometry g
-              |> Sg.trafo (Mod.constant info.Local2Global)             
-              |> Sg.diffuseTexture (Mod.constant tex)             
+              |> Sg.trafo (AVal.constant info.Local2Global)             
+              |> Sg.diffuseTexture (AVal.constant tex)             
           )
         |> Sg.ofList   
     
@@ -71,7 +71,7 @@ module OutlineSg =
                     sg
                         |> Sg.noEvents 
                         |> Sg.pass pass0
-                        |> Sg.stencilMode (Mod.constant (write 1))
+                        |> Sg.stencilMode (AVal.constant (write 1))
                         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
                         |> Sg.effect [ 
                             toEffect Shader.stableTrafo
@@ -81,8 +81,8 @@ module OutlineSg =
                 let outline = 
                     sg
                         |> Sg.noEvents
-                        |> Sg.stencilMode (Mod.constant (read 1))
-                        |> Sg.depthTest (Mod.constant DepthTestMode.None)
+                        |> Sg.stencilMode (AVal.constant (read 1))
+                        |> Sg.depthTest (AVal.constant DepthTestMode.None)
                         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
                         |> Sg.pass pass1
                         |> Sg.effect [

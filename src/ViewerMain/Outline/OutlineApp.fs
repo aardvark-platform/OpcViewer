@@ -1,11 +1,11 @@
-﻿namespace OpcOutlineTest
+namespace OpcOutlineTest
 
 open System
 open System.IO
 open Aardvark.UI
 open Aardvark.Base
 open Aardvark.Base.Ag
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Semantics
@@ -24,8 +24,8 @@ open OpcViewer.Base.Picking
 open OpcSelectionViewer
 
 module GuiEx =
-    let iconToggle (dings : IMod<bool>) onIcon offIcon action =
-      let toggleIcon = dings |> Mod.map(fun isOn -> if isOn then onIcon else offIcon)
+    let iconToggle (dings : aval<bool>) onIcon offIcon action =
+      let toggleIcon = dings |> AVal.map(fun isOn -> if isOn then onIcon else offIcon)
 
       let attributes = 
         amap {
@@ -36,7 +36,7 @@ module GuiEx =
 
       Incremental.i attributes AList.empty
 
-    let iconCheckBox (dings : IMod<bool>) action =
+    let iconCheckBox (dings : aval<bool>) action =
       iconToggle dings "check square outline icon" "square icon" action
 
 module OutlineApp =   
@@ -66,7 +66,7 @@ module OutlineApp =
       let scene = [ opcs ] |> Sg.ofList
 
       let renderControl =
-       FreeFlyController.controlledControl m.cameraState OutlineMessage.Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl m.cameraState OutlineMessage.Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> AVal.constant) 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
            attribute "showFPS" "false";       // optional, default is false
@@ -134,11 +134,11 @@ module OutlineApp =
               kdTree         = KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer
               localBB        = rootTree.info.LocalBoundingBox 
               globalBB       = rootTree.info.GlobalBoundingBox
-              neighborMap    = HMap.empty
+              neighborMap    = HashMap.empty
             }
         ]
         |> List.map (fun info -> info.globalBB, info)
-        |> HMap.ofList      
+        |> HashMap.ofList      
                       
       let camState = { FreeFlyController.initial with view = CameraView.lookAt (box.Center) V3d.OOO V3d.OOI; }
 
@@ -149,7 +149,7 @@ module OutlineApp =
           patchHierarchies   = patchHierarchies          
                     
           threads            = FreeFlyController.threads camState |> ThreadPool.map OutlineMessage.Camera
-          boxes              = List.empty //kdTrees |> HMap.toList |> List.map fst
+          boxes              = List.empty //kdTrees |> HashMap.toList |> List.map fst
           opcInfos           = opcInfos
           dockConfig         =
             config {

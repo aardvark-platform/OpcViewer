@@ -1,11 +1,11 @@
-﻿namespace OpcSelectionViewer
+namespace OpcSelectionViewer
 
 open System
 open System.IO
 open Aardvark.UI
 open Aardvark.Base
 open Aardvark.Base.Ag
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Semantics
@@ -110,7 +110,7 @@ module App =
             let hitF (queryPoint: V3d) = 
                 let fray = FastRay3d(V3d.Zero, (queryPoint).Normalized)
                 model.picking.pickingInfos 
-                |> HMap.tryFind model.boundingBox   // WRONG use local boundingbox
+                |> HashMap.tryFind model.boundingBox   // WRONG use local boundingbox
                 |> Option.bind (fun kk -> 
                     OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some kk.kdTree) fray 
                     |> Option.map (fun closest ->
@@ -119,7 +119,7 @@ module App =
                 )
 
             let updatePickM = PickingApp.update model.picking (HitSurface (a,b))
-            let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
+            let lastPick = updatePickM.intersectionPoints |> IndexList.tryFirst
             let updatedDrawM =
                 match lastPick with
                 | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, Some hitF))
@@ -156,8 +156,8 @@ module App =
             toEffect Shader.AttributeShader.falseColorLegend //falseColorLegendGray
             ]
 
-      let near = m.mainFrustum |> Mod.map(fun x -> x.near)
-      let far = m.mainFrustum |> Mod.map(fun x -> x.far)
+      let near = m.mainFrustum |> AVal.map(fun x -> x.near)
+      let far = m.mainFrustum |> AVal.map(fun x -> x.far)
 
 
       let filledPolygonSg, afterFilledPolygonRenderPass = 
@@ -180,14 +180,14 @@ module App =
         ]
         |> Sg.ofList
 
-      let textOverlays (cv : IMod<CameraView>) = 
+      let textOverlays (cv : aval<CameraView>) = 
         div [js "oncontextmenu" "event.preventDefault();"] [ 
            let style' = "color: white; font-family:Consolas;"
     
            yield div [clazz "ui"; style "position: absolute; top: 15px; left: 15px; float:left" ] [          
               yield table [] [
                 tr[][
-                    td[style style'][Incremental.text(cv |> Mod.map(fun x -> x.Location.ToString("0.00")))]
+                    td[style style'][Incremental.text(cv |> AVal.map(fun x -> x.Location.ToString("0.00")))]
                 ]
               ]
            ]
@@ -207,8 +207,8 @@ module App =
          ]) 
          (scene |> Sg.map PickingAction) 
             
-      //let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant          
-      //let cam = Mod.map2 Camera.create m.cameraState.view frustum 
+      //let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> AVal.constant          
+      //let cam = AVal.map2 Camera.create m.cameraState.view frustum 
 
       let semui = 
           [ 
@@ -299,11 +299,11 @@ module App =
               kdTree         = Aardvark.VRVis.Opc.KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath (KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer)
               localBB        = rootTree.info.LocalBoundingBox 
               globalBB       = rootTree.info.GlobalBoundingBox
-              neighborMap    = HMap.empty
+              neighborMap    = HashMap.empty
             }
         ]
         |> List.map (fun info -> info.globalBB, info)
-        |> HMap.ofList      
+        |> HashMap.ofList      
                       
       let up = if rotate then (box.Center.Normalized) else V3d.OOI
 
@@ -344,7 +344,7 @@ module App =
           axis               = axis
           
           threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
-          boxes              = List.empty //kdTrees |> HMap.toList |> List.map fst
+          boxes              = List.empty //kdTrees |> HashMap.toList |> List.map fst
       
           pickingActive      = false
           opcInfos           = opcInfos

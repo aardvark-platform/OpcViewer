@@ -1,8 +1,8 @@
-﻿namespace OpcOutlineTest
+namespace OpcOutlineTest
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Geometry
 open Aardvark.SceneGraph.Opc
 open Aardvark.Geometry
@@ -19,16 +19,16 @@ type OutlineMessage =
   | SetLineThickness of Numeric.Action
   | UseOutlines     
 
-[<DomainType>]
+[<ModelType>]
 type OutlineModel =
     {
         cameraState          : CameraControllerState                       
         fillMode             : FillMode                                
-        [<NonIncremental>]
+        [<NonAdaptive>]
         patchHierarchies     : list<PatchHierarchy>        
         
         boxes                : list<Box3d>
-        opcInfos             : hmap<Box3d, OpcData>
+        opcInfos             : HashMap<Box3d, OpcData>
         threads              : ThreadPool<OutlineMessage>
         dockConfig           : DockConfig
         lineThickness        : NumericInput

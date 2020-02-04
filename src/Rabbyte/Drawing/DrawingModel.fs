@@ -1,7 +1,7 @@
-﻿namespace Rabbyte.Drawing
+namespace Rabbyte.Drawing
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.Base.IndexedGeometryPrimitives
@@ -31,7 +31,7 @@ type SegmentCreation =
     //| Sky         // -> pro3d
     //| Axis        // -> dibit
 
-[<DomainType>]
+[<ModelType>]
 type BrushStyle = 
     {
         primary     : ColorInput
@@ -45,15 +45,15 @@ type BrushStyle =
 type Segment = 
     {
         startPoint : V3d
-        innerPoints: plist<V3d> 
+        innerPoints: IndexList<V3d> 
         endPoint   : V3d 
     }
 
-[<DomainType>]
+[<ModelType>]
 type DrawingModel = 
     {
-        points          : plist<V3d>
-        segments        : plist<Segment>
+        points          : IndexList<V3d>
+        segments        : IndexList<Segment>
         style           : BrushStyle
         segmentCreation : SegmentCreation
         [<TreatAsValue>]
@@ -61,8 +61,8 @@ type DrawingModel =
         [<TreatAsValue>]
         future          : Option<DrawingModel>
         primitiveType   : PrimitiveType
-        areaStyleNames  : hmap<AreaStyle, string>
-        lineStyleNames  : hmap<LineStyle, string>
+        areaStyleNames  : HashMap<AreaStyle, string>
+        lineStyleNames  : HashMap<LineStyle, string>
     }
 
 type DrawingAction =
@@ -104,8 +104,8 @@ module DrawingModel =
             past            = None
             future          = None
             primitiveType   = PrimitiveType.Empty
-            areaStyleNames = HMap.ofList [Pattern, "Pattern"; Filled, "Filled"; AreaStyle.Empty, "Empty";]
-            lineStyleNames = HMap.ofList [Solid, "Solid"; Dashed, "Dashed"]
+            areaStyleNames = HashMap.ofList [Pattern, "Pattern"; Filled, "Filled"; AreaStyle.Empty, "Empty";]
+            lineStyleNames = HashMap.ofList [Solid, "Solid"; Dashed, "Dashed"]
         }
 
     let reset m =

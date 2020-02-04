@@ -1,8 +1,8 @@
-﻿namespace Linking
+namespace Linking
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open PRo3D.Minerva
 
 type LinkingFeature =
@@ -23,9 +23,9 @@ type LinkingFeature =
 
 type LinkingFeatureDisplay =
     {
-        before: plist<LinkingFeature>
+        before: IndexList<LinkingFeature>
         f:        LinkingFeature
-        after:    plist<LinkingFeature>
+        after:    IndexList<LinkingFeature>
     }
 
 type LinkingAction =
@@ -65,17 +65,17 @@ module InstrumentParameter =
         sensorSize = V2i.Zero
     }
 
-[<DomainType>]
+[<ModelType>]
 type LinkingModel =
     {
-        frustums:               hmap<string,LinkingFeature>
-        instrumentParameter:    hmap<Instrument, InstrumentParameter>
-        selectedFrustums:       hset<string>
+        frustums:               HashMap<string,LinkingFeature>
+        instrumentParameter:    HashMap<Instrument, InstrumentParameter>
+        selectedFrustums:       HashSet<string>
         hoveredFrustrum:        Option<LinkingFeature>
         trafo:                  Trafo3d
         minervaModel:           MinervaModel
         pickingPos:             Option<V3d>
-        filterProducts:         hmap<Instrument, bool>
+        filterProducts:         HashMap<Instrument, bool>
         overlayFeature:         Option<LinkingFeatureDisplay>
         frustumOpacity:         float
     }

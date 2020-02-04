@@ -1,9 +1,9 @@
-﻿namespace OpcViewer.Base.FalseColors
+namespace OpcViewer.Base.FalseColors
 
 open System
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Application
 open Aardvark.SceneGraph
 open Aardvark.UI
@@ -24,9 +24,9 @@ module FalseColorLegendApp =
         | SetUpperColor     of ColorPicker.Action //C4b 
         | ShowColors
 
-    let bindOption (m : IMod<Option<'a>>) (defaultValue : 'b) (project : 'a -> IMod<'b>)  : IMod<'b> =
-        m |> Mod.bind (function | None   -> Mod.constant defaultValue       
-                                | Some v -> project v)
+    let bindOption (m : aval<Option<'a>>) (defaultValue : 'b) (project : 'a -> aval<'b>)  : aval<'b> =
+        m |> AVal.bind (function | None   -> AVal.constant defaultValue       
+                                 | Some v -> project v)
     
    
     let update (model : FalseColorsModel) (act : Action) =
@@ -74,8 +74,8 @@ module FalseColorLegendApp =
         //        { kind = Stylesheet; name = "spectrum.css";  url = "spectrum.css"}
         //  ]
 
-        let iconToggle (dings : IMod<bool>) onIcon offIcon action =
-          let toggleIcon = dings |> Mod.map(fun isOn -> if isOn then onIcon else offIcon)
+        let iconToggle (dings : aval<bool>) onIcon offIcon action =
+          let toggleIcon = dings |> AVal.map(fun isOn -> if isOn then onIcon else offIcon)
 
           let attributes = 
             amap {
@@ -86,10 +86,10 @@ module FalseColorLegendApp =
 
           Incremental.i attributes AList.empty
 
-        let iconCheckBox (dings : IMod<bool>) action =
+        let iconCheckBox (dings : aval<bool>) action =
           iconToggle dings "check square outline icon" "square icon" action
 
-        let viewDefinedScalarsLegendTools (model:MFalseColorsModel)= 
+        let viewDefinedScalarsLegendTools (model:AdaptiveFalseColorsModel)= 
             require Html.semui (
                 Html.table [  
                     Html.row "show legend:"             [iconCheckBox model.useFalseColors UseFalseColors ]
@@ -162,7 +162,7 @@ module FalseColorLegendApp =
                 //printfn "offset : %s  style : %s" offset color
                 Svg.stop ["offset" => offset; style color]
     
-        let createFalseColorLegendBasics (falseColor : MFalseColorsModel) (boxSize : V2d) =
+        let createFalseColorLegendBasics (falseColor : AdaptiveFalseColorsModel) (boxSize : V2d) =
             alist { 
                     let! enabled        = falseColor.useFalseColors                    
                     let! fcUpperBound   = falseColor.upperBound.value
@@ -261,7 +261,7 @@ module FalseColorLegendApp =
                 }
 
         
-        let createColorLegendScalars (falseColorValues : MFalseColorsModel) = 
+        let createColorLegendScalars (falseColorValues : AdaptiveFalseColorsModel) = 
             let falseColorSvg = createFalseColorLegendBasics falseColorValues (Aardvark.Base.V2d(100.0, 200.0))
             Incremental.Svg.svg AttributeMap.empty falseColorSvg
 

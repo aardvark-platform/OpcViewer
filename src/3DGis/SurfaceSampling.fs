@@ -1,4 +1,4 @@
-﻿namespace  ElevationProfileViewer
+namespace  ElevationProfileViewer
 
 open System
 open Aardvark.Base
@@ -122,7 +122,7 @@ module SurfaceSampling =
         let sampleAndFillLists ((pointList : V3d list), (altitudeList : float list), (errorHitList: int list)) i =
             let fray = FastRay3d(V3d.Zero, (firstPoint + (step * float i)).Normalized)         
             model.picking.pickingInfos 
-            |> HMap.tryFind model.opcBox
+            |> HashMap.tryFind model.opcBox
             |> Option.map (fun opcData -> 
                 match OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some opcData.kdTree) fray with
                 | Some t -> 

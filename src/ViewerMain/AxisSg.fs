@@ -1,8 +1,8 @@
-﻿namespace OpcSelectionViewer
+namespace OpcSelectionViewer
 
 open Aardvark.Base  
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open OpcViewer.Base
 
@@ -23,8 +23,8 @@ module AxisSg =
                 toEffect DefaultSurfaces.vertexColor
                 Shader.ThickLineNew.Effect //toEffect DefaultSurfaces.thickLine
             ]
-            |> Sg.uniform "LineWidth" (Mod.constant width)
-            |> Sg.uniform "DepthOffset" (Mod.constant 0.1)  // TODO refactor this whole file....using the OPCViewer.Base.SgUtilities
+            |> Sg.uniform "LineWidth" (AVal.constant width)
+            |> Sg.uniform "DepthOffset" (AVal.constant 0.1)  // TODO refactor this whole file....using the OPCViewer.Base.SgUtilities
 
     let lines (color : C4b) (width : double)  (points : V3d[]) =
         let offset =
@@ -35,17 +35,17 @@ module AxisSg =
         points 
             |> toColoredEdges offset color
             |> drawColoredEdges width
-            |> Sg.trafo (offset |> Trafo3d.Translation |> Mod.constant)
+            |> Sg.trafo (offset |> Trafo3d.Translation |> AVal.constant)
   
     let sphere color size pos =
         let trafo = 
-          pos |> Mod.map(fun x -> Trafo3d.Translation x)
+          pos |> AVal.map(fun x -> Trafo3d.Translation x)
 
-        Sg.sphere 3 (Mod.constant color) (Mod.constant size)
+        Sg.sphere 3 (AVal.constant color) (AVal.constant size)
           |> Sg.noEvents
           |> Sg.trafo trafo
-          |> Sg.uniform "WorldPos" (trafo |> Mod.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
-          |> Sg.uniform "Size" (Mod.constant(size))
+          |> Sg.uniform "WorldPos" (trafo |> AVal.map(fun (x : Trafo3d) -> x.Forward.C3.XYZ))
+          |> Sg.uniform "Size" (AVal.constant(size))
           |> Sg.effect [
             Shader.StableTrafo.Effect
             toEffect DefaultSurfaces.vertexColor
@@ -56,7 +56,7 @@ module AxisSg =
     
     let addDebuggingAxisPointSphere (selectionPos : Option<V3d>) = 
         selectionPos |> 
-          Option.map(fun pos -> Mod.constant pos |> sphere C4b.VRVisGreen 0.1)
+          Option.map(fun pos -> AVal.constant pos |> sphere C4b.VRVisGreen 0.1)
             |> Option.defaultValue Sg.empty
 
     let axisSgs (model : MModel) = 

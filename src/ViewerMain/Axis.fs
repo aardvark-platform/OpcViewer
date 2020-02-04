@@ -1,4 +1,4 @@
-﻿namespace OpcSelectionViewer
+namespace OpcSelectionViewer
 
 open System
 open System.IO
@@ -41,7 +41,7 @@ module AxisFunctions =
         
       {
           positions        = ops |> Array.map (fun x -> x.position) |> List.ofArray
-          pointList        = ops |> PList.ofArray
+          pointList        = ops |> IndexList.ofArray
           selectionOnAxis  = None
           length           = length
           rangeSv          = if length > 1.0 then 
@@ -193,13 +193,13 @@ module AxisFunctions =
     let p = t |> getPositionFromT axis
     (p,t)
 
-  let calcDebuggingPosition (points : plist<V3d>) (axis : Option<OpcSelectionViewer.Axis>) =
+  let calcDebuggingPosition (points : IndexList<V3d>) (axis : Option<OpcSelectionViewer.Axis>) =
     axis
       |> Option.map(fun a -> 
           let pointsOnAxis = 
              points
-               |> PList.map(fun p -> getNearestPointOnAxis' p a)
-               |> PList.toList
+               |> IndexList.map(fun p -> getNearestPointOnAxis' p a)
+               |> IndexList.toList
 
           match pointsOnAxis |> List.isEmpty with
           | true -> {a with selectionOnAxis = None}
@@ -212,23 +212,23 @@ module AxisFunctions =
             { a with selectionOnAxis = Some midPoint }
       )
 
-  let pointsOnAxis (axis : Option<OpcSelectionViewer.Axis>) (points : plist<V3d>) =
+  let pointsOnAxis (axis : Option<OpcSelectionViewer.Axis>) (points : IndexList<V3d>) =
     axis
       |> Option.bind(fun a -> 
         let pointsOnAxis = 
           points
-            |> PList.map(fun p -> getNearestPointOnAxis' p a)
+            |> IndexList.map(fun p -> getNearestPointOnAxis' p a)
            
-        match pointsOnAxis |> PList.isEmpty with
+        match pointsOnAxis |> IndexList.isEmpty with
         | true -> None
         | false -> 
           let midPoint = 
             pointsOnAxis
-             |> PList.toList
+             |> IndexList.toList
             |> List.averageBy (fun (b,t) -> t) 
             |> fun x -> (getPositionFromT a x).position
 
-          let axisPoints = pointsOnAxis |> PList.map(fun (b,t) -> b.position)
+          let axisPoints = pointsOnAxis |> IndexList.map(fun (b,t) -> b.position)
 
           Some
             {

@@ -1,7 +1,7 @@
-﻿namespace Rabbyte.Annotation
+namespace Rabbyte.Annotation
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
@@ -23,30 +23,30 @@ module AnnotationApp =
         | ShowDebugVis -> { model with showDebug = not model.showDebug }
         | AddAnnotation (drawingModel, clippinVolumType) -> 
             let annotation = AnnotationModel.convertDrawingToAnnotation drawingModel clippinVolumType
-            let updatedAnnotation = model.annotations |> PList.prepend annotation
+            let updatedAnnotation = model.annotations |> IndexList.prepend annotation
             
             let updatedAnnotationsFilledPolygon = 
                 match drawingModel.primitiveType with
                     | Polygon -> 
                         model.annotationsGrouped 
-                            |> HMap.alter annotation.style.primary.c (fun x -> 
+                            |> HashMap.alter annotation.style.primary.c (fun x -> 
                                 match x with 
-                                    | Some y -> Some (y |> PList.prepend annotation)
-                                    | None -> Some (PList.single annotation))    
+                                    | Some y -> Some (y |> IndexList.prepend annotation)
+                                    | None -> Some (IndexList.single annotation))    
                     | _ -> model.annotationsGrouped
 
             { model with annotations = updatedAnnotation; annotationsGrouped = updatedAnnotationsFilledPolygon }
 
-    let drawOutlines (near: IMod<float>) (far: IMod<float>) (model: MAnnotationModel) = 
+    let drawOutlines (near: aval<float>) (far: aval<float>) (model: MAnnotationModel) = 
         model.annotations 
         |> AList.map (fun x -> DrawingApp.drawContour x.points x.segments x.style near far |> Sg.noEvents)
         |> AList.toASet
         |> Sg.set
 
-    let viewOutlines (near: IMod<float>) (far: IMod<float>) (model: MAnnotationModel) = 
+    let viewOutlines (near: aval<float>) (far: aval<float>) (model: MAnnotationModel) = 
         model |> drawOutlines near far
 
-    let viewGrouped (near: IMod<float>) (far: IMod<float>) (startRenderPass: RenderPass) (model: MAnnotationModel) : (ISg<'a> * RenderPass) = 
+    let viewGrouped (near: aval<float>) (far: aval<float>) (startRenderPass: RenderPass) (model: MAnnotationModel) : (ISg<'a> * RenderPass) = 
 
         let filledSg, nextRenderPass = 
             model |> AnnotationSg.drawAnnotationsFilledGrouped (RenderPass.after "" RenderPassOrder.Arbitrary startRenderPass)
@@ -60,7 +60,7 @@ module AnnotationApp =
 
         sg, nextRenderPass
 
-    let viewSeq (near: IMod<float>) (far: IMod<float>) (startRenderPass: RenderPass) (model: MAnnotationModel) : (ISg<'a> * RenderPass) =
+    let viewSeq (near: aval<float>) (far: aval<float>) (startRenderPass: RenderPass) (model: MAnnotationModel) : (ISg<'a> * RenderPass) =
         
         let filledSg, nextRenderPass =
             model |> AnnotationSg.drawAnnotationsFilledSeq (RenderPass.after "" RenderPassOrder.Arbitrary startRenderPass)

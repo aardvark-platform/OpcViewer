@@ -1,4 +1,4 @@
-﻿namespace OpcSelectionViewer
+namespace OpcSelectionViewer
 
 open Aardvark.Base
 open Aardvark.SceneGraph.Opc
@@ -7,13 +7,13 @@ open OpcViewer.Base.Picking
 
 module Neighbouring = 
 
-  let rec neighborPatches (neighborMap : hmap<Box3d,BoxNeighbors>) (patchElements : QTree<Patch>[]) (patchTree : QTree<Patch>) : hmap<Box3d,BoxNeighbors> = 
+  let rec neighborPatches (neighborMap : HashMap<Box3d,BoxNeighbors>) (patchElements : QTree<Patch>[]) (patchTree : QTree<Patch>) : HashMap<Box3d,BoxNeighbors> = 
     let returnMap = 
       match patchTree with 
         | QTree.Node (n,f) -> 
           f 
             |> Array.map(fun node -> neighborPatches neighborMap f node)
-            |> Array.fold(fun unified current -> HMap.union unified current) neighborMap
+            |> Array.fold(fun unified current -> HashMap.union unified current) neighborMap
           
         | QTree.Leaf l -> 
           let blubb = 

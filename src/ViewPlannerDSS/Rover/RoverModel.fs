@@ -1,9 +1,9 @@
-﻿namespace ViewPlanner.Rover
+namespace ViewPlanner.Rover
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
-[<DomainType>]
+[<ModelType>]
 type CameraInput = 
     {
     previous : float
@@ -11,7 +11,7 @@ type CameraInput =
     delta : float
     }
 
-[<DomainType>]
+[<ModelType>]
 type RoverModel =
     {
 
@@ -61,7 +61,7 @@ module RoverModel =
         frustum = initfrustum
         }
 
-    let getViewProj (view : IMod<CameraView>) (frustum:IMod<Frustum>) =
+    let getViewProj (view : aval<CameraView>) (frustum:aval<Frustum>) =
         
         adaptive {
             let! fr = frustum 

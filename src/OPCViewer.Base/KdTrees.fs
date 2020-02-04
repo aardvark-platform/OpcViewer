@@ -7,6 +7,7 @@ open Aardvark.Base.Coder
 open Aardvark.SceneGraph.Opc
 open MBrace.FsPickler    
 open MBrace.FsPickler.Combinators  
+open FSharp.Data.Adaptive
 
 module KdTrees = 
 
@@ -42,7 +43,7 @@ module KdTrees =
 
   let expandKdTreePaths basePath kd = 
     kd 
-      |> HMap.map(fun _ k ->
+      |> HashMap.map(fun _ k ->
         match k with 
           | Level0KdTree.LazyKdTree lkt -> 
             let kdTreeSub   = lkt.kdtreePath    |> relativePath'
@@ -113,7 +114,7 @@ module KdTrees =
     //Log.stop()        
     ConcreteKdIntersectionTree(treeOida, Trafo3d.Identity)
 
-  let loadKdTrees' (h : PatchHierarchy) (trafo:Trafo3d) (load : bool) (mode:ViewerModality) (b : BinarySerializer) : hmap<Box3d,Level0KdTree> =
+  let loadKdTrees' (h : PatchHierarchy) (trafo:Trafo3d) (load : bool) (mode:ViewerModality) (b : BinarySerializer) : HashMap<Box3d,Level0KdTree> =
     //ObjectBuilder
 
     let masterKdPath = 
@@ -142,7 +143,7 @@ module KdTrees =
               kdTree = tree;
               boundingBox = tree.KdIntersectionTree.BoundingBox3d.Transformed(trafo)
           }
-          HMap.add kd.boundingBox (InCoreKdTree kd) HMap.empty
+          HashMap.add kd.boundingBox (InCoreKdTree kd) HashMap.empty
         | (true, true) ->   
           Log.line "Found master kdtree and patch trees"
           Log.startTimed "building lazy kdtree cache"
@@ -183,12 +184,12 @@ module KdTrees =
           bla |> save cacheFile b |> ignore
                
           if load then
-            bla |> HMap.ofList
+            bla |> HashMap.ofList
           else
-            HMap.empty
+            HashMap.empty
         | _ ->
           Log.warn "Could not find level 0 kdtrees"
-          HMap.empty
+          HashMap.empty
 
     if System.IO.File.Exists(cacheFile) then
       Log.line "Found lazy kdtree cache"
@@ -196,14 +197,14 @@ module KdTrees =
         try 
           let trees = loadAs<list<Box3d*Level0KdTree>> cacheFile b
     //      let trees = trees |> List.filter(fun (_,(LazyKdTree k)) -> k.kdtreePath = blar)
-          trees |> HMap.ofList
+          trees |> HashMap.ofList
         with e ->
             Log.warn "could not load lazy kdtree cache. (%A) rebuilding..." e
             loadAndCreateCache()
       else
-        HMap.empty
+        HashMap.empty
     else
       loadAndCreateCache()
     
-  let loadKdTrees (h : PatchHierarchy) (trafo:Trafo3d) (mode:ViewerModality) (b : BinarySerializer) : hmap<Box3d,Level0KdTree> =
+  let loadKdTrees (h : PatchHierarchy) (trafo:Trafo3d) (mode:ViewerModality) (b : BinarySerializer) : HashMap<Box3d,Level0KdTree> =
     loadKdTrees' (h) (trafo) (true) mode b

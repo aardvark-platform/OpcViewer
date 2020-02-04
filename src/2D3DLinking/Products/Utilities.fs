@@ -1,4 +1,4 @@
-﻿namespace PRo3D.Minerva
+namespace PRo3D.Minerva
 
 open System
 
@@ -6,7 +6,7 @@ open System
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Rendering.Text 
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.SceneGraph
 open Aardvark.Application
 //open Aardvark.Application.Utilities
@@ -124,7 +124,7 @@ module Files =
               name        = "dump"
               typus       = Typus.FeatureCollection    
               boundingBox = Box2d.Invalid
-              features    = features |> PList.ofSeq
+              features    = features |> IndexList.ofSeq
             } |> Serialization.save cachePath
          | (_, true) -> Serialization.loadAs cachePath
          | _ -> 
@@ -238,45 +238,45 @@ module Drawing =
 
     let stablePoints (sgfeatures : MSgFeatures) =
       sgfeatures.positions 
-        |> Mod.map2(fun (t : Trafo3d) x -> 
+        |> AVal.map2(fun (t : Trafo3d) x -> 
           x |> Array.map(fun p -> (t.Backward.TransformPos(p)) |> V3f)) sgfeatures.trafo
 
-    let drawSingleColoredFeaturePoints (sgfeatures : MSgFeatures) (pointSize:IMod<float>) (color:C4f) = 
+    let drawSingleColoredFeaturePoints (sgfeatures : MSgFeatures) (pointSize:aval<float>) (color:C4f) = 
         let pointsF = stablePoints sgfeatures
         drawSingleColorPoints pointsF (color.ToV4d()) pointSize |> Sg.trafo sgfeatures.trafo
 
-    let drawFeaturePoints (sgfeatures : MSgFeatures) (pointSize:IMod<float>) = 
+    let drawFeaturePoints (sgfeatures : MSgFeatures) (pointSize:aval<float>) = 
         let pointsF = stablePoints sgfeatures
         drawColoredPoints pointsF sgfeatures.colors pointSize |> Sg.trafo sgfeatures.trafo
 
     let drawHoveredFeaturePoint hoveredProduct pointSize trafo =
       let hoveredPoint = 
-        Mod.map2(fun (x:Option<V3d>) (t:Trafo3d) ->  
+        AVal.map2(fun (x:Option<V3d>) (t:Trafo3d) ->  
           match x with 
           | None -> [||]
           | Some a ->  [|t.Backward.TransformPos(a)|]) hoveredProduct trafo 
 
-      drawSingleColorPoints hoveredPoint (C4f.Yellow.ToV4d()) (pointSize |> Mod.map(fun x -> x + 5.0)) |> Sg.trafo trafo
+      drawSingleColorPoints hoveredPoint (C4f.Yellow.ToV4d()) (pointSize |> AVal.map(fun x -> x + 5.0)) |> Sg.trafo trafo
 
     let pass0 = RenderPass.main
     let pass1 = RenderPass.after "outline" RenderPassOrder.Arbitrary pass0
 
-    let drawSelectedFeaturePoints (sgfeatures : MSgFeatures) (pointSize:IMod<float>) =
+    let drawSelectedFeaturePoints (sgfeatures : MSgFeatures) (pointSize:aval<float>) =
 
         let outline =
-          drawSingleColoredFeaturePoints sgfeatures (pointSize |> Mod.map(fun x -> x + 4.0)) C4f.VRVisGreen 
+          drawSingleColoredFeaturePoints sgfeatures (pointSize |> AVal.map(fun x -> x + 4.0)) C4f.VRVisGreen 
           |> Sg.pass pass0
 
         let inside = 
           drawFeaturePoints sgfeatures pointSize
           |> Sg.pass pass1
-          |> Sg.depthTest (Mod.constant(DepthTestMode.Always))
+          |> Sg.depthTest (AVal.constant(DepthTestMode.Always))
 
         Sg.ofList [inside; outline]
 
-    let featureMousePick (boundingBox : IMod<Box3d>) =
+    let featureMousePick (boundingBox : aval<Box3d>) =
       boundingBox 
-        |> Mod.map(fun box ->  
+        |> AVal.map(fun box ->  
           Sg.empty 
             |> Sg.pickable (PickShape.Box box)
             |> Sg.withEvents [
@@ -285,7 +285,7 @@ module Drawing =
             ])
         |> Sg.dynamic 
 
-    let computeInvariantScale (view : IMod<CameraView>) (near : IMod<float>) (p:V3d) (size:IMod<float>) (hfov:IMod<float>) =
+    let computeInvariantScale (view : aval<CameraView>) (near : aval<float>) (p:V3d) (size:aval<float>) (hfov:aval<float>) =
         adaptive {
             //let! p = p
             let! v = view
@@ -319,9 +319,9 @@ module Drawing =
         )
         rotTrafo * modelt        
 
-    let text (view : IMod<CameraView>) (near : IMod<float>) (hfov:IMod<float>) (pos:V3d) (modelTrafo:Trafo3d) (text:IMod<string>) (size:IMod<float>) =
-        let invScaleTrafo = computeInvariantScale view near pos (Mod.constant 0.05) hfov |> Mod.map Trafo3d.Scale
-        //    //computeInvariantScale view near pos (Mod.constant 0.05) hfov |> Mod.map Trafo3d.Scale //(Mod.constant 0.05)
+    let text (view : aval<CameraView>) (near : aval<float>) (hfov:aval<float>) (pos:V3d) (modelTrafo:Trafo3d) (text:aval<string>) (size:aval<float>) =
+        let invScaleTrafo = computeInvariantScale view near pos (AVal.constant 0.05) hfov |> AVal.map Trafo3d.Scale
+        //    //computeInvariantScale view near pos (AVal.constant 0.05) hfov |> AVal.map Trafo3d.Scale //(AVal.constant 0.05)
       
         let billboardTrafo = 
             adaptive {

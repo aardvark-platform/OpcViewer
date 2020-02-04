@@ -1,8 +1,8 @@
-﻿namespace OpcSelectionViewer
+namespace OpcSelectionViewer
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Geometry
 open Aardvark.SceneGraph.Opc
 open Aardvark.Geometry
@@ -44,27 +44,27 @@ type CameraStateLean =
       stationing            : Stationing
   }
 
-[<DomainType>]
+[<ModelType>]
 type Axis = {
     positions       : list<V3d>
     selectionOnAxis : Option<V3d>
-    pointList       : plist<OrientedPoint>
+    pointList       : IndexList<OrientedPoint>
     length          : float
     rangeSv         : Range1d
 }
 
-[<DomainType>]
+[<ModelType>]
 type Model =
     {
         cameraState          : CameraControllerState
         mainFrustum          : Frustum
         fillMode             : FillMode                                
-        [<NonIncremental>]
+        [<NonAdaptive>]
         patchHierarchies     : list<PatchHierarchy> 
         boundingBox          : Box3d
         axis                 : Option<Axis>
         boxes                : list<Box3d>        
-        opcInfos             : hmap<Box3d, OpcData>
+        opcInfos             : HashMap<Box3d, OpcData>
         threads              : ThreadPool<Message>
         dockConfig           : DockConfig
         picking              : PickingModel

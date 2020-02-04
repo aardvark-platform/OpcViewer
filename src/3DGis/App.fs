@@ -1,4 +1,4 @@
-﻿namespace  ElevationProfileViewer
+namespace  ElevationProfileViewer
 
 
 open System
@@ -6,7 +6,7 @@ open System.IO
 open Aardvark.UI
 open Aardvark.Base
 open Aardvark.Base.Ag
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Semantics
@@ -21,7 +21,7 @@ open Aardvark.Application
 [<AutoOpen>]
 module SceneGraphExtension = 
 
-    type OverrideProjTrafo(overrideTrafo : IMod<Option<Trafo3d>>, child : ISg) =
+    type OverrideProjTrafo(overrideTrafo : aval<Option<Trafo3d>>, child : ISg) =
         inherit Sg.AbstractApplicator(child)
         member x.OverrideTrafo = overrideTrafo
 
@@ -29,7 +29,7 @@ module SceneGraphExtension =
     type OverrideProjTrafoSem() =
         member x.ProjTrafo(o : OverrideProjTrafo) =
             let myTrafo = 
-                Mod.map2 (fun (o : Option<Trafo3d>) (r : Trafo3d) -> 
+                AVal.map2 (fun (o : Option<Trafo3d>) (r : Trafo3d) -> 
                     match o with
                         | None -> r
                         | Some o -> o
@@ -37,7 +37,7 @@ module SceneGraphExtension =
             o.Child?ProjTrafo <- myTrafo
 
     module Sg = 
-        let overrideProjTrafo (o : IMod<Option<Trafo3d>>) (sg : ISg) = 
+        let overrideProjTrafo (o : aval<Option<Trafo3d>>) (sg : ISg) = 
             OverrideProjTrafo(o,sg) :> ISg
         
 
@@ -345,7 +345,7 @@ module App =
                     match msg with
                     | HitSurface (a,b) -> 
                         let updatePickM = PickingApp.update model.picking (HitSurface (a,b))
-                        let lastPick = updatePickM.intersectionPoints |> PList.tryFirst         
+                        let lastPick = updatePickM.intersectionPoints |> IndexList.tryFirst         
                         
                         let updatedDrawM =
                             match lastPick with
@@ -491,7 +491,7 @@ module App =
                     let fray = FastRay3d(V3d.Zero, pos.Normalized)   
                     let hitpoint=
                         model.picking.pickingInfos 
-                        |> HMap.tryFind model.opcBox
+                        |> HashMap.tryFind model.opcBox
                         |> Option.map (fun opcData -> 
                             match OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some opcData.kdTree) fray with
                             | Some t -> 
@@ -578,7 +578,7 @@ module App =
         let opcs = 
             m.opcInfos
                 |> AMap.toASet
-                |> ASet.map(fun info -> Sg.createSingleOpcSg (Mod.constant None) m.pickingActive m.cameraState.view info)
+                |> ASet.map(fun info -> Sg.createSingleOpcSg (AVal.constant None) m.pickingActive m.cameraState.view info)
                 |> Sg.set
                 |> Sg.effect [ 
                   toEffect Shader.stableTrafo
@@ -645,8 +645,8 @@ module App =
             
             }
         
-        let near = m.mainFrustum |> Mod.map(fun x -> x.near)
-        let far = m.mainFrustum |> Mod.map(fun x -> x.far)
+        let near = m.mainFrustum |> AVal.map(fun x -> x.near)
+        let far = m.mainFrustum |> AVal.map(fun x -> x.far)
         
         let filledPolygonSg, afterFilledPolygonRenderPass = 
             m.annotations 
@@ -654,14 +654,14 @@ module App =
     
         let afterFilledPolygonSg = 
             [
-              m.drawing |> DrawingApp.viewPointSize near far (Mod.constant 2.0) (Mod.constant 10.0)
+              m.drawing |> DrawingApp.viewPointSize near far (AVal.constant 2.0) (AVal.constant 10.0)
             ] 
             |> Sg.ofList
             |> Sg.pass afterFilledPolygonRenderPass
           
         let afterFilledPolygonSg2 = 
             [
-              m.drawing2 |> DrawingApp.viewPointSize near far (Mod.constant 0.0) (Mod.constant 10.0)
+              m.drawing2 |> DrawingApp.viewPointSize near far (AVal.constant 0.0) (AVal.constant 10.0)
             ] 
             |> Sg.ofList
             |> Sg.pass afterFilledPolygonRenderPass
@@ -678,23 +678,23 @@ module App =
         let markerCone = 
             Sg.cone 
                 16 
-                (m.markerCone |> Mod.map ( fun x -> x.color)) 
-                (m.markerCone |> Mod.map ( fun x -> x.radius)) 
-                (m.markerCone |> Mod.map ( fun x -> x.height))
+                (m.markerCone |> AVal.map ( fun x -> x.color)) 
+                (m.markerCone |> AVal.map ( fun x -> x.radius)) 
+                (m.markerCone |> AVal.map ( fun x -> x.height))
                 |> Sg.noEvents
                 |> Sg.effect [
                     toEffect Shader.stableTrafo
                     toEffect DefaultSurfaces.vertexColor
                 ]
-                |> Sg.trafo (m.markerCone |> Mod.map ( fun x -> x.trafoRot))
-                |> Sg.trafo (m.markerCone |> Mod.map ( fun x -> x.trafoTrl))
+                |> Sg.trafo (m.markerCone |> AVal.map ( fun x -> x.trafoRot))
+                |> Sg.trafo (m.markerCone |> AVal.map ( fun x -> x.trafoTrl))
              
         
         let hoverTriangle = 
             Sg.empty 
                 |> Sg.pickable' 
                     ( m.hoverTriangles |> 
-                        Mod.map ( fun s -> { shape = PickShape.Triangles(KdTree(Spatial.triangle, s)); trafo = Trafo3d.Identity } )
+                        AVal.map ( fun s -> { shape = PickShape.Triangles(KdTree(Spatial.triangle, s)); trafo = Trafo3d.Identity } )
                     )
                 |> Sg.requirePicking
                 |> Sg.noEvents
@@ -769,13 +769,13 @@ module App =
                         br[]
                         Html.SemUi.accordion "Elevation Info" "map" true [     
                             Html.table [  
-                                Html.row "Number of Points:" [Incremental.text (m.numSampledPoints |> Mod.map (fun f -> f.ToString())) ]
-                                Html.row "Linear Distance:" [Incremental.text (m.linearDistance |> Mod.map (fun f -> Math.Round(f,2).ToString())) ]
-                                Html.row "Accumulated Distance:" [Incremental.text (m.accDistance |> Mod.map (fun f -> f.ToString())) ]
+                                Html.row "Number of Points:" [Incremental.text (m.numSampledPoints |> AVal.map (fun f -> f.ToString())) ]
+                                Html.row "Linear Distance:" [Incremental.text (m.linearDistance |> AVal.map (fun f -> Math.Round(f,2).ToString())) ]
+                                Html.row "Accumulated Distance:" [Incremental.text (m.accDistance |> AVal.map (fun f -> f.ToString())) ]
                                 Html.row "Sampling Rate:"  [Numeric.view m.stepSampleSize |> UI.map Message.SetSamplingRate]                             
-                                Html.row "Sampling Distance:" [Incremental.text (m.samplingDistance |> Mod.map (fun f -> Math.Round(f,4).ToString())) ]
-                                Html.row "Min Height:" [Incremental.text (m.minHeight |> Mod.map (fun f -> Math.Round(f,2).ToString())) ]
-                                Html.row "Max Height:" [Incremental.text (m.maxHeight |> Mod.map (fun f -> Math.Round(f,2).ToString())) ]                                         
+                                Html.row "Sampling Distance:" [Incremental.text (m.samplingDistance |> AVal.map (fun f -> Math.Round(f,4).ToString())) ]
+                                Html.row "Min Height:" [Incremental.text (m.minHeight |> AVal.map (fun f -> Math.Round(f,2).ToString())) ]
+                                Html.row "Max Height:" [Incremental.text (m.maxHeight |> AVal.map (fun f -> Math.Round(f,2).ToString())) ]                                         
                             ]                       
                         ]
                     ]
@@ -831,11 +831,11 @@ module App =
                       kdTree         = Aardvark.VRVis.Opc.KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath (KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ OpcSelectionViewer.Serialization.binarySerializer)
                       localBB        = rootTree.info.LocalBoundingBox 
                       globalBB       = rootTree.info.GlobalBoundingBox
-                      neighborMap    = HMap.empty
+                      neighborMap    = HashMap.empty
                   }
             ]
             |> List.map (fun info -> info.globalBB, info)
-            |> HMap.ofList      
+            |> HashMap.ofList      
                         
         let up = V3d.OOI 
         let sky = box.Center.Normalized
@@ -909,7 +909,7 @@ module App =
                 accDistance                     = 0.0
                 maxHeight                       = 0.0
                 minHeight                       = 0.0
-                dropDownOptions                 = HMap.ofList [P, "Perspective"; O, "Orthographic";]
+                dropDownOptions                 = HashMap.ofList [P, "Perspective"; O, "Orthographic";]
                 currentOption                   = Some O
                 offsetUIDrawX                   = 0.05
                 offsetUIDrawY                   = 0.15

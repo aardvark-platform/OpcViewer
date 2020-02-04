@@ -1,11 +1,12 @@
-﻿namespace OpcViewer.Base.FalseColors
+namespace OpcViewer.Base.FalseColors
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
+open Adaptify
 
 
-[<DomainType>]
+[<ModelType>]
 type FalseColorsModel = {
     useFalseColors  : bool
     lowerBound      : NumericInput

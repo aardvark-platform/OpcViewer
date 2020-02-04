@@ -1,8 +1,8 @@
-﻿namespace OpcViewer.Base
+namespace OpcViewer.Base
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.Rendering.Text
@@ -71,9 +71,9 @@ module Sg =
   open OpcViewer.Base.Picking
   open OpcViewer.Base.Attributes
   
-  let addAttributeFalsecolorMappingParameters  (selectedScalar:IMod<Option<MScalarLayer>>) (isg:ISg<'a>) =
+  let addAttributeFalsecolorMappingParameters  (selectedScalar:aval<Option<AdaptiveScalarLayer>>) (isg:ISg<'a>) =
             
-        let isSelected = selectedScalar |> Mod.map( fun s -> s.IsSome )
+        let isSelected = selectedScalar |> AVal.map( fun s -> s.IsSome )
 
         //let upperBound = 
         //    adaptive {
@@ -97,57 +97,57 @@ module Sg =
         //         | None -> return 1.0
         //    }
 
-        let interval = selectedScalar |> Mod.bind ( fun x ->
+        let interval = selectedScalar |> AVal.bind ( fun x ->
                         match x with 
                             | Some s -> s.colorLegend.interval.value
-                            | None   -> Mod.constant(1.0)
+                            | None   -> AVal.constant(1.0)
                         )
 
-        let inverted = selectedScalar |> Mod.bind ( fun x ->
+        let inverted = selectedScalar |> AVal.bind ( fun x ->
                         match x with 
                             | Some s -> s.colorLegend.invertMapping
-                            | None   -> Mod.constant(false)
+                            | None   -> AVal.constant(false)
                         )     
         
-        let upperB = selectedScalar |> Mod.bind ( fun x ->
+        let upperB = selectedScalar |> AVal.bind ( fun x ->
                         match x with 
                             | Some s -> s.colorLegend.upperBound.value
-                            | None   -> Mod.constant(1.0)
+                            | None   -> AVal.constant(1.0)
                         )
 
-        let lowerB = selectedScalar |> Mod.bind ( fun x ->
+        let lowerB = selectedScalar |> AVal.bind ( fun x ->
                         match x with 
                             | Some s -> s.colorLegend.lowerBound.value
-                            | None   -> Mod.constant(1.0)
+                            | None   -> AVal.constant(1.0)
                         )
 
-        let showcolors = selectedScalar |> Mod.bind ( fun x ->
+        let showcolors = selectedScalar |> AVal.bind ( fun x ->
                             match x with 
                                 | Some s -> s.colorLegend.showColors
-                                | None   -> Mod.constant(false)
+                                | None   -> AVal.constant(false)
                             )     
 
         let upperC = 
           selectedScalar 
-            |> Mod.bind (fun x ->
+            |> AVal.bind (fun x ->
                match x with 
                  | Some s -> 
                    s.colorLegend.upperColor.c 
-                     |> Mod.map(fun x -> 
+                     |> AVal.map(fun x -> 
                        let t = x.ToC3f()
                        let t1 = HSVf.FromC3f(t)
                        let t2 = (float)t1.H
                        t2)
-                 | None -> Mod.constant(1.0)
+                 | None -> AVal.constant(1.0)
                )
         let lowerC = 
           selectedScalar 
-            |> Mod.bind ( fun x ->
+            |> AVal.bind ( fun x ->
               match x with 
                 | Some s -> 
                   s.colorLegend.lowerColor.c 
-                    |> Mod.map(fun x -> ((float)(HSVf.FromC3f (x.ToC3f())).H))
-                | None   -> Mod.constant(0.0)
+                    |> AVal.map(fun x -> ((float)(HSVf.FromC3f (x.ToC3f())).H))
+                | None   -> AVal.constant(0.0)
               )
               
             
@@ -171,10 +171,10 @@ module Sg =
   let font = Font("Consolas")
   let border = { left = 0.01; right = 0.01; top = 0.01; bottom = 0.01 }
   
-  let pickable' (pick :IMod<Pickable>) (sg: ISg) =
-    Sg.PickableApplicator (pick, Mod.constant sg)
+  let pickable' (pick :aval<Pickable>) (sg: ISg) =
+    Sg.PickableApplicator (pick, AVal.constant sg)
 
-  let opcSg loadedHierarchies (selectedScalar:IMod<Option<MScalarLayer>>) (picking : IMod<bool>) (bb : Box3d) = 
+  let opcSg loadedHierarchies (selectedScalar:aval<Option<AdaptiveScalarLayer>>) (picking : aval<bool>) (bb : Box3d) = 
     
     let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
     let sg = 
@@ -184,9 +184,9 @@ module Sg =
           let tex = FileTexture(texPath,config) :> ITexture
                     
           Sg.ofIndexedGeometry g
-              |> Sg.trafo (Mod.constant info.Local2Global)
-              |> Sg.diffuseTexture (Mod.constant tex)       
-              //|> Sg.andAlso(Sg.wireBox (Mod.constant C4b.VRVisGreen) (Mod.constant info.GlobalBoundingBox) |> Sg.noEvents)
+              |> Sg.trafo (AVal.constant info.Local2Global)
+              |> Sg.diffuseTexture (AVal.constant tex)       
+              //|> Sg.andAlso(Sg.wireBox (AVal.constant C4b.VRVisGreen) (AVal.constant info.GlobalBoundingBox) |> Sg.noEvents)
           )
         |> Sg.ofList   
     
@@ -203,7 +203,7 @@ module Sg =
       |> Sg.withEvents [
           SceneEventKind.Down, (
             fun sceneHit -> 
-              let intersect = picking |> Mod.force
+              let intersect = picking |> AVal.force
               if intersect then              
                 Log.line "hit an opc? %A" bb
                 true, Seq.ofList[(HitSurface (bb,sceneHit))] //, fun a -> a))]
@@ -215,7 +215,7 @@ module Sg =
   let boxSg loadedHierarchies =
     let sg = 
       loadedHierarchies
-        |> List.map (fun (_,_,info) -> Sg.wireBox (Mod.constant C4b.VRVisGreen) (Mod.constant info.GlobalBoundingBox) |> Sg.noEvents)
+        |> List.map (fun (_,_,info) -> Sg.wireBox (AVal.constant C4b.VRVisGreen) (AVal.constant info.GlobalBoundingBox) |> Sg.noEvents)
         |> Sg.ofList
         |> Sg.effect [ 
             toEffect Shader.stableTrafo
@@ -245,7 +245,7 @@ module Sg =
     
   let linePass = RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main
 
-  let billboardText (view : IMod<CameraView>) modelTrafo text =
+  let billboardText (view : aval<CameraView>) modelTrafo text =
                      
       let billboardTrafo = 
           adaptive {
@@ -259,19 +259,19 @@ module Sg =
           |> Sg.effect [
             Shader.stableTrafo |> toEffect
           ]         
-          |> Sg.trafo (0.05 |> Trafo3d.Scale |> Mod.constant )
+          |> Sg.trafo (0.05 |> Trafo3d.Scale |> AVal.constant )
           |> Sg.trafo billboardTrafo  
 
-  let textSg loadedHierarchies (c:IMod<CameraView>) =
+  let textSg loadedHierarchies (c:aval<CameraView>) =
     let sg = 
       loadedHierarchies
         |> List.map (fun (_,_,info) -> 
-           billboardText c (info.GlobalBoundingBox.Center |> Trafo3d.Translation |> Mod.constant) (info.Name |> Mod.constant)
+           billboardText c (info.GlobalBoundingBox.Center |> Trafo3d.Translation |> AVal.constant) (info.Name |> AVal.constant)
          )
         |> Sg.ofList        
     sg
     
-  let createSingleOpcSg (selectedScalar:IMod<Option<MScalarLayer>>) (picking : IMod<bool>) (view : IMod<CameraView>) (data : Box3d*MOpcData) =
+  let createSingleOpcSg (selectedScalar:aval<Option<AdaptiveScalarLayer>>) (picking : aval<bool>) (view : aval<CameraView>) (data : Box3d*OpcData) =
     adaptive {
         let boundingBox, opcData = data
     
@@ -282,9 +282,10 @@ module Sg =
             |> List.map(fun y -> (opcData.patchHierarchy.opcPaths.Opc_DirAbsPath, y))
 
         let! scalar = selectedScalar
-        let! attribute = match scalar with
-                            | Some s -> s.label
-                            | _ -> Mod.constant ""
+        let! attribute = 
+            match scalar with
+                | Some s -> s.label
+                | _ -> AVal.constant ""
             
         let loadedPatches = 
             leaves 
@@ -292,7 +293,7 @@ module Sg =
               |> List.map(fun ((a,_),c,d) -> (a,c,d)) //|> List.skip 2 |> List.take 1
 
         //let globalBB = 
-        //  Sg.wireBox (Mod.constant C4b.Red) (Mod.constant boundingBox) 
+        //  Sg.wireBox (AVal.constant C4b.Red) (AVal.constant boundingBox) 
         //    |> Sg.noEvents 
         //    |> Sg.effect [ 
         //      toEffect Shader.stableTrafo

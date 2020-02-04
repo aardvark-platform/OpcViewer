@@ -1,8 +1,8 @@
-﻿namespace  ElevationProfileViewer
+namespace  ElevationProfileViewer
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.SceneGraph.Opc
 open Aardvark.UI
 open Aardvark.UI.Primitives
@@ -83,27 +83,27 @@ type Cone = {
 }
 
 
-[<DomainType>]
+[<ModelType>]
 type Axis = {
     positions       : list<V3d>
     selectionOnAxis : Option<V3d>
-    pointList       : plist<OrientedPoint>
+    pointList       : IndexList<OrientedPoint>
     length          : float
     rangeSv         : Range1d
 }
 
 
-[<DomainType>]
+[<ModelType>]
 type Model =
     {
         cameraState                    : CameraControllerState 
         mainFrustum                    : Frustum
         fillMode                       : FillMode                                
-        [<NonIncremental>]             
+        [<NonAdaptive>]             
         patchHierarchies               : list<PatchHierarchy>        
         axis                           : Option<Axis>
         boxes                          : list<Box3d>        
-        opcInfos                       : hmap<Box3d, OpcData>
+        opcInfos                       : HashMap<Box3d, OpcData>
         threads                        : ThreadPool<Message>
         dockConfig                     : DockConfig
         picking                        : PickingModel
@@ -137,7 +137,7 @@ type Model =
                                        
         perspectiveView                : bool
         persToOrthoValue               : float
-        dropDownOptions                : hmap<Alternative, string>
+        dropDownOptions                : HashMap<Alternative, string>
         currentOption                  : Option<Alternative>
                                        
         camViewAnimRunning             : bool
