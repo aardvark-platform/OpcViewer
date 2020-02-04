@@ -19,7 +19,7 @@ module DrawingProfileView =
 
     let inline (=>) a b = Attributes.attribute a b
  
-    let mainBoxRect (m : MModel)=
+    let mainBoxRect (m : AdaptiveModel)=
         Incremental.Svg.rect (
             amap {                     
                 let! xOffset = m.offsetUIDrawX
@@ -49,7 +49,7 @@ module DrawingProfileView =
             } |> AttributeMap.ofAMap
         )
              
-    let contourLine (m : MModel) (order : float) (strokeWidth : float) (opacity : string) =
+    let contourLine (m : AdaptiveModel) (order : float) (strokeWidth : float) (opacity : string) =
         Incremental.Svg.line ( 
             amap {
                 let! xOffset = m.offsetUIDrawX
@@ -76,7 +76,7 @@ module DrawingProfileView =
             } |> AttributeMap.ofAMap
         )
 
-    let verticalLine (m : MModel) (i : int) (numofPointsinLineList : int list) (coordArray : string[])=
+    let verticalLine (m : AdaptiveModel) (i : int) (numofPointsinLineList : int list) (coordArray : string[])=
         Incremental.Svg.line ( 
             amap {
                 let rec countElemOffset i acc = 
@@ -113,7 +113,7 @@ module DrawingProfileView =
             } |> AttributeMap.ofAMap
         )           
 
-    let containerAttribs (m : MModel) = 
+    let containerAttribs (m : AdaptiveModel) = 
         amap {
             let! dimensions = m.cutViewDim
 
@@ -124,7 +124,7 @@ module DrawingProfileView =
             yield style ("width: " + widthValue + "px; height: 100%; user-select: none;")
         } |> AttributeMap.ofAMap
 
-    let drawSVGElements (m : MModel) = 
+    let drawSVGElements (m : AdaptiveModel) = 
         Incremental.Svg.svg (containerAttribs m) <|
             alist {            
                 //Gradient Color

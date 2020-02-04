@@ -8,6 +8,7 @@ open Aardvark.Rendering.Text
 open Aardvark.SceneGraph
 open Aardvark.UI
 open KdTreeHelper
+open FSharp.Data.Adaptive
 
 module MinervaApp =
   open Aardvark.Geometry
@@ -194,7 +195,7 @@ module MinervaApp =
               updateModel
             | _ -> failwith "wrong action"
           
-  let viewFeaturesSg (model : MMinervaModel) =
+  let viewFeaturesSg (model : AdaptiveMinervaModel) =
     let pointSize = model.featureProperties.pointSize.value
 
     Sg.ofList [

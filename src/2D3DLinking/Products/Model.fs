@@ -7,6 +7,8 @@ open Aardvark.UI
 
 open Aardvark.Geometry
 
+open Adaptify
+
 type FeatureId = FeatureId of string
 
 type Typus = 
@@ -386,7 +388,7 @@ module Initial =
 
   let selectionM =
     {
-        selectedProducts     = hset.Empty
+        selectedProducts     = HashSet.Empty
         singleSelectProduct  = None
         kdTree = Unchecked.defaultof<_>
         flatPos = Array.empty

@@ -11,9 +11,11 @@ open Aardvark.Application
 open OpcViewer.Base.Picking
 open Rabbyte.Drawing
 open Rabbyte.Annotation
-open OpenTK.Input
-open System
-open ProviderImplementation.ProvidedTypes
+
+
+open Adaptify
+
+
 
 
 

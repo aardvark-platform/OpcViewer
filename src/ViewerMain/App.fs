@@ -25,6 +25,11 @@ open OpcViewer.Base.Attributes
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 
+open Adaptify.FSharp.Core
+
+open Aether
+open Aether.Operators
+
 module App =   
   open Aardvark.Application
   open Aardvark.VRVis.Opc
@@ -137,18 +142,21 @@ module App =
             { model with annotations = AnnotationApp.update model.annotations msg }
       | _ -> model
                     
-  let view (m : MModel) =
+  let view (m : AdaptiveModel) =
                                              
       let box = 
         m.patchHierarchies
           |> List.map(fun x -> x.tree |> QTree.getRoot) 
           |> List.map(fun x -> x.info.LocalBoundingBox)
           |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
+
+
+      let scalar = m.opcAttributes.selectedScalar |> AVal.map (function AdaptiveNone -> None | AdaptiveSome s -> Some s)
       
       let opcs = 
         m.opcInfos
           |> AMap.toASet
-          |> ASet.map(fun info -> Sg.createSingleOpcSg m.opcAttributes.selectedScalar m.pickingActive m.cameraState.view info)
+          |> ASet.map(fun info -> Sg.createSingleOpcSg scalar m.pickingActive m.cameraState.view info)
           |> Sg.set
           |> Sg.effect [ 
             toEffect Shader.stableTrafo
@@ -318,7 +326,7 @@ module App =
       let camState = restoreCamState
 
       let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
-      let camState = camState |> Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
+      let camState = camState |> ffConfig ^= CameraControllerState.freeFlyConfig_  
 
       let initialDockConfig = 
         config {
@@ -361,6 +369,6 @@ module App =
           update = update
           view   = view          
           threads = fun m -> m.threads
-          unpersist = Unpersist.instance<Model, MModel>
+          unpersist = Unpersist.instance<Model, AdaptiveModel>
       }
        

@@ -11,6 +11,8 @@ open PRo3D.Base
 
 open LinkingView
 
+open FSharp.Data.Adaptive
+
 type EmbeddedRessource = EmbeddedRessource
 
 [<EntryPoint>]

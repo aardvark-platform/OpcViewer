@@ -26,7 +26,7 @@ module OutlineSg =
   let pass0 = RenderPass.main
   let pass1 = RenderPass.after "outline" RenderPassOrder.Arbitrary pass0
 
-  let createOutlineOpcSg (m : MOutlineModel) (data : Box3d*MOpcData) =
+  let createOutlineOpcSg (m : AdaptiveOutlineModel) (data : Box3d*AdaptiveOpcData) =
     let boundingBox, opcData = data
     
     let leaves = 

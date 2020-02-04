@@ -4,16 +4,17 @@ open System
 open System.IO
 open Aardvark.Base
 open OpcViewer.Base.Picking
+open FSharp.Data.Adaptive
 
 module AxisFunctions = 
   
   type AxisPoint = {
-    index           : int
-    point           : OrientedPoint
-    T               : double
-    normalDev       : double
-    planeHeight     : double
-    planeHeightSign : int    
+        index           : int
+        point           : OrientedPoint
+        T               : double
+        normalDev       : double
+        planeHeight     : double
+        planeHeightSign : int    
     }
 
   type Cursor<'a> =
@@ -92,7 +93,7 @@ module AxisFunctions =
             |> List.minBy (fun x -> V3d.DistanceSquared(p, x))
   
       axis.positions             
-          |> List.findIndex (fun x -> V3d.ApproxEqual(x, minPos))
+          |> List.findIndex (fun x -> x.ApproximateEquals(minPos))
   
   let getAxisPointOfOppositeSign(axisPoints : Cursor<AxisPoint>) : AxisPoint = 
     let signs = 

@@ -107,7 +107,7 @@ module ClippingVolume =
         let generatePolygonTriangles (extrusionOffset : float) (points:alist<V3d>) =
             let shiftAndPosAndCol =
                 points 
-                |> AList.toMod
+                |> AList.toAVal
                 |> AVal.bind(fun x -> 
                   // increase Precision
                   let shift = x |> IndexList.tryAt 0 |> Option.defaultValue V3d.Zero
@@ -124,14 +124,14 @@ module ClippingVolume =
 
         let sg = extrusionOffset |> AVal.map (fun o -> generatePolygonTriangles o points) 
   
-        sg |> AVal.toASet |> Sg.set
+        sg |> AVal.map Seq.singleton |> ASet.ofAVal |> Sg.set
 
     let clippingVolume (colorAlpha: aval<V4f>) (extrusionOffset: aval<float>) (creation: aval<ClippingVolumeType>) (points: alist<V3d>) = 
         
         let offsetAndCreation = AVal.map2 (fun o c -> o,c) extrusionOffset creation
         
         points 
-        |> AList.toMod
+        |> AList.toAVal
         |> AVal.bind (fun pxs -> 
             offsetAndCreation |> AVal.map(fun (extOff, creation) -> 
           
@@ -216,7 +216,8 @@ module ClippingVolume =
                 |> Sg.translate' (AVal.constant shift)
             )
         ) 
-        |> AVal.toASet 
+        |> AVal.map Seq.singleton 
+        |> ASet.ofAVal 
         |> Sg.set
 
     let drawClippingVolumeDebug clippingVolume = 
@@ -249,7 +250,7 @@ module AnnotationSg =
     open AnnotationModel
 
     // grouped...fast -> alpha broken
-    let drawAnnotationsFilledGrouped (firstRenderPass: RenderPass) (model: MAnnotationModel) =
+    let drawAnnotationsFilledGrouped (firstRenderPass: RenderPass) (model: AdaptiveAnnotationModel) =
     
         let mutable maskPass = firstRenderPass
         let mutable areaPass = RenderPass.after "" RenderPassOrder.Arbitrary maskPass
@@ -287,7 +288,7 @@ module AnnotationSg =
         (sg, nextRenderPass)
 
     // sequentiel...correct Alphablending
-    let drawAnnotationsFilledSeq (firstRenderPass: RenderPass) (model: MAnnotationModel) =
+    let drawAnnotationsFilledSeq (firstRenderPass: RenderPass) (model: AdaptiveAnnotationModel) =
     
         let mutable maskPass = firstRenderPass
         let mutable areaPass = RenderPass.after "" RenderPassOrder.Arbitrary maskPass

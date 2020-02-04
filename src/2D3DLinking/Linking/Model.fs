@@ -5,6 +5,8 @@ open Aardvark.Base.Rendering
 open FSharp.Data.Adaptive
 open PRo3D.Minerva
 
+open Adaptify
+
 type LinkingFeature =
     {
         id: string
@@ -83,14 +85,14 @@ type LinkingModel =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module LinkingModel = 
     let initial = {
-        frustums            = hmap.Empty
-        instrumentParameter = hmap.Empty
-        selectedFrustums    = hset.Empty
+        frustums            = HashMap.Empty
+        instrumentParameter = HashMap.Empty
+        selectedFrustums    = HashSet.Empty
         hoveredFrustrum     = None
         trafo               = Trafo3d.Identity
         minervaModel        = Initial.model
         pickingPos          = None
-        filterProducts      = hmap.Empty
+        filterProducts      = HashMap.Empty
         overlayFeature      = None
         frustumOpacity      = 0.5
     }

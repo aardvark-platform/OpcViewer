@@ -13,6 +13,8 @@ open Aardvark.Application
 open OpcViewer.Base
 open OpcViewer.Base.Picking
 
+open Adaptify
+
 type OutlineMessage =
   | Camera           of FreeFlyController.Message
   | UpdateDockConfig of DockConfig    

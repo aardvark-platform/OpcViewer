@@ -5,6 +5,8 @@ open Aardvark.Application.Slim
 open Aardvark.UI
 open Aardium
 
+open FSharp.Data.Adaptive
+
 open Suave
 
 [<EntryPoint>]

@@ -15,6 +15,8 @@ open OpcViewer.Base.Attributes
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 
+open Adaptify
+
 type Message =
   | Camera           of FreeFlyController.Message
   | KeyUp            of key : Keys

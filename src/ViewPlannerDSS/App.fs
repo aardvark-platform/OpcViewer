@@ -26,6 +26,10 @@ open Aardvark.VRVis.Opc
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 
+open Adaptify.FSharp.Core
+
+open Aether.Operators
+
 module App = 
     
     let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
@@ -161,7 +165,7 @@ module App =
     //---
 
     //---VIEW
-    let view (m : MModel) =
+    let view (m : AdaptiveModel) =
                                                  
       let opcs = 
         m.opcInfos
@@ -177,10 +181,10 @@ module App =
         m.planePoints
             |> AVal.map (fun n ->
                 match n with
-                    | None -> Sg.empty
-                    | Some points -> 
+                    | AdaptiveNone -> Sg.empty
+                    | AdaptiveSome points -> 
                         points 
-                            |> AList.toMod
+                            |> AList.toAVal
                             |> AVal.map (fun p ->
                                 p
                                     |> IndexList.toSeq
@@ -375,7 +379,7 @@ module App =
       let planeState = restorePlane
 
       let setPlaneForPicking =
-        match planeState.IsEmpty() with
+        match planeState.IsEmpty with
             | true -> None
             | false -> Some planeState
 
@@ -384,7 +388,7 @@ module App =
 
 
       let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
-      let camState = camState |> OpcSelectionViewer.Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
+      let camState = camState |> ffConfig ^= CameraControllerState.freeFlyConfig_ 
 
       let initialDockConfig = 
         config {
@@ -424,7 +428,7 @@ module App =
           update = update
           view   = view          
           threads = fun m -> m.threads
-          unpersist = Unpersist.instance<Model, MModel>
+          unpersist = Unpersist.instance<Model, AdaptiveModel>
       }
 
 

@@ -37,16 +37,16 @@ module AnnotationApp =
 
             { model with annotations = updatedAnnotation; annotationsGrouped = updatedAnnotationsFilledPolygon }
 
-    let drawOutlines (near: aval<float>) (far: aval<float>) (model: MAnnotationModel) = 
+    let drawOutlines (near: aval<float>) (far: aval<float>) (model: AdaptiveAnnotationModel) = 
         model.annotations 
         |> AList.map (fun x -> DrawingApp.drawContour x.points x.segments x.style near far |> Sg.noEvents)
         |> AList.toASet
         |> Sg.set
 
-    let viewOutlines (near: aval<float>) (far: aval<float>) (model: MAnnotationModel) = 
+    let viewOutlines (near: aval<float>) (far: aval<float>) (model: AdaptiveAnnotationModel) = 
         model |> drawOutlines near far
 
-    let viewGrouped (near: aval<float>) (far: aval<float>) (startRenderPass: RenderPass) (model: MAnnotationModel) : (ISg<'a> * RenderPass) = 
+    let viewGrouped (near: aval<float>) (far: aval<float>) (startRenderPass: RenderPass) (model: AdaptiveAnnotationModel) : (ISg<'a> * RenderPass) = 
 
         let filledSg, nextRenderPass = 
             model |> AnnotationSg.drawAnnotationsFilledGrouped (RenderPass.after "" RenderPassOrder.Arbitrary startRenderPass)
@@ -60,7 +60,7 @@ module AnnotationApp =
 
         sg, nextRenderPass
 
-    let viewSeq (near: aval<float>) (far: aval<float>) (startRenderPass: RenderPass) (model: MAnnotationModel) : (ISg<'a> * RenderPass) =
+    let viewSeq (near: aval<float>) (far: aval<float>) (startRenderPass: RenderPass) (model: AdaptiveAnnotationModel) : (ISg<'a> * RenderPass) =
         
         let filledSg, nextRenderPass =
             model |> AnnotationSg.drawAnnotationsFilledSeq (RenderPass.after "" RenderPassOrder.Arbitrary startRenderPass)
@@ -74,7 +74,7 @@ module AnnotationApp =
 
         sg, nextRenderPass
 
-    let viewGui (model: MAnnotationModel) =
+    let viewGui (model: AdaptiveAnnotationModel) =
         let style' = "color: white; font-family:Consolas;"
 
         table [clazz "item"] [

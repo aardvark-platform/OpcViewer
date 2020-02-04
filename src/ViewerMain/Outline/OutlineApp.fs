@@ -55,7 +55,7 @@ module OutlineApp =
       | UseOutlines ->
         { model with useOutlines = not model.useOutlines }      
                     
-  let outlineView (m : MOutlineModel) : DomNode<OutlineMessage> =
+  let outlineView (m : AdaptiveOutlineModel) : DomNode<OutlineMessage> =
 
       let opcs = 
         m.opcInfos
@@ -76,7 +76,7 @@ module OutlineApp =
          ]) 
          (scene) 
 
-      let outlineUI (model:MOutlineModel) =
+      let outlineUI (model:AdaptiveOutlineModel) =
           Html.table [
             Html.row "Outlines:"      [GuiEx.iconCheckBox model.useOutlines UseOutlines ]  
             Html.row "Thickness:"     [Numeric.view' [NumericInputType.Slider]   model.lineThickness  |> UI.map SetLineThickness ]
@@ -177,6 +177,6 @@ module OutlineApp =
           update = update
           view   =  outlineView          
           threads = fun m -> m.threads
-          unpersist = Unpersist.instance<OutlineModel, MOutlineModel>
+          unpersist = Unpersist.instance<OutlineModel, AdaptiveOutlineModel>
       }
        

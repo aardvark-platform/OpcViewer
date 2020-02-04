@@ -25,6 +25,9 @@ open Rabbyte.Annotation
 open Rabbyte.Drawing
 open Linking
 
+open Aether
+open Aether.Operators
+
 
 module App = 
     
@@ -146,7 +149,7 @@ module App =
     //---
 
     //---VIEW
-    let view (m : MModel) =
+    let view (m : AdaptiveModel) =
                                
         let opcs = 
             m.opcInfos
@@ -309,7 +312,7 @@ module App =
         let planeState = restorePlane
 
         let setPlaneForPicking =
-            match planeState.IsEmpty() with
+            match planeState.IsEmpty with
             | true -> None
             | false -> Some planeState
 
@@ -318,7 +321,7 @@ module App =
 
 
         let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
-        let camState = camState |> OpcSelectionViewer.Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
+        let camState = camState |> ffConfig ^= CameraControllerState.freeFlyConfig_  
 
         let initialDockConfig = 
             config {
@@ -367,7 +370,7 @@ module App =
             update = update
             view   = view          
             threads = fun m -> m.threads
-            unpersist = Unpersist.instance<Model, MModel>
+            unpersist = Unpersist.instance<Model, AdaptiveModel>
         }
 
 

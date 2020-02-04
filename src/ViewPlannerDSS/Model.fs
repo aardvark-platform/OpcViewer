@@ -12,6 +12,8 @@ open ViewPlanner.Rover
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 
+open Adaptify
+
 type Action =
   | Camera           of FreeFlyController.Message
   | KeyUp            of key : Keys

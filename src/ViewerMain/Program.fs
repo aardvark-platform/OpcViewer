@@ -8,6 +8,7 @@ open Aardium
 open Suave
 open Suave.WebPart
 open OpcViewer.Base
+open FSharp.Data.Adaptive
 
 type EmbeddedRessource = EmbeddedRessource
 

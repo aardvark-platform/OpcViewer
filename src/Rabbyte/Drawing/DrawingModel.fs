@@ -8,6 +8,8 @@ open Aardvark.Base.IndexedGeometryPrimitives
 open Aardvark.Geometry
 open Aardvark.Base
 
+open Adaptify
+
 type LineStyle = 
     | Solid
     | Dashed
@@ -98,8 +100,8 @@ module DrawingModel =
     let initial = 
         {                 
             style           = defaultStyle
-            points          = plist.Empty
-            segments        = plist.Empty
+            points          = IndexList.Empty
+            segments        = IndexList.Empty
             segmentCreation = NoSegement
             past            = None
             future          = None
@@ -110,8 +112,8 @@ module DrawingModel =
 
     let reset m =
         { m with
-            points          = plist.Empty
-            segments        = plist.Empty
+            points          = IndexList.Empty
+            segments        = IndexList.Empty
             past            = None
             future          = None
             primitiveType   = PrimitiveType.Empty

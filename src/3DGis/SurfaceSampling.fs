@@ -6,6 +6,8 @@ open OpcViewer.Base
 open OpcViewer.Base.Picking
 open Rabbyte.Drawing
 
+open FSharp.Data.Adaptive
+
 module SurfaceSampling =
 
     let caluculateSVGDrawingPositions (model : Model) = 

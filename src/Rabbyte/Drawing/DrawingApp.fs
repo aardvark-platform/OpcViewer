@@ -182,23 +182,23 @@ module DrawingApp =
     let allSegmentPoints (segments: alist<Segment>) : alist<V3d> = 
         let lastPoint = 
             segments 
-            |> AList.toMod
+            |> AList.toAVal
             |> AVal.map (fun x -> 
                 x 
                 |> IndexList.tryLast 
                 |> Option.map (fun x -> x.endPoint |> IndexList.single)
                 |> Option.defaultValue IndexList.empty)
-            |> AList.ofMod
+            |> AList.ofAVal
 
         let allButLast = 
             segments 
-            |> AList.map (fun x -> x.innerPoints |> IndexList.prepend x.startPoint |> AList.ofPList) 
-            |> AList.concat
+            |> AList.map (fun x -> x.innerPoints |> IndexList.prepend x.startPoint |> AList.ofIndexList) 
+            |> AList.collect id
 
         AList.append allButLast lastPoint
 
 
-    let drawContourWithPointSize (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: aval<float>) (far: aval<float>) (pointSize: aval<float>) (depthOffset : aval<float>)=  
+    let drawContourWithPointSize (points: alist<V3d>) (segments: alist<Segment>) (style: AdaptiveBrushStyle) (near: aval<float>) (far: aval<float>) (pointSize: aval<float>) (depthOffset : aval<float>)=  
 
         let pointsSg = 
             points 
@@ -206,8 +206,8 @@ module DrawingApp =
 
         let pointsInnerSg = 
             segments
-            |> AList.map (fun x -> x.innerPoints |> AList.ofPList) 
-            |> AList.concat 
+            |> AList.map (fun x -> x.innerPoints |> AList.ofIndexList) 
+            |> AList.collect id 
             |> SgUtilities.drawPointList (style.primary.c |> AVal.map (fun c -> SgUtilities.createSecondaryColor c)) (pointSize |> AVal.map (fun x -> x * 0.8)) depthOffset near far
 
         let edgesSg = 
@@ -225,18 +225,18 @@ module DrawingApp =
         //let pointsSg = [points; pointsInner] |> Sg.group |> Sg.noEvents |> Sg.pass (RenderPass.after "points" RenderPassOrder.Arbitrary RenderPass.main)
         //[pointsSg; edgesSg] |> Sg.ofList
         
-        [edgesSg; edgesDirectSg; pointsSg; pointsInnerSg] |> Sg.group
+        [edgesSg; edgesDirectSg; pointsSg; pointsInnerSg] |> Aardvark.SceneGraph.SgFSharp.Sg.ofSeq
 
-    let drawContour (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: aval<float>) (far: aval<float>) =  
+    let drawContour (points: alist<V3d>) (segments: alist<Segment>) (style: AdaptiveBrushStyle) (near: aval<float>) (far: aval<float>) =  
         drawContourWithPointSize points segments style near far (AVal.constant 10.0) (AVal.constant 0.1)
 
-    let view (near: aval<float>) (far: aval<float>) (model: MDrawingModel)  = 
+    let view (near: aval<float>) (far: aval<float>) (model: AdaptiveDrawingModel)  = 
         drawContourWithPointSize model.points model.segments model.style near far (AVal.constant 10.0) (AVal.constant 0.1) |> Sg.noEvents
 
-    let viewPointSize (near: aval<float>) (far: aval<float>) (pointSize: aval<float>) (depthOffset: aval<float>) (model: MDrawingModel) = 
+    let viewPointSize (near: aval<float>) (far: aval<float>) (pointSize: aval<float>) (depthOffset: aval<float>) (model: AdaptiveDrawingModel) = 
         drawContourWithPointSize model.points model.segments model.style near far pointSize depthOffset |> Sg.noEvents
 
-    let viewGui (model: MDrawingModel) = 
+    let viewGui (model: AdaptiveDrawingModel) = 
         
         let style' = "color: white; font-family:Consolas;"
 

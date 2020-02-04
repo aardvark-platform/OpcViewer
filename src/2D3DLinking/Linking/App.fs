@@ -43,7 +43,7 @@ module LinkingApp =
         // sensor sizes
         let mastcamRLSensor = V2i(1600, 1200)
 
-        let instrumentParameter = hmap.OfList [
+        let instrumentParameter = HashMap.OfList [
             (Instrument.MastcamL, { horizontalFoV = 15.0; sensorSize = mastcamRLSensor }) //34 mm
             (Instrument.MastcamR, { horizontalFoV = 5.1; sensorSize = mastcamRLSensor }) // 100 mm
         ]
@@ -149,7 +149,9 @@ module LinkingApp =
                 intersected
                 |> HashSet.choose (fun p -> HashMap.tryFind p m.frustums)
                 |> HashSet.map (fun p -> p.instrument)
-                |> HashSet.mapHMap (fun _ -> true)
+               
+               
+            let filterProducts = filterProducts.MapToMap(fun _ -> true) //|> HashSet.mapHMap (fun _ -> true)
 
             let partialUpdatedM = { m with pickingPos = Some(originP); filterProducts = filterProducts }
             update view partialUpdatedM (MinervaAction(MinervaAction.UpdateSelection (intersected |> HashSet.toList)))
@@ -195,7 +197,7 @@ module LinkingApp =
                 { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = selectedFrustums}
 
             | MinervaAction.ClearSelection ->
-                { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = hset.Empty}
+                { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = HashSet.Empty}
 
             | _ -> { m with minervaModel = MinervaApp.update view m.minervaModel a}
 
@@ -232,7 +234,7 @@ module LinkingApp =
         svgLine (p1.X, p1.Y) (p2.X, p2.Y) (color |> cssColor) storkeWidth
 
     //---VIEWS
-    let view (m: MLinkingModel) =
+    let view (m: AdaptiveLinkingModel) =
 
         let sgFrustum' (f: LinkingFeature) =
             Sg.wireBox' f.color (Box3d(V3d.NNN,V3d.III))
@@ -258,8 +260,7 @@ module LinkingApp =
                 v
                 |> sgFrustum'
                 |> Sg.trafo (
-                    m.selectedFrustums  
-                    |> ASet.contains k
+                    m.selectedFrustums.Content |> AVal.map (HashSet.contains k)  
                     |> AVal.map (fun s -> if s then v.trafo else Trafo3d.Scale 0.0) 
                 )
             )
@@ -315,7 +316,7 @@ module LinkingApp =
         |]
         |> Sg.ofArray 
 
-    let viewSideBar (m: MLinkingModel) =
+    let viewSideBar (m: AdaptiveLinkingModel) =
 
         let modD = 
             m.overlayFeature
@@ -337,7 +338,7 @@ module LinkingApp =
                         d.after.TryGet 0 // get first element of after list (after f)
                         |> Option.map (fun f -> 
                             {
-                                before = d.before.Append d.f
+                                before = d.before.Add d.f
                                 f = f
                                 after = d.after.Remove f
                             }
@@ -349,7 +350,7 @@ module LinkingApp =
         require dependencies (
             div [][
                 div [clazz "inverted fluid ui vertical buttons"] [
-                    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.UpdateSelection(m.frustums |> AMap.keys |> ASet.toList)))][text "Select All"]         
+                    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.UpdateSelection(m.frustums |> AMap.keys |> ASet.force |> HashSet.toList)))][text "Select All"]         
                     button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.ClearSelection))][text "Clear Selection"]                 
                 ]
                 Incremental.div 
@@ -404,7 +405,7 @@ module LinkingApp =
             ]
         )
 
-    let sceneOverlay (v: aval<CameraView>) (m: MLinkingModel) : DomNode<LinkingAction> =
+    let sceneOverlay (v: aval<CameraView>) (m: AdaptiveLinkingModel) : DomNode<LinkingAction> =
 
         let overlayDom (f: LinkingFeature, dim: V2i) : DomNode<LinkingAction> =
 
@@ -459,20 +460,21 @@ module LinkingApp =
                 | None -> div[][] // DomNode.empty requires unit?
                 | Some(o) -> overlayDom (f, o.sensorSize)
             )
-            |> AList.ofModSingle
+            |> AVal.map Seq.singleton 
+            |> AList.ofAVal
             |> Incremental.div AttributeMap.empty
             
         require dependencies dom
 
-    let viewHorizontalBar (m: MLinkingModel) =
+    let viewHorizontalBar (m: AdaptiveLinkingModel) =
         
         let products =
             m.selectedFrustums
-            |> ASet.chooseM (fun k -> AMap.tryFind k m.frustums)
+            |> ASet.chooseA (fun k -> AMap.tryFind k m.frustums)
 
         let filteredProducts =
             products
-            |> ASet.filterM (fun p -> 
+            |> ASet.filterA (fun p -> 
                 m.filterProducts
                 |> AMap.tryFind p.instrument
                 |> AVal.map (fun m -> m |> Option.defaultValue false))
@@ -490,15 +492,23 @@ module LinkingApp =
                 )
                 |> AVal.map(fun pp -> (prod, pp))
             )
-            |> ASet.mapM id
+            |> ASet.mapA id
 
+        // counts per instrument for display in the toggle buttons
         let countStringPerInstrument =
             products
-            |> ASet.groupBy (fun f -> f.instrument)
-            |> AMap.map (fun _ v -> v.Count)
-            |> AMap.toASet
-            |> ASet.toAList
-            |> AList.sortBy (fun (i, _) -> i)
+            |> ASet.toAVal
+            |> AVal.map (
+                Seq.countBy (fun f -> f.instrument)
+                >> Seq.sortBy fst
+                >> IndexList.ofSeq
+            )
+            //|> ASet.groupBy (fun f -> f.instrument)
+            //|> AMap.map (fun _ v -> v.Count)
+            //|> AMap.toASet
+            //|> ASet.toAList
+            //|> AList.sortBy (fun (i, _) -> i)
+            |> AList.ofAVal
             |> AList.map (fun (i, c) -> 
                 let s = sprintf "%A: %d" i c
                 (i, AVal.constant s)
@@ -553,7 +563,7 @@ module LinkingApp =
                                     f, p, (image, sensor, max)
                                 ))
                             )
-                            |> AList.chooseM id
+                            |> AList.chooseA id
                             |> AList.sortBy (fun (f, p, (image, sensor, max)) ->
                                 let ratioP = p.XY * V2d(1.0, sensor.Y / sensor.X)
                                 let dist = V2d.Dot(ratioP, ratioP) // euclidean peseudo distance (w/o root)
@@ -566,7 +576,7 @@ module LinkingApp =
                         // if you have a cleaner way of doing this I would be so happy to know it
                         let neighborList =
                             sortedProducts 
-                            |> AList.toMod
+                            |> AList.toAVal
                             |> AVal.map (fun l -> 
                                 l
                                 |> IndexList.mapi (fun i e -> 
@@ -578,7 +588,7 @@ module LinkingApp =
                                     (before, e, after)                             
                                 )
                             )
-                            |> AList.ofMod
+                            |> AList.ofAVal
                             
                         neighborList
                         |> AList.map (fun (before, (f, p, (image, sensor, max)), after) -> 

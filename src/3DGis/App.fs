@@ -17,6 +17,11 @@ open Aardvark.UI.Primitives
 open Aardvark.UI.Trafos
 open Aardvark.Application
 
+open Adaptify.FSharp.Core
+
+open Aether
+open Aether.Operators
+
 
 [<AutoOpen>]
 module SceneGraphExtension = 
@@ -122,7 +127,7 @@ module App =
                     | Keys.LeftCtrl -> 
                         { model with hover3dActive = true }
                     | Keys.LeftShift -> 
-                        let p = { model.picking with intersectionPoints = plist.Empty }             
+                        let p = { model.picking with intersectionPoints = IndexList.Empty }             
                         let clearedDrawingModel = 
                             { 
                             DrawingModel.initial with 
@@ -574,7 +579,7 @@ module App =
             | _ -> model
     
     
-    let view (m : MModel) =
+    let view (m : AdaptiveModel) =
         let opcs = 
             m.opcInfos
                 |> AMap.toASet
@@ -720,7 +725,7 @@ module App =
         let onResize (cb : V2i -> 'msg) =
             onEvent "onresize" ["{ X: $(document).width(), Y: $(document).height()  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
     
-        let renderControl (state : MModel) (f : Message -> 'msg)=
+        let renderControl (state : AdaptiveModel) (f : Message -> 'msg)=
             FreeFlyController.controlledControl m.cameraState Camera projFrustum
                 (AttributeMap.ofListCond [ 
                   always (style "width: 100%; height:100%"; )
@@ -849,7 +854,7 @@ module App =
         let camState = restoreCamState
     
         let ffConfig = { camState.freeFlyConfig with lookAtMouseSensitivity = 0.004; lookAtDamping = 50.0; moveSensitivity = 0.0}
-        let camState = camState |> OpcSelectionViewer.Lenses.set (CameraControllerState.Lens.freeFlyConfig) ffConfig
+        let camState = camState |> ffConfig ^=  CameraControllerState.freeFlyConfig_
     
         let initialDockConfig = 
             config {
@@ -937,7 +942,7 @@ module App =
             update    = update
             view      = view          
             threads   = threads 
-            unpersist = Unpersist.instance<Model, MModel>
+            unpersist = Unpersist.instance<Model, AdaptiveModel>
         }
 
       

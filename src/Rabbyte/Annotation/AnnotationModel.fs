@@ -7,6 +7,8 @@ open Aardvark.UI
 
 open Rabbyte.Drawing
 
+open Adaptify
+
 type ClippingVolumeType = 
     | Direction of V3d
     | Point of V3d
@@ -17,7 +19,7 @@ type Annotation =
     {
         version     : int
 
-        [<PrimaryKey; NonIncremental>]
+        //[<PrimaryKey; NonIncremental>]
         key         : Guid
 
         modelTrafo  : Trafo3d
@@ -78,8 +80,8 @@ module AnnotationModel =
             primitiveType = PrimitiveType.Empty
             //geometry    = geometry
             //semantic    = Semantic.None
-            points      = plist.Empty
-            segments    = plist.Empty //[]
+            points      = IndexList.Empty
+            segments    = IndexList.Empty //[]
             style       = DrawingModel.defaultStyle
             clippingVolume = Direction V3d.ZAxis //Points ([V3d.IOO; V3d.OIO; -V3d.OIO; -V3d.IOO] |> IndexList.ofList)//Point V3d.Zero// Direction (V3d.ZAxis)
             //color       = color
@@ -121,8 +123,8 @@ module AnnotationModel =
 
     let initial = 
         {
-            annotations = plist.Empty
-            annotationsGrouped = hmap.Empty
+            annotations = IndexList.Empty
+            annotationsGrouped = HashMap.Empty
             showDebug   = false
             extrusionOffset = 10.0
         }

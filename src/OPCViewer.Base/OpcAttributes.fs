@@ -173,11 +173,11 @@ module SurfaceAttributes =
             ]
         Incremental.Svg.svg attr (showColorLegend m)  
         
-    let viewColorLegendTools (scalar:aval<_>) =
+    let viewColorLegendTools (scalar:aval<AdaptiveOptionCase<_,_,_>>) =
         adaptive {
             let! scalar = scalar
             match scalar with
-                | AdaptiveSome s -> return FalseColorLegendApp.UI.viewDefinedScalarsLegendTools s.colorLegend |> UI.map ScalarsColorLegendMessage
+                | AdaptiveSome (s : AdaptiveScalarLayer) -> return FalseColorLegendApp.UI.viewDefinedScalarsLegendTools s.colorLegend |> UI.map ScalarsColorLegendMessage
                 | AdaptiveNone -> return div[ style "font-style:italic"][ text "no scalar in properties selected" ] |> UI.map ScalarsColorLegendMessage 
         }                    
 

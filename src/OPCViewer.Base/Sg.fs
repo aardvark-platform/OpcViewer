@@ -11,6 +11,8 @@ open Aardvark.UI.``F# Sg``
 open Aardvark.UI.Trafos
 open Aardvark.SceneGraph.Opc
 
+open Adaptify.FSharp.Core
+
 //open OpcSelectionViewer.Picking
 //open OpcOutlineTest
 module Patch =
@@ -73,7 +75,7 @@ module Sg =
   
   let addAttributeFalsecolorMappingParameters  (selectedScalar:aval<Option<AdaptiveScalarLayer>>) (isg:ISg<'a>) =
             
-        let isSelected = selectedScalar |> AVal.map( fun s -> s.IsSome )
+        let isSelected = selectedScalar |> AVal.map( function Some _ -> true | _ -> false )
 
         //let upperBound = 
         //    adaptive {
@@ -100,45 +102,45 @@ module Sg =
         let interval = selectedScalar |> AVal.bind ( fun x ->
                         match x with 
                             | Some s -> s.colorLegend.interval.value
-                            | None   -> AVal.constant(1.0)
+                            | _   -> AVal.constant(1.0)
                         )
 
         let inverted = selectedScalar |> AVal.bind ( fun x ->
                         match x with 
                             | Some s -> s.colorLegend.invertMapping
-                            | None   -> AVal.constant(false)
+                            | _   -> AVal.constant(false)
                         )     
         
         let upperB = selectedScalar |> AVal.bind ( fun x ->
                         match x with 
                             | Some s -> s.colorLegend.upperBound.value
-                            | None   -> AVal.constant(1.0)
+                            | _   -> AVal.constant(1.0)
                         )
 
         let lowerB = selectedScalar |> AVal.bind ( fun x ->
                         match x with 
                             | Some s -> s.colorLegend.lowerBound.value
-                            | None   -> AVal.constant(1.0)
+                            | _   -> AVal.constant(1.0)
                         )
 
         let showcolors = selectedScalar |> AVal.bind ( fun x ->
                             match x with 
                                 | Some s -> s.colorLegend.showColors
-                                | None   -> AVal.constant(false)
+                                | _   -> AVal.constant(false)
                             )     
 
         let upperC = 
           selectedScalar 
             |> AVal.bind (fun x ->
                match x with 
-                 | Some s -> 
+                 | Some (s : AdaptiveScalarLayer) -> 
                    s.colorLegend.upperColor.c 
                      |> AVal.map(fun x -> 
                        let t = x.ToC3f()
                        let t1 = HSVf.FromC3f(t)
                        let t2 = (float)t1.H
                        t2)
-                 | None -> AVal.constant(1.0)
+                 | _ -> AVal.constant(1.0)
                )
         let lowerC = 
           selectedScalar 
@@ -147,7 +149,7 @@ module Sg =
                 | Some s -> 
                   s.colorLegend.lowerColor.c 
                     |> AVal.map(fun x -> ((float)(HSVf.FromC3f (x.ToC3f())).H))
-                | None   -> AVal.constant(0.0)
+                | _   -> AVal.constant(0.0)
               )
               
             
@@ -174,7 +176,7 @@ module Sg =
   let pickable' (pick :aval<Pickable>) (sg: ISg) =
     Sg.PickableApplicator (pick, AVal.constant sg)
 
-  let opcSg loadedHierarchies (selectedScalar:aval<Option<AdaptiveScalarLayer>>) (picking : aval<bool>) (bb : Box3d) = 
+  let opcSg loadedHierarchies (selectedScalar:aval<Option<_>>) (picking : aval<bool>) (bb : Box3d) = 
     
     let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
     let sg = 
@@ -271,7 +273,7 @@ module Sg =
         |> Sg.ofList        
     sg
     
-  let createSingleOpcSg (selectedScalar:aval<Option<AdaptiveScalarLayer>>) (picking : aval<bool>) (view : aval<CameraView>) (data : Box3d*OpcData) =
+  let createSingleOpcSg (selectedScalar:aval<Option<AdaptiveScalarLayer>>) (picking : aval<bool>) (view : aval<CameraView>) (data : Box3d*AdaptiveOpcData) =
     adaptive {
         let boundingBox, opcData = data
     

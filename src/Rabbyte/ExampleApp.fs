@@ -104,7 +104,7 @@ let far = AVal.init 100.0
 let frustum =
     AVal.map2 (fun near far -> Frustum.perspective 60.0 near far 1.0) near far
 
-let scene3D (model: MExampleModel) =
+let scene3D (model: AdaptiveExampleModel) =
                                  
     let cursorTrafo = 
         model.hoverPosition 
@@ -145,7 +145,7 @@ let scene3D (model: MExampleModel) =
     |> Sg.fillMode (AVal.constant FillMode.Fill)
     |> Sg.cullMode (AVal.constant CullMode.None)
 
-let view (model: MExampleModel) =            
+let view (model: AdaptiveExampleModel) =            
     require (Html.semui) (
         div [clazz "ui"; style "background: #1B1C1E"] [
             ArcBallController.controlledControl model.camera CameraMessage frustum

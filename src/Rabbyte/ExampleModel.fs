@@ -6,6 +6,8 @@ open Aardvark.UI.Primitives
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 
+open Adaptify
+
 [<ModelType>]
 type ExampleModel = {
     camera        : CameraControllerState

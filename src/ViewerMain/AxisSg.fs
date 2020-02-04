@@ -6,6 +6,8 @@ open FSharp.Data.Adaptive
 open Aardvark.UI
 open OpcViewer.Base
 
+open Adaptify.FSharp.Core
+
 module AxisSg =
 
     let toColoredEdges (offset:V3d) (color : C4b) (points : array<V3d>) =
@@ -59,16 +61,16 @@ module AxisSg =
           Option.map(fun pos -> AVal.constant pos |> sphere C4b.VRVisGreen 0.1)
             |> Option.defaultValue Sg.empty
 
-    let axisSgs (model : MModel) = 
+    let axisSgs (model : AdaptiveModel) = 
         aset {
             let! axis = model.axis
       
             match axis with
-            | Some a -> 
+            | AdaptiveSome a -> 
                 let! positions = a.positions
                 yield createAxisSg positions
           
                 let! selectionPos = a.selectionOnAxis
                 yield addDebuggingAxisPointSphere selectionPos
-            | None -> yield Sg.empty
+            | AdaptiveNone -> yield Sg.empty
         } |> Sg.set

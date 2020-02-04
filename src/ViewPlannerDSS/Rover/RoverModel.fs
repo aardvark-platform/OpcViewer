@@ -3,6 +3,8 @@ namespace ViewPlanner.Rover
 open Aardvark.Base
 open FSharp.Data.Adaptive
 
+open Adaptify
+
 [<ModelType>]
 type CameraInput = 
     {

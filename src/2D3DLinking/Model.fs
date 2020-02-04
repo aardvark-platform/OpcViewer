@@ -14,6 +14,8 @@ open PRo3D.Minerva
 open Rabbyte.Annotation
 open Rabbyte.Drawing
 
+open Adaptify
+
 type Action =
   | Camera           of FreeFlyController.Message
   | KeyUp            of key : Keys
