@@ -187,7 +187,7 @@ module Sg =
         axisVisualisation list C4b.Green shift
 
     let upAxis = 
-        let list = lineList pos rover.up lineLength
+        let list = lineList pos (rover.up |> Mod.map(fun (x:V3d) -> -x)) lineLength
         axisVisualisation list C4b.Blue shift
     
     let set:ISg<PickingAction> = 
@@ -275,8 +275,8 @@ module Sg =
         for p in positions do
           yield p
     
-        for pr in projPoints do
-         yield pr
+        //for pr in projPoints do
+        // yield pr
 
         yield target
 
