@@ -94,8 +94,25 @@ module App =
                     let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
                     { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
               | Interactions.PickCrackDetection -> 
-                    let crackd = CrackDetection.update model.crackDetection (FinishCrack)
-                    { model with crackDetection = crackd }
+                    
+                    //let points = 
+                        match model.picking.level0KdTree with
+                         | Some kd ->
+                            let dir = (Path.GetDirectoryName kd.coordinatesPath)
+                            let path = dir + "\EdgeMap.aara"
+                            Log.line "EdgeMap path: %s" path
+                            
+                            let crackd = CrackDetection.update model.crackDetection (FinishCrack (path, kd.texturePath))
+                            let points = 
+                                crackd.outputPoints
+                                    |> PList.map( fun p ->
+                                            CrackDetection.calc3dPointFromUV kd.objectSetPath kd.coordinatesPath p kd.affine)
+
+                            let newAnnotation = AnnotationApp.update model.annotations (AnnotationAction.AddCrack points)
+                            { model with crackDetection = crackd; annotations = newAnnotation; drawing = DrawingModel.reset model.drawing}
+                                    
+                         | None -> model
+                            
               | _-> model
               
           //| Keys.T ->
@@ -142,7 +159,9 @@ module App =
                 let lastPick   = updatePickM.intersectionPoints |> PList.tryFirst
                 let crackDetection = 
                     match lastPick with
-                        | Some p -> CrackDetection.update model.crackDetection (AddCrackPoint (p,updatePickM.texCoords,updatePickM.attributeValue))
+                        | Some p -> 
+                            let texC = updatePickM.texCoords.ToV2d() 
+                            CrackDetection.update model.crackDetection (AddCrackPoint (p,texC,updatePickM.attributeValue))
                         | None -> model.crackDetection 
                 let updatedDrawM =
                     match lastPick with
@@ -199,14 +218,14 @@ module App =
         |> Sg.ofList
         |> Sg.pass afterFilledPolygonRenderPass
 
-      let cracks = CrackDetection.drawCracks m.crackDetection near far (Mod.constant 10.0) (Mod.constant 0.1)
+      //let cracks = CrackDetection.drawCracks m.crackDetection near far (Mod.constant 10.0) (Mod.constant 0.1)
 
       let scene = 
         [
             opcs
             filledPolygonSg
             afterFilledPolygonSg
-            cracks
+            //cracks
         ]
         |> Sg.ofList
 

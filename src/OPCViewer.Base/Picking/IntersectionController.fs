@@ -15,6 +15,7 @@ open Aardvark.VRVis.Opc.KdTrees
 open OpcViewer.Base
 
 module IntersectionController =   
+  open Aardvark.Base
 
   let loadTrianglesFromFileWithIndices (aaraFile : string) (matrix : M44d) =
     let positions = aaraFile |> fromFile<V3f>
@@ -26,7 +27,7 @@ module IntersectionController =
     let index = IndexHelper.computeIndexArray (positions.Size.XY.ToV2i()) invalidIndices
         
     let triangleIndices = 
-      index
+      index    
         |> Seq.chunkBySize 3
 
     let triangles =         
@@ -38,6 +39,36 @@ module IntersectionController =
         |> Seq.toArray      
     
     (triangles, (Seq.toArray triangleIndices))
+
+  let private getInvalidIndices2d (positions : V2d[]) =
+    positions 
+      |> List.ofArray 
+      |> List.mapi (fun i x -> if x.AnyNaN then Some i else None) 
+      |> List.choose id
+
+  let loadUVTrianglesFromFileWithIndices (kdTree : LazyKdTree) =
+    let coordinates = kdTree.coordinatesPath |> fromFile<V2f>
+    
+    let data = coordinates.Data |> Array.map (fun x ->  x.ToV2d() ) //|> kdTree.affine.Forward.TransformPos)
+ 
+    let invalidIndices = getInvalidIndices2d data
+    let index = IndexHelper.computeIndexArray (coordinates.Size.XY.ToV2i()) invalidIndices
+        
+    let uvIndices = 
+      index    
+        |> Seq.chunkBySize 3
+
+    let uvCoords =         
+      uvIndices
+        |> Seq.choose(fun x -> 
+          if x.Length = 3 then Some [|data.[x.[0]]; data.[x.[1]]; data.[x.[2]]|]
+          else None)
+        |> Seq.map (fun x -> Triangle2d(x))
+        |> Seq.toArray      
+    
+    (uvCoords, (Seq.toArray uvIndices))
+
+
   
   let loadTrianglesWithIndices (kd : LazyKdTree) =
     loadTrianglesFromFileWithIndices kd.objectSetPath kd.affine.Forward
@@ -85,6 +116,72 @@ module IntersectionController =
     let u = 1.0 - v - w
     
     V3d(v,w,u)
+
+  let insideTriangle (triangle:Triangle2d) (p : V2d) = 
+    //  if p lies inside the triangle, then a1 + a2 + a3 must be equal to a.
+    let a  = triangle.Area //Triangle2d(triangle.P0.XY, triangle.P1.XY, triangle.P2.XY).Area
+    let a1 = Triangle2d(p, triangle.P1, triangle.P2).Area
+    let a2 = Triangle2d(triangle.P0, p, triangle.P2).Area
+    let a3 = Triangle2d(triangle.P0, triangle.P1, p).Area
+
+    a = (a1 + a2 + a3)
+
+  let getV3d (uvt:Triangle2d) (xyzT:Triangle3d) (p : V2d) =
+    let t00 = uvt.P0.X - uvt.P2.X
+    let t01 = uvt.P1.X - uvt.P2.X
+    let t10 = uvt.P0.Y - uvt.P2.Y
+    let t11 = uvt.P1.Y - uvt.P2.Y
+
+    let denom = t00 * t11 - t01 * t10
+
+    let iT00 =  t11 / denom
+    let iT01 = -t01 / denom
+    let iT10 = -t10 / denom
+    let iT11 =  t00 / denom
+
+    let lamb0 = iT00 * (p.X - uvt.P2.X) + iT01 * (p.Y - uvt.P2.Y)
+    let lamb1 = iT10 * (p.X - uvt.P2.X) + iT11 * (p.Y - uvt.P2.Y)
+    let lamb2 = 1.0 - lamb0 - lamb1
+
+    //let x = xyzT.P0.X * lamb0 + xyzT.P1.X * lamb1 + xyzT.P2.X * lamb2
+    //let y = xyzT.P0.Y * lamb0 + xyzT.P1.Y * lamb1 + xyzT.P2.Y * lamb2
+    //let z = xyzT.P0.Z * lamb0 + xyzT.P1.Z * lamb1 + xyzT.P2.Z * lamb2
+
+    let newV3d = xyzT.P0 * lamb0 + xyzT.P1 * lamb1 + xyzT.P2 * lamb2
+    newV3d
+
+  let calc3dPointFromUV (kdTree : LazyKdTree) (position : V2d) =
+    //let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
+    let coords, coordsIndices = loadUVTrianglesFromFileWithIndices kdTree
+    let positions = kdTree.objectSetPath |> fromFile<V3f>
+    let data = 
+      positions.Data |> Array.map (fun x ->  x.ToV3d() |> kdTree.affine.Forward.TransformPos)
+    
+    let mutable index = -1
+    let triangle2d =
+        coords
+         |> List.ofArray
+         |> List.choose( fun t2d ->
+                            index <- index + 1
+                            if (insideTriangle t2d position) then
+                                Some (t2d,index)
+                            else None
+                             )
+        |> List.tryHead
+
+    let test =
+        match triangle2d with
+          | Some t ->
+            let t2d, i = t
+            let cI = coordsIndices.[i]
+            let t3d = Triangle3d(data.[cI.[0]], data.[cI.[1]], data.[cI.[2]])
+            let point = getV3d t2d t3d position
+            point
+          | None -> V3d.NaN
+
+    test //|> kdTree.affine.Forward.TransformPos
+
+
     
   let findCoordinates (kdTree : LazyKdTree) (index : int) (position : V3d) =
     let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
@@ -172,6 +269,7 @@ module Intersect =
       |> List.ofArray 
       |> List.mapi (fun i x -> if x.AnyNaN then Some i else None) 
       |> List.choose id
+
   
   let private triangleIsNan (t:Triangle3d) = 
     t.P0.AnyNaN || t.P1.AnyNaN || t.P2.AnyNaN
@@ -289,7 +387,7 @@ module Intersect =
                 match lvl0KdTree with
                   | InCoreKdTree kd -> 
                     None
-                  | LazyKdTree kd ->    
+                  | LazyKdTree kd -> 
                     Some (IntersectionController.findCoordinates kd (snd values) position)
 
               let attrVal =
@@ -298,8 +396,8 @@ module Intersect =
                     None
                   | LazyKdTree kd ->    
                     Some (IntersectionController.getEdgeLayerValue kd (snd values) position)
-                        
-              Some (position,coordinates, attrVal)
+              
+              Some (position,coordinates, attrVal, lvl0KdTree)
             | None -> None
       )
   
@@ -372,11 +470,18 @@ module Intersect =
     
     match m.pickingInfos |> HMap.tryFind boxId with
     | Some kk ->
-      let closest = intersectWithOpcIndex (Some kk.kdTree) fray // intersectWithOpc (Some kk.kdTree) fray       //intersectWithOpcIndex (Some kk.kdTree) fray      
+      let closest = intersectWithOpcIndex (Some kk.kdTree) fray 
       match closest with
-        | Some (point,coords,aVal) -> 
+        | Some (point,coords,aVal,kd) -> 
 
           Log.line "hit surface at %A" point 
+
+          let kdtree =
+                 match kd with
+                  | InCoreKdTree k -> 
+                    None
+                  | LazyKdTree k ->    
+                    Some k
 
           let uv =
             match coords with
@@ -388,12 +493,12 @@ module Intersect =
               | Some v -> v
               | None -> 0.0
 
-
           { m with
              intersectionPoints = m.intersectionPoints |> PList.prepend point
              hitPointsInfo = HMap.add point boxId m.hitPointsInfo
              texCoords = uv
              attributeValue = attrVal
+             level0KdTree = kdtree
           }   
 
         | None ->       

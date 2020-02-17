@@ -18,13 +18,14 @@ let main argv =
     Aardium.init()
 
     ////cootrafo testing
-    //CooTransformation.initCooTrafo ()
+   // CooTransformation.initCooTrafo ()
     
     //let pos = V3d(10000,1000,10000)
     //let sc = CooTransformation.getLatLonAlt pos Planet.Mars
     //Log.line "altitude: %f" sc.altitude
 
     //CooTransformation.deInitCooTrafo()
+    
 
     use app = new OpenGlApplication()
     //let opcDir = "C:\Users\laura\VRVis\Data\CapeDesire\Surface\Cape_Desire_RGB"
@@ -52,6 +53,8 @@ let main argv =
     
     let instance =  OpcSelectionViewer.App.app opcDir axisFile rotate |> App.start 
     //let instance = OpcOutlineTest.OutlineApp.appOutlines opcDir |> App.start 
+
+    CrackDetection.initCrackDetection()
 
     // use can use whatever suave server to start you mutable app. 
     // startServerLocalhost is one of the convinience functions which sets up 

@@ -62,6 +62,7 @@ type AnnotationModel =
 
 type AnnotationAction = 
     | AddAnnotation of DrawingModel*Option<ClippingVolumeType>
+    | AddCrack of plist<V3d>
     | ChangeExtrusionOffset of float
     | ShowDebugVis
     //| RemoveDrawing of DrawingModel
@@ -105,6 +106,29 @@ module AnnotationModel =
                 segments = drawingModel.segments
                 style = drawingModel.style
                 primitiveType = drawingModel.primitiveType
+            }
+
+        match clippingVolumeType with
+        | Some t -> { defaultClippingVolume with clippingVolume = t }
+        | None -> defaultClippingVolume
+
+    let convertCrackToAnnotation (points:plist<V3d>) (clippingVolumeType:Option<ClippingVolumeType>) = 
+        let brush = 
+            {
+                primary = { c = C4b.Magenta }
+                secondary = { c = C4b.Yellow }
+                lineStyle = Some Solid
+                areaStyle = Some Filled
+                thickness = 3.0
+                samplingRate = 0.2
+            }
+
+        let defaultClippingVolume = 
+            { initAnnotation with 
+                points = points
+                segments = plist.Empty
+                style = brush
+                primitiveType = PrimitiveType.PolyLine
             }
 
         match clippingVolumeType with

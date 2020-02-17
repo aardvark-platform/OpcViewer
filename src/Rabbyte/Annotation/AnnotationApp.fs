@@ -37,6 +37,11 @@ module AnnotationApp =
 
             { model with annotations = updatedAnnotation; annotationsGrouped = updatedAnnotationsFilledPolygon }
 
+        | AddCrack points ->
+            let annotation = AnnotationModel.convertCrackToAnnotation points None
+            let updatedAnnotation = model.annotations |> PList.prepend annotation
+            { model with annotations = updatedAnnotation }
+
     let drawOutlines (near: IMod<float>) (far: IMod<float>) (model: MAnnotationModel) = 
         model.annotations 
         |> AList.map (fun x -> DrawingApp.drawContour x.points x.segments x.style near far |> Sg.noEvents)

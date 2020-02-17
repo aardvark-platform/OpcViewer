@@ -48,6 +48,7 @@ type PickingModel = {
   interaction          : Interactions
   texCoords            : V2f
   attributeValue       : float
+  level0KdTree         : Option<LazyKdTree>
 }  
 
 module PickingModel =
@@ -60,4 +61,5 @@ module PickingModel =
       interaction        = Interactions.DrawAnnotation
       texCoords          = V2f.II
       attributeValue     = 0.0
+      level0KdTree       = None
     }

@@ -7,6 +7,19 @@ using System.Runtime.InteropServices;
 
 namespace IPWrappers
 {
+    public static class IPWrapperConversions
+    {
+        public static List<V2d> ToV2ds(this CrackDetectionWrappers.SPoint2D[] self)
+        {
+            return self.Select(x => x.ToV2d()).ToList();
+        }
+
+        public static V2d ToV2d(this CrackDetectionWrappers.SPoint2D self)
+        {
+            return new V2d(self.m_dX, self.m_dY);
+        }
+
+    }
     public class CrackDetectionWrappers
     {
         [DllImport(@".\crackDetection\CrackDetection.dll")]
@@ -17,7 +30,7 @@ namespace IPWrappers
 
         [DllImport(@".\crackDetection\CrackDetection.dll")]
         public static extern void DeInit();
-        
+
         [DllImport(@".\bin\InstrumentPlatforms.dll")]
         public static extern uint GetNrOfAvailablePlatforms();
 
@@ -25,11 +38,12 @@ namespace IPWrappers
         public static extern void EnableDebugLogging(bool enable);
 
         [DllImport(@".\crackDetection\CrackDetection.dll")]
-        public static extern int FindCrack(float[] pfCrackCoefficients, int nWidth, int nHeight, SPoint2D[] poControlPoints, int nNrOfControlPoints, ref int pnNrOfCrackPoints );
+        public static extern int FindCrack(float[] pfCrackCoefficients, int nWidth, int nHeight, SPoint2D[] poControlPoints, int nNrOfControlPoints, ref int pnNrOfCrackPoints);
 
         [DllImport(@".\crackDetection\CrackDetection.dll")]
-        public static extern int GetCrack([MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPStr)] IntPtr[] pCrackPoints); // (ref SPoint2D pCrackPoints );
-       
+        public static extern int GetCrack(IntPtr pCrackPoints); // (ref SPoint2D pCrackPoints );
+
+  
 
         [StructLayout(LayoutKind.Sequential)]
         public struct SPoint2D
@@ -45,7 +59,23 @@ namespace IPWrappers
                     m_dY = 0.0
                 };
             }
+
+            public SPoint2D(double dX, double dY)
+            {
+                m_dX = dX;
+                m_dY = dY;
+            }
+
+            public static IntPtr CreateEmptyArray(uint numberPoints)
+            {
+                var pointsArray = new SPoint2D[numberPoints].Set(SPoint2D.Default());
+                var m_poPoints2D = MarshalArray(pointsArray);
+
+                return m_poPoints2D;
+            }
         };
+
+        
 
         public static volatile Dictionary<IntPtr, IntPtr[]> s_childPointerLut = new Dictionary<IntPtr, IntPtr[]>();
 
@@ -76,6 +106,21 @@ namespace IPWrappers
             s_childPointerLut.Add(arrayPtr, intPtrs);
 
             return arrayPtr;
+        }
+
+        public static T[] UnMarshalArray<T>(IntPtr ptr, int count) where T : struct
+        {
+            var outputArray = new T[count];
+            var sizeOfOne = Marshal.SizeOf(typeof(T));
+            var runningPtr = ptr;
+
+            for (int i = 0; i < count; i++)
+            {
+                outputArray[i] = (T)Marshal.PtrToStructure(runningPtr, typeof(T));
+                runningPtr = new IntPtr((long)runningPtr + sizeOfOne);
+            }
+
+            return outputArray;
         }
 
     }
