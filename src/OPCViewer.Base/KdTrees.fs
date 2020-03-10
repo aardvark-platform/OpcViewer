@@ -18,6 +18,8 @@ module KdTrees =
       objectSetPath   : string
       coordinatesPath : string
       texturePath     : string
+      positions2dPath : string
+      positions2dAffine : Trafo3d
     }
   
   type InCoreKdTree = {
@@ -62,7 +64,7 @@ module KdTrees =
       boundingBox = a
     }
 
-  let makeLazyTree a b c d e f =
+  let makeLazyTree a b c d e f g h =
     {
       kdTree          = None
       affine          = a
@@ -71,6 +73,8 @@ module KdTrees =
       objectSetPath   = d    
       coordinatesPath = e
       texturePath     = f
+      positions2dPath = g
+      positions2dAffine = h
     }
 
   // PICKLER
@@ -85,7 +89,9 @@ module KdTrees =
       ^+ Pickler.field (fun s -> s.kdtreePath)                Pickler.string
       ^+ Pickler.field (fun s -> s.objectSetPath)             Pickler.string
       ^+ Pickler.field (fun s -> s.coordinatesPath)           Pickler.string
-      ^. Pickler.field (fun s -> s.texturePath)               Pickler.string
+      ^+ Pickler.field (fun s -> s.texturePath)               Pickler.string
+      ^+ Pickler.field (fun s -> s.positions2dPath)               Pickler.string
+      ^. Pickler.field (fun (s:LazyKdTree) -> s.positions2dAffine)       Pickler.auto<Trafo3d>
 
   let level0KdTreePickler : Pickler<Level0KdTree> =
       Pickler.sum (fun x k1 k2->
@@ -182,6 +188,8 @@ module KdTrees =
                           mode 
                             |> ViewerModality.matchy info.Local2Global info.Local2Global2d
                         boundingBox   = t.KdIntersectionTree.BoundingBox3d.Transformed(trafo)
+                        positions2dAffine = info.Local2Global2d
+                        positions2dPath = dir +/ info.Positions2d.Value
                     }
                     Report.Progress(float i / float num)
             

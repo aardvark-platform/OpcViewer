@@ -53,6 +53,8 @@ module Shader =
             restartStrip()
         }
 
+    
+
     module DebugColor = 
     
         type UniformScope with
@@ -217,6 +219,17 @@ module Shader =
                     return V4d(value, value, value, 1.0) 
                 else
                     return v.c
+            }
+
+        let markPatchBorders (v : AttrVertex) =
+            fragment {    
+                
+                    if (v.tc.X >= 0.995) && (v.tc.X <= 1.0)|| (v.tc.X >= 0.0) && (v.tc.X <= 0.05) then
+                        return V4d(1.0, 0.0, 0.0, 1.0)
+                    elif (v.tc.Y >= 0.995) && (v.tc.Y <= 1.0)|| (v.tc.Y >= 0.0) && (v.tc.Y <= 0.05) then 
+                        return V4d(1.0, 0.0, 0.0, 1.0)
+                    else
+                        return v.c
             }
 
     module StableLight =

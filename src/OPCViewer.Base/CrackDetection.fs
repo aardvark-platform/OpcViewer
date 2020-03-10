@@ -28,6 +28,7 @@ module CrackDetection =
         Log.line "[CrackDetection] crackDetection directory %A" (System.IO.Path.GetFullPath(configDir))
         if (Directory.Exists logDir) && (Directory.Exists configDir) then
             let errorCode = CrackDetectionWrappers.Init(configDir, logDir)
+            CrackDetectionWrappers.EnableDebugLogging(true)
             if errorCode > 0 then
                 Log.line "[CrackDetection] crackDetection directory %d" errorCode
         else
@@ -130,46 +131,9 @@ module CrackDetection =
         test //|> kdTree.affine.Forward.TransformPos
 
 
-    let getWidthAndHeight (ipoints : CrackDetectionWrappers.SPoint2D[]) = // ((ipoints : CrackDetectionWrappers.SPoint2D[]) =
-        let widthMin =
-            ipoints
-                //|> Array.toList
-                |> Array.sortBy( fun p -> p.m_dY)
-                |> Array.tryHead
+    
 
-        let widthMax =
-            ipoints
-                //|> Array.toList
-                |> Array.sortBy( fun p -> p.m_dY)
-                |> Array.rev
-                |> Array.tryHead
-
-        let width = 
-            match widthMax, widthMin with
-             | Some wma, Some wmi -> (abs(wma.m_dY - wmi.m_dY)) |> ceil |> int
-             |_,_ -> 0
-
-        let heightMin =
-            ipoints
-                //|> Array.toList
-                |> Array.sortBy( fun p -> p.m_dX)
-                |> Array.tryHead
-
-        let heightMax =
-            ipoints
-                //|> Array.toList
-                |> Array.sortBy( fun p -> p.m_dX)
-                |> Array.rev
-                |> Array.tryHead
-
-        let height = 
-            match heightMax, heightMin with
-             | Some hma, Some hmi -> (abs(hma.m_dX - hmi.m_dX)) |> ceil |> int 
-             |_,_ -> 0
-
-        width, height
-
-    let getCrackUV (ipoints : plist<InputPoint>) (path:string) (texpath:string) = 
+    let getCrackUV (ipoints : plist<InputPoint>) (path:string) (coords2d:string) = 
         
         let values = path |> fromFile<float>
 
@@ -185,7 +149,7 @@ module CrackDetection =
         let controlPoints =
             ipoints
              |> PList.toArray
-             |> Array.map( fun x -> CrackDetectionWrappers.SPoint2D( (x.uv.X * (float)xdim) |> ceil , (x.uv.Y * (float)ydim) |> ceil) )
+             |> Array.map( fun x -> CrackDetectionWrappers.SPoint2D( ((float)xdim-(x.uv.X * (float)xdim)) |> ceil , ((x.uv.Y * (float)ydim)) |> ceil) ) //(float)ydim - 
 
         // calc nWidth + nHeight
         //let width, height = getWidthAndHeight controlPoints
@@ -232,21 +196,41 @@ module CrackDetection =
 
         let test = values.Data |> Array.map( fun p -> (float32)p)
 
-        //let image = PixImage.Create(texpath).ToPixImage<byte>(Col.Format.RGB)
+        //let image = PixImage.Create(test, Col.Format.RGBA, xdim, ydim).ToPixImage<byte>()
 
         let res = V2i(xdimimg, ydimimg)
-        let pi = PixImage<byte>(Col.Format.RGBA, res)
+        let resAll = V2i(xdim, ydim)
+        let pi =  PixImage<byte>(Col.Format.RGBA, resAll)
+        
 
-        let coeffs =
-            match yMin, xMin, yMax, xMax with
-             | Some ymin, Some xmin, Some ymax, Some xmax ->
+        //let coeffs =
+        //    match yMin, xMin, yMax, xMax with
+        //     | Some ymin, Some xmin, Some ymax, Some xmax ->
                     
+        //            let c = 
+        //                [|
+        //                    for y in 0..(ydimimg-1) do
+        //                        //yield [|
+        //                            for x in 0..(xdimimg-1) do
+        //                                let indx = ((int)xmin + x-2) + ((int)ymin + y-2) * (int)xdim
+        //                                let value = values.Data.[indx]
+
+        //                                pi.GetMatrix<C4b>().SetValue(C4b(value/ 255.0, value/ 255.0, value/ 255.0, 1.0), (int64)x, (int64)y) |> ignore
+        //                                yield (float32)value
+        //                            //|]
+        //                |]
+        //            c
+        //     | _,_,_,_ -> [||]
+
+        let coeffsAll =
                     let c = 
                         [|
-                            for y in 0..(ydimimg-1) do
+                            for y in 0..((int)ydim-1) do
+                            //for y in ((int)ydim-1) .. -1 .. 0 do
                                 //yield [|
-                                    for x in 0..(xdimimg-1) do
-                                        let indx = ((int)xmin + x-2) + ((int)ymin + y-2) * (int)xdim
+                                    for x in 0..((int)xdim-1) do
+                                    //for x in ((int)xdim-1) .. -1 .. 0 do
+                                        let indx = x + y * (int)xdim
                                         let value = values.Data.[indx]
 
                                         pi.GetMatrix<C4b>().SetValue(C4b(value/ 255.0, value/ 255.0, value/ 255.0, 1.0), (int64)x, (int64)y) |> ignore
@@ -254,20 +238,23 @@ module CrackDetection =
                                     //|]
                         |]
                     c
-             | _,_,_,_ -> [||]
+       
+        let itest =
+            ipoints
+             |> PList.toArray
+             |> Array.map( fun x ->  
+                                let changePos = V2i (((float)xdim-(x.uv.X * (float)xdim)) |> ceil , ( (x.uv.Y * (float)ydim)) |> ceil) //(float)ydim -
+                                pi.GetMatrix<C3b>().SetCross(changePos, 5, C3b.Red) |> ignore
+                    )
         
         
-        
-        //let image = PixImage.Create(coeffs, Col.Format.RGB, (int64)xdimimg, (int64)xdimimg )//.ToPixImage<byte>(Col.Format.RGB)
 
-        pi.SaveAsImage (@".\edge.png")
+        
 
         let mutable numCrackpoints = 0
-        let err = CrackDetectionWrappers.FindCrack( coeffs, (int)xdimimg, (int)ydimimg, controlPoints, ipoints.Count, &numCrackpoints)
+        let err = CrackDetectionWrappers.FindCrack( coeffsAll, (int)xdim, (int)ydim, controlPoints, ipoints.Count, &numCrackpoints) //( coeffs, (int)xdimimg, (int)ydimimg, controlPoints, ipoints.Count, &numCrackpoints)
         let pointsArray = CrackDetectionWrappers.SPoint2D.CreateEmptyArray(uint32 numCrackpoints)
         let err1 = CrackDetectionWrappers.GetCrack(pointsArray)
-
-        
         
 
         let points = 
@@ -276,17 +263,22 @@ module CrackDetection =
                 (int)numCrackpoints
             ).ToV2ds()
             |> List.ofSeq 
-            |> List.map( fun p -> V2d(p.X/(float)xdim, p.Y/(float)ydim))
+            |> List.map( fun p -> pi.GetMatrix<C3b>().SetCross(V2i (p.X, p.Y), 5, C3b.Green) |> ignore
+                                  V2d(p.X/(float)xdim, p.Y/(float)ydim) )
+            //|> List.map( fun p -> V2d(p.X/(float)xdim, p.Y/(float)ydim))
             |> PList.ofList
         
+
+        pi.SaveAsImage (@".\edge.png")
+
         Log.line "[CrackDetection]"
         points
         //PList.empty
 
     let update (model : CrackDetectionModel) (msg : CrackDetectionAction) =   
         match msg with
-            | AddCrackPoint (p,uv,cCoeff) -> 
-                let ip = { position = p; uv = uv; coeff = cCoeff }
+            | AddCrackPoint (p,uv,cCoeff, indx) -> 
+                let ip = { position = p; uv = uv; coeff = cCoeff; index = indx }
                 {model with inputPoints = model.inputPoints |> PList.prepend ip } 
             | FinishCrack (path, texpath) -> 
                 let uvPositions = getCrackUV model.inputPoints path texpath // model.inputUV

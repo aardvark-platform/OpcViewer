@@ -49,6 +49,7 @@ type PickingModel = {
   texCoords            : V2f
   attributeValue       : float
   level0KdTree         : Option<LazyKdTree>
+  index                : int
 }  
 
 module PickingModel =
@@ -62,4 +63,5 @@ module PickingModel =
       texCoords          = V2f.II
       attributeValue     = 0.0
       level0KdTree       = None
+      index              = 0
     }

@@ -100,9 +100,10 @@ module App =
                          | Some kd ->
                             let dir = (Path.GetDirectoryName kd.coordinatesPath)
                             let path = dir + "\EdgeMap.aara"
+                            let pos2dPath = dir + "\Positions2d.aara"
                             Log.line "EdgeMap path: %s" path
                             
-                            let crackd = CrackDetection.update model.crackDetection (FinishCrack (path, kd.texturePath))
+                            let crackd = CrackDetection.update model.crackDetection (FinishCrack (path, pos2dPath )) //kd.texturePath))
                             let points = 
                                 crackd.outputPoints
                                     |> PList.map( fun p ->
@@ -161,7 +162,7 @@ module App =
                     match lastPick with
                         | Some p -> 
                             let texC = updatePickM.texCoords.ToV2d() 
-                            CrackDetection.update model.crackDetection (AddCrackPoint (p,texC,updatePickM.attributeValue))
+                            CrackDetection.update model.crackDetection (AddCrackPoint (p,texC,updatePickM.attributeValue,updatePickM.index))
                         | None -> model.crackDetection 
                 let updatedDrawM =
                     match lastPick with
@@ -200,6 +201,7 @@ module App =
             toEffect Shader.stableTrafo
             toEffect DefaultSurfaces.diffuseTexture  
             toEffect Shader.AttributeShader.falseColorLegend //falseColorLegendGray
+            toEffect Shader.AttributeShader.markPatchBorders
             ]
 
       let near = m.mainFrustum |> Mod.map(fun x -> x.near)
@@ -349,6 +351,7 @@ module App =
               localBB        = rootTree.info.LocalBoundingBox 
               globalBB       = rootTree.info.GlobalBoundingBox
               neighborMap    = HMap.empty
+
             }
         ]
         |> List.map (fun info -> info.globalBB, info)

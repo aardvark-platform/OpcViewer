@@ -180,8 +180,6 @@ module IntersectionController =
           | None -> V3d.NaN
 
     test //|> kdTree.affine.Forward.TransformPos
-
-
     
   let findCoordinates (kdTree : LazyKdTree) (index : int) (position : V3d) =
     let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
@@ -211,6 +209,51 @@ module IntersectionController =
     image.GetMatrix<C3b>().SetCross(changePos, 5, C3b.Red) |> ignore
 
     image.SaveAsImage (@".\testcoordSelect.png")
+
+    exactUV
+
+  let findCoordinatesSvB (kdTree : LazyKdTree) (index : int) (position : V3d) =
+    
+    let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
+
+    let dir = (Path.GetDirectoryName kdTree.coordinatesPath)
+    let path = dir + "\Positions2d.aara"
+    Log.line "Positions2d path: %s" path
+    
+    let positions2d = path |> fromFile<V3f>
+    let svbrData = positions2d.Data |> Array.map (fun x ->  x.ToV3d() |> kdTree.positions2dAffine.Forward.TransformPos  )// |> Array.map( fun x -> x.XY)
+    //let posData = data.[index]
+    let invalidIndices = getInvalidIndices svbrData //getInvalidIndices2d data //
+    let size = positions2d.Size.XY.ToV2i()
+    let indicesSvB = IndexHelper.computeIndexArray size invalidIndices
+
+    let svbr0 = svbrData.[triangleIndices.[index].[0]] 
+    let svbr1 = svbrData.[triangleIndices.[index].[1]] 
+    let svbr2 = svbrData.[triangleIndices.[index].[2]]  
+
+    //let uvIndices = 
+    //  indicesSvB    
+    //    |> Seq.chunkBySize 3
+    //    |> Seq.toArray 
+    
+   
+    let coordinates = kdTree.coordinatesPath |> fromFile<V2f>
+    //let p0 = coordinates.Data.[uvIndices.[index].[0]] * (float32 position.X)
+    //let p1 = coordinates.Data.[uvIndices.[index].[1]] * (float32 position.Y)
+    //let p2 = coordinates.Data.[uvIndices.[index].[2]] * (float32 position.Z)  
+    
+    let testpos = V2f(position.X, position.Y)
+    let exactUV =  svbr0 + svbr1 + svbr2 //coordinates.Data.[indicesSvB.[index]] //* testpos // p0+p1+p2 //
+    
+    let image = PixImage.Create(kdTree.texturePath).ToPixImage<byte>(Col.Format.RGB)
+    
+    let changePos = V2i (((float32 image.Size.X) * (float32)exactUV.X),((float32 image.Size.Y) * (float32)exactUV.Y))
+
+    //let test = image.GetMatrix<C3b>().GetValue((int64)changePos.X, (int64)changePos.Y)
+
+    image.GetMatrix<C3b>().SetCross(changePos, 5, C3b.Red) |> ignore
+
+    image.SaveAsImage (@".\testcoord2d.png")
 
     exactUV
 
@@ -388,7 +431,9 @@ module Intersect =
                   | InCoreKdTree kd -> 
                     None
                   | LazyKdTree kd -> 
-                    Some (IntersectionController.findCoordinates kd (snd values) position)
+                    //let test = IntersectionController.findCoordinatesSvB kd (snd values) position
+                    let test2 = IntersectionController.findCoordinates kd (snd values) position
+                    Some (test2)
 
               let attrVal =
                  match lvl0KdTree with
@@ -397,7 +442,7 @@ module Intersect =
                   | LazyKdTree kd ->    
                     Some (IntersectionController.getEdgeLayerValue kd (snd values) position)
               
-              Some (position,coordinates, attrVal, lvl0KdTree)
+              Some (position,coordinates, attrVal, lvl0KdTree, (snd values))
             | None -> None
       )
   
@@ -438,31 +483,7 @@ module Intersect =
     | None -> 
       Log.error "[Intersection] box not found in picking infos"
       m
-  
-  //let getLazyKdTree (opc:OpcData) (kdt : ConcreteKdIntersectionTree) (bb : Box3d) =
-  //  let patchH = opc.patchHierarchy
-  //  let infos = patchH.tree |> QTree.getLeaves |> Seq.toList |> List.map(fun x -> x.info)
-  //  let info = infos |> List.find (fun x -> x.GlobalBoundingBox = bb )
-  //  let mode = ViewerModality.XYZ
-  //  let pos = 
-  //        match mode with
-  //        | XYZ -> info.Positions
-  //        | SvBR -> info.Positions2d.Value
-                    
-  //  let dir = patchH.opcPaths.Patches_DirAbsPath +/ info.Name
 
-  //  let lazyTree : LazyKdTree = {
-  //                kdTree          = Some kdt
-  //                objectSetPath   = dir +/ pos
-  //                coordinatesPath = dir +/ (List.head info.Coordinates)
-  //                texturePath     = Patch.extractTexturePath (OpcPaths patchH.opcPaths.Opc_DirAbsPath) info 0 
-  //                kdtreePath      = patchH.kdTree_FileAbsPath info.Name 0 mode
-  //                affine          = 
-  //                  mode 
-  //                    |> ViewerModality.matchy info.Local2Global info.Local2Global2d
-  //                boundingBox   = kdt.KdIntersectionTree.BoundingBox3d.Transformed(Trafo3d.Identity)
-  //            }
-  //  lazyTree
 
   let performTexCoords (m : PickingModel) (hit : SceneHit) (boxId : Box3d) = 
     let fray = hit.globalRay.Ray
@@ -472,7 +493,7 @@ module Intersect =
     | Some kk ->
       let closest = intersectWithOpcIndex (Some kk.kdTree) fray 
       match closest with
-        | Some (point,coords,aVal,kd) -> 
+        | Some (point,coords,aVal,kd, index) -> 
 
           Log.line "hit surface at %A" point 
 
@@ -499,6 +520,7 @@ module Intersect =
              texCoords = uv
              attributeValue = attrVal
              level0KdTree = kdtree
+             index = index
           }   
 
         | None ->       
