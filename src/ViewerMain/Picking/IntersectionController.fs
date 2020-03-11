@@ -1,5 +1,72 @@
 ﻿namespace OpcSelectionViewer.Picking
 
+module LazyKdTrees = 
+  open Aardvark.Base
+  open Aardvark.Geometry
+  open Aardvark.VRVis.Opc.KdTrees
+  open Aardvark.SceneGraph.Opc  
+
+  let triangleIsNan (t:Triangle3d) =
+      t.P0.AnyNaN || t.P1.AnyNaN || t.P2.AnyNaN
+     
+  let getInvalidIndices3f (positions : V3f[]) =
+        positions |> List.ofArray |> List.mapi (fun i x -> if x.AnyNaN then Some i else None) |> List.choose id    
+
+  let getTriangleSet3f (vertices:V3f[]) =
+      vertices 
+        |> Seq.map(fun x -> x.ToV3d())
+        |> Seq.chunkBySize 3
+        |> Seq.filter(fun x -> x.Length = 3)
+        |> Seq.map(fun x -> Triangle3d x)
+        |> Seq.filter(fun x -> (triangleIsNan x |> not)) |> Seq.toArray
+        |> TriangleSet
+
+  let getTriangleSet (indices : int[]) (vertices:V3d[]) = 
+      indices 
+        |> Seq.map(fun x -> vertices.[x])
+        |> Seq.chunkBySize 3
+        |> Seq.map(fun x -> Triangle3d(x))
+        |> Seq.filter(fun x -> (triangleIsNan x |> not)) |> Seq.toArray
+        |> TriangleSet
+
+  let loadTriangles (kd : LazyKdTree) =
+        
+    let positions = kd.objectSetPath |> Aara.fromFile<V3f>
+            
+    let invalidIndices = getInvalidIndices3f positions.Data |> List.toArray
+    let size = positions.Size.XY.ToV2i()
+    let indices = LegacyCode.Class1.ComputeIndexArray(size,invalidIndices)
+                                          
+    positions.Data 
+     |> Array.map (fun x ->  x.ToV3d() |> kd.affine.Forward.TransformPos) 
+     |> getTriangleSet indices
+         
+  let loadObjectSet (cache : hmap<string, ConcreteKdIntersectionTree>) (lvl0Tree : Level0KdTree) =           
+    match lvl0Tree with
+      | InCoreKdTree kd -> 
+        kd.kdTree, cache
+      | LazyKdTree kd ->         
+        let kdTree, cache =
+          match kd.kdTree with
+            | Some k -> k, cache
+            | None -> 
+              let key = kd.boundingBox.ToString()
+
+              let tree = cache |> HMap.tryFind (key)
+              match tree with
+                | Some t -> 
+                  //Log.line "cache hit %A" kd.boundingBox
+                  t, cache
+                | None ->                                     
+                  Log.line "cache miss %A- loading kdtree %A" kd.boundingBox kd.kdtreePath
+
+                  let mutable tree = KdTrees.loadKdtree kd.kdtreePath
+                  let triangles = (kd |> loadTriangles)
+
+                  tree.KdIntersectionTree.ObjectSet <- triangles                                                                                          
+                  tree, (HMap.add key tree cache)
+        kdTree, cache
+
 module IntersectionController = 
   open Aardvark.Application
   open Aardvark.Base
@@ -10,6 +77,7 @@ module IntersectionController =
   open System
   open System.Drawing
   open Aardvark.SceneGraph.Opc
+  open Aardvark.VRVis.Opc
   open Aardvark.VRVis.Opc.KdTrees
   open Aardvark.Base.Geometry
 
@@ -24,7 +92,6 @@ module IntersectionController =
           x.Intersects(r', &t)
       )
 
-
   let loadTrianglesFromFileWithIndices (aaraFile : string) (matrix : M44d) =
     let positions = aaraFile |> fromFile<V3f>
     
@@ -33,8 +100,7 @@ module IntersectionController =
  
     let invalidIndices = getInvalidIndices data
     let index = computeIndexArray (positions.Size.XY.ToV2i()) false (Set.ofArray invalidIndices)
-    
-    
+        
     let triangleIndices = 
       index
         |> Seq.chunkBySize 3
@@ -46,53 +112,12 @@ module IntersectionController =
           else None)
         |> Seq.map (fun x -> Triangle3d(x))
         |> Seq.toArray
-      //index 
-      //  |> Seq.map(fun x -> data.[x])
-      //  |> Seq.chunkBySize 3
-      //  |> Seq.map(fun x -> Triangle3d(x))
-      //  |> Seq.toArray
-    
+          
     (triangles, (Seq.toArray triangleIndices))
   
   let loadTrianglesWithIndices (kd : LazyKdTree) =
     loadTrianglesFromFileWithIndices kd.objectSetPath kd.affine.Forward
-  
-  let triangleIsNan (t:Triangle3d) =
-      t.P0.AnyNaN || t.P1.AnyNaN || t.P2.AnyNaN
-   
-  let loadTriangles (kd : LazyKdTree) = 
-    let indexing = (fun size invalidIndices -> LegacyCode.Class1.ComputeIndexArray(size, invalidIndices))
-    loadTrianglesFromFile' kd.objectSetPath indexing kd.affine.Forward
     
-  let loadTriangleSet (kd : LazyKdTree) =
-    kd |> loadTriangles |> TriangleSet
-    
-  let loadObjectSet (cache : hmap<string, ConcreteKdIntersectionTree>) (lvl0Tree : Level0KdTree) =           
-    match lvl0Tree with
-      | InCoreKdTree kd -> 
-        kd.kdTree, cache
-      | LazyKdTree kd ->         
-        let kdTree, cache =
-          match kd.kdTree with
-            | Some k -> k, cache
-            | None -> 
-              let tree = cache |> HMap.tryFind (kd.boundingBox.ToString())
-              match tree with
-                | Some t -> 
-                  //Log.line "cache hit %A" kd.boundingBox
-                  t, cache
-                | None ->                                     
-                  Log.line "cache miss %A- loading kdtree %A" kd.boundingBox kd.kdtreePath
-
-                  let mutable tree = loadKdtree kd.kdtreePath
-                  tree.KdIntersectionTree.ObjectSet <- (kd |> loadTriangleSet)
-                  Log.line "Objectset type %s" (tree.KdIntersectionTree.ObjectSet.ToString())
-
-                  let key = tree.KdIntersectionTree.BoundingBox3d.ToString()
-                                                      
-                  tree, (HMap.add key tree cache)
-        kdTree, cache
-
   let intersectSingle ray (hitObject : 'a) (kdTree:ConcreteKdIntersectionTree) = 
     let kdi = kdTree.KdIntersectionTree 
     let mutable hit = ObjectRayHit.MaxRange
@@ -139,7 +164,6 @@ module IntersectionController =
     let u = 1.0 - v - w
     
     V3d(v,w,u)
-
     
   let findCoordinates (kdTree : LazyKdTree) (index : int) (position : V3d) =
     let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
@@ -175,11 +199,10 @@ module IntersectionController =
   //    hit,c
 
   let intersectKdTreeswithObjectIndex (bb : Box3d) (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
-      let kdtree, c =  kdTreeMap |> HMap.find bb |> loadObjectSet cache
+      let kdtree, c =  kdTreeMap |> HMap.find bb |> LazyKdTrees.loadObjectSet cache
       
       //let triangleSet = kdtree.KdIntersectionTree.
-      let hit = intersectSingleForIndex ray hitObject kdtree
-      
+      let hit = intersectSingleForIndex ray hitObject kdtree      
       hit,c
   
   let createBoxMatrix (boxes : List<Box3d>) =
@@ -188,13 +211,9 @@ module IntersectionController =
         |> List.sortBy(fun box -> box.Center.X)
         |> List.sortBy(fun box -> box.Center.Y)
         |> List.sortBy(fun box -> box.Center.Z)
-    
-    
-
+        
     failwith "BoxMatrix is corrupt"
     
-
-
   let mutable cache = HMap.empty
 
   let intersectWithOpc (kdTree0 : option<hmap<Box3d, Level0KdTree>>) (hitObject : 'a) ray =
@@ -211,6 +230,7 @@ module IntersectionController =
                     match treeHit with 
                       | Some hit -> Some (hit,bb)
                       | None -> None)
+              |> List.filter (fun (t,_) -> (fst t).IsNaN() |> not)
               |> List.sortBy(fun (t,_)-> fst t)
               |> List.tryHead            
           
@@ -249,5 +269,6 @@ module IntersectionController =
     | None -> 
       Log.error "[Intersection] box not found in picking infos"
       m
-      
+
+
   
