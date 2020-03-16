@@ -66,7 +66,7 @@ type Model =
         mainFrustum          : Frustum
         fillMode             : FillMode                                
         [<NonIncremental>]
-        patchHierarchies     : list<PatchHierarchy> 
+        patchHierarchies     : list<PatchHierarchy>
         boundingBox          : Box3d
         axis                 : Option<Axis>
         boxes                : list<Box3d>        

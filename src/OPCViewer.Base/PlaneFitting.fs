@@ -18,8 +18,12 @@ module PlaneFitting =
         //pDiffAvg |> Seq.iter(fun x -> matrix.AddOuterProduct(&x))
         let mutable matrix = M33d.Zero
         pDiffAvg |> Seq.iter(fun x -> 
+          
           let mutable y = x //.ToV3f()
-          (&matrix).AddOuterProduct(&y))
+         // (&matrix).AddOuterProduct(&y))
+
+          CovarianceMatrixExtensions.AddOuterProduct(&matrix,&y)
+        )
 
         matrix <- matrix / length
          

@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "opc=\"C:\\Users\\laura\\VRVis\\Data\\CrackDetection-Dll\\NiklasdorfDemo\""
+      "commandLineArgs": "opc=\"D:\\_WORK\\Dibit Crack\\NiklasdorfDemo\""
     }
   }
 }

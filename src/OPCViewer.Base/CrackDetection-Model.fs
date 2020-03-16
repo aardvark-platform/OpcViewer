@@ -25,8 +25,8 @@ type CrackDetectionModel =
 
 
 type CrackDetectionAction =
-  | AddCrackPoint     of V3d*V2d*float*int
-  | FinishCrack       of string*string
+| AddCrackPoint     of V3d*V2d*float*int
+| FinishCrack       of string*string
 
     
 
