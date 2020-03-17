@@ -228,11 +228,11 @@ module SurfaceSampling =
                 let aCross, bCross = 
                     if numIntersectionPoints > 2 then
                         if i > 1 then
-                            (V3d.Cross(bDir,b)).Normalized, (V3d.Cross(bDir,b)).Normalized
+                            (Vec.Cross(bDir,b)).Normalized, (Vec.Cross(bDir,b)).Normalized
                         else 
-                            (V3d.Cross(aDir,a)).Normalized, (V3d.Cross(aDir,a)).Normalized
+                            (Vec.Cross(aDir,a)).Normalized, (Vec.Cross(aDir,a)).Normalized
                     else
-                        (V3d.Cross(bDir,bV)).Normalized, (V3d.Cross(aV,aDir)).Normalized
+                        (Vec.Cross(bDir,bV)).Normalized, (Vec.Cross(aV,aDir)).Normalized
                   
         
                 let a0Moved = aDublicated1.XYZ + aCross * (aDublicated1.W - 0.5) * stripWidth 

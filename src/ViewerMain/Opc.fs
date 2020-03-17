@@ -33,18 +33,18 @@ module Opc =
         |> Sg.ofList        
     sg
 
-  type IUniformProvider with
-    member x.TryGetViewTrafo() =
-      match x.TryGetUniform(Ag.emptyScope, Symbol.Create "ViewTrafo") with
-        | Some (:? aval<Trafo3d> as t) -> t |> Some
-        | Some (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> Some
-        | _ -> None
+  //type IUniformProvider with
+  //  member x.TryGetViewTrafo() =
+  //    match x.TryGetUniform(Ag.emptyScope, Symbol.Create "ViewTrafo") with
+  //      | Some (:? aval<Trafo3d> as t) -> t |> Some
+  //      | Some (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> Some
+  //      | _ -> None
   
-      member x.TryGetProjTrafo() =
-        match x.TryGetUniform(Ag.emptyScope, Symbol.Create "ProjTrafo") with
-          | Some (:? aval<Trafo3d> as t) -> t |> Some
-          | Some (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> Some
-          | _ -> None
+  //    member x.TryGetProjTrafo() =
+  //      match x.TryGetUniform(Ag.emptyScope, Symbol.Create "ProjTrafo") with
+  //        | Some (:? aval<Trafo3d> as t) -> t |> Some
+  //        | Some (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> Some
+  //        | _ -> None
   
   let isNan (v : V3f) =
     System.Single.IsNaN(v.X) || System.Single.IsNaN(v.Y) || System.Single.IsNaN(v.Z)
@@ -56,36 +56,43 @@ module Opc =
     let trafo = p.info.Local2Global * preTransform
     
     let kdFile =  Path.combine [dir; "Patches"; p.info.Name; "kdtree.bin"]
+
+    let buildTree () =
+        let pos = g.IndexedAttributes.[DefaultSemantic.Positions] |> unbox<V3f[]>
+        let index = g.IndexArray |> unbox<int[]>
+    
+        let triangles =
+          [| 0 .. 3 .. index.Length - 2 |] 
+            |> Array.choose (fun bi -> 
+              let p0 = pos.[index.[bi]]
+              let p1 = pos.[index.[bi + 1]]
+              let p2 = pos.[index.[bi + 2]]
+              if isNan p0 || isNan p1 || isNan p2 then
+                  None
+              else
+                  Triangle3d(V3d p0, V3d p1, V3d p2) |> Some
+            )
+                        
+        Log.startTimed "build: %A" p.info.Name
+        let tree = KdTree.build Spatial.triangle (KdBuildInfo(50, 5)) triangles
+        Log.stop()
+    
+        let data = Serialization.binarySerializer.Pickle tree
+        File.WriteAllBytes(kdFile, data)
+    
+        (tree, trafo)
+    
     if File.Exists kdFile then
-      Log.line "cache hit: %A" p.info.Name
-    
-      let tree : KdTree<Triangle3d> = Serialization.binarySerializer.UnPickle (File.ReadAllBytes kdFile)
-    
-      (tree, trafo)
+        Log.line "cache hit: %A" p.info.Name
+        
+        try
+            let tree : KdTree<Triangle3d> = Serialization.binarySerializer.UnPickle (File.ReadAllBytes kdFile)
+            (tree, trafo)
+        with e -> 
+            Log.warn "could not deserialize kdtree cache: %s" e.Message
+            buildTree ()
     else
-      let pos = g.IndexedAttributes.[DefaultSemantic.Positions] |> unbox<V3f[]>
-      let index = g.IndexArray |> unbox<int[]>
-    
-      let triangles =
-        [| 0 .. 3 .. index.Length - 2 |] 
-          |> Array.choose (fun bi -> 
-            let p0 = pos.[index.[bi]]
-            let p1 = pos.[index.[bi + 1]]
-            let p2 = pos.[index.[bi + 2]]
-            if isNan p0 || isNan p1 || isNan p2 then
-                None
-            else
-                Triangle3d(V3d p0, V3d p1, V3d p2) |> Some
-          )
-                              
-      Log.startTimed "build: %A" p.info.Name
-      let tree = KdTree.build Spatial.triangle (KdBuildInfo(50, 5)) triangles
-      Log.stop()
-    
-      let data = Serialization.binarySerializer.Pickle tree
-      File.WriteAllBytes(kdFile, data)
-    
-      (tree, trafo)
+        buildTree()
 
   let getLeafKdTrees (preTransform : Trafo3d) (patchHierarchies : list<PatchHierarchy>) =
             

@@ -566,7 +566,7 @@ module LinkingApp =
                             |> AList.chooseA id
                             |> AList.sortBy (fun (f, p, (image, sensor, max)) ->
                                 let ratioP = p.XY * V2d(1.0, sensor.Y / sensor.X)
-                                let dist = V2d.Dot(ratioP, ratioP) // euclidean peseudo distance (w/o root)
+                                let dist = Vec.Dot(ratioP, ratioP) // euclidean peseudo distance (w/o root)
 
                                 if abs(p.X) > max.X || abs(p.Y) > max.Y
                                 then infinity

@@ -7,8 +7,8 @@ module RoverApp =
     let panning (m:RoverModel) =
         let forward = m.camera.Forward
         let up = m.camera.Up
-        let panRotation = Rot3d(up, m.pan.delta.RadiansFromDegrees())
-        let targetWithPan = panRotation.TransformDir(forward)
+        let panRotation = Rot3d.Rotation(up, m.pan.delta.RadiansFromDegrees())
+        let targetWithPan = panRotation.Transform(forward)
 
         let newView = CameraView.look m.position targetWithPan.Normalized up
         {m with camera =  newView}
@@ -18,8 +18,8 @@ module RoverApp =
     let tilting (m:RoverModel) =
         let forward = m.camera.Forward
         let right = m.camera.Right
-        let tiltRotation = Rot3d(right, m.tilt.delta.RadiansFromDegrees())
-        let targetWithTilt = tiltRotation.TransformDir(forward)
+        let tiltRotation = Rot3d.Rotation(right, m.tilt.delta.RadiansFromDegrees())
+        let targetWithTilt = tiltRotation.Transform(forward)
 
         let newView = CameraView.look m.position targetWithTilt.Normalized m.camera.Up
         {m with camera =  newView}

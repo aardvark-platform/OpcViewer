@@ -90,7 +90,7 @@ module AxisFunctions =
   let getNearestPointIndex (p : V3d) (axis : OpcSelectionViewer.Axis) = 
       let minPos = 
           axis.positions              
-            |> List.minBy (fun x -> V3d.DistanceSquared(p, x))
+            |> List.minBy (fun x -> Vec.DistanceSquared(p, x))
   
       axis.positions             
           |> List.findIndex (fun x -> x.ApproximateEquals(minPos))

@@ -295,7 +295,7 @@ module Drawing =
             let hfov_rad = Conversion.RadiansFromDegrees(hfov)
          
             let wz = Fun.Tan(hfov_rad / 2.0) * near * size
-            let dist = V3d.Distance(p, v.Location)
+            let dist = Vec.Distance(p, v.Location)
       
             return ( wz / near ) * dist
         }

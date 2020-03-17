@@ -41,7 +41,7 @@ module AxisSg =
   
     let sphere color size pos =
         let trafo = 
-          pos |> AVal.map(fun x -> Trafo3d.Translation x)
+          pos |> AVal.map (fun (x : V3d) -> Trafo3d.Translation x)
 
         Sg.sphere 3 (AVal.constant color) (AVal.constant size)
           |> Sg.noEvents

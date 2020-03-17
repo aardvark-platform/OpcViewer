@@ -17,7 +17,7 @@ type EmbeddedRessource = EmbeddedRessource
 
 [<EntryPoint>]
 let main argv =
-    Ag.initialize()
+
     Aardvark.Init()
     Aardium.init()
 

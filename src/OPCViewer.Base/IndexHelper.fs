@@ -68,8 +68,8 @@ module IndexHelper =
         let point2 = points.[index2]
  
         [|
-            V3f.Distance(point0, point1)
-            V3f.Distance(point0, point2)
-            V3f.Distance(point1, point2)
+            Vec.Distance(point0, point1)
+            Vec.Distance(point0, point2)
+            Vec.Distance(point1, point2)
         |] 
         |> Array.exists (fun d -> d > maxTriangleSize)

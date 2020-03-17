@@ -109,10 +109,10 @@ module KdTrees =
   let loadKdtree path =
     //Log.startTimed "loading tree"
     use b = new BinaryReadingCoder(System.IO.File.OpenRead(path))
-    let mutable treeOida = Unchecked.defaultof<KdIntersectionTree>
-    b.CodeT(&treeOida)
+    let mutable kdTree = Unchecked.defaultof<KdIntersectionTree>
+    b.CodeT(&kdTree)
     //Log.stop()        
-    ConcreteKdIntersectionTree(treeOida, Trafo3d.Identity)
+    ConcreteKdIntersectionTree(kdTree, Trafo3d.Identity)
 
   let loadKdTrees' (h : PatchHierarchy) (trafo:Trafo3d) (load : bool) (mode:ViewerModality) (b : BinarySerializer) : HashMap<Box3d,Level0KdTree> =
     //ObjectBuilder

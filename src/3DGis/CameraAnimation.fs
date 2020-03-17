@@ -60,7 +60,7 @@ module CameraAnimation =
                 let a = camToTarget
                 let b = originVec
 
-                let s = a.Length * V3d.Dot(b,a) / (b.Length * a.Length)
+                let s = a.Length * Vec.Dot(b,a) / (b.Length * a.Length)
                 model.originalCamPos + b*(s/b.Length)
 
             let jumpTargetOffset = (projectedPointOnLine - targetPos)/5.0
@@ -110,7 +110,7 @@ module CameraAnimation =
                 let a = camToTarget
                 let b = originVec
 
-                let s = a.Length * V3d.Dot(b,a) / (b.Length * a.Length)
+                let s = a.Length * Vec.Dot(b,a) / (b.Length * a.Length)
                 model.originalCamPos + b*(s/b.Length)
 
             let jumpTargetOffset = (projectedPointOnLine - targetPos)/5.0

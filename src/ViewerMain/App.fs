@@ -148,7 +148,7 @@ module App =
         m.patchHierarchies
           |> List.map(fun x -> x.tree |> QTree.getRoot) 
           |> List.map(fun x -> x.info.LocalBoundingBox)
-          |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
+          |> List.fold (fun a b -> Box3d(a, b)) Box3d.Invalid
 
 
       let scalar = m.opcAttributes.selectedScalar |> AVal.map (function AdaptiveNone -> None | AdaptiveSome s -> Some s)
@@ -294,7 +294,7 @@ module App =
         patchHierarchies 
           |> List.map(fun x -> x.tree |> QTree.getRoot) 
           |> List.map(fun x -> x.info.GlobalBoundingBox)
-          |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
+          |> List.fold (fun a b -> Box3d(a, b)) Box3d.Invalid
       
       let opcInfos = 
         [

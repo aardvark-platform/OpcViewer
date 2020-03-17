@@ -30,15 +30,15 @@ module SceneGraphExtension =
         inherit Sg.AbstractApplicator(child)
         member x.OverrideTrafo = overrideTrafo
 
-    [<Semantic>]
+    [<Rule>]
     type OverrideProjTrafoSem() =
-        member x.ProjTrafo(o : OverrideProjTrafo) =
+        member x.ProjTrafo(o : OverrideProjTrafo, scope : Ag.Scope) =
             let myTrafo = 
                 AVal.map2 (fun (o : Option<Trafo3d>) (r : Trafo3d) -> 
                     match o with
                         | None -> r
                         | Some o -> o
-                ) o.OverrideTrafo o?ProjTrafo
+                ) o.OverrideTrafo scope.ProjTrafo
             o.Child?ProjTrafo <- myTrafo
 
     module Sg = 
@@ -470,7 +470,7 @@ module App =
                 let projectedPointOnLine = 
                     let a = line
                     let b = pointList.Item(currentHoveredIndex) - lineOrigin
-                    lineOrigin + a * (((V3d.Dot(b,a)/(a.Length*a.Length)) * a)/a.Length).Length
+                    lineOrigin + a * (((Vec.Dot(b,a)/(a.Length*a.Length)) * a)/a.Length).Length
                 
                 let height =
                     let h = (projectedPointOnLine - pointList.Item(currentHoveredIndex)).Length
@@ -551,11 +551,11 @@ module App =
                             let aCross, bCross = 
                                 if numIntersectionPoints > 2 then
                                     if i > 1 then
-                                        (V3d.Cross(bDir,b)).Normalized, (V3d.Cross(bDir,b)).Normalized
+                                        (Vec.Cross(bDir,b)).Normalized, (Vec.Cross(bDir,b)).Normalized
                                     else 
-                                        (V3d.Cross(aDir,a)).Normalized, (V3d.Cross(aDir,a)).Normalized
+                                        (Vec.Cross(aDir,a)).Normalized, (Vec.Cross(aDir,a)).Normalized
                                 else
-                                    (V3d.Cross(bDir,bV)).Normalized, (V3d.Cross(aV,aDir)).Normalized
+                                    (Vec.Cross(bDir,bV)).Normalized, (Vec.Cross(aV,aDir)).Normalized
                             
                         
                             let a0Moved = aDublicated1.XYZ + aCross * (aDublicated1.W - 0.5) * stripWidth 
@@ -823,7 +823,7 @@ module App =
             patchHierarchies 
                 |> List.map(fun x -> x.tree |> QTree.getRoot) 
                 |> List.map(fun x -> x.info.GlobalBoundingBox)
-                |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
+                |> List.fold (fun a b -> Box3d(a, b)) Box3d.Invalid
     
         let opcInfos = 
             [
