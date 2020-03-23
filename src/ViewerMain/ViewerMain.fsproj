@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -22,6 +22,8 @@
     <Compile Include="Serialization.fs" />
     <Compile Include="Neighbouring.fs" />
     <Compile Include="Outline\OutlineModel.fs" />
+    <Compile Include="CrackDetection\CrackDetection-Model.fs" />
+    <Compile Include="CrackDetection\CrackDetection.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="Outline\OutlineSg.fs" />
     <Compile Include="Axis.fs" />

@@ -26,12 +26,18 @@
           "System.Collections.Immutable": "1.5.0"
         },
         "runtime": {
-          "lib/netstandard2.0/Aardvark.Base.dll": {}
+          "lib/netstandard2.0/Aardvark.Base.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
         }
       },
       "Aardvark.Base.Telemetry/4.5.11": {
         "runtime": {
-          "lib/netstandard2.0/Aardvark.Base.Telemetry.dll": {}
+          "lib/netstandard2.0/Aardvark.Base.Telemetry.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
         }
       },
       "DevILSharp/0.2.5": {
@@ -39,12 +45,18 @@
           "FSharp.Core": "4.6.2"
         },
         "runtime": {
-          "lib/netstandard2.0/DevILSharp.dll": {}
+          "lib/netstandard2.0/DevILSharp.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
         }
       },
       "FSharp.Core/4.6.2": {
         "runtime": {
-          "lib/netstandard1.6/FSharp.Core.dll": {}
+          "lib/netstandard1.6/FSharp.Core.dll": {
+            "assemblyVersion": "4.6.0.0",
+            "fileVersion": "2019.2.13.3"
+          }
         },
         "resources": {
           "lib/netstandard1.6/cs/FSharp.Core.resources.dll": {
@@ -93,7 +105,10 @@
       },
       "System.Collections.Immutable/1.5.0": {
         "runtime": {
-          "lib/netstandard2.0/System.Collections.Immutable.dll": {}
+          "lib/netstandard2.0/System.Collections.Immutable.dll": {
+            "assemblyVersion": "1.2.3.0",
+            "fileVersion": "4.6.26515.6"
+          }
         }
       },
       "Uncodium.Eigensystems/1.0.2": {
@@ -101,7 +116,10 @@
           "Aardvark.Base": "4.5.11"
         },
         "runtime": {
-          "lib/netstandard2.0/Uncodium.Eigensystems.dll": {}
+          "lib/netstandard2.0/Uncodium.Eigensystems.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
         }
       }
     }
@@ -115,42 +133,42 @@
     "Aardvark.Base/4.5.11": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-svSG30Jq6a91haSqR/sivpBzEeWMo+M+x9F25YEHC5r6YKEMn8wPp3QaKjcSAQQ4XZ0ZLxjmq3vXfi2nNdMegA==",
+      "sha512": "sha512-xA/MX01ockk2Ffi3t2JmC8bJrgzOLNZoZy2zUOvNfJ0/frZI/SSfapdPShVKTHxvHFafng4V784zpDITWUcBIg==",
       "path": "aardvark.base/4.5.11",
       "hashPath": "aardvark.base.4.5.11.nupkg.sha512"
     },
     "Aardvark.Base.Telemetry/4.5.11": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-CEUWmO+c+aqfn3PpURw51zRBmxQAQwO4H5z7N0+w0hY345BDD6Agt4KeFsjizGEDJ57ZGXxz3ZD2PEctGS8Phw==",
+      "sha512": "sha512-qp444/WyurQmWIHMqxZCc9tdr9DLdczhy4P5+0aqZQ8xIh8tm4A82UhT4HK17lsMIG/bnNb0X5ak4w1MykmQ0A==",
       "path": "aardvark.base.telemetry/4.5.11",
       "hashPath": "aardvark.base.telemetry.4.5.11.nupkg.sha512"
     },
     "DevILSharp/0.2.5": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-ppARINoNQUVvRLaxwjJQouVOeLv3E1lftgaOWee3NStg1NJ9fP6V2hN/f6dPrmqAo3yO6s9pA8uc+7Xh8GUe6A==",
+      "sha512": "sha512-GQRGXbRHqRhVv4SJlgYarCVJkN2etRURHbREHuvPVQiHFZPSbdsIoKBkYzVtJg8t0WBZ4gt9Ca6u6b58cuNQlA==",
       "path": "devilsharp/0.2.5",
       "hashPath": "devilsharp.0.2.5.nupkg.sha512"
     },
     "FSharp.Core/4.6.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-LKE5pmENO+YxcMI2tNEPK22SpOBtLdWjd/3pDkBC/L8cXM+We99P9kyoyY2aT85o8i7Xtt4SQJnUhMg7klm3tQ==",
+      "sha512": "sha512-/waJ3a7u7MjFOGnXOfokbG1N1FH7VCmP3Fw1tJ8Q75kIj60LYBL3eYzab9hDimL5E21uhQ/1wf04M3dRAYemlw==",
       "path": "fsharp.core/4.6.2",
       "hashPath": "fsharp.core.4.6.2.nupkg.sha512"
     },
     "System.Collections.Immutable/1.5.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-erLSnZLBCA8EKIE2bKtXynjWBWSoMlmCFrOOYN+sPKCeYd3oGj9h8hqRPODtsRlPANkOW7L8tEQlEadHbUXC6A==",
+      "sha512": "sha512-EXKiDFsChZW0RjrZ4FYHu9aW6+P4MCgEDCklsVseRfhoO0F+dXeMSsMRAlVXIo06kGJ/zv+2w1a2uc2+kxxSaQ==",
       "path": "system.collections.immutable/1.5.0",
       "hashPath": "system.collections.immutable.1.5.0.nupkg.sha512"
     },
     "Uncodium.Eigensystems/1.0.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-hOunpwu3d69JRduYx6sop7cs3xBmQwYfwdK40sTB2l756GMXhKlo1/g2lWcRFgTzHATkso0Sl7URtjEfscwjnw==",
+      "sha512": "sha512-CrLR60rds5ZLxwhb9vY5C7rSscidvJxtSR8BQ0blgi8v1CjpoctQjL0mMy8FWYbirjmK0fxLTc5c3AaZiUvr6w==",
       "path": "uncodium.eigensystems/1.0.2",
       "hashPath": "uncodium.eigensystems.1.0.2.nupkg.sha512"
     }

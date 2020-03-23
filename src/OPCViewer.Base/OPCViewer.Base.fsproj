@@ -21,8 +21,6 @@
     <Compile Include="CooTrafo\CooTrafo.fs" />
     <Compile Include="FalseColorLegend-Model.fs" />
     <Compile Include="FalseColorLegendApp.fs" />
-    <Compile Include="CrackDetection-Model.fs" />
-    <Compile Include="CrackDetection.fs" />
     <Compile Include="OPCAttributes-Model.fs" />
     <Compile Include="OpcAttributes.fs" />
     <Compile Include="Sg.fs" />

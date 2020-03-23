@@ -27,6 +27,7 @@ open Rabbyte.Annotation
 
 open Aardvark.Application
 open Aardvark.VRVis.Opc
+open CrackDetection
 
 module App =   
   
@@ -104,20 +105,21 @@ module App =
                       //let points = 
                     match model.picking.level0KdTree with
                     | Some kd ->
-                       let dir = (Path.GetDirectoryName kd.coordinatesPath)
-                       let path = dir + "\EdgeMap.aara"
-                       let pos2dPath = dir + "\Positions2d.aara"
-                       Log.line "EdgeMap path: %s" path
-                       
-                       let crackd = CrackDetection.update model.crackDetection (FinishCrack (path, pos2dPath )) //kd.texturePath))
-                       let points = 
-                           crackd.outputPoints
-                               |> PList.map( fun p ->
-                                       CrackDetection.calc3dPointFromUV kd.objectSetPath kd.coordinatesPath p kd.affine)
-                    
-                       let newAnnotation = AnnotationApp.update model.annotations (AnnotationAction.AddCrack points)
-                       { model with crackDetection = crackd; annotations = newAnnotation; drawing = DrawingModel.reset model.drawing}
-                               
+                        let dir = (Path.GetDirectoryName kd.coordinatesPath)
+                        let path = dir + "\EdgeMap.aara"
+                        let pos2dPath = dir + "\Positions2d.aara"
+                        Log.line "EdgeMap path: %s" path
+                        
+                        let crackd = CrackDetectionApp.update model.crackDetection (FinishCrack (path, pos2dPath )) //kd.texturePath))
+                        let points = 
+                            crackd.outputPoints
+                            |> PList.map( fun p ->
+                                CrackDetectionApp.calc3dPointFromUV kd.objectSetPath kd.coordinatesPath p kd.affine
+                            )
+                        
+                        let newAnnotation = AnnotationApp.update model.annotations (AnnotationAction.AddCrack points)
+                        { model with crackDetection = crackd; annotations = newAnnotation; drawing = DrawingModel.reset model.drawing}
+                                
                     | None -> model
                               
                 | _-> model
@@ -134,7 +136,7 @@ module App =
           //let pickingModel, drawingModel =
     
             match msg with
-            | HitSurface (a,b) | HitSurfaceWithTexCoords (a,b) -> //,_) -> 
+            | HitSurface (box,hit) | HitSurfaceWithTexCoords (box,hit) -> //,_) -> 
               //match model.axis with
               //| Some axis -> 
               //  let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
@@ -152,32 +154,48 @@ module App =
                         )
                     )
                 
+                let picking = 
+                    (box, hit)
+                    |> HitSurfaceWithTexCoords
+                    |> PickingApp.update model.picking
+
+                let lastPoint = 
+                    picking.intersectionPoints |> PList.tryFirst
+
                 match model.picking.interaction with
                 | Interactions.DrawAnnotation ->
-                    let updatePickM = PickingApp.update model.picking (HitSurface (a,b))
-                    let lastPick = updatePickM.intersectionPoints |> PList.tryFirst
-                    let updatedDrawM =
-                        match lastPick with
-                        | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, Some hitF))
-                        | None -> model.drawing
-                    { model with picking = updatePickM; drawing = updatedDrawM }
-                | Interactions.PickCrackDetection -> 
-                    let updatePickM = PickingApp.update model.picking (HitSurfaceWithTexCoords (a,b))
-                    let lastPick   = updatePickM.intersectionPoints |> PList.tryFirst
+
+                    let drawing =
+                        match lastPoint with
+                        | Some p -> 
+                            (p, Some hitF)
+                            |> DrawingAction.AddPoint
+                            |> DrawingApp.update model.drawing
+                        | None -> 
+                            model.drawing
+                    { model with picking = picking; drawing = drawing }
+
+                | Interactions.PickCrackDetection ->                     
+
                     let crackDetection = 
-                        match lastPick with
-                            | Some p -> 
-                                let texC = updatePickM.texCoords.ToV2d() 
-                                CrackDetection.update model.crackDetection (AddCrackPoint (p,texC,updatePickM.attributeValue,updatePickM.index))
-                            | None -> model.crackDetection 
-                    let updatedDrawM =
-                        match lastPick with
-                        | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, Some hitF))
-                        | None -> model.drawing
-                    { model with picking = updatePickM; crackDetection = crackDetection; drawing = updatedDrawM }
-                | _-> model
+                        match lastPoint with
+                        | Some p -> 
+                            let texC = picking.texCoords.ToV2d()
+
+                            (p, texC, picking.attributeValue, picking.index)
+                            |> AddCrackPoint
+                            |> CrackDetectionApp.update model.crackDetection
+                            
+                        | None -> 
+                            model.crackDetection                    
+
+                    { model with picking = picking; crackDetection = crackDetection }
+
+                | _-> 
+                    Log.error "[App] Unknown interaction mode %A" model.picking.interaction
+                    model
               
-            | _ -> { model with picking = (PickingApp.update model.picking msg); drawing = model.drawing }  
+            | _ -> { model with picking = (PickingApp.update model.picking msg) }
           
         | UpdateDockConfig cfg ->
             { model with dockConfig = cfg }
@@ -190,9 +208,9 @@ module App =
         | _ -> model
                       
     let view (m : MModel) =
-        let box = 
+        let box =
             m.patchHierarchies
-            |> List.map(fun x -> x.tree |> QTree.getRoot) 
+            |> List.map(fun x -> x.tree |> QTree.getRoot)
             |> List.map(fun x -> x.info.LocalBoundingBox)
             |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
         
@@ -206,11 +224,11 @@ module App =
             )
             |> Sg.set
             |> Sg.effect [ 
-              toEffect Shader.stableTrafo
-              toEffect DefaultSurfaces.diffuseTexture  
-              toEffect Shader.AttributeShader.falseColorLegend //falseColorLegendGray
-              toEffect Shader.AttributeShader.markPatchBorders
-              ]
+                toEffect Shader.stableTrafo
+                toEffect DefaultSurfaces.diffuseTexture  
+                toEffect Shader.AttributeShader.falseColorLegend //falseColorLegendGray
+                toEffect Shader.AttributeShader.markPatchBorders
+            ]
     
         let near = m.mainFrustum |> Mod.map(fun x -> x.near)
         let far = m.mainFrustum |> Mod.map(fun x -> x.far)
@@ -228,6 +246,11 @@ module App =
             |> Sg.ofList
             |> Sg.pass afterFilledPolygonRenderPass
     
+        let crackBrush =
+            m.crackDetection
+            |> CrackDetectionApp.viewBrush near far
+            |> Sg.pass afterFilledPolygonRenderPass
+
         //let cracks = CrackDetection.drawCracks m.crackDetection near far (Mod.constant 10.0) (Mod.constant 0.1)
     
         let scene = 
@@ -235,6 +258,7 @@ module App =
                 opcs
                 filledPolygonSg
                 afterFilledPolygonSg
+                crackBrush
                 //cracks
             ]
             |> Sg.ofList
@@ -262,16 +286,16 @@ module App =
         let renderControl =
             FreeFlyController.controlledControl m.cameraState Camera m.mainFrustum
                 (AttributeMap.ofList [ 
-                  style "width: 100%; height:100%"; 
-                  attribute "showFPS" "true";       // optional, default is false
-                  attribute "useMapping" "true"
-                  attribute "data-renderalways" "false"
-                  attribute "data-samples" "4"
-                  onKeyDown (Message.KeyDown)
-                  onKeyUp (Message.KeyUp)
-                  //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
+                    style "width: 100%; height:100%"; 
+                    attribute "showFPS" "true";       // optional, default is false
+                    attribute "useMapping" "true"
+                    attribute "data-renderalways" "false"
+                    attribute "data-samples" "4"
+                    onKeyDown (Message.KeyDown)
+                    onKeyUp (Message.KeyUp)
+                    //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
                 ]) 
-                (scene |> Sg.map PickingAction) 
+                (scene |> Sg.map PickingAction)
               
         //let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant          
         //let cam = Mod.map2 Camera.create m.cameraState.view frustum 
@@ -283,7 +307,7 @@ module App =
                 { kind = Script;     name = "essential";       url = "essentialstuff.js" }
                 { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
                 { kind = Script;     name = "spectrum.js";     url = "spectrum.js" }
-                { kind = Stylesheet; name = "spectrum.css";    url = "spectrum.css"}
+                { kind = Stylesheet; name = "spectrum.css";    url = "spectrum.css" }
             ]
     
         page (fun request -> 
@@ -434,11 +458,11 @@ module App =
                 opcAttributes      = SurfaceAttributes.initModel dir
                 drawing            = DrawingModel.initial
                 annotations        = AnnotationModel.initial
-                crackDetection     = CrackDetection.initModel
+                crackDetection     = CrackDetectionApp.initModel
             }
     
         {
-            initial = initialModel             
+            initial = initialModel
             update = update
             view   = view          
             threads = fun m -> m.threads

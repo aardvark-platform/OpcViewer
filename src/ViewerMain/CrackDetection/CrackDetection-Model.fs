@@ -1,12 +1,10 @@
-﻿namespace OpcViewer.Base
+﻿namespace CrackDetection
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
 open Aardvark.VRVis.Opc.KdTrees
 
-
-[<DomainType>]
 type InputPoint =
     {
         index           : int

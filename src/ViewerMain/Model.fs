@@ -16,6 +16,8 @@ open OpcViewer.Base.Attributes
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 
+open CrackDetection
+
 type Message =
   | Camera           of FreeFlyController.Message
   | KeyUp            of key : Keys

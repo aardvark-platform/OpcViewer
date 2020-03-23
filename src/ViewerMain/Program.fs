@@ -8,6 +8,7 @@ open Aardium
 open Suave
 open Suave.WebPart
 open OpcViewer.Base
+open CrackDetection
 
 type EmbeddedRessource = EmbeddedRessource
 
@@ -26,35 +27,36 @@ let main argv =
 
     //CooTransformation.deInitCooTrafo()
     
-
     use app = new OpenGlApplication()
     //let opcDir = "C:\Users\laura\VRVis\Data\CapeDesire\Surface\Cape_Desire_RGB"
     let opcDir = argv.[0];
     let axisFile = None //if argv.Length > 1 then Some(argv.[1]) else None
 
-    let argsList = List.fold(fun (x:string) (y : string)-> x + " " + y) String.Empty (argv |> Array.toList)
+    let argsList = 
+        List.fold(fun (x:string) (y : string)-> x + " " + y) String.Empty (argv |> Array.toList)
 
     let argsKv = 
-      argv 
+        argv
         |> Array.filter(fun x -> x.Contains "=")
         |> Array.map(fun x -> 
-              let kv = x.Split [|'='|]
-              kv.[0],kv.[1])
+            let kv = x.Split [|'='|]
+            kv.[0],kv.[1])
         |> HMap.ofArray
 
     let opcDir =
-      match argsKv |> HMap.tryFind "opc" with
-      | Some dir -> dir
-      | None -> failwith "need opc directory ... opc=\"[opcfilepath]\" "
+        match argsKv |> HMap.tryFind "opc" with
+        | Some dir -> dir
+        | None -> failwith "need opc directory ... opc=\"[opcfilepath]\" "
 
     let axisFile = argsKv |> HMap.tryFind "axis"
 
     let rotate = argsList.Contains("-rotate")
     
-    let instance =  OpcSelectionViewer.App.app opcDir axisFile rotate |> App.start 
+    let instance = 
+        OpcSelectionViewer.App.app opcDir axisFile rotate |> App.start
     //let instance = OpcOutlineTest.OutlineApp.appOutlines opcDir |> App.start 
 
-    CrackDetection.initCrackDetection()
+    CrackDetectionApp.initCrackDetection()
 
     // use can use whatever suave server to start you mutable app. 
     // startServerLocalhost is one of the convinience functions which sets up 
