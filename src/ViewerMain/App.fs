@@ -86,9 +86,13 @@ module App =
             | Keys.PageDown ->             
                 { model with cameraState = model.cameraState |>  updateFreeFlyConfig -0.5 }
             | Keys.Space ->    
-                Log.line "[App] saving camstate"
+                Log.line "[App] saving camstate, saving crack detection state"
                 model.cameraState.view |> toCameraStateLean |> Serialization.save ".\camstate" |> ignore
+                
+                //model.crackDetection |> Serialization.save ".\crackdetectionState" |> ignore
                 model
+            | Keys.Escape ->
+                { model with crackDetection = CrackDetectionApp.initModel }
             | Keys.Enter ->
               //let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
               //let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) // TODO...add hitFunc
@@ -102,8 +106,16 @@ module App =
                     { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
                 | Interactions.PickCrackDetection -> 
                       
+                    //let level0Kdtree : option<KdTrees.LazyKdTree> =
+                    //    match model.picking.level0KdTree with
+                    //    | Some kd -> Some kd
+                    //    | None ->
+                    //        match model.crackDetection.kdTreePath with
+                    //        | Some path -> failwith "" 
+                    //        | None -> None
+
                       //let points = 
-                    match model.picking.level0KdTree with
+                    match model.picking.level0KdTree  with
                     | Some kd ->
                         let dir = (Path.GetDirectoryName kd.coordinatesPath)
                         let path = dir + "\EdgeMap.aara"
@@ -411,6 +423,12 @@ module App =
     
         let camState = restoreCamState
     
+        let crackDetection : CrackDetectionModel = 
+            if File.Exists ".\crackdetectionState" then
+                Serialization.loadAs ".\crackdetectionState"
+            else
+                CrackDetectionApp.initModel
+
         let ffConfig = { 
             camState.freeFlyConfig with 
                 lookAtMouseSensitivity = 0.004; 
@@ -458,7 +476,7 @@ module App =
                 opcAttributes      = SurfaceAttributes.initModel dir
                 drawing            = DrawingModel.initial
                 annotations        = AnnotationModel.initial
-                crackDetection     = CrackDetectionApp.initModel
+                crackDetection     = crackDetection
             }
     
         {

@@ -9,6 +9,8 @@ open Suave
 open Suave.WebPart
 open OpcViewer.Base
 open CrackDetection
+open OpcSelectionViewer
+open Aardvark.VRVis.Opc
 
 type EmbeddedRessource = EmbeddedRessource
 
@@ -26,7 +28,7 @@ let main argv =
     //Log.line "altitude: %f" sc.altitude
 
     //CooTransformation.deInitCooTrafo()
-    
+        
     use app = new OpenGlApplication()
     //let opcDir = "C:\Users\laura\VRVis\Data\CapeDesire\Surface\Cape_Desire_RGB"
     let opcDir = argv.[0];

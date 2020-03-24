@@ -19,6 +19,7 @@ type CrackDetectionModel =
     {
         inputPoints  : plist<InputPoint>
         outputPoints : plist<V2d>
+        kdTreePath   : Option<string>
     }
 
 
