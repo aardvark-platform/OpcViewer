@@ -179,7 +179,7 @@ module RoverModel =
         }
 
     //let initfrustum = Frustum.perspective 6.0 0.1 100.0 1.2
-    let initfrustum = Frustum.perspective 5.0 0.1 10.0 1.0
+    let initfrustum = Frustum.perspective 5.0 0.1 100.0 1.0
 
     //Stereo camera //PanCam FOV 37.0°
     //currently at 10 for testing

@@ -2,7 +2,7 @@
   "profiles": {
     "ViewPlannerDSS": {
       "commandName": "Project",
-      "commandLineArgs": "opc=\"C:\\Users\\schalko\\1087_004777_MSLMST_0013\" -rotate"
+      "commandLineArgs": "opc=\"f:\\PRo3D\\Minerva_Gale\\subset\\Mastcam\\1087_004777_MSLMST_0013\" -rotate"
     }
   }
 }

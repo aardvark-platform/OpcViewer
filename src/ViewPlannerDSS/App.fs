@@ -320,6 +320,22 @@ module App =
         |> HMap.ofList      
       
       let infos = opcInfos|> AMap.ofHMap
+
+      let diffuseSampler =
+        sampler2d {
+            texture uniform?DiffuseColorTexture          
+            filter Filter.Anisotropic
+            maxAnisotropy 16
+            addressU WrapMode.Wrap
+            addressV WrapMode.Wrap
+        }
+
+      let improvedDiffuseTexture (v : Effects.Vertex) =
+        fragment {
+            let texColor = diffuseSampler.Sample(v.tc,-1.0)
+            return texColor
+        }
+
       let opc = 
         infos
           |> AMap.toASet
@@ -328,6 +344,7 @@ module App =
           |> Sg.effect [ 
             toEffect Shader.stableTrafo
             toEffect DefaultSurfaces.diffuseTexture 
+            toEffect improvedDiffuseTexture
             ]
 
       let up = if rotate then (box.Center.Normalized) else V3d.OOI
