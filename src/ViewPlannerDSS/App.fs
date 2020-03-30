@@ -285,7 +285,7 @@ module App =
     let app dir (rotate : bool) (runtime : IRuntime) =
       OpcSelectionViewer.Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
-      let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
+      let phDirs = Directory.GetDirectories(dir) //|> Array.head |> Array.singleton
 
       let patchHierarchies =
         [ 

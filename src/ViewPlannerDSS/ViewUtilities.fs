@@ -359,7 +359,7 @@ module ViewUtilities =
         let att = 
             (AttributeMap.ofList [ 
             style "width: 100%; height:100%"; 
-            attribute "showFPS" "false";      
+            attribute "showFPS" "true";      
             attribute "useMapping" "true"
             attribute "data-renderalways" "false"
             attribute "data-samples" "4"
