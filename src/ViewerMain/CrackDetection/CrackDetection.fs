@@ -157,15 +157,14 @@ module CrackDetectionApp =
             path 
             |> fromFile<float>
 
-        let edgemap = edgemap.SubXYMatrix(0L)
-
-        let fullSize = V2i(edgemap.Dim.X, edgemap.Dim.Y)        
+        let edgemap = edgemap.SubXYMatrix(0L)       
+        let fullSize = edgemap.Dim.XY
 
         let controlPoints =
             ipoints
             |> PList.toList
             |> List.map(fun x -> 
-                V2d(1.0 - x.uv.X, x.uv.Y) * fullSize.ToV2d() |> V2d.ceil
+                V2d(1.0 - x.uv.X, x.uv.Y) * (fullSize.ToV2d() - V2d.One) |> V2d.ceil
             )
             
         controlPoints
@@ -182,7 +181,7 @@ module CrackDetectionApp =
         
         let coeffAll = 
             edgemap 
-            |> Matrix.map (fun x -> (x / 255.0) |> float32)
+            |> Matrix.map (fun x -> (x) |> float32)
 
         let coeffsAll = coeffAll.Data        
                                              
@@ -190,20 +189,29 @@ module CrackDetectionApp =
 
         let controlPointsSPoint = 
             controlPoints 
-            |> List.map(fun x -> new CrackDetectionWrappers.SPoint2D(x.X, x.Y))
+            |> List.map(fun x -> 
+                new CrackDetectionWrappers.SPoint2D(
+                    x.X |> float32 |> float, 
+                    x.Y |> float32 |> float)
+                )
             |> List.toArray
+
+        Log.line "[CrackDetection] controlpoints %A" controlPoints 
+
+        let edgeMapRange = Range1d(edgemap.Data)
+        Log.line "[CrackDetection] edgemap min %A max %A size %A" edgeMapRange.Min edgeMapRange.Max fullSize
 
         let err = 
             CrackDetectionWrappers.FindCrack(
                 coeffsAll, 
-                fullSize.X, 
-                fullSize.Y, 
+                int fullSize.X, 
+                int fullSize.Y,
                 controlPointsSPoint,
-                ipoints.Count, 
+                controlPoints.Length, 
                 &numCrackpoints
             )
 
-        Log.line "[Crack Detection] FindCrack found %A cracks, error %A" numCrackpoints err
+        Log.line "[Crack Detection] FindCrack found %A crack points, error %A" numCrackpoints err
 
         let pointsArray = CrackDetectionWrappers.SPoint2D.CreateEmptyArray(uint32 numCrackpoints)
         let err1 = CrackDetectionWrappers.GetCrack(pointsArray)
