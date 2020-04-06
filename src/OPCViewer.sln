@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.779
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29926.136
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ViewerMain", "ViewerMain\ViewerMain.fsproj", "{34DDE858-415B-441B-9DF3-0C66A5E121A5}"
 EndProject
@@ -13,8 +13,6 @@ EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Rabbyte", "Rabbyte\Rabbyte.fsproj", "{4E2275E8-2027-487D-B0E2-280D597B5C68}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "2D3DLinking", "2D3DLinking\2D3DLinking.fsproj", "{EC70AD54-12B7-4E3F-866B-2D5A94F3C8F7}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSharpUtils", "CSharpUtils\CSharpUtils.csproj", "{BCEC936D-B45D-4F3A-A60F-81846ACABA56}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -46,10 +44,6 @@ Global
 		{EC70AD54-12B7-4E3F-866B-2D5A94F3C8F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EC70AD54-12B7-4E3F-866B-2D5A94F3C8F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EC70AD54-12B7-4E3F-866B-2D5A94F3C8F7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BCEC936D-B45D-4F3A-A60F-81846ACABA56}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BCEC936D-B45D-4F3A-A60F-81846ACABA56}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BCEC936D-B45D-4F3A-A60F-81846ACABA56}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BCEC936D-B45D-4F3A-A60F-81846ACABA56}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -26,10 +26,5 @@
     <Compile Include="Sg.fs" />
     <None Include="paket.references" />
   </ItemGroup>
-  <ItemGroup>
-    <Reference Include="CSharpUtils">
-      <HintPath>..\CSharpUtils\obj\Debug\netcoreapp2.0\CSharpUtils.dll</HintPath>
-    </Reference>
-  </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

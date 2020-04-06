@@ -7,6 +7,7 @@ nuget FSharp.Data                           ~> 3.1.1
 nuget Aardvark.Base                         ~> 4.5.11
 nuget Aardvark.Base.Incremental             ~> 4.5.11
 nuget Aardvark.Base.FSharp                  ~> 4.5.11
+nuget Aardvark.Base.TypeProviders           ~> 4.5.11
 
 nuget Aardvark.Base.Rendering               ~> 4.11.0
 nuget Aardvark.SceneGraph                   ~> 4.11.0

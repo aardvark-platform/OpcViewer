@@ -144,9 +144,12 @@ module App =
 
         | RoverAction msg -> 
             match msg with
-                  | ChangePosition pos -> 
-                        let r = RoverApp.update model.rover (ChangePosition pos)
-                        {model with rover = r}
+            | ChangePosition pos -> 
+                let r = RoverApp.update model.rover (ChangePosition pos)
+                { model with rover = r }
+            | _ ->
+                model
+                    
                 //| ChangePan p -> 
                 //    let r = RoverApp.update model.rover (ChangePan p)
                 //    {model with rover = r}

@@ -8,28 +8,24 @@ open Aardvark.Base.Incremental
 open Aardvark.Base.Incremental.Operators
 open Aardvark.SceneGraph.Opc
 open Aardvark.UI
-open IPWrappers
 open OpcViewer.Base
-open IPWrappers
-
 
 module V2d =
     let ceil (input : V2d) : V2d =
         V2d(input.X |> ceil, input.Y |> ceil)
 
-    let toV2i (input : V2d) : V2i =
-        input.ToV2i()
-
 module Matrix =
+    let fromVolume (v : Volume<'a>) =
+        v.SubXYMatrix 0L
+
+    let toPixImage (matrix : Matrix<C3b>) =
+        TensorExtensions.ToPixImage<byte> matrix
+
     let map (map : 'a -> 'b) (input : Matrix<'a>) : Matrix<'b> =        
         let array = input.Array.ToArrayOfT<'a>() |> Array.map map
         Matrix(array, input.Size)
 
 module CrackDetectionApp = 
-    open System.IO
-    open IPWrappers
-    
-    let init = 0.0
 
     let initModel = 
         {
@@ -38,55 +34,48 @@ module CrackDetectionApp =
             kdTreePath = None
         }
 
-    let initCrackDetection () = 
+    /// Initializes the native library
+    let initialize () = 
         let logDir = @".\crackDetection" 
         let configDir = @".\crackDetection"
 
-        Log.line "[CrackDetection] crackDetection directory %A" (System.IO.Path.GetFullPath(configDir))
+        Wrapper.initialize configDir logDir
 
-        if File.Exists @".\crackDetection\CrackDetection.dll" then
-            Log.line "blarg"
-
-        if (Directory.Exists logDir) && (Directory.Exists configDir) then
-            let errorCode = CrackDetectionWrappers.Init(configDir, logDir)
-            CrackDetectionWrappers.EnableDebugLogging(true)
-            if errorCode > 0 then
-                Log.line "[CrackDetection] crackDetection directory %d" errorCode
-        else
-            Log.error "[CrackDetection] init paths %A or %A not found" logDir configDir
-
-    let deInitCrackDetection () = 
-        CrackDetectionWrappers.DeInit()
+    /// Frees resources of the native library
+    let free = 
+        Wrapper.free
 
     let private getInvalidIndices2d (positions : V2d[]) =
         positions 
-          |> List.ofArray 
-          |> List.mapi (fun i x -> if x.AnyNaN then Some i else None) 
-          |> List.choose id
+        |> List.ofArray 
+        |> List.mapi (fun i x -> if x.AnyNaN then Some i else None) 
+        |> List.choose id
 
     let loadUVTrianglesFromFileWithIndices (path : string) =
         let coordinates = path |> fromFile<V2f>
     
-        let data = coordinates.Data |> Array.map (fun x ->  x.ToV2d() ) //|> kdTree.affine.Forward.TransformPos)
+        let data = coordinates.Data |> Array.map V2d //|> kdTree.affine.Forward.TransformPos)
  
         let invalidIndices = getInvalidIndices2d data
-        let index = IndexHelper.computeIndexArray (coordinates.Size.XY.ToV2i()) invalidIndices
+        let index = IndexHelper.computeIndexArray (V2i coordinates.Size.XY) invalidIndices
         
         let uvIndices = 
-          index    
-            |> Seq.chunkBySize 3
+            index |> Seq.chunkBySize 3
 
         let uvCoords =         
-          uvIndices
+            uvIndices
             |> Seq.choose(fun x -> 
-              if x.Length = 3 then Some [|data.[x.[0]]; data.[x.[1]]; data.[x.[2]]|]
-              else None)
-            |> Seq.map (fun x -> Triangle2d(x))
+                if x.Length = 3 then
+                    Some [|data.[x.[0]]; data.[x.[1]]; data.[x.[2]]|]
+                else
+                    None
+            )
+            |> Seq.map Triangle2d
             |> Seq.toArray      
     
         (uvCoords, (Seq.toArray uvIndices))
 
-    let getV3d (uvt:Triangle2d) (xyzT:Triangle3d) (p : V2d) =
+    let getV3d (uvt : Triangle2d) (xyzT : Triangle3d) (p : V2d) =
         let t00 = uvt.P0.X - uvt.P2.X
         let t01 = uvt.P1.X - uvt.P2.X
         let t10 = uvt.P0.Y - uvt.P2.Y
@@ -110,7 +99,7 @@ module CrackDetectionApp =
         let newV3d = xyzT.P0 * lamb0 + xyzT.P1 * lamb1 + xyzT.P2 * lamb2
         newV3d
 
-    let insideTriangle (triangle:Triangle2d) (p : V2d) = 
+    let insideTriangle (triangle : Triangle2d) (p : V2d) = 
         //  if p lies inside the triangle, then a1 + a2 + a3 must be equal to a.
         let a  = triangle.Area
         let a1 = Triangle2d(p, triangle.P1, triangle.P2).Area
@@ -120,11 +109,11 @@ module CrackDetectionApp =
         a.ApproximateEquals(a1 + a2 + a3, 1e-6)
 
     let calc3dPointFromUV (posPath : string) (coordsPath : string) (position : V2d) (trafo : Trafo3d) =
-    //let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
+        //let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
         let coords, coordsIndices = loadUVTrianglesFromFileWithIndices coordsPath
         let positions = posPath |> fromFile<V3f>
         let data = 
-            positions.Data |> Array.map (fun x ->  x.ToV3d() |> trafo.Forward.TransformPos)
+            positions.Data |> Array.map (V3d >> trafo.Forward.TransformPos)
     
         let mutable index = -1
         let triangle2d =
@@ -154,69 +143,53 @@ module CrackDetectionApp =
     let getCrackUV (ipoints : plist<InputPoint>) (path:string) (coords2d:string) = 
         
         let edgemap = 
-            path 
+            path
             |> fromFile<float>
+            |> Matrix.fromVolume
 
-        let edgemap = edgemap.SubXYMatrix(0L)       
-        let fullSize = edgemap.Dim.XY
+        let coeff = 
+            edgemap |> Matrix.map float32
+            
+        let size = edgemap.Dim.XY
 
         let controlPoints =
             ipoints
             |> PList.toList
             |> List.map(fun x -> 
-                V2d(1.0 - x.uv.X, x.uv.Y) * (fullSize.ToV2d() - V2d.One) |> V2d.ceil
+                V2d(1.0 - x.uv.X, x.uv.Y) * (size.ToV2d() - V2d.One) |> V2d.ceil
             )
-            
-        controlPoints
-        |> List.iter(fun x ->                  
-            edgemap.SetCross(x, 3.0, 255.0)
-        )
 
-        let edgemapByte = 
-            edgemap 
-            |> Matrix.map (fun x -> x |> int |> byte)
-
-        let edgeImage = edgemapByte.ToPixImage()
-        edgeImage.SaveAsImage (@".\edge.png")
-        
-        let coeffAll = 
-            edgemap 
-            |> Matrix.map (fun x -> (x) |> float32)
-
-        let coeffsAll = coeffAll.Data        
-                                             
-        let mutable numCrackpoints = 0
-
-        let controlPointsSPoint = 
+        let controlPointsArr = 
             controlPoints 
-            |> List.map(fun x -> 
-                new CrackDetectionWrappers.SPoint2D(
-                    x.X |> float32 |> float, 
-                    x.Y |> float32 |> float)
-                )
+            |> List.map V2f
             |> List.toArray
 
         Log.line "[CrackDetection] controlpoints %A" controlPoints 
 
-        let edgeMapRange = Range1d(edgemap.Data)
-        Log.line "[CrackDetection] edgemap min %A max %A size %A" edgeMapRange.Min edgeMapRange.Max fullSize
+        let (w, h) = (uint32 size.X, uint32 size.Y)
+        let crackPoints = Wrapper.findCrack w h coeff.Data controlPointsArr
 
-        let err = 
-            CrackDetectionWrappers.FindCrack(
-                coeffsAll, 
-                int fullSize.X, 
-                int fullSize.Y,
-                controlPointsSPoint,
-                controlPoints.Length, 
-                &numCrackpoints
-            )
+        Log.line "[Crack Detection] Found %d crack points: %A" crackPoints.LongLength crackPoints
 
-        Log.line "[Crack Detection] FindCrack found %A crack points, error %A" numCrackpoints err
+        // Save results as image
+        let resultImage =
+            edgemap
+            |> Matrix.map (byte >> C3b)
+            |> Matrix.toPixImage
 
-        let pointsArray = CrackDetectionWrappers.SPoint2D.CreateEmptyArray(uint32 numCrackpoints)
-        let err1 = CrackDetectionWrappers.GetCrack(pointsArray)
+        controlPoints
+        |> List.iter(fun x ->
+            resultImage.ChannelArray.[0].SetCross(x, 2.0, 255uy)
+        )
         
-        Log.line "[Crack Detection] GetCrack %A" err1
+        crackPoints
+        |> Array.map V2d
+        |> Array.pairwise
+        |> Array.iter (fun (a, b) ->
+            resultImage.ChannelArray.[2].SetLine(a, b, 255uy)
+        )
+     
+        resultImage.SaveAsImage (@".\cracks.png")
 
         //let points =
         //    CrackDetectionWrappers.UnMarshalArray<CrackDetectionWrappers.SPoint2D>(

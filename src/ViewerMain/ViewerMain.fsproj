@@ -22,6 +22,7 @@
     <Compile Include="Serialization.fs" />
     <Compile Include="Neighbouring.fs" />
     <Compile Include="Outline\OutlineModel.fs" />
+    <Compile Include="CrackDetection\Wrapper.fs" />
     <Compile Include="CrackDetection\CrackDetection-Model.fs" />
     <Compile Include="CrackDetection\CrackDetection.fs" />
     <Compile Include="Model.fs" />
@@ -44,11 +45,6 @@
   <ItemGroup>
     <ProjectReference Include="..\OPCViewer.Base\OPCViewer.Base.fsproj" />
     <ProjectReference Include="..\Rabbyte\Rabbyte.fsproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="CSharpUtils">
-      <HintPath>..\CSharpUtils\bin\Debug\netcoreapp2.0\CSharpUtils.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

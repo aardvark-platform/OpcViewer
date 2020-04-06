@@ -199,8 +199,6 @@ module LinkingApp =
 
             | _ -> { m with minervaModel = MinervaApp.update view m.minervaModel a}
 
-        | _ -> failwith "Not implemented yet"
-
     //---Helpers
     let dependencies =
         Html.semui @ [
