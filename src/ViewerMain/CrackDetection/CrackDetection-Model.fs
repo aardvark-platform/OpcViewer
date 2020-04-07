@@ -1,10 +1,9 @@
 ﻿namespace CrackDetection
 
 open Aardvark.Base
-open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
-open Aardvark.VRVis.Opc.KdTrees
 
+[<DomainType>]
 type InputPoint =
     {
         index           : int
@@ -15,18 +14,20 @@ type InputPoint =
     }
 
 [<DomainType>]
+type OutputPoint =
+    {
+        uv : V2d
+        position : V3d
+    }
+
+[<DomainType>]
 type CrackDetectionModel =
     {
         inputPoints  : plist<InputPoint>
-        outputPoints : plist<V2d>
+        outputPoints : plist<OutputPoint>
         kdTreePath   : Option<string>
     }
 
-
 type CrackDetectionAction =
-| AddCrackPoint     of V3d*V2d*float*int
-| FinishCrack       of string*string
-
-    
-
-   
+    | AddCrackPoint of position : V3d * uv : V2d * coeff : float * index : int
+    | FinishCrack   of edgeMapPath : string * posPath : string * trafo : Trafo3d

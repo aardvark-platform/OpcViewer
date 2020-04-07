@@ -117,17 +117,17 @@ module App =
                       //let points = 
                     match model.picking.level0KdTree  with
                     | Some kd ->
-                        let dir = (Path.GetDirectoryName kd.coordinatesPath)
-                        let path = dir + "\EdgeMap.aara"
-                        let pos2dPath = dir + "\Positions2d.aara"
-                        Log.line "EdgeMap path: %s" path
+                        let dir = Path.GetDirectoryName kd.coordinatesPath
+                        let edgeMapPath = dir + "\EdgeMap.aara"
                         
-                        let crackd = CrackDetectionApp.update model.crackDetection (FinishCrack (path, pos2dPath )) //kd.texturePath))
-                        let points = 
+                        let crackd =
+                            (edgeMapPath, kd.objectSetPath, kd.affine)
+                            |> FinishCrack
+                            |> CrackDetectionApp.update model.crackDetection
+
+                        let points =
                             crackd.outputPoints
-                            |> PList.map( fun p ->
-                                CrackDetectionApp.calc3dPointFromUV kd.objectSetPath kd.coordinatesPath p kd.affine
-                            )
+                            |> PList.map (fun p -> p.position)
                         
                         let newAnnotation = AnnotationApp.update model.annotations (AnnotationAction.AddCrack points)
                         { model with crackDetection = crackd; annotations = newAnnotation; drawing = DrawingModel.reset model.drawing}
