@@ -13,8 +13,6 @@ open Rabbyte.Drawing
 open Rabbyte.Annotation
 open OpenTK.Input
 open System
-open ProviderImplementation.ProvidedTypes
-
 
 
 type Time = float
