@@ -251,8 +251,8 @@ module private Utilities =
                 leaves
                 |> Array.ofSeq
                 |> Array.cluster Patch.alignsY
-                |> Array.sortBy (fun row -> row.[0].info.GlobalBoundingBox2d.Center.Y)
-                |> Array.map (Array.sortByDescending (fun p -> p.info.GlobalBoundingBox2d.Center.X))
+                |> Array.sortByDescending (fun row -> row.[0].info.GlobalBoundingBox2d.Center.Y)
+                |> Array.map (Array.sortBy (fun p -> p.info.GlobalBoundingBox2d.Center.X))
                 |> Array.toArray2d
                 |> Array2D.map (Option.map (PatchInfo.create rootPath))
 
@@ -320,7 +320,7 @@ module private Utilities =
                 patchCoord * map.cellSize
 
             let local =
-                V2d (uv.X, 1.0 - uv.Y) * (size - V2d.One)
+                V2d (1.0 - uv.X, uv.Y) * (size - V2d.One)
 
             offset + V2i (round local.X, round local.Y)
 
@@ -338,7 +338,7 @@ module private Utilities =
                 let offset = patchCoord * map.cellSize
                 let local = V2d (coord - offset) / (size - V2d.One)
 
-                info, V2d (local.X, 1.0 - local.Y)
+                info, V2d (1.0 - local.X, local.Y)
             )
 
 
