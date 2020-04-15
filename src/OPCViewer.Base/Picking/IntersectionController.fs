@@ -197,20 +197,7 @@ module IntersectionController =
     let p1 = coordinates.Data.[coordinateIndices.[1]] * (float32 baryCentricCoords.Y)
     let p2 = coordinates.Data.[coordinateIndices.[2]] * (float32 baryCentricCoords.Z)
     
-    let exactUV = p0+p1+p2
-
-    
-    let image = PixImage.Create(kdTree.texturePath).ToPixImage<byte>(Col.Format.RGB)
-    
-    let changePos = V2i (((float32 image.Size.X) * exactUV.X),((float32 image.Size.Y) * exactUV.Y))
-
-    let test = image.GetMatrix<C3b>().GetValue((int64)changePos.X, (int64)changePos.Y)
-
-    image.GetMatrix<C3b>().SetCross(changePos, 5, C3b.Red) |> ignore
-
-    image.SaveAsImage (@".\testcoordSelect.png")
-
-    exactUV
+    V2d (p0 + p1 + p2)
 
   let findCoordinatesSvB (kdTree : LazyKdTree) (index : int) (position : V3d) =
     
@@ -291,241 +278,217 @@ module IntersectionController =
 
 module Intersect =
 
-  let mutable private cache = HMap.empty
+    let mutable private cache = HMap.empty
 
-  let single ray (kdTree:ConcreteKdIntersectionTree) =
-    let kdi = kdTree.KdIntersectionTree 
-    let mutable hit = ObjectRayHit.MaxRange
-    let objFilter _ _ = true              
-    try           
-      if kdi.Intersect(ray, Func<_,_,_>(objFilter), null, 0.0, Double.MaxValue, &hit) then              
-        Some (hit.RayHit.T)
-      else            
-        None
-    with 
-      | _ -> 
-        Log.error "null ref exception in kdtree intersection" 
-        None 
+    let single ray (kdTree:ConcreteKdIntersectionTree) =
+        let kdi = kdTree.KdIntersectionTree
+        let mutable hit = ObjectRayHit.MaxRange
+        let objFilter _ _ = true
+        try
+            if kdi.Intersect(ray, Func<_,_,_>(objFilter), null, 0.0, Double.MaxValue, &hit) then
+                Some (hit.RayHit.T)
+            else
+                None
+        with
+        | _ ->
+            Log.error "null ref exception in kdtree intersection"
+            None
 
-  let private getInvalidIndices3f (positions : V3f[]) =
-    positions 
-      |> List.ofArray 
-      |> List.mapi (fun i x -> if x.AnyNaN then Some i else None) 
-      |> List.choose id
+    let private getInvalidIndices3f (positions : V3f[]) =
+        positions
+        |> List.ofArray
+        |> List.mapi (fun i x -> if x.AnyNaN then Some i else None)
+        |> List.choose id
 
   
-  let private triangleIsNan (t:Triangle3d) = 
-    t.P0.AnyNaN || t.P1.AnyNaN || t.P2.AnyNaN
+    let private triangleIsNan (t:Triangle3d) =
+        t.P0.AnyNaN || t.P1.AnyNaN || t.P2.AnyNaN
 
-  let private getTriangleSet (indices : int[]) (vertices:V3d[]) = 
-    indices 
-      |> Seq.map(fun x -> vertices.[x])
-      |> Seq.chunkBySize 3
-      |> Seq.map(fun x -> Triangle3d(x))
-      |> Seq.filter(fun x -> (triangleIsNan x |> not)) |> Seq.toArray
-      |> TriangleSet
+    let private getTriangleSet (indices : int[]) (vertices:V3d[]) =
+        indices
+        |> Seq.map(fun x -> vertices.[x])
+        |> Seq.chunkBySize 3
+        |> Seq.map(fun x -> Triangle3d(x))
+        |> Seq.filter(fun x -> (triangleIsNan x |> not)) |> Seq.toArray
+        |> TriangleSet
 
-  let private loadTriangles (kd : LazyKdTree) =
+    let private loadTriangles (kd : LazyKdTree) =
     
-    let positions = kd.objectSetPath |> Aara.fromFile<V3f>
+        let positions = kd.objectSetPath |> Aara.fromFile<V3f>
             
-    let invalidIndices = getInvalidIndices3f positions.Data |> List.toArray
-    let size = positions.Size.XY.ToV2i()
-    let indices = IndexHelper.computeIndexArray size invalidIndices
+        let invalidIndices = getInvalidIndices3f positions.Data |> List.toArray
+        let size = positions.Size.XY.ToV2i()
+        let indices = IndexHelper.computeIndexArray size invalidIndices
                    
-    positions.Data 
-      |> Array.map (fun x ->  x.ToV3d() |> kd.affine.Forward.TransformPos) 
-      |> getTriangleSet indices
+        positions.Data
+        |> Array.map (fun x ->  x.ToV3d() |> kd.affine.Forward.TransformPos)
+        |> getTriangleSet indices
 
-  let private loadObjectSet (cache : hmap<string, ConcreteKdIntersectionTree>) (lvl0Tree : Level0KdTree) =             
-    match lvl0Tree with
-      | InCoreKdTree kd -> 
-        kd.kdTree, cache
-      | LazyKdTree kd ->             
-        let kdTree, cache =
-          match kd.kdTree with
-          | Some k -> k, cache
-          | None -> 
-            let key = (kd.boundingBox.ToString())
-            let tree = cache |> HMap.tryFind key
-            match tree with
-            | Some t ->                 
-              t, cache
-            | None ->                                     
-              Log.line "cache miss %A- loading kdtree" kd.boundingBox
+    let private loadObjectSet (cache : hmap<string, ConcreteKdIntersectionTree>) (lvl0Tree : Level0KdTree) =
+        match lvl0Tree with
+        | InCoreKdTree kd ->
+            kd.kdTree, cache
+        | LazyKdTree kd ->
+            let kdTree, cache =
+                match kd.kdTree with
+                | Some k -> k, cache
+                | None ->
+                    let key = (kd.boundingBox.ToString())
+                    let tree = cache |> HMap.tryFind key
+                    match tree with
+                    | Some t ->
+                        t, cache
+                    | None ->
+                        Log.line "cache miss %A- loading kdtree" kd.boundingBox
+
+                        let mutable tree = KdTrees.loadKdtree kd.kdtreePath
+                        let triangles = kd |> loadTriangles
+
+                        tree.KdIntersectionTree.ObjectSet <- triangles
+                        tree, (HMap.add key tree cache)
+            kdTree, cache
+
+    let private intersectKdTrees bb (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) =
+        let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
+        let hit = single ray kdtree
+        hit,c
+
+    let intersectKdTreesWithIndex bb (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) =
+        let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
+        let hit = IntersectionController.intersectSingleForIndex ray kdtree //bb
+        hit,c
+
+    let private hitBoxes (kd : hmap<Box3d, Level0KdTree>) (r : FastRay3d) (trafo : Trafo3d) =
+        kd
+        |> HMap.toList
+        |> List.map fst
+        |> List.filter(fun x ->
+            let mutable t = 0.0
+            let r' = r.Ray.Transformed(trafo.Backward) //combine pre and current transform
+            x.Intersects(r', &t)
+        )
+
+    let intersectWithOpc (kdTree0 : option<hmap<Box3d, Level0KdTree>>) ray =
+        kdTree0
+        |> Option.bind(fun kd ->
+            let boxes = hitBoxes kd ray Trafo3d.Identity
           
-              let mutable tree = KdTrees.loadKdtree kd.kdtreePath      
-              let triangles = kd |> loadTriangles
-              
-              tree.KdIntersectionTree.ObjectSet <- triangles                                                            
-              tree, (HMap.add key tree cache)
-        kdTree, cache
-
-  let private intersectKdTrees bb (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
-      let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
-      let hit = single ray kdtree
-      hit,c
-
-  let intersectKdTreesWithIndex bb (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
-      let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
-      let hit = IntersectionController.intersectSingleForIndex ray kdtree //bb
-      hit,c
-
-  let private hitBoxes (kd : hmap<Box3d, Level0KdTree>) (r : FastRay3d) (trafo : Trafo3d) =
-    kd
-      |> HMap.toList 
-      |> List.map fst
-      |> List.filter(
-        fun x -> 
-          let mutable t = 0.0
-          let r' = r.Ray.Transformed(trafo.Backward) //combine pre and current transform
-          x.Intersects(r', &t)
-      )
-
-  let intersectWithOpc (kdTree0 : option<hmap<Box3d, Level0KdTree>>) ray =
-    kdTree0 
-      |> Option.bind(fun kd ->
-          let boxes = hitBoxes kd ray Trafo3d.Identity
-          
-          let allhits = 
-            boxes 
-              |> List.choose(
-                  fun bb -> 
+            let allhits =
+                boxes
+                |> List.choose(
+                    fun bb ->
                     let treeHit,c = kd |> intersectKdTrees bb cache ray
                     cache <- c
                     treeHit)
-              |> List.filter(fun t -> t.IsNaN() |> not)
-              |> List.sortBy(fun t-> t)
+                |> List.filter(fun t -> t.IsNaN() |> not)
+                |> List.sortBy(fun t-> t)
             
-          let closest = 
-              allhits |> List.tryHead            
-          closest
-      )
+            let closest =
+                allhits |> List.tryHead
+            closest
+        )
 
   
-  let intersectWithOpcIndex (kdTree0 : option<hmap<Box3d, Level0KdTree>>) ray =
-    kdTree0 
-      |> Option.bind(fun kd ->
-          let boxes = hitBoxes kd ray Trafo3d.Identity
+    let intersectWithOpcIndex (kdTree0 : option<hmap<Box3d, Level0KdTree>>) ray =
+        kdTree0
+        |> Option.bind(fun kd ->
+            let boxes = hitBoxes kd ray Trafo3d.Identity
           
-          let closest = 
-            boxes 
-              |> List.choose(
-                  fun bb -> 
+            let closest =
+                boxes
+                |> List.choose(
+                    fun bb -> 
                     let treeHit,c = kd |> intersectKdTreesWithIndex bb cache ray
                     cache <- c
                     match treeHit with 
-                      | Some hit -> Some (hit,bb)
-                      | None -> None)
-              |> List.sortBy(fun (t,_)-> fst t)
-              |> List.tryHead  
+                        | Some hit -> Some (hit,bb)
+                        | None -> None)
+                |> List.sortBy(fun (t,_)-> fst t)
+                |> List.tryHead
             
-          match closest with
+            match closest with
             | Some (values,bb) -> 
-              let lvl0KdTree = kd |> HMap.find bb
+                let lvl0KdTree = kd |> HMap.find bb
 
-              let position = ray.Ray.GetPointOnRay (fst values)
+                let position = ray.Ray.GetPointOnRay (fst values)
 
-              let coordinates = 
-                match lvl0KdTree with
-                  | InCoreKdTree kd -> 
-                    None
-                  | LazyKdTree kd -> 
-                    //let test = IntersectionController.findCoordinatesSvB kd (snd values) position
-                    let test2 = IntersectionController.findCoordinates kd (snd values) position
-                    Some (test2)
-
-              let attrVal =
-                 match lvl0KdTree with
-                  | InCoreKdTree kd -> 
-                    None
-                  | LazyKdTree kd ->    
-                    Some (IntersectionController.getEdgeLayerValue kd (snd values) position)
+                let coordinates =
+                    match lvl0KdTree with
+                    | InCoreKdTree _ ->
+                        None
+                    | LazyKdTree kd ->
+                        Some <| IntersectionController.findCoordinates kd (snd values) position
               
-              Some (position,coordinates, attrVal, lvl0KdTree, (snd values))
+                Some (position, coordinates, lvl0KdTree)
             | None -> None
-      )
+        )
   
-  let perform (m : PickingModel) (hit : SceneHit) (boxId : Box3d)= //  (hitFun: V3d->V3d) = 
-    let fray = hit.globalRay.Ray
-    Log.line "try intersecting %A" boxId    
+    let perform (m : PickingModel) (hit : SceneHit) (boxId : Box3d)= //  (hitFun: V3d->V3d) =
+        let fray = hit.globalRay.Ray
+        Log.line "try intersecting %A" boxId
     
-    match m.pickingInfos |> HMap.tryFind boxId with
-    | Some kk ->
-      let closest = intersectWithOpc (Some kk.kdTree) fray      
-      match closest with
-        | Some t -> 
-          let hitpoint = fray.Ray.GetPointOnRay t
-          Log.line "hit surface at %A" hitpoint 
+        match m.pickingInfos |> HMap.tryFind boxId with
+        | Some kk ->
+            let closest = intersectWithOpc (Some kk.kdTree) fray
+            match closest with
+            | Some t ->
+                let hitpoint = fray.Ray.GetPointOnRay t
+                Log.line "hit surface at %A" hitpoint
           
-          //===============================
-          //let projOrigin = (hitFun hitpoint)// + V3d.OOI // shift axis to tunnel center
+                //===============================
+                //let projOrigin = (hitFun hitpoint)// + V3d.OOI // shift axis to tunnel center
           
-          //let intersectFunc (p:V3d) : Option<V3d> = 
-          //  let ray = 
-          //    // ViewerModality.XYZ - standard axis centered projection
-          //    let dir = (p - projOrigin).Normalized          
-          //    FastRay3d(Ray3d(projOrigin, dir))              
+                //let intersectFunc (p:V3d) : Option<V3d> =
+                //  let ray =
+                //    // ViewerModality.XYZ - standard axis centered projection
+                //    let dir = (p - projOrigin).Normalized
+                //    FastRay3d(Ray3d(projOrigin, dir))
           
-          //  match intersectWithOpc (Some kk.kdTree) ray with
-          //  | Some t -> Some (ray.Ray.GetPointOnRay t)
-          //  | None -> None
-          // =====================================
+                //  match intersectWithOpc (Some kk.kdTree) ray with
+                //  | Some t -> Some (ray.Ray.GetPointOnRay t)
+                //  | None -> None
+                // =====================================
 
-          { m with
-             intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint
-             hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo
-          }   
+                { m with
+                    intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint
+                    hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo
+                }
 
-        | None ->       
-          Log.error "[Intersection] didn't hit"
-          m
-    | None -> 
-      Log.error "[Intersection] box not found in picking infos"
-      m
+            | None ->
+                Log.error "[Intersection] didn't hit"
+                m
+        | None ->
+            Log.error "[Intersection] box not found in picking infos"
+            m
 
-
-  let performTexCoords (m : PickingModel) (hit : SceneHit) (boxId : Box3d) = 
-    let fray = hit.globalRay.Ray
-    Log.line "try intersecting %A" boxId    
+    let performTexCoords (m : PickingModel) (hit : SceneHit) (boxId : Box3d) =
+        let fray = hit.globalRay.Ray
+        Log.line "try intersecting %A" boxId
     
-    match m.pickingInfos |> HMap.tryFind boxId with
-    | Some kk ->
-      let closest = intersectWithOpcIndex (Some kk.kdTree) fray 
-      match closest with
-        | Some (point,coords,aVal,kd, index) -> 
+        match m.pickingInfos |> HMap.tryFind boxId with
+        | Some kk ->
+            let closest = intersectWithOpcIndex (Some kk.kdTree) fray
+            match closest with
+            | Some (point, coords, kd) ->
 
-          Log.line "hit surface at %A" point 
+                Log.line "hit surface at %A" point
 
-          let kdtree =
-                 match kd with
-                  | InCoreKdTree k -> 
-                    None
-                  | LazyKdTree k ->    
-                    Some k
+                let hit =
+                    match kd, coords with
+                    | LazyKdTree k, Some uv ->
+                        Some { position = point; texCoords = uv; opcInfo = kk; kdTree = k }
+                    | _ ->
+                        None
 
-          let uv =
-            match coords with
-              | Some c -> c
-              | None -> m.texCoords
+                { m with
+                    intersectionPoints = m.intersectionPoints |> PList.prepend point
+                    hitPointsInfo = HMap.add point boxId m.hitPointsInfo
+                    lastHit = hit
+                }
 
-          let attrVal =
-            match aVal with
-              | Some v -> v
-              | None -> 0.0
-
-          { m with
-             intersectionPoints = m.intersectionPoints |> PList.prepend point
-             hitPointsInfo = HMap.add point boxId m.hitPointsInfo
-             texCoords = uv
-             attributeValue = attrVal
-             level0KdTree = kdtree
-             index = index
-          }   
-
-        | None ->       
-          Log.error "[Intersection] didn't hit"
-          m
-    | None -> 
-      Log.error "[Intersection] box not found in picking infos"
-      m
+            | None ->
+                Log.error "[Intersection] didn't hit"
+                m
+        | None ->
+            Log.error "[Intersection] box not found in picking infos"
+            m

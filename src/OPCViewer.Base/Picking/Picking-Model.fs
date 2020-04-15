@@ -40,15 +40,20 @@ type OpcData = {
 }
 
 [<DomainType>]
+type HitInfo = {
+    position  : V3d
+    texCoords : V2d
+    opcInfo   : OpcData
+    kdTree    : LazyKdTree
+}
+
+[<DomainType>]
 type PickingModel = {
     pickingInfos         : hmap<Box3d, OpcData>
     hitPointsInfo        : hmap<V3d, Box3d>
     intersectionPoints   : plist<V3d>                 // TODO...change to LastIntersectionPoint : Option<V3d> 
     interaction          : Interactions
-    texCoords            : V2f
-    attributeValue       : float
-    level0KdTree         : Option<LazyKdTree>
-    index                : int
+    lastHit              : HitInfo option
 }  
 
 module PickingModel =
@@ -59,8 +64,5 @@ module PickingModel =
             hitPointsInfo      = HMap.empty
             intersectionPoints = PList.empty
             interaction        = Interactions.PickCrackDetection
-            texCoords          = V2f.II
-            attributeValue     = 0.0
-            level0KdTree       = None
-            index              = 0
+            lastHit            = None
         }

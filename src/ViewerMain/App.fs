@@ -104,35 +104,15 @@ module App =
                     let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
                     let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
                     { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
-                | Interactions.PickCrackDetection -> 
-                      
-                    //let level0Kdtree : option<KdTrees.LazyKdTree> =
-                    //    match model.picking.level0KdTree with
-                    //    | Some kd -> Some kd
-                    //    | None ->
-                    //        match model.crackDetection.kdTreePath with
-                    //        | Some path -> failwith "" 
-                    //        | None -> None
+                | Interactions.PickCrackDetection ->
+                    let crackd =
+                        model.crackDetection |> CrackDetectionApp.update FinishCrack
 
-                      //let points = 
-                    match model.picking.level0KdTree  with
-                    | Some kd ->
-                        let dir = Path.GetDirectoryName kd.coordinatesPath
-                        let edgeMapPath = dir + "\EdgeMap.aara"
-                        
-                        let crackd =
-                            (edgeMapPath, kd.objectSetPath, kd.affine)
-                            |> FinishCrack
-                            |> CrackDetectionApp.update model.crackDetection
+                    let points =
+                        crackd.outputPoints
 
-                        let points =
-                            crackd.outputPoints
-                            |> PList.map (fun p -> p.position)
-                        
-                        let newAnnotation = AnnotationApp.update model.annotations (AnnotationAction.AddCrack points)
-                        { model with crackDetection = crackd; annotations = newAnnotation; drawing = DrawingModel.reset model.drawing}
-                                
-                    | None -> model
+                    let newAnnotation = AnnotationApp.update model.annotations (AnnotationAction.AddCrack points)
+                    { model with crackDetection = crackd; annotations = newAnnotation; drawing = DrawingModel.reset model.drawing }
                               
                 | _-> model
                 
@@ -166,21 +146,18 @@ module App =
                         )
                     )
                 
-                let picking = 
+                let picking =
                     (box, hit)
                     |> HitSurfaceWithTexCoords
                     |> PickingApp.update model.picking
-
-                let lastPoint = 
-                    picking.intersectionPoints |> PList.tryFirst
 
                 match model.picking.interaction with
                 | Interactions.DrawAnnotation ->
 
                     let drawing =
-                        match lastPoint with
-                        | Some p -> 
-                            (p, Some hitF)
+                        match picking.lastHit with
+                        | Some hit ->
+                            (hit.position, Some hitF)
                             |> DrawingAction.AddPoint
                             |> DrawingApp.update model.drawing
                         | None -> 
@@ -189,17 +166,12 @@ module App =
 
                 | Interactions.PickCrackDetection ->                     
 
-                    let crackDetection = 
-                        match lastPoint with
-                        | Some p -> 
-                            let texC = picking.texCoords.ToV2d()
-
-                            (p, texC, picking.attributeValue, picking.index)
-                            |> AddCrackPoint
-                            |> CrackDetectionApp.update model.crackDetection
-                            
-                        | None -> 
-                            model.crackDetection                    
+                    let crackDetection =
+                        match picking.lastHit with
+                        | Some hit ->
+                            model.crackDetection |> CrackDetectionApp.update (AddCrackPoint hit)
+                        | _ ->
+                            model.crackDetection
 
                     { model with picking = picking; crackDetection = crackDetection }
 
