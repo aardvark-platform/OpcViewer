@@ -36,7 +36,7 @@ module private Utilities =
         let toPixImage (matrix : Matrix<C3b>) =
             TensorExtensions.ToPixImage<byte> matrix
 
-        let map (map : 'a -> 'b) (input : Matrix<'a>) : Matrix<'b> =        
+        let map (map : 'a -> 'b) (input : Matrix<'a>) : Matrix<'b> =
             let array = input.Array.ToArrayOfT<'a>() |> Array.map map
             Matrix(array, input.Size)
 
@@ -117,6 +117,55 @@ module private Utilities =
             Array2D.blit arr min.X min.Y rs 0 0 size.X size.Y
             rs
 
+        let tryFindIndexi (f : V2i -> 'a -> bool) (arr : 'a [,]) =
+            let size = size arr
+
+            let rec find (p : V2i) =
+                if arr |> get p |> f p then
+                    Some p
+                else
+                    if p.X < size.X - 1 then
+                        find <| V2i (p.X + 1, p.Y)
+                    else if p.Y < size.Y - 1 then
+                        find <| V2i (0, p.Y + 1)
+                    else
+                        None
+
+            find V2i.Zero
+
+        /// Scans rows and columns of array
+        let scan (fx : 's -> 'a -> 's) (fy : 's -> 'a -> 's) (combine : 's -> 's -> 's)
+                 (state : 's) (arr : 'a [,]) =
+
+            let rs = Array2D.zeroCreate<'s> (Array2D.length1 arr) (Array2D.length2 arr)
+
+            for y in 0 .. (Array2D.length2 arr) - 1 do
+                let mutable curr = state
+                for x in 0 .. (Array2D.length1 arr) - 1 do
+                    rs.[x, y] <- curr
+                    curr <- fx curr arr.[x, y]
+
+            for x in 0 .. (Array2D.length1 arr) - 1 do
+                let mutable curr = combine rs.[x, 0] state
+                for y in 0 .. (Array2D.length2 arr) - 1 do
+                    rs.[x, y] <- curr
+                    curr <- combine rs.[x, y] (fy curr arr.[x, y])
+
+            rs
+
+        // Computes partial sums
+        let partialSums (f : 'a -> V2i) (arr : 'a [,]) =
+            let combine (a : V2i) (b : V2i) =
+                V2i (a.X, b.Y)
+
+            let fx (s : V2i) (x : 'a) =
+                V2i (s.X + (f x).X, s.Y)
+
+            let fy (s : V2i) (x : 'a) =
+                V2i (s.X, s.Y + (f x).Y)
+
+            arr |> scan fx fy combine V2i.Zero
+
     module Patch =
 
         type private Box2d with
@@ -176,10 +225,11 @@ module private Utilities =
 
     type PatchMap =
         {
-            cellSize    : V2i
+            size        : V2i
             rootPath    : string
             lookup      : Map<string, V2i>
             patches     : PatchInfo option [,]
+            offsets     : V2i [,]
         }
 
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -218,19 +268,28 @@ module private Utilities =
                 |> Seq.choose id
                 |> Map.ofSeq
 
-            let cellSize =
-                patches
-                |> Array2D.toSeq
-                |> Seq.choose id
-                |> Seq.fold (fun (s : V2i) (p : PatchInfo) ->
-                    V2i (max s.X p.size.X, max s.Y p.size.Y)
-                ) V2i.Zero
+            let patchSize (p : PatchInfo option) =
+                p |> Option.map PatchInfo.size |> Option.defaultValue V2i.Zero
+
+            let patchWidth p = (patchSize p).X
+
+            let patchHeight p = (patchSize p).Y
+
+            let width =
+                patches |> Array2D.rows |> Seq.map (Seq.sumBy patchWidth) |> Seq.max
+
+            let height =
+                patches |> Array2D.cols |> Seq.map (Seq.sumBy patchHeight) |> Seq.max
+
+            let offsets =
+                patches |> Array2D.partialSums patchSize
 
             {
-                rootPath = rootPath
-                patches = patches
-                cellSize = cellSize
+                size = V2i (width, height)
                 lookup = lookup
+                offsets = offsets
+                patches = patches
+                rootPath = rootPath
             }
 
         /// Creates a patch map from the given quadtree of patches.
@@ -282,23 +341,16 @@ module private Utilities =
 
             let setCell (p : PatchInfo) (cell : Matrix<float>) =
                 let data = p.edgeMap.Value
+                cell.SetByCoord (fun (coord : V2l) -> data.[coord]) |> ignore
 
-                cell.SetByCoord (fun (coord : V2l) ->
-                    if V2l.AllSmaller(coord, data.Dim) then
-                        data.[coord]
-                    else
-                        0.0
-                ) |> ignore
-
-            let cells = Array2D.size map.patches
-            let edgeMap = Matrix<float>(map.cellSize * cells)
+            let edgeMap = Matrix<float> map.size
 
             map.patches
             |> Array2D.iteri' (fun cell elem ->
                 match elem with
                 | Some p ->
-                    let origin = cell * map.cellSize
-                    edgeMap |> Matrix.subMatrix origin map.cellSize |> setCell p
+                    let origin = map.offsets |> Array2D.get cell
+                    edgeMap |> Matrix.subMatrix origin p.size |> setCell p
                 | None ->
                     ()
             )
@@ -307,35 +359,34 @@ module private Utilities =
 
         /// Transforms local texture coordinates to global map coordinates.
         let patch2map (map : PatchMap) (patch : string) (uv : V2d) =
-            let patchCoord = map.lookup.[patch]
+            map.lookup
+            |> Map.tryFind patch
+            |> Option.map (fun patchCoord ->
+                let info = map.patches |> Array2D.get patchCoord |> Option.get
+                let size = V2d info.size
+                let offset = map.offsets |> Array2D.get patchCoord
+                let local = V2d (1.0 - uv.X, uv.Y) * (size - V2d.One)
 
-            let size =
-                map.patches
-                |> Array2D.get patchCoord
-                |> Option.map PatchInfo.size
-                |> Option.defaultValue map.cellSize
-                |> V2d
-
-            let offset =
-                patchCoord * map.cellSize
-
-            let local =
-                V2d (1.0 - uv.X, uv.Y) * (size - V2d.One)
-
-            offset + V2i (round local.X, round local.Y)
+                offset + V2i (round local.X, round local.Y)
+            )
 
         /// Transforms global map coordinates to local texture coordinates of
         /// the corresponding patch.
         let map2patch (map : PatchMap) (coord : V2i) =
-            let patchCoord = coord / map.cellSize
 
-            let patchInfo =
-                map.patches
-                |> Array2D.get patchCoord
+            let isWithin (patchCoord : V2i) (patch : PatchInfo option) =
+                patch |> Option.map (fun info ->
+                    let offset = map.offsets |> Array2D.get patchCoord
+                    let bb = Box2i (offset, offset + info.size)
+                    bb.Contains coord
+                ) |> Option.defaultValue false
 
-            patchInfo |> Option.map (fun info ->
+            map.patches
+            |> Array2D.tryFindIndexi isWithin
+            |> Option.map (fun patchCoord ->
+                let info = map.patches |> Array2D.get patchCoord |> Option.get
                 let size = V2d info.size
-                let offset = patchCoord * map.cellSize
+                let offset = map.offsets |> Array2D.get patchCoord
                 let local = V2d (coord - offset) / (size - V2d.One)
 
                 info, V2d (1.0 - local.X, local.Y)
@@ -355,7 +406,7 @@ module CrackDetectionApp =
         |> Seq.iter(fun x ->
             resultImage.ChannelArray.[0].SetCross(x, 2, 255uy)
         )
-        
+
         crackPoints
         |> Seq.map V2d
         |> Seq.pairwise
@@ -416,28 +467,33 @@ module CrackDetectionApp =
 
         // Control points
         let controlPoints =
-            points |> Seq.map (fun p -> p.texCoords |> PatchMap.patch2map map p.kdTree.name)
+            points |> Seq.choose (fun p -> p.texCoords |> PatchMap.patch2map map p.kdTree.name)
 
-        let controlPointsArr = 
-            controlPoints 
+        let controlPointsArr =
+            controlPoints
             |> Seq.map V2f
             |> Seq.toArray
 
-        // Find the crack
-        let (w, h) = (uint32 size.X, uint32 size.Y)
-        let crackPoints = Wrapper.findCrack w h coeff.Data controlPointsArr
+        if controlPointsArr.Length > 0 then
 
-        // Save results as image
-        saveResultImage edgeMap controlPoints crackPoints
+            // Find the crack
+            let (w, h) = (uint32 size.X, uint32 size.Y)
+            let crackPoints = Wrapper.findCrack w h coeff.Data controlPointsArr
 
-        // Return points
-        crackPoints
-        |> Array.choose (fun p ->
-            V2i p
-            |> PatchMap.map2patch map
-            |> Option.map (fun (patch, uv) -> uv |> PatchInfo.patch2global patch)
-        )
-        |> PList.ofArray
+            // Save results as image
+            saveResultImage edgeMap controlPoints crackPoints
+
+            // Return points
+            crackPoints
+            |> Array.choose (fun p ->
+                V2i p
+                |> PatchMap.map2patch map
+                |> Option.map (fun (patch, uv) -> uv |> PatchInfo.patch2global patch)
+            )
+            |> PList.ofArray
+
+        else
+            PList.empty
 
     let initModel =
         {
@@ -447,7 +503,7 @@ module CrackDetectionApp =
 
     /// Initializes the native library
     let initialize () =
-        let logDir = @".\crackDetection" 
+        let logDir = @".\crackDetection"
         let configDir = @".\crackDetection"
 
         Wrapper.initialize configDir logDir
@@ -471,12 +527,12 @@ module CrackDetectionApp =
                 let! pos = p.position
                 yield pos
         }
-        
+
         let color = ~~C4b.DarkMagenta
 
-        let pointsSg = 
-            points     
+        let pointsSg =
+            points
             |> SgUtilities.drawPointList color ~~10.0 ~~0.1 near far
-        
-        pointsSg            
+
+        pointsSg
         |> Sg.noEvents

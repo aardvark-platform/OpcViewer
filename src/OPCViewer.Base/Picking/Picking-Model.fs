@@ -5,7 +5,7 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.VRVis.Opc.KdTrees
 open Aardvark.SceneGraph.Opc
-  
+
 [<DomainType>]
 type AxisPointInfo = {
     pointsOnAxis : plist<V3d>
@@ -15,17 +15,17 @@ type AxisPointInfo = {
 type Interactions =
 | NoAction           = 0
 | DrawAnnotation     = 1
-| PickCrackDetection = 2  
+| PickCrackDetection = 2
 
 
-type PickingAction = 
+type PickingAction =
 | HitSurface of Box3d*SceneHit //*(V3d -> V3d)
 | HitSurfaceWithTexCoords of Box3d*SceneHit
 | RemoveLastPoint
 | ClearPoints
 
 type BoxNeighbors = {
-    neighbors : List<Box3d> 
+    neighbors : List<Box3d>
 }
 
 [<DomainType>]
@@ -34,7 +34,7 @@ type OpcData = {
     patchHierarchy : PatchHierarchy
     kdTree         : hmap<Box3d, Level0KdTree>
     neighborMap    : hmap<Box3d, BoxNeighbors>
-    
+
     localBB        : Box3d
     globalBB       : Box3d
 }
@@ -51,14 +51,14 @@ type HitInfo = {
 type PickingModel = {
     pickingInfos         : hmap<Box3d, OpcData>
     hitPointsInfo        : hmap<V3d, Box3d>
-    intersectionPoints   : plist<V3d>                 // TODO...change to LastIntersectionPoint : Option<V3d> 
+    intersectionPoints   : plist<V3d>                 // TODO...change to LastIntersectionPoint : Option<V3d>
     interaction          : Interactions
     lastHit              : HitInfo option
-}  
+}
 
 module PickingModel =
 
-    let initial = 
+    let initial =
         {
             pickingInfos       = HMap.empty
             hitPointsInfo      = HMap.empty
