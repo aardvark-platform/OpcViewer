@@ -346,8 +346,6 @@ module App =
 
         let phDirs =
             Directory.GetDirectories(dir)
-            |> Array.head
-            |> Array.singleton
 
         let axis =
             axisFile
