@@ -200,18 +200,34 @@ module App =
 
         let interaction = m.picking.interaction
 
+        let colors =
+            [|
+                C4b.Red; C4b.Green; C4b.Blue; C4b.Yellow; C4b.Magenta; C4b.Cyan;
+                C4b.DarkRed; C4b.DarkGreen; C4b.DarkBlue; C4b.DarkYellow; C4b.DarkMagenta; C4b.DarkCyan; C4b.VRVisGreen
+            |]
+            |> Array.map (C3d >> V3d)
+
         let opcs =
             m.opcInfos
             |> AMap.toASet
-            |> ASet.map(fun info ->
-                Sg.createSingleOpcSg m.opcAttributes.selectedScalar m.pickingActive interaction m.cameraState.view info
+            |> ASet.toAList
+            |> AList.toMod
+            |> Mod.map (fun list ->
+                list
+                |> PList.toArray
+                |> Array.mapi (fun index info ->
+                    Sg.createSingleOpcSg m.opcAttributes.selectedScalar m.opcAttributes.selectedTexture m.pickingActive interaction m.cameraState.view info
+                    |> Sg.uniform "DebugColor" (Mod.constant colors.[index % colors.Length])
+                )
+                |> Sg.ofArray
             )
-            |> Sg.set
+            |> Sg.dynamic
             |> Sg.effect [
                 toEffect Shader.stableTrafo
                 toEffect DefaultSurfaces.diffuseTexture
                 toEffect Shader.AttributeShader.falseColorLegend //falseColorLegendGray
                 toEffect Shader.AttributeShader.markPatchBorders
+                //Shader.MultipliedDebugColor.Effect
             ]
 
         let near = m.mainFrustum |> Mod.map(fun x -> x.near)

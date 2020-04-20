@@ -187,14 +187,18 @@ module private Utilities =
             let path = rootPath +/ patch.info.Name +/ fileName
             path |> fromFile<'a> |> Matrix.ofVolume
 
-        let loadEdgeMap (rootPath : string) (patch : Patch) =
-            patch
-            |> loadMap<float> rootPath "EdgeMap.aara"
-
         let loadPositionsMap (rootPath : string) (patch : Patch) =
             patch
             |> loadMap<V3f> rootPath patch.info.Positions
             |> Matrix.map (V3d >> patch.info.Local2Global.Forward.TransformPos)
+
+        let loadEdgeMap (rootPath : string) (patch : Patch) =
+            let rnd = RandomSystem()
+            let posMap = patch |> loadPositionsMap rootPath
+            let edgeMap = Matrix<float> posMap.Dim
+            edgeMap.SetByIndex(fun _ -> rnd.UniformDouble() * 255.0)
+            //patch
+            //|> loadMap<float> rootPath "EdgeMap.aara"
 
     module QTree =
 
@@ -404,14 +408,16 @@ module CrackDetectionApp =
 
         controlPoints
         |> Seq.iter(fun x ->
-            resultImage.ChannelArray.[0].SetCross(x, 2, 255uy)
+            for i in 0 .. 2 do
+                resultImage.ChannelArray.[i].SetCross(x, 2, if i = 0 then 255uy else 0uy)
         )
 
         crackPoints
         |> Seq.map V2d
         |> Seq.pairwise
         |> Seq.iter (fun (a, b) ->
-            resultImage.ChannelArray.[2].SetLine(a, b, 255uy)
+            for i in 0 .. 2 do
+                resultImage.ChannelArray.[i].SetLine(a, b, if i = 2 then 255uy else 0uy)
         )
 
         resultImage.SaveAsImage (@".\cracks.png")
@@ -475,6 +481,8 @@ module CrackDetectionApp =
             |> Seq.toArray
 
         if controlPointsArr.Length > 0 then
+
+            saveResultImage edgeMap controlPoints Seq.empty
 
             // Find the crack
             let (w, h) = (uint32 size.X, uint32 size.Y)

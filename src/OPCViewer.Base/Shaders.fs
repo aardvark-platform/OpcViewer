@@ -6,7 +6,7 @@ module Shader =
     open Aardvark.Base.Rendering
     open FShade
 
-    type SuperVertex = 
+    type SuperVertex =
         {
             [<Position>] pos :  V4d
             [<SourceVertexIndex>] i : int
@@ -14,7 +14,7 @@ module Shader =
 
     type AttrVertex =
         {
-            [<Position>]                pos     : V4d            
+            [<Position>]                pos     : V4d
             [<WorldPosition>]           wp      : V4d
             [<TexCoord>]                tc      : V2d
             [<Color>]                   c       : V4d
@@ -32,9 +32,9 @@ module Shader =
             [<SourceVertexIndex>] i : int
         }
 
-    type VertexDepth = 
-        {   
-            [<Color>] c : V4d; 
+    type VertexDepth =
+        {
+            [<Color>] c : V4d;
             [<Depth>] d : float
         }
 
@@ -43,7 +43,7 @@ module Shader =
             yield t.P0
             yield t.P1
             restartStrip()
-            
+
             yield t.P1
             yield t.P2
             restartStrip()
@@ -53,29 +53,42 @@ module Shader =
             restartStrip()
         }
 
-    
 
-    module DebugColor = 
-    
+
+    module DebugColor =
+
         type UniformScope with
             member x.UseDebugColor : bool = x?UseDebugColor
             member x.Color : C4b = x?Color
-    
+
         let internal debugCol (p : Vertex) =
             let c : C4b = uniform.Color
             let c1 = c.ToC4d().ToV4d().XYZ
             fragment {
-                let useDebugColor : bool = uniform.UseDebugColor 
+                let useDebugColor : bool = uniform.UseDebugColor
                 if useDebugColor then
                     return V4d.IOOI
                 else
-                    return V4d(c1, 0.3) 
+                    return V4d(c1, 0.3)
             }
 
-        let Effect = 
+        let Effect =
             toEffect debugCol
 
-    module VertexCameraShift = 
+    module MultipliedDebugColor =
+
+        type UniformScope with
+            member x.DebugColor : V3d = x?DebugColor
+
+        let internal debugCol (v : Vertex) =
+            fragment {
+                return V4d (0.7 * v.c.XYZ + 0.3 * uniform.DebugColor, v.c.W)
+            }
+
+        let Effect =
+            toEffect debugCol
+
+    module VertexCameraShift =
 
         type UniformScope with
             member x.DepthOffset : float = x?DepthOffset
@@ -91,10 +104,10 @@ module Shader =
                 return { p with pos = posShift; wp = wpShift }
             }
 
-        let Effect = 
+        let Effect =
             toEffect toCameraShift
 
-    module PointSprite = 
+    module PointSprite =
         let internal pointSprite (p : Point<Vertex>) =
             triangle {
                 let s = uniform.PointSize / V2d uniform.ViewportSize
@@ -120,10 +133,10 @@ module Shader =
                 yield { p.Value with pos = V4d(p31 * pos.W, pos.W); tc = V2d (0.66, 1.00); }
             }
 
-        let Effect = 
+        let Effect =
             toEffect pointSprite
 
-    module PointSpriteQuad =       
+    module PointSpriteQuad =
         let internal pointSpriteQuad (p : Point<Vertex>) =
             triangle {
                 let s = (uniform.PointSize / V2d uniform.ViewportSize)
@@ -137,14 +150,14 @@ module Shader =
 
                 yield { p.Value with pos = V4d(p00 * pos.W, pos.W); tc = V2d (0.00, 0.00); }
                 yield { p.Value with pos = V4d(p01 * pos.W, pos.W); tc = V2d (1.00, 0.00); }
-                yield { p.Value with pos = V4d(p11 * pos.W, pos.W); tc = V2d (0.00, 1.00); }          
+                yield { p.Value with pos = V4d(p11 * pos.W, pos.W); tc = V2d (0.00, 1.00); }
                 yield { p.Value with pos = V4d(p10 * pos.W, pos.W); tc = V2d (1.00, 1.00); }
             }
-    
-        let Effect = 
+
+        let Effect =
             toEffect pointSpriteQuad
 
-    module AttributeShader = 
+    module AttributeShader =
 
         type UniformScope with
             member x.Invert : bool = x?inverted
@@ -173,10 +186,10 @@ module Shader =
             | _ -> V3d(chr + m, x + m, m)
 
         [<ReflectedDefinition>]
-        let mapFalseColors value : float =         
+        let mapFalseColors value : float =
             let low         = if (uniform.Invert = false) then uniform.LowerBound else uniform.UpperBound
             let up          = if (uniform.Invert = false) then uniform.UpperBound else uniform.LowerBound
-            let interval    = if (uniform.Invert = false) then uniform.Interval   else -1.0 * uniform.Interval        
+            let interval    = if (uniform.Invert = false) then uniform.Interval   else -1.0 * uniform.Interval
 
             let rangeValue = up - low + interval
             let normInterv = (interval / rangeValue)
@@ -194,39 +207,39 @@ module Shader =
             let fcHueUpperBound = if (uH < lH) then uH + 1.0 else uH
             let rangeHue = uH - lH // fcHueUpperBound - lH
             (k * rangeHue) + lH
-            
+
         let falseColorLegend (v : AttrVertex) =
-            fragment {    
+            fragment {
 
             if uniform.FalseColors then
                 if uniform.UseColors then
-                    let hue = mapFalseColors v.scalar 
-                    let c = hsv2rgb ((clamp 0.0 255.0 hue)/ 255.0 ) 1.0 1.0 
+                    let hue = mapFalseColors v.scalar
+                    let c = hsv2rgb ((clamp 0.0 255.0 hue)/ 255.0 ) 1.0 1.0
                     return v.c * V4d(c.X, c.Y, c.Z, 1.0)
                 else
-                    let k = (v.scalar - uniform.LowerBound) / (uniform.UpperBound-uniform.LowerBound) 
+                    let k = (v.scalar - uniform.LowerBound) / (uniform.UpperBound-uniform.LowerBound)
                     let value = clamp 0.0 1.0 k
-                    return V4d(value, value, value, 1.0) 
+                    return V4d(value, value, value, 1.0)
             else
                   return v.c
             }
-  
+
         let falseColorLegendGray (v : AttrVertex) =
-            fragment {   
+            fragment {
                 if uniform.FalseColors then
-                    let k = (v.scalar - uniform.LowerBound) / (uniform.UpperBound-uniform.LowerBound) 
+                    let k = (v.scalar - uniform.LowerBound) / (uniform.UpperBound-uniform.LowerBound)
                     let value = clamp 0.0 1.0 k
-                    return V4d(value, value, value, 1.0) 
+                    return V4d(value, value, value, 1.0)
                 else
                     return v.c
             }
 
         let markPatchBorders (v : AttrVertex) =
-            fragment {    
-                
+            fragment {
+
                 if   (v.tc.X >= 0.999) && (v.tc.X <= 1.0) || (v.tc.X >= 0.0) && (v.tc.X <= 0.01) then
                     return V4d(1.0, 0.0, 0.0, 1.0)
-                elif (v.tc.Y >= 0.999) && (v.tc.Y <= 1.0) || (v.tc.Y >= 0.0) && (v.tc.Y <= 0.01) then 
+                elif (v.tc.Y >= 0.999) && (v.tc.Y <= 1.0) || (v.tc.Y >= 0.0) && (v.tc.Y <= 0.01) then
                     return V4d(1.0, 0.0, 0.0, 1.0)
                 else
                     return v.c
@@ -237,9 +250,9 @@ module Shader =
             fragment {
                 let n = v.n |> Vec.normalize
                 let c = v.ldir |> Vec.normalize
-             
-                let diffuse = Vec.dot c n |> abs            
- 
+
+                let diffuse = Vec.dot c n |> abs
+
                 return V4d(v.c.XYZ * diffuse, v.c.W)
             }
 
@@ -258,20 +271,20 @@ module Shader =
             vertex {
                 let vp = uniform.ModelViewTrafo * v.pos
                 let wp = uniform.ModelTrafo * v.pos
-                return  
+                return
                     { v with
                         pos  = uniform.ProjTrafo * vp
                         wp   = wp
                         n    = transformNormal v.n
                         ldir = V3d.Zero - vp.XYZ |> Vec.normalize
-                    } 
-            } 
+                    }
+            }
 
-        let Effect = 
+        let Effect =
             toEffect stableTrafo
 
-    module ThickLineNew = 
-        type ThickLineVertex = 
+    module ThickLineNew =
+        type ThickLineVertex =
             {
                 [<Position>]                pos     : V4d
                 [<Color>]                   c       : V4d
@@ -279,7 +292,7 @@ module Shader =
                 [<Semantic("Width")>]       w       : float
                 [<SourceVertexIndex>]       i : int
             }
-    
+
         [<GLSLIntrinsic("mix({0}, {1}, {2})")>]
         let Lerp (a : V4d) (b : V4d) (s : float) : V4d = failwith ""
 
@@ -287,7 +300,7 @@ module Shader =
         let clipLine (plane : V4d) (p0 : ref<V4d>) (p1 : ref<V4d>) =
             let h0 = Vec.dot plane !p0
             let h1 = Vec.dot plane !p1
-    
+
             // h = h0 + (h1 - h0)*t
             // 0 = h0 + (h1 - h0)*t
             // (h0 - h1)*t = h0
@@ -304,12 +317,12 @@ module Shader =
                 true
             else
                 true
-    
+
         [<ReflectedDefinition>]
         let clipLinePure (plane : V4d) (p0 : V4d) (p1 : V4d) =
             let h0 = Vec.dot plane p0
             let h1 = Vec.dot plane p1
-    
+
             // h = h0 + (h1 - h0)*t
             // 0 = h0 + (h1 - h0)*t
             // (h0 - h1)*t = h0
@@ -323,34 +336,34 @@ module Shader =
             elif h1 < 0.0 && h0 > 0.0 then
                 let t = h0 / (h0 - h1)
                 let p01 = p0 + t * (p1 - p0)
-                
+
                 (true, p01, p1)
             else
                 (true, p0, p1)
-    
+
         let thickLine (line : Line<ThickLineVertex>) =
             triangle {
                 let t = uniform.LineWidth
                 let sizeF = V3d(float uniform.ViewportSize.X, float uniform.ViewportSize.Y, 1.0)
-    
+
                 let mutable pp0 = line.P0.pos
-                let mutable pp1 = line.P1.pos        
-                                
+                let mutable pp1 = line.P1.pos
+
                 let add = 2.0 * V2d(t,t) / sizeF.XY
-                                
+
                 let a0 = clipLine (V4d( 1.0,  0.0,  0.0, -(1.0 + add.X))) &&pp0 &&pp1
                 let a1 = clipLine (V4d(-1.0,  0.0,  0.0, -(1.0 + add.X))) &&pp0 &&pp1
                 let a2 = clipLine (V4d( 0.0,  1.0,  0.0, -(1.0 + add.Y))) &&pp0 &&pp1
                 let a3 = clipLine (V4d( 0.0, -1.0,  0.0, -(1.0 + add.Y))) &&pp0 &&pp1
                 let a4 = clipLine (V4d( 0.0,  0.0,  1.0, -1.0)) &&pp0 &&pp1
                 let a5 = clipLine (V4d( 0.0,  0.0, -1.0, -1.0)) &&pp0 &&pp1
-    
+
                 if a0 && a1 && a2 && a3 && a4 && a5 then
                     let p0 = pp0.XYZ / pp0.W
                     let p1 = pp1.XYZ / pp1.W
-    
+
                     let fwp = (p1.XYZ - p0.XYZ) * sizeF
-    
+
                     let fw = V3d(fwp.XY, 0.0) |> Vec.normalize
                     let r = V3d(-fw.Y, fw.X, 0.0) / sizeF
                     let d = fw / sizeF
@@ -358,29 +371,29 @@ module Shader =
                     let p10 = p0 + r * t - d * t
                     let p11 = p1 + r * t + d * t
                     let p01 = p1 - r * t + d * t
-    
+
                     let rel = t / (Vec.length fwp)
-    
+
                     yield { line.P0 with i = 0; pos = V4d(p00 * pp0.W, pp0.W); lc = V2d(-1.0, -rel); w = rel }      // restore W component for depthOffset
                     yield { line.P0 with i = 0; pos = V4d(p10 * pp1.W, pp1.W); lc = V2d( 1.0, -rel); w = rel }      // restore W component for depthOffset
                     yield { line.P1 with i = 1; pos = V4d(p01 * pp0.W, pp0.W); lc = V2d(-1.0, 1.0 + rel); w = rel } // restore W component for depthOffset
                     yield { line.P1 with i = 1; pos = V4d(p11 * pp1.W, pp1.W); lc = V2d( 1.0, 1.0 + rel); w = rel } // restore W component for depthOffset
             }
-    
+
         let Effect =
             toEffect thickLine
 
     module DepthOffset =
-        
+
         type UniformScope with
             member x.DepthOffset : float = x?DepthOffset
-        
+
         [<GLSLIntrinsic("gl_DepthRange.diff")>]
         let depthDiff()  : float = onlyInShaderCode ""
-    
+
         [<GLSLIntrinsic("gl_DepthRange.near")>]
         let depthNear()  : float = onlyInShaderCode ""
-    
+
         [<GLSLIntrinsic("gl_DepthRange.far")>]
         let depthFar()  : float = onlyInShaderCode ""
 
@@ -393,22 +406,22 @@ module Shader =
         let Effect =
             toEffect depthOffsetFS
 
-    module TriangleFilter = 
-    
+    module TriangleFilter =
+
         type UniformScope with
             member x.TriangleSize : float = x?TriangleSize
-    
+
         let triangleFilter'' (input : Triangle<Vertex>) =
             triangle {
                 let p0 = input.P0.wp.XYZ
                 let p1 = input.P1.wp.XYZ
                 let p2 = input.P2.wp.XYZ
-                let cross = Vec.cross (p1 - p0) (p2 - p0)            
+                let cross = Vec.cross (p1 - p0) (p2 - p0)
                 let area = cross.LengthSquared
                 let maxArea = uniform.TriangleSize
                 let check = area < maxArea
                 if check then
-                    yield input.P0 
+                    yield input.P0
                     yield input.P1
                     yield input.P2
             }
@@ -423,11 +436,11 @@ module Shader =
 
                 let a = (B - A).Length < maxRel
                 let b = (C - B).Length < maxRel
-                let c = (A - C).Length < maxRel                        
+                let c = (A - C).Length < maxRel
 
                 let check = a && b && c
                 if check then
-                    yield input.P0 
+                    yield input.P0
                     yield input.P1
                     yield input.P2
             }
@@ -442,7 +455,7 @@ module Shader =
 
                 let a = (p1 - p0).Normalized
                 let b = (p2 - p1).Normalized
-                let c = (p0 - p2).Normalized          
+                let c = (p0 - p2).Normalized
 
                 let alpha = (a.Dot b).Abs() < maxRel
                 let beta  = (b.Dot c).Abs() < maxRel
@@ -450,30 +463,30 @@ module Shader =
 
                 let check = (alpha && beta && gamma) || maxRel >= 0.999999999999999
                 if check then
-                    yield input.P0 
+                    yield input.P0
                     yield input.P1
                     yield input.P2
             }
-    
+
         let Effect0 = toEffect triangleFilter
         let Effect1 = toEffect triangleFilter'
         let Effect2 = toEffect triangleFilter''
 
     module ScreenSpaceScale =
-    
+
         type UniformScope with
             member x.Size : float = x?Size
             member x.WorldPos : V3d = x?WorldPos
-    
+
         let screenSpaceScale (v : Vertex) =
-            vertex {        
-                let loc     = uniform.CameraLocation       
+            vertex {
+                let loc     = uniform.CameraLocation
                 let hvp    = float uniform.ViewportSize.X
 
-                let dist = (uniform.WorldPos - loc).Length      
-                let scale = dist * uniform.Size / hvp 
+                let dist = (uniform.WorldPos - loc).Length
+                let scale = dist * uniform.Size / hvp
 
-                return 
+                return
                     { v with
                         pos = V4d(v.pos.X * scale, v.pos.Y * scale, v.pos.Z * scale, v.pos.W)
                     }
@@ -483,10 +496,10 @@ module Shader =
             toEffect screenSpaceScale
 
     module SelectionColor =
-    
+
         type UniformScope with
             member x.Selected : bool = x?selected
-    
+
         let selectionColor (v : Vertex) =
             fragment {
                 if uniform.Selected then
@@ -497,11 +510,11 @@ module Shader =
                 else return v.c
             }
 
-        let Effect = 
+        let Effect =
             toEffect selectionColor
 
-    module LoDColor = 
-    
+    module LoDColor =
+
         type UniformScope with
             member x.LodVisEnabled : bool = x?LodVisEnabled
             member x.LoDColor : V4d = x?LoDColor
@@ -511,7 +524,7 @@ module Shader =
                 if uniform.LodVisEnabled then
                     let c : V4d = uniform.LoDColor
                     let gamma = 1.0
-                    let grayscale = 0.2126 * v.c.X ** gamma + 0.7152 * v.c.Y ** gamma  + 0.0722 * v.c.Z ** gamma 
+                    let grayscale = 0.2126 * v.c.X ** gamma + 0.7152 * v.c.Y ** gamma  + 0.0722 * v.c.Z ** gamma
                     return grayscale * c
                 else return v.c
             }
@@ -519,8 +532,8 @@ module Shader =
         let Effect =
             toEffect LoDColor
 
-    module FalseColorGeoSpatial = 
-    
+    module FalseColorGeoSpatial =
+
         type UniformScope with
             member x.ColorMapTexture : ShaderTextureHandle = x?ColorMapTexture
             member x.FalseColors : bool = x?falseColors
@@ -536,7 +549,7 @@ module Shader =
         }
 
         let falseColor (v : AttrVertex) =
-            fragment {           
+            fragment {
                 if uniform.FalseColors then
                     let range = uniform.MinMax
                     let norm = V2d((v.scalar - range.X)/ (range.Y - range.X), 0.5)
@@ -552,7 +565,7 @@ module Shader =
             toEffect falseColor
 
 //Pro3d shaders...(simplified)
-    module PointSize = 
+    module PointSize =
 
         type UniformScope with
             member x.PointSize : float = uniform?PointSize
@@ -561,8 +574,8 @@ module Shader =
             vertex {
                 let ps : float = uniform.PointSize
                 let vp = uniform.ModelViewTrafo * v.pos
-                return { 
-                    v with 
+                return {
+                    v with
                         pos = uniform.ProjTrafo * vp
                         p = ps
                 }
@@ -584,7 +597,7 @@ module Shader =
                 yield t.P0
                 yield t.P1
                 restartStrip()
-            
+
                 yield t.P1
                 yield t.P2
                 restartStrip()
@@ -596,8 +609,8 @@ module Shader =
 
         let EffectPointTrafo =
             toEffect pointTrafo
-    
-        let EffectPointSpriteFragment = 
+
+        let EffectPointSpriteFragment =
             toEffect pointSpriteFragment
 
         let EffectLines =
@@ -609,7 +622,7 @@ module Shader =
 
         let private diffuseSampler =
             sampler2d {
-                texture uniform.DiffuseColorTexture          
+                texture uniform.DiffuseColorTexture
                 filter Filter.Anisotropic
                 maxAnisotropy 16
                 addressU WrapMode.Wrap

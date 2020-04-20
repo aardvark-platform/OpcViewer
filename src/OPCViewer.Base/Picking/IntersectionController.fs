@@ -500,7 +500,7 @@ module Intersect =
 
             | None ->
                 Log.error "[Intersection] didn't hit"
-                m
+                { m with lastHit = None }
         | None ->
             Log.error "[Intersection] box not found in picking infos"
-            m
+            { m with lastHit = None }

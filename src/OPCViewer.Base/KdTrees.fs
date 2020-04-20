@@ -139,7 +139,12 @@ module KdTrees =
                     let trees : List<Box3d * Level0KdTree> = loadAs cacheFile b
                     trees |> HMap.ofList |> Some
                 with
-                | _ -> None
+                | :? FileNotFoundException ->
+                    Log.line "did not find lazy kdtree cache"
+                    None
+                | _ ->
+                    Log.line "could not load lazy kdtree cache"
+                    None
             else
                 Some HMap.empty
 
@@ -149,7 +154,6 @@ module KdTrees =
             trees
 
         | None ->
-            Log.line "could not load lazy kdtree cache"
             let patchInfos =
                 h.tree |> QTree.getLeaves |> Seq.toList |> List.map(fun x -> x.info)
 

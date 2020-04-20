@@ -1,11 +1,11 @@
 ﻿namespace OpcViewer.Base.Attributes
 
 open Aardvark.Base
-open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
 
 open OpcViewer.Base.FalseColors
 
+[<DomainType>]
 type TextureLayer = {
     label : string
     index : int
@@ -19,25 +19,20 @@ type ScalarLayer = {
     index        : int
     colorLegend  : FalseColorsModel
 }
-type AttributeLayer = 
-    | ScalarLayer of ScalarLayer 
+type AttributeLayer =
+    | ScalarLayer of ScalarLayer
     | TextureLayer of TextureLayer
 
 type AttributeAction =
-  | SetScalarMap     of Option<ScalarLayer>
-  | ScalarsColorLegendMessage of FalseColorLegendApp.Action
-
-
+    | SetScalarMap              of ScalarLayer option
+    | SetTexture                of TextureLayer option
+    | ScalarsColorLegendMessage of FalseColorLegendApp.Action
 
 [<DomainType>]
 type AttributeModel =
     {
-        scalarLayers         : hmap<string, ScalarLayer> 
-        selectedScalar       : option<ScalarLayer>
-        textureLayers        : plist<TextureLayer>
+        scalarLayers        : ScalarLayer plist
+        selectedScalar      : ScalarLayer option
+        textureLayers       : TextureLayer plist
+        selectedTexture     : TextureLayer option
     }
-
-
-    
-
-   
