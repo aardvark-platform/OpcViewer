@@ -120,7 +120,7 @@ module IntersectionController =
         let w = (d00 * d21 - d01 * d20) / denom
         let u = 1.0 - v - w
 
-        V3d(v, w, u)
+        V3d (v, w, u)
 
     let insideTriangle (triangle: Triangle2d) (p: V2d) =
         //  if p lies inside the triangle, then a1 + a2 + a3 must be equal to a.
@@ -183,13 +183,32 @@ module IntersectionController =
 
         test //|> kdTree.affine.Forward.TransformPos
 
+    let calcTriangleHit (kdTree: LazyKdTree) (index: int) (position: V3d) =
+        let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
+        let triangle = triangles.[index]
+        let barycentric = calculateBarycentricCoordinates triangle position
+
+        if Box3d.Unit.Contains barycentric then
+            Some { indices = V3i triangleIndices.[index]
+                   barycentricCoords = barycentric }
+        else
+            Log.error "[Intersection] invalid barycentric coordinates: %A" barycentric
+            None
+
+    let calcTextureCoordinates (kdTree : LazyKdTree) (hit : TriangleHit) =
+        let coords = kdTree.coordinatesPath |> fromFile<V2f>
+
+        let p0 = coords.Data.[hit.indices.X] * (float32 hit.barycentricCoords.X)
+        let p1 = coords.Data.[hit.indices.Y] * (float32 hit.barycentricCoords.Y)
+        let p2 = coords.Data.[hit.indices.Z] * (float32 hit.barycentricCoords.Z)
+
+        V2d (p0 + p1 + p2)
+
     let findCoordinates (kdTree: LazyKdTree) (index: int) (position: V3d) =
         let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
         let triangle = triangles.[index]
 
         let baryCentricCoords = calculateBarycentricCoordinates triangle position
-
-        Log.line "barycentricCoords: u: %f, v: %f, w: %f" baryCentricCoords.X baryCentricCoords.Y baryCentricCoords.Z
 
         let coordinates = kdTree.coordinatesPath |> fromFile<V2f>
 
@@ -415,23 +434,23 @@ module Intersect =
                     let treeHit, c = kd |> intersectKdTreesWithIndex bb cache ray
                     cache <- c
                     match treeHit with
-                    | Some hit -> Some(hit, bb)
+                    | Some (t, index) -> Some(t, index, bb)
                     | None -> None)
-                |> List.sortBy (fun (t, _) -> fst t)
+                |> List.sortBy (fun (t, _, _) -> t)
                 |> List.tryHead
 
             match closest with
-            | Some(values, bb) ->
+            | Some(t, index, bb) ->
                 let lvl0KdTree = kd |> HMap.find bb
 
-                let position = ray.Ray.GetPointOnRay(fst values)
+                let position = ray.Ray.GetPointOnRay(t)
 
-                let coordinates =
+                let triangle =
                     match lvl0KdTree with
                     | InCoreKdTree _ -> None
-                    | LazyKdTree kd -> Some <| IntersectionController.findCoordinates kd (snd values) position
+                    | LazyKdTree kd -> IntersectionController.calcTriangleHit kd index position
 
-                Some(position, coordinates, lvl0KdTree)
+                Some(position, triangle, lvl0KdTree)
             | None -> None)
 
     let perform (m: PickingModel) (hit: SceneHit) (boxId: Box3d) = //  (hitFun: V3d->V3d) =
@@ -471,7 +490,7 @@ module Intersect =
             Log.error "[Intersection] box not found in picking infos"
             m
 
-    let performTexCoords (m: PickingModel) (hit: SceneHit) (boxId: Box3d) =
+    let performIndex (m: PickingModel) (hit: SceneHit) (boxId: Box3d) =
         let fray = hit.globalRay.Ray
         Log.line "try intersecting %A" boxId
 
@@ -479,16 +498,16 @@ module Intersect =
         | Some kk ->
             let closest = intersectWithOpcIndex (Some kk.kdTree) fray
             match closest with
-            | Some(point, coords, kd) ->
+            | Some (point, triangle, kd) ->
 
                 Log.line "hit surface at %A" point
 
                 let hit =
-                    match kd, coords with
-                    | LazyKdTree k, Some uv ->
+                    match kd, triangle with
+                    | LazyKdTree k, Some t ->
                         Some
                             { position = point
-                              texCoords = uv
+                              triangle = t
                               opcInfo = kk
                               kdTree = k }
                     | _ -> None

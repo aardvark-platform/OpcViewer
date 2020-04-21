@@ -12,7 +12,7 @@ module PickingApp =
     let update (model: PickingModel) (msg: PickingAction) =
         match msg with
         | HitSurface(box, sceneHit) -> Intersect.perform model sceneHit box
-        | HitSurfaceWithTexCoords(box, sceneHit) -> Intersect.performTexCoords model sceneHit box
+        | HitSurfaceWithIndex(box, sceneHit) -> Intersect.performIndex model sceneHit box
         | RemoveLastPoint ->
             let points, infos =
                 match model.intersectionPoints.AsList with

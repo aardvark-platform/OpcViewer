@@ -128,7 +128,7 @@ module App =
           //let pickingModel, drawingModel =
 
             match msg with
-            | HitSurface (box,hit) | HitSurfaceWithTexCoords (box,hit) -> //,_) ->
+            | HitSurface (box, hit) | HitSurfaceWithIndex (box, hit) ->
               //match model.axis with
               //| Some axis ->
               //  let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
@@ -148,7 +148,7 @@ module App =
 
                 let picking =
                     (box, hit)
-                    |> HitSurfaceWithTexCoords
+                    |> HitSurfaceWithIndex
                     |> PickingApp.update model.picking
 
                 match model.picking.interaction with
@@ -227,7 +227,17 @@ module App =
                 toEffect DefaultSurfaces.diffuseTexture
                 toEffect Shader.AttributeShader.falseColorLegend //falseColorLegendGray
                 toEffect Shader.AttributeShader.markPatchBorders
-                //Shader.MultipliedDebugColor.Effect
+                Shader.MultipliedDebugColor.Effect
+            ]
+
+        let boundingBoxSg =
+            m.opcInfos
+            |> AMap.toASet
+            |> ASet.map Sg.createBoundingBoxSg
+            |> Sg.set
+            |> Sg.effect [
+                toEffect Shader.stableTrafo
+                toEffect DefaultSurfaces.vertexColor
             ]
 
         let near = m.mainFrustum |> Mod.map(fun x -> x.near)
@@ -256,6 +266,7 @@ module App =
         let scene =
             [
                 opcs
+                //boundingBoxSg
                 filledPolygonSg
                 afterFilledPolygonSg
                 crackBrush

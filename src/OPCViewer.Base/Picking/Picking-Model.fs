@@ -19,8 +19,8 @@ type Interactions =
 
 
 type PickingAction =
-| HitSurface of Box3d*SceneHit //*(V3d -> V3d)
-| HitSurfaceWithTexCoords of Box3d*SceneHit
+| HitSurface of Box3d * SceneHit
+| HitSurfaceWithIndex of Box3d * SceneHit
 | RemoveLastPoint
 | ClearPoints
 
@@ -40,11 +40,17 @@ type OpcData = {
 }
 
 [<DomainType>]
+type TriangleHit = {
+    indices             : V3i   // Indices of the points of the hit triangle
+    barycentricCoords   : V3d   // Barycentric coordiantes of the hit point
+}
+
+[<DomainType>]
 type HitInfo = {
-    position  : V3d
-    texCoords : V2d
-    opcInfo   : OpcData
-    kdTree    : LazyKdTree
+    kdTree      : LazyKdTree
+    opcInfo     : OpcData
+    position    : V3d
+    triangle    : TriangleHit
 }
 
 [<DomainType>]

@@ -40,18 +40,22 @@ module private Utilities =
             let array = input.Array.ToArrayOfT<'a>() |> Array.map map
             Matrix(array, input.Size)
 
-        let get (position : V2d) (matrix : Matrix<V3d>) =
-            matrix.Sample4Clamped(position, lerp, lerp)
+        let get (position : V2i) (matrix : Matrix<V3d>) =
+            matrix.[position]
+            //matrix.Sample4Clamped(position, lerp, lerp)
 
-        let sample (uv : V2d) (matrix : Matrix<V3d>) =
+        (*let sample (uv : V2d) (matrix : Matrix<V3d>) =
             let size = V2d (matrix.Dim.XY - V2l.II)
             let texel = V2d (1.0 - uv.X, uv.Y) * size
 
-            matrix |> get texel
+            matrix |> get texel*)
 
     module KdTree =
         let loadSvBRMap (kd : LazyKdTree) =
             kd.positions2dPath |> Matrix.load<V3f> |> Matrix.map V3d
+
+        let loadPositionsMap (kd : LazyKdTree) =
+            kd.objectSetPath |> Matrix.load<V3f> |> Matrix.map V3d
 
     module Array =
 
@@ -166,6 +170,31 @@ module private Utilities =
 
             arr |> scan fx fy combine V2i.Zero
 
+    module TriangleHit =
+
+        let inline private transform (f : int -> ^a) (g : ^a -> float -> ^a) (hit : TriangleHit) =
+            let bc = hit.barycentricCoords
+            let idx = hit.indices
+
+            g (f idx.X) bc.X +
+            g (f idx.Y) bc.Y +
+            g (f idx.Z) bc.Z
+
+        /// Uses indices and barycentric coordiantes to lookup
+        /// a V3d from an attribute array
+        let getV3d (data : V3d []) =
+            transform (fun i -> data.[i]) (*)
+
+        /// Converts the hit point into a 2D coordinate
+        /// in the range of [0, size].
+        let toV2i (size : V2i) (hit : TriangleHit) =
+            let v =
+                hit |> transform (fun index ->
+                    V2d (index % size.X, index / size.X)
+                ) (*)
+
+            V2i (v.Round ())
+
     module Patch =
 
         type private Box2d with
@@ -193,12 +222,16 @@ module private Utilities =
             |> Matrix.map (V3d >> patch.info.Local2Global.Forward.TransformPos)
 
         let loadEdgeMap (rootPath : string) (patch : Patch) =
-            let rnd = RandomSystem()
-            let posMap = patch |> loadPositionsMap rootPath
-            let edgeMap = Matrix<float> posMap.Dim
-            edgeMap.SetByIndex(fun _ -> rnd.UniformDouble() * 255.0)
-            //patch
-            //|> loadMap<float> rootPath "EdgeMap.aara"
+            try
+                patch
+                |> loadMap<float> rootPath "EdgeMap.aara"
+            with
+            | _ ->
+                Log.error "Could not find edge map, generating random data..."
+                let rnd = RandomSystem()
+                let posMap = patch |> loadPositionsMap rootPath
+                let edgeMap = Matrix<float> posMap.Dim
+                edgeMap.SetByIndex(fun _ -> rnd.UniformDouble() * 255.0)
 
     module QTree =
 
@@ -255,8 +288,8 @@ module private Utilities =
             }
 
         /// Transforms UV coordinates to global XYZ coordinates
-        let patch2global (patch : PatchInfo) (uv : V2d) =
-            patch.positionsMap.Value |> Matrix.sample uv
+        let patch2global (patch : PatchInfo) (uv : V2i) =
+            patch.positionsMap.Value |> Matrix.get uv
 
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module PatchMap =
@@ -361,20 +394,19 @@ module private Utilities =
 
             edgeMap
 
-        /// Transforms local texture coordinates to global map coordinates.
-        let patch2map (map : PatchMap) (patch : string) (uv : V2d) =
+        /// Transforms hit coordinates to global map coordinates.
+        let hit2map (map : PatchMap) (hit : HitInfo) =
             map.lookup
-            |> Map.tryFind patch
+            |> Map.tryFind hit.kdTree.name
             |> Option.map (fun patchCoord ->
                 let info = map.patches |> Array2D.get patchCoord |> Option.get
-                let size = V2d info.size
                 let offset = map.offsets |> Array2D.get patchCoord
-                let local = V2d (1.0 - uv.X, uv.Y) * (size - V2d.One)
+                let local = hit.triangle |> TriangleHit.toV2i info.size
 
-                offset + V2i (round local.X, round local.Y)
+                offset + local
             )
 
-        /// Transforms global map coordinates to local texture coordinates of
+        /// Transforms global map coordinates to local coordinates of
         /// the corresponding patch.
         let map2patch (map : PatchMap) (coord : V2i) =
 
@@ -389,11 +421,9 @@ module private Utilities =
             |> Array2D.tryFindIndexi isWithin
             |> Option.map (fun patchCoord ->
                 let info = map.patches |> Array2D.get patchCoord |> Option.get
-                let size = V2d info.size
                 let offset = map.offsets |> Array2D.get patchCoord
-                let local = V2d (coord - offset) / (size - V2d.One)
 
-                info, V2d (1.0 - local.X, local.Y)
+                info, coord - offset
             )
 
 
@@ -444,7 +474,10 @@ module CrackDetectionApp =
         let toGlobal2d (hit : HitInfo) =
             let map = svbrMaps.[hit.kdTree.name]
             let trafo = hit.kdTree.positions2dAffine.Forward
-            map |> Matrix.sample hit.texCoords |> Mat.transformPos trafo |> Vec.xy
+
+            hit.triangle
+            |> TriangleHit.getV3d map.Data
+            |> Mat.transformPos trafo |> Vec.xy
 
         let points2d =
             points |> Seq.map toGlobal2d
@@ -473,7 +506,8 @@ module CrackDetectionApp =
 
         // Control points
         let controlPoints =
-            points |> Seq.choose (fun p -> p.texCoords |> PatchMap.patch2map map p.kdTree.name)
+            //points |> Seq.choose (fun p -> p.texCoords |> PatchMap.patch2map map p.kdTree.name)
+            points |> Seq.choose (PatchMap.hit2map map)
 
         let controlPointsArr =
             controlPoints

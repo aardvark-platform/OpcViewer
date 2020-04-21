@@ -145,6 +145,18 @@ module Sg =
     let pickable' (pick :IMod<Pickable>) (sg: ISg) =
         Sg.PickableApplicator (pick, Mod.constant sg)
 
+    let opcBoundingBoxSg loadedHierarchies =
+        let sg =
+            loadedHierarchies
+            |> List.map (fun (_, _, info) ->
+                info.GlobalBoundingBox
+                |> Sg.wireBox' C4b.VRVisGreen
+                |> Sg.noEvents
+            )
+            |> Sg.ofList
+
+        sg
+
     let opcSg loadedHierarchies (selectedScalar:IMod<Option<MScalarLayer>>) (selectedTexture:IMod<Option<MTextureLayer>>) (picking : IMod<bool>)  (interaction:Interactions) (bb : Box3d) =
 
         let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
@@ -161,7 +173,6 @@ module Sg =
                 Sg.ofIndexedGeometry g
                 |> Sg.trafo (Mod.constant info.Local2Global)
                 |> Sg.diffuseTexture tex
-                    //|> Sg.andAlso(Sg.wireBox (Mod.constant C4b.VRVisGreen) (Mod.constant info.GlobalBoundingBox) |> Sg.noEvents)
             )
             |> Sg.ofList
 
@@ -180,25 +191,14 @@ module Sg =
                         Log.line "hit an opc? %A" bb
                         let pickingAction =
                             match interaction with
-                            | Interactions.DrawAnnotation     -> (HitSurface (bb,sceneHit))
-                            | Interactions.PickCrackDetection -> (HitSurfaceWithTexCoords (bb,sceneHit))
+                            | Interactions.DrawAnnotation     -> (HitSurface (bb, sceneHit))
+                            | Interactions.PickCrackDetection -> (HitSurfaceWithIndex (bb, sceneHit))
                             | _ -> (HitSurface (bb,sceneHit))
                         true, Seq.ofList[pickingAction] //, fun a -> a))] //(HitSurface (bb,sceneHit))
                     else
                       false, Seq.ofList[]
             )
         ]
-
-    let boxSg loadedHierarchies =
-        let sg =
-            loadedHierarchies
-            |> List.map (fun (_,_,info) -> Sg.wireBox (Mod.constant C4b.VRVisGreen) (Mod.constant info.GlobalBoundingBox) |> Sg.noEvents)
-            |> Sg.ofList
-            |> Sg.effect [
-                toEffect Shader.stableTrafo
-                toEffect DefaultSurfaces.vertexColor
-            ]
-        sg
 
     ///probably move to a shader
     let screenAligned (forw : V3d) (up : V3d) (modelt: Trafo3d) =
@@ -270,20 +270,29 @@ module Sg =
                 |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info attribute, dir, patch.info))
                 |> List.map(fun ((a,_),c,d) -> (a,c,d)) //|> List.skip 2 |> List.take 1
 
-            //let globalBB =
-            //  Sg.wireBox (Mod.constant C4b.Red) (Mod.constant boundingBox)
-            //    |> Sg.noEvents
-            //    |> Sg.effect [
-            //      toEffect Shader.stableTrafo
-            //      toEffect DefaultSurfaces.vertexColor
-            //    ]
-
             let! interaction = interaction
             return [
                 opcSg loadedPatches selectedScalar selectedTexture picking interaction boundingBox
                 //boxSg  loadedPatches m boundingBox;
                 textSg loadedPatches view
-                //globalBB
             ] |> Sg.ofList
         } |> Sg.dynamic
+
+    let createBoundingBoxSg (boundingBox : Box3d, opcData : MOpcData) =
+        let globalSg =
+            boundingBox
+            |> Sg.wireBox' C4b.Red
+            |> Sg.noEvents
+
+        let patchSg =
+            opcData.patchHierarchy.tree
+            |> QTree.getLeaves
+            |> Seq.map (fun p ->
+                p.info.GlobalBoundingBox
+                |> Sg.wireBox' C4b.VRVisGreen
+                |> Sg.noEvents
+            )
+            |> Sg.ofSeq
+
+        Sg.ofList [globalSg; patchSg]
 

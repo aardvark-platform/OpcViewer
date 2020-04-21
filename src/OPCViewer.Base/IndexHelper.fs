@@ -11,7 +11,7 @@ module IndexHelper =
         let mutable k = 0;
 
         match invalidPoints.IsEmptyOrNull() with
-        | true -> 
+        | true ->
             // has no invalids
             for y in 0 .. (size.Y-2) do
                 for x in 0 .. (size.X-2) do
@@ -45,19 +45,19 @@ module IndexHelper =
                     if invalidFace then
                         counter <- counter + 1
                         k <- k + 6
-                    else 
+                    else
                         indexArray.[k] <- a1
                         indexArray.[k + 1] <- b1
                         indexArray.[k + 2] <- c1
 
                         indexArray.[k + 3] <- a2
                         indexArray.[k + 4] <- b2
-                        indexArray.[k + 5] <- c2 
+                        indexArray.[k + 5] <- c2
 
                         k <- k + 6
 
-                if (counter > 0) then
-                    Log.warn "Invalid faces found: %i" counter
+                //if (counter > 0) then
+                    //Log.warn "Invalid faces found: %i" counter
 
         indexArray
 
@@ -66,10 +66,10 @@ module IndexHelper =
         let point0 = points.[index0]
         let point1 = points.[index1]
         let point2 = points.[index2]
- 
+
         [|
             V3f.Distance(point0, point1)
             V3f.Distance(point0, point2)
             V3f.Distance(point1, point2)
-        |] 
+        |]
         |> Array.exists (fun d -> d > maxTriangleSize)
