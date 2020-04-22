@@ -1,5 +1,6 @@
 namespace Aardvark.VRVis.Opc
 
+open System
 open System.IO
 open Aardvark.Geometry
 open Aardvark.Base
@@ -12,6 +13,7 @@ module KdTrees =
 
     type LazyKdTree = {
         name              : string
+        opcPath           : string
         kdTree            : option<ConcreteKdIntersectionTree>
         affine            : Trafo3d
         boundingBox       : Box3d
@@ -66,19 +68,20 @@ module KdTrees =
             boundingBox = a
         }
 
-    let makeLazyTree a b c d e f g h i j =
+    let makeLazyTree a b c d e f g h i j k =
         {
             name              = a
+            opcPath           = b
             kdTree            = None
-            affine            = b
-            boundingBox       = c
-            boundingBox2d     = d
-            kdtreePath        = e
-            objectSetPath     = f
-            coordinatesPath   = g
-            texturePath       = h
-            positions2dPath   = i
-            positions2dAffine = j
+            affine            = c
+            boundingBox       = d
+            boundingBox2d     = e
+            kdtreePath        = f
+            objectSetPath     = g
+            coordinatesPath   = h
+            texturePath       = i
+            positions2dPath   = j
+            positions2dAffine = k
         }
 
     // PICKLER
@@ -88,7 +91,8 @@ module KdTrees =
 
     let lazyPickler : Pickler<LazyKdTree> =
         Pickler.product makeLazyTree
-        ^+ Pickler.field (fun s -> s.name)                Pickler.auto<string>
+        ^+ Pickler.field (fun s -> s.name)                Pickler.string
+        ^+ Pickler.field (fun s -> s.opcPath)             Pickler.string
         ^+ Pickler.field (fun s -> s.affine)              Pickler.auto<Trafo3d>
         ^+ Pickler.field (fun s -> s.boundingBox)         Pickler.auto<Box3d>
         ^+ Pickler.field (fun s -> s.boundingBox2d)       Pickler.auto<Box3d>
@@ -125,6 +129,23 @@ module KdTrees =
         //Log.stop()
         ConcreteKdIntersectionTree(treeOida, Trafo3d.Identity)
 
+    // Checks if the cached directories are valid
+    // Throws an ArgumentException on failure
+    let validatePaths (tree : Level0KdTree) =
+        let validate f path =
+            if not (f path) then raise (ArgumentException path)
+
+        let validateDir = validate Directory.Exists
+        let validateFile = validate File.Exists
+
+        match tree with
+        | LazyKdTree t ->
+            let dirs = [ t.opcPath ]
+            let files = [ t.coordinatesPath; t.kdtreePath; t.objectSetPath; t.texturePath ]
+            dirs |> List.iter validateDir
+            files |> List.iter validateFile
+        | _ -> ()
+
     let loadKdTrees' (h : PatchHierarchy) (trafo:Trafo3d) (load : bool) (mode : ViewerModality) (b : BinarySerializer) : hmap<Box3d, Level0KdTree> =
         //ObjectBuilder
 
@@ -137,10 +158,14 @@ module KdTrees =
             if load then
                 try
                     let trees : List<Box3d * Level0KdTree> = loadAs cacheFile b
+                    trees |> List.iter (fun (_, t) -> validatePaths t)
                     trees |> HMap.ofList |> Some
                 with
                 | :? FileNotFoundException ->
                     Log.line "did not find lazy kdtree cache"
+                    None
+                | :? ArgumentException as ex ->
+                    Log.line "referenced path in lazy kdtree cache invalid: %s" ex.Message
                     None
                 | _ ->
                     Log.line "could not load lazy kdtree cache"
@@ -195,6 +220,7 @@ module KdTrees =
 
                         let lazyTree : LazyKdTree = {
                             name                = info.Name
+                            opcPath             = h.opcPaths.Opc_DirAbsPath
                             kdTree              = None
                             objectSetPath       = dir +/ pos
                             coordinatesPath     = dir +/ (List.head info.Coordinates)

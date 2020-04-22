@@ -23,6 +23,9 @@
     <Compile Include="Neighbouring.fs" />
     <Compile Include="Outline\OutlineModel.fs" />
     <Compile Include="CrackDetection\Wrapper.fs" />
+    <Compile Include="CrackDetection\Utilities.fs" />
+    <Compile Include="CrackDetection\OPCUtilities.fs" />
+    <Compile Include="CrackDetection\PatchMap.fs" />
     <Compile Include="CrackDetection\CrackDetection-Model.fs" />
     <Compile Include="CrackDetection\CrackDetection.fs" />
     <Compile Include="Model.fs" />

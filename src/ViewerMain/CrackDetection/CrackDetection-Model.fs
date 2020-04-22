@@ -3,6 +3,7 @@
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open OpcViewer.Base.Picking
+open Aardvark.SceneGraph.Opc
 
 [<DomainType>]
 type CrackDetectionModel =
@@ -13,4 +14,4 @@ type CrackDetectionModel =
 
 type CrackDetectionAction =
     | AddCrackPoint of HitInfo
-    | FinishCrack
+    | FinishCrack of PatchHierarchy seq

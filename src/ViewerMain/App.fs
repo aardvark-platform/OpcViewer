@@ -106,7 +106,8 @@ module App =
                     { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
                 | Interactions.PickCrackDetection ->
                     let crackd =
-                        model.crackDetection |> CrackDetectionApp.update FinishCrack
+                        let h = model.opcInfos |> HMap.toSeq |> Seq.map (fun (_, opc) -> opc.patchHierarchy)
+                        model.crackDetection |> CrackDetectionApp.update (FinishCrack h)
 
                     let points =
                         crackd.outputPoints
