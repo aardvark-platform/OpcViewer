@@ -2,7 +2,6 @@
 
 open System
 open Aardvark.Base
-open Aardvark.SceneGraph.Opc
 
 [<AutoOpen>]
 module Utilties =

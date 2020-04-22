@@ -33,11 +33,9 @@ module PatchId =
     let create (opcPath : string) (name : string) =
         PatchId (opcPath, name)
 
-    let ofKdTree (tree : LazyKdTree) =
-        PatchId (tree.opcPath, tree.name)
-
     let ofHit (hit : HitInfo) =
-        hit.kdTree |> ofKdTree
+        let opcPath = hit.opcInfo.patchHierarchy.opcPaths.Opc_DirAbsPath
+        PatchId (opcPath, hit.kdTree.name)
 
     let opc = function
         PatchId (x, _) -> x

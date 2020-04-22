@@ -13,7 +13,6 @@ module KdTrees =
 
     type LazyKdTree = {
         name              : string
-        opcPath           : string
         kdTree            : option<ConcreteKdIntersectionTree>
         affine            : Trafo3d
         boundingBox       : Box3d
@@ -68,20 +67,19 @@ module KdTrees =
             boundingBox = a
         }
 
-    let makeLazyTree a b c d e f g h i j k =
+    let makeLazyTree a b c d e f g h i j =
         {
             name              = a
-            opcPath           = b
             kdTree            = None
-            affine            = c
-            boundingBox       = d
-            boundingBox2d     = e
-            kdtreePath        = f
-            objectSetPath     = g
-            coordinatesPath   = h
-            texturePath       = i
-            positions2dPath   = j
-            positions2dAffine = k
+            affine            = b
+            boundingBox       = c
+            boundingBox2d     = d
+            kdtreePath        = e
+            objectSetPath     = f
+            coordinatesPath   = g
+            texturePath       = h
+            positions2dPath   = i
+            positions2dAffine = j
         }
 
     // PICKLER
@@ -92,7 +90,6 @@ module KdTrees =
     let lazyPickler : Pickler<LazyKdTree> =
         Pickler.product makeLazyTree
         ^+ Pickler.field (fun s -> s.name)                Pickler.string
-        ^+ Pickler.field (fun s -> s.opcPath)             Pickler.string
         ^+ Pickler.field (fun s -> s.affine)              Pickler.auto<Trafo3d>
         ^+ Pickler.field (fun s -> s.boundingBox)         Pickler.auto<Box3d>
         ^+ Pickler.field (fun s -> s.boundingBox2d)       Pickler.auto<Box3d>
@@ -132,18 +129,13 @@ module KdTrees =
     // Checks if the cached directories are valid
     // Throws an ArgumentException on failure
     let validatePaths (tree : Level0KdTree) =
-        let validate f path =
-            if not (f path) then raise (ArgumentException path)
-
-        let validateDir = validate Directory.Exists
-        let validateFile = validate File.Exists
+        let validate path =
+            if not (File.Exists path) then raise (ArgumentException path)
 
         match tree with
         | LazyKdTree t ->
-            let dirs = [ t.opcPath ]
-            let files = [ t.coordinatesPath; t.kdtreePath; t.objectSetPath; t.texturePath ]
-            dirs |> List.iter validateDir
-            files |> List.iter validateFile
+            [ t.coordinatesPath; t.kdtreePath; t.objectSetPath; t.texturePath ]
+            |> List.iter validate
         | _ -> ()
 
     let loadKdTrees' (h : PatchHierarchy) (trafo:Trafo3d) (load : bool) (mode : ViewerModality) (b : BinarySerializer) : hmap<Box3d, Level0KdTree> =
@@ -220,7 +212,6 @@ module KdTrees =
 
                         let lazyTree : LazyKdTree = {
                             name                = info.Name
-                            opcPath             = h.opcPaths.Opc_DirAbsPath
                             kdTree              = None
                             objectSetPath       = dir +/ pos
                             coordinatesPath     = dir +/ (List.head info.Coordinates)
