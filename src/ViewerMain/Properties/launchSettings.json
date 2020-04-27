@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "opc=\"D:\\_WORK\\Dibit Crack\\1257_Perjen_Ost_Spb1\""
+      "commandLineArgs": "opc=\"D:\\_WORK\\Dibit Crack\\Niklasdorf_EdgeMap_OPC\""
     }
   }
 }

@@ -56,6 +56,18 @@ module OPCUtilities =
             |> loadMap<V3f> rootPath patch.info.Positions
             |> Matrix.map (V3d >> patch.info.Local2Global.Forward.TransformPos)
 
+        let loadTextureCoords (rootPath : string) (patch : Patch) =
+            patch
+            |> loadMap<V2f> rootPath (List.head patch.info.Coordinates)
+            |> Matrix.map V2d
+
+        // TODO: Make this more usable and general if we need it
+        // E.g. figure out how to locate the edge texture index
+        let loadEdgeTexture (opcPath : string) (patch : Patch) =
+            let path = Patch.extractTexturePath (OpcPaths opcPath) patch.info 1
+            let image = PixImage.Create(path).AsPixImage<byte>()
+            image.ChannelArray.[0] |> Matrix.map float
+
         let loadEdgeMap (rootPath : string) (patch : Patch) =
             try
                 patch

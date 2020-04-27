@@ -6,6 +6,18 @@ open Aardvark.Base
 [<AutoOpen>]
 module Utilties =
 
+    // TODO: Remove this once we have upgraded to Aardvark.Base v5
+    [<AutoOpen>]
+    module private Generic =
+
+        [<AutoOpen>]
+        module Aux =
+            let inline lerpAux (_ : ^z) (_ : ^w) (t : ^a) (x : ^b) (y : ^b) =
+                ((^z or ^w or ^a or ^b) : (static member Lerp : ^a -> ^b -> ^b -> ^b) (t, x, y))
+
+        let inline lerp t x y =
+            lerpAux Unchecked.defaultof<Fun> Unchecked.defaultof<VecFun> t x y
+
     [<AutoOpen>]
     module BoxExtensions =
 
@@ -16,11 +28,12 @@ module Utilties =
             member x.Intersects (b : Box3d) =
                 b |> Box2d.ofBox3d |> x.Intersects
 
+    module Lazy =
+
+        let get (l : Lazy<'a>) =
+            l.Value
+
     module Matrix =
-        let private lerp =
-            Func<float, V3d, V3d, V3d>(
-                fun t a b -> VecFun.Lerp(t, a, b)
-            )
 
         let size (m : Matrix<'a>) =
             m.Dim |> V2i
@@ -31,21 +44,21 @@ module Utilties =
         let subMatrix (origin : V2i) (size : V2i) (m : Matrix<'a>) =
             m.SubMatrix(origin, size)
 
-        let toPixImage (matrix : Matrix<C3b>) =
-            TensorExtensions.ToPixImage<byte> matrix
+        let inline toPixImage (channels : Matrix< ^a> seq) =
+            PixImage< ^a> channels
 
-        let map (map : 'a -> 'b) (input : Matrix<'a>) : Matrix<'b> =
-            let array = input.Array.ToArrayOfT<'a>() |> Array.map map
-            Matrix (array, input.Size)
+        let map (f : 'a -> 'b) (input : Matrix<'a>) : Matrix<'b> =
+            input.Map f
 
-        let get (position : V2i) (matrix : Matrix<V3d>) =
+        let get (position : V2i) (matrix : Matrix<'a>) =
             matrix.[position]
 
-        let sample (uv : V2d) (matrix : Matrix<V3d>) =
+        let inline sample (uv : V2d) (matrix : Matrix< ^a>) =
             let size = V2d (matrix.Dim.XY - V2l.II)
             let texel = V2d (uv.X, uv.Y) * size
 
-            matrix.Sample4Clamped(texel, lerp, lerp)
+            let interp = Func<float, ^a, ^a, ^a>(lerp)
+            matrix.Sample4Clamped(texel, interp, interp)
 
     module Array =
 

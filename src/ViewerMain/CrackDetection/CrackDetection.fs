@@ -15,7 +15,8 @@ module CrackDetectionApp =
     let private saveResultImage (edgeMap : Matrix<float>) (controlPoints : #seq<V2i>) (crackPoints : #seq<V2f>) =
         let resultImage =
             edgeMap
-            |> Matrix.map (byte >> C3b)
+            |> Matrix.map byte
+            |> Array.create 3
             |> Matrix.toPixImage
 
         controlPoints
@@ -77,7 +78,7 @@ module CrackDetectionApp =
 
         // Create a patch map
         let map =
-            leafs |> PatchMap.create
+            leafs |> PatchMap.create Texture
 
         // Load edge map
         let edgeMap =
@@ -110,11 +111,7 @@ module CrackDetectionApp =
 
             // Return points
             crackPoints
-            |> Array.choose (fun p ->
-                V2i p
-                |> PatchMap.map2patch map
-                |> Option.map (fun (patch, uv) -> uv |> PatchInfo.patch2global patch)
-            )
+            |> Array.choose (V2i >> PatchMap.map2global map)
             |> PList.ofArray
 
         else
