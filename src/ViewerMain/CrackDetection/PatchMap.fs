@@ -116,7 +116,7 @@ module PatchInfo =
         | Texture ->
             let size = patch |> size Texture
             let uv = patch.textureCoords.Value |> Matrix.get coords
-            let local = uv * V2d (size - V2i.II)
+            let local = V2d(1.0 - uv.X, uv.Y) * V2d (size - V2i.II)
             V2i (local.Round ())
         | AttributeMap ->
             coords
@@ -125,7 +125,9 @@ module PatchInfo =
         match typ with
         | Texture ->
             let size = patch |> size Texture
-            let uv = V2d local / V2d (size - V2i.II)
+            let uv =
+                let norm = V2d local / V2d (size - V2i.II)
+                V2d (1.0 - norm.X, norm.Y)
 
             // TODO: This is quite inaccurate. Unfortunately, there
             // is no easy way to get from texture space to world space
