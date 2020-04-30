@@ -116,7 +116,7 @@ module PatchInfo =
         | Texture ->
             let size = patch |> size Texture
             let uv = patch.textureCoords.Value |> Matrix.get coords
-            let local = V2d(1.0 - uv.X, uv.Y) * V2d (size - V2i.II)
+            let local = uv * V2d (size - V2i.II)
             V2i (local.Round ())
         | AttributeMap ->
             coords
@@ -125,9 +125,7 @@ module PatchInfo =
         match typ with
         | Texture ->
             let size = patch |> size Texture
-            let uv =
-                let norm = V2d local / V2d (size - V2i.II)
-                V2d (1.0 - norm.X, norm.Y)
+            let uv = V2d local / V2d (size - V2i.II)
 
             // TODO: This is quite inaccurate. Unfortunately, there
             // is no easy way to get from texture space to world space
@@ -191,11 +189,16 @@ module PatchMap =
             let bb = p.boundingBox
             Fun.ApproximateEquals (abs bb.Min.Y, abs bb.Max.Y, 0.001)
 
+        let sort =
+            match typ with
+            | Texture -> Array.sortBy
+            | AttributeMap -> Array.sortByDescending
+
         patches
         |> Seq.filter (isInvalid >> not)
         |> Array.ofSeq
         |> Array.cluster PatchInfo.alignsY
-        |> Array.sortByDescending (fun row -> row.[0].boundingBox.Center.Y)
+        |> sort (fun row -> row.[0].boundingBox.Center.Y)
         |> Array.map (Array.sortBy (fun p -> p.boundingBox.Center.X))
         |> Array.toArray2d
         |> fromArray typ
