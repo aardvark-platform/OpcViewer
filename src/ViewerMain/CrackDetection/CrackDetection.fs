@@ -8,6 +8,7 @@ open Aardvark.SceneGraph.Opc
 open Aardvark.UI
 open OpcViewer.Base
 open OpcViewer.Base.Picking
+open System.Diagnostics
 
 module CrackDetectionApp =
 
@@ -19,19 +20,29 @@ module CrackDetectionApp =
             |> Array.create 3
             |> Matrix.toPixImage
 
+        resultImage.SaveAsImage (@".\cracks_orig.png")
+
         controlPoints
         |> Seq.iter(fun x ->
             for i in 0 .. 2 do
-                resultImage.ChannelArray.[i].SetCross(x, 2, if i = 0 then 255uy else 0uy)
+                resultImage.ChannelArray.[i].SetCross(x, 4, if i = 0 then 255uy else 0uy)
         )
 
         crackPoints
         |> Seq.map V2d
-        |> Seq.pairwise
-        |> Seq.iter (fun (a, b) ->
+        |> Seq.iter(fun x ->
             for i in 0 .. 2 do
-                resultImage.ChannelArray.[i].SetLine(a, b, if i = 2 then 255uy else 0uy)
+                resultImage.ChannelArray.[i].SetCross(x, 1.0, if i = 2 then 255uy else 0uy)
         )
+
+        //connect crackpoints
+        //crackPoints
+        //|> Seq.map V2d
+        //|> Seq.pairwise
+        //|> Seq.iter (fun (a, b) ->
+        //    for i in 0 .. 2 do
+        //        resultImage.ChannelArray.[i].SetLine(a, b, if i = 2 then 255uy else 0uy)
+        //)
 
         resultImage.SaveAsImage (@".\cracks.png")
 
@@ -104,16 +115,26 @@ module CrackDetectionApp =
 
             // Find the crack
             let (w, h) = (uint32 size.X, uint32 size.Y)
-            let crackPoints = Wrapper.findCrack w h coeff.Data controlPointsArr
+            let crackPoints = 
+                Wrapper.findCrack w h coeff.Data controlPointsArr
 
             // Save results as image
             saveResultImage edgeMap controlPoints crackPoints
+
+            Process.Start("explorer.exe", @".\cracks.png") |> ignore
+
+            let hasFloatingPart (p : V2f) =
+                let x = p.X - p.X.Floor()
+                let y = p.Y - p.Y.Floor()
+                (x > 0.0f) || (y > 0.0f)
+
+            if crackPoints |> Seq.exists hasFloatingPart then
+                failwith "floating!!!"
 
             // Return points
             crackPoints
             |> Array.choose (V2i >> PatchMap.map2global map)
             |> PList.ofArray
-
         else
             PList.empty
 
@@ -129,6 +150,8 @@ module CrackDetectionApp =
         let configDir = @".\crackDetection"
 
         Wrapper.initialize configDir logDir
+        Wrapper.setDebugLogging true
+        Log.line "[CrackDetection] init dll version %A"  Wrapper.getLibraryVersion
 
     /// Frees resources of the native library
     let free =
@@ -141,7 +164,7 @@ module CrackDetectionApp =
 
         | FinishCrack hierarchies ->
             let op = model.inputPoints |> findCrack hierarchies
-            { model with outputPoints = op }
+            { model with outputPoints = op; inputPoints = PList.empty }
 
     let viewBrush near far (model : MCrackDetectionModel) =
         let points = alist {
@@ -154,7 +177,7 @@ module CrackDetectionApp =
 
         let pointsSg =
             points
-            |> SgUtilities.drawPointList color ~~10.0 ~~0.1 near far
+            |> SgUtilities.drawPointList color ~~4.0 ~~0.1 near far
 
         pointsSg
         |> Sg.noEvents

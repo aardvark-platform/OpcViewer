@@ -103,7 +103,7 @@ module IntersectionController =
             Log.error "null ref exception in kdtree intersection %A" e
             None
 
-    let calculateBarycentricCoordinates (triangle: Triangle3d) (pos: V3d) =
+    let calculateBarycentricCoordinates3d (triangle: Triangle3d) (pos: V3d) =
         let v0 = triangle.P1 - triangle.P0
         let v1 = triangle.P2 - triangle.P0
         let v2 = pos - triangle.P0
@@ -120,7 +120,26 @@ module IntersectionController =
         let w = (d00 * d21 - d01 * d20) / denom
         let u = 1.0 - v - w
 
-        V3d (v, w, u)
+        V3d (u, v, w)
+
+    let calculateBarycentricCoordinates2d (triangle: Triangle2d) (pos: V2d) =
+        let v0 = triangle.P1 - triangle.P0
+        let v1 = triangle.P2 - triangle.P0
+        let v2 = pos - triangle.P0
+
+        let d00 = V2d.Dot(v0, v0)
+        let d01 = V2d.Dot(v0, v1)
+        let d11 = V2d.Dot(v1, v1)
+        let d20 = V2d.Dot(v2, v0)
+        let d21 = V2d.Dot(v2, v1)
+
+        let denom = d00 * d11 - d01 * d01
+
+        let v = (d11 * d20 - d01 * d21) / denom
+        let w = (d00 * d21 - d01 * d20) / denom
+        let u = 1.0 - v - w
+
+        V3d (u, v, w)
 
     let insideTriangle (triangle: Triangle2d) (p: V2d) =
         //  if p lies inside the triangle, then a1 + a2 + a3 must be equal to a.
@@ -186,7 +205,7 @@ module IntersectionController =
     let calcTriangleHit (kdTree: LazyKdTree) (index: int) (position: V3d) =
         let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
         let triangle = triangles.[index]
-        let barycentric = calculateBarycentricCoordinates triangle position
+        let barycentric = calculateBarycentricCoordinates3d triangle position
 
         if Box3d.Unit.Contains barycentric then
             Some { indices = V3i triangleIndices.[index]
@@ -208,7 +227,7 @@ module IntersectionController =
         let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
         let triangle = triangles.[index]
 
-        let baryCentricCoords = calculateBarycentricCoordinates triangle position
+        let baryCentricCoords = calculateBarycentricCoordinates3d triangle position
 
         let coordinates = kdTree.coordinatesPath |> fromFile<V2f>
 
@@ -271,7 +290,7 @@ module IntersectionController =
         let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
         let triangle = triangles.[index]
 
-        let baryCentricCoords = calculateBarycentricCoordinates triangle position
+        let baryCentricCoords = calculateBarycentricCoordinates3d triangle position
 
         Log.line "barycentricCoords: u: %f, v: %f, w: %f" baryCentricCoords.X baryCentricCoords.Y baryCentricCoords.Z
 
@@ -479,9 +498,11 @@ module Intersect =
                 //  | None -> None
                 // =====================================
 
-                { m with
+                { 
+                    m with
                       intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint
-                      hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo }
+                      hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo 
+                }
 
             | None ->
                 Log.error "[Intersection] didn't hit"
@@ -495,8 +516,8 @@ module Intersect =
         Log.line "try intersecting %A" boxId
 
         match m.pickingInfos |> HMap.tryFind boxId with
-        | Some kk ->
-            let closest = intersectWithOpcIndex (Some kk.kdTree) fray
+        | Some hitOpcData ->
+            let closest = intersectWithOpcIndex (Some hitOpcData.kdTree) fray
             match closest with
             | Some (point, triangle, kd) ->
 
@@ -504,19 +525,21 @@ module Intersect =
 
                 let hit =
                     match kd, triangle with
-                    | LazyKdTree k, Some t ->
-                        Some
-                            { position = point
-                              triangle = t
-                              opcInfo = kk
-                              kdTree = k }
+                    | LazyKdTree level0KdTree, Some hitTriangle ->
+                        { 
+                            position = point
+                            triangle = hitTriangle
+                            opcInfo  = hitOpcData
+                            kdTree   = level0KdTree
+                        } |> Some                            
                     | _ -> None
 
-                { m with
-                      intersectionPoints = m.intersectionPoints |> PList.prepend point
-                      hitPointsInfo = HMap.add point boxId m.hitPointsInfo
-                      lastHit = hit }
-
+                { 
+                    m with
+                        intersectionPoints = m.intersectionPoints |> PList.prepend point
+                        hitPointsInfo = HMap.add point boxId m.hitPointsInfo
+                        lastHit = hit 
+                }
             | None ->
                 Log.error "[Intersection] didn't hit"
                 { m with lastHit = None }

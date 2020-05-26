@@ -51,12 +51,16 @@ module AnnotationApp =
     let viewOutlines (near: IMod<float>) (far: IMod<float>) (model: MAnnotationModel) = 
         model |> drawOutlines near far
 
+    //TODO refactor ... completetly unclear from API how polygons are drawn, where do points and lines come from
     let viewGrouped (near: IMod<float>) (far: IMod<float>) (startRenderPass: RenderPass) (model: MAnnotationModel) : (ISg<'a> * RenderPass) = 
 
         let filledSg, nextRenderPass = 
-            model |> AnnotationSg.drawAnnotationsFilledGrouped (RenderPass.after "" RenderPassOrder.Arbitrary startRenderPass)
+            model 
+            |> AnnotationSg.drawAnnotationsFilledGrouped (RenderPass.after "" RenderPassOrder.Arbitrary startRenderPass)
+
         let outlineSg = 
-            model |> drawOutlines near far
+            model 
+            |> drawOutlines near far
             |> Sg.pass nextRenderPass
 
         let sg = 

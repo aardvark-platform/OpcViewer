@@ -129,15 +129,38 @@ module PatchInfo =
 
             // TODO: This is quite inaccurate. Unfortunately, there
             // is no easy way to get from texture space to world space
-            let (index, _) =
-                patch.textureCoords.Value.Data
-                |> Array.indexed
-                |> Array.fold (fun (currentIndex, currentDist) (i, x) ->
-                    let d = V2d.Distance(x, uv)
-                    if d < currentDist then (i, d) else (currentIndex, currentDist)
-                ) (0, System.Double.MaxValue)
+            //let (index, _) =
+            //    patch.textureCoords.Value.Data
+            //    |> Array.indexed
+            //    |> Array.fold (fun (currentIndex, currentDist) (i, x) ->
+            //        let d = V2d.Distance(x, uv)
+            //        if d < currentDist then (i, d) else (currentIndex, currentDist)
+            //    ) (0, System.Double.MaxValue)
 
-            patch.positionsMap.Value.Data.[index]
+            //TODO: super inefficient ... use point kdtree
+            let indexTriangle =
+                patch.textureCoords.Value.Data 
+                |> Array.indexed
+                |> Array.map(fun (i,x) -> (i, V2d.Distance(x, uv)))
+                |> Array.sortBy snd                
+                |> Array.take 3
+                |> Array.map fst
+                            
+            let uvTriangle = 
+                indexTriangle 
+                |> Array.map(fun i -> patch.textureCoords.Value.Data.[i]) 
+                |> Triangle2d
+            
+            let bary =
+               IntersectionController.calculateBarycentricCoordinates2d uvTriangle uv
+            
+            let posTriangle = 
+                indexTriangle 
+                |> Array.map(fun i -> patch.positionsMap.Value.Data.[i]) 
+                |> Triangle3d
+            
+            posTriangle.P0 * bary.X + posTriangle.P1 * bary.Y + posTriangle.P2 * bary.Z
+                        
         | AttributeMap ->
             patch.positionsMap.Value |> Matrix.get local
 
@@ -262,4 +285,6 @@ module PatchMap =
     let map2global (map : PatchMap) (coord : V2i) =
         coord
         |> map2patch map
-        |> Option.map (fun (patch, local) -> patch |> PatchInfo.patch2global map.typ local)
+        |> Option.map (fun (patch, local) -> 
+            patch |> PatchInfo.patch2global map.typ local
+        )

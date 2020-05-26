@@ -225,10 +225,11 @@ module DrawingApp =
         //let pointsSg = [points; pointsInner] |> Sg.group |> Sg.noEvents |> Sg.pass (RenderPass.after "points" RenderPassOrder.Arbitrary RenderPass.main)
         //[pointsSg; edgesSg] |> Sg.ofList
         
-        [edgesSg; edgesDirectSg; pointsSg; pointsInnerSg] |> Sg.group
+        //[edgesSg; edgesDirectSg; pointsSg; pointsInnerSg] |> Sg.group
+        pointsSg
 
     let drawContour (points: alist<V3d>) (segments: alist<Segment>) (style: MBrushStyle) (near: IMod<float>) (far: IMod<float>) =  
-        drawContourWithPointSize points segments style near far (Mod.constant 10.0) (Mod.constant 0.1)
+        drawContourWithPointSize points segments style near far (Mod.constant 4.0) (Mod.constant 0.1)
 
     let view (near: IMod<float>) (far: IMod<float>) (model: MDrawingModel)  = 
         drawContourWithPointSize model.points model.segments model.style near far (Mod.constant 10.0) (Mod.constant 0.1) |> Sg.noEvents

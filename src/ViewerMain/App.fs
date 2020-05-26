@@ -92,7 +92,13 @@ module App =
                 //model.crackDetection |> Serialization.save ".\crackdetectionState" |> ignore
                 model
             | Keys.Escape ->
-                { model with crackDetection = CrackDetectionApp.initModel }
+                { model with crackDetection = CrackDetectionApp.initModel; annotations = AnnotationModel.initial }
+            | Keys.F ->
+                match model.fillMode with
+                | FillMode.Fill ->
+                    { model with fillMode = FillMode.Line}
+                | _ -> 
+                    { model with fillMode = FillMode.Fill}
             | Keys.Enter ->
               //let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
               //let updatedDrawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) // TODO...add hitFunc
@@ -218,6 +224,7 @@ module App =
                 |> PList.toArray
                 |> Array.mapi (fun index info ->
                     Sg.createSingleOpcSg m.opcAttributes.selectedScalar m.opcAttributes.selectedTexture m.pickingActive interaction m.cameraState.view info
+                    |> Sg.fillMode m.fillMode
                     |> Sg.uniform "DebugColor" (Mod.constant colors.[index % colors.Length])
                 )
                 |> Sg.ofArray
@@ -228,7 +235,7 @@ module App =
                 toEffect DefaultSurfaces.diffuseTexture
                 toEffect Shader.AttributeShader.falseColorLegend //falseColorLegendGray
                 toEffect Shader.AttributeShader.markPatchBorders
-                Shader.MultipliedDebugColor.Effect
+             //   Shader.MultipliedDebugColor.Effect
             ]
 
         let boundingBoxSg =
@@ -299,9 +306,9 @@ module App =
             FreeFlyController.controlledControl m.cameraState Camera m.mainFrustum
                 (AttributeMap.ofList [
                     style "width: 100%; height:100%";
-                    attribute "showFPS" "true";       // optional, default is false
+                    attribute "showFPS" "false";       // optional, default is false
                     attribute "useMapping" "true"
-                    attribute "data-renderalways" "false"
+                   // attribute "data-renderalways" "false"
                     attribute "data-samples" "4"
                     onKeyDown (Message.KeyDown)
                     onKeyUp (Message.KeyUp)

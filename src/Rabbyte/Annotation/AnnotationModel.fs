@@ -119,7 +119,7 @@ module AnnotationModel =
                 secondary = { c = C4b.Yellow }
                 lineStyle = Some Solid
                 areaStyle = Some Filled
-                thickness = 3.0
+                thickness = 2.0
                 samplingRate = 0.2
             }
 
