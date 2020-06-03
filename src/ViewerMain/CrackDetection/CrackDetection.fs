@@ -28,21 +28,21 @@ module CrackDetectionApp =
                 resultImage.ChannelArray.[i].SetCross(x, 4, if i = 0 then 255uy else 0uy)
         )
 
-        crackPoints
-        |> Seq.map V2d
-        |> Seq.iter(fun x ->
-            for i in 0 .. 2 do
-                resultImage.ChannelArray.[i].SetCross(x, 1.0, if i = 2 then 255uy else 0uy)
-        )
-
-        //connect crackpoints
         //crackPoints
         //|> Seq.map V2d
-        //|> Seq.pairwise
-        //|> Seq.iter (fun (a, b) ->
+        //|> Seq.iter(fun x ->
         //    for i in 0 .. 2 do
-        //        resultImage.ChannelArray.[i].SetLine(a, b, if i = 2 then 255uy else 0uy)
+        //        resultImage.ChannelArray.[i].SetCross(x, 1.0, if i = 2 then 255uy else 0uy)
         //)
+
+        //connect crackpoints
+        crackPoints
+        |> Seq.map V2d
+        |> Seq.pairwise
+        |> Seq.iter (fun (a, b) ->
+            for i in 0 .. 2 do
+                resultImage.ChannelArray.[i].SetLine(a, b, if i = 2 then 255uy else 0uy)
+        )
 
         resultImage.SaveAsImage (@".\cracks.png")
 
