@@ -26,15 +26,12 @@ let main argv =
 
     //CooTransformation.deInitCooTrafo()
 
-    use app = new OpenGlApplication()
-    //let opcDir = "C:\Users\laura\VRVis\Data\CapeDesire\Surface\Cape_Desire_RGB"
-    let opcDir = argv.[0];
-    let axisFile = None //if argv.Length > 1 then Some(argv.[1]) else None
+    use app = new OpenGlApplication()    
 
     let argsList = List.fold(fun (x:string) (y : string)-> x + " " + y) String.Empty (argv |> Array.toList)
 
     let argsKv = 
-      argv 
+        argv 
         |> Array.filter(fun x -> x.Contains "=")
         |> Array.map(fun x -> 
               let kv = x.Split [|'='|]
@@ -42,15 +39,17 @@ let main argv =
         |> HashMap.ofArray
 
     let opcDir =
-      match argsKv |> HashMap.tryFind "opc" with
-      | Some dir -> dir
-      | None -> failwith "need opc directory ... opc=\"[opcfilepath]\" "
+        match argsKv |> HashMap.tryFind "opc" with
+        | Some dir -> dir
+        | None -> failwith "need opc directory ... opc=\"[opcfilepath]\" "
 
-    let axisFile = argsKv |> HashMap.tryFind "axis"
-
-    let rotate = argsList.Contains("-rotate")
-    
-    let instance =  OpcSelectionViewer.App.app opcDir axisFile rotate |> App.start 
+    let instance =  
+        OpcSelectionViewer.App.app 
+            opcDir 
+            (argsKv |> HashMap.tryFind "axis") 
+            (argsKv |> HashMap.tryFind "qpos")
+            (argsList.Contains("-rotate"))
+        |> App.start 
     //let instance = OpcOutlineTest.OutlineApp.appOutlines opcDir |> App.start 
 
     // use can use whatever suave server to start you mutable app. 

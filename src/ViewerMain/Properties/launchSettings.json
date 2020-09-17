@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "opc=\"F:\\pro3d\\data\\20200220_DinosaurQuarry2\\Dinosaur_Quarry_2\""
+      "commandLineArgs": "opc=\"d:\\_WORK\\A10-Zetzenberg-RFB-Villach\" qpos=\"d:\\_WORK\\A10-Zetzenberg-RFB-Villach\\Qpos\""
     }
   }
 }

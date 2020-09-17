@@ -17,34 +17,36 @@ open Rabbyte.Annotation
 
 open Adaptify
 
+open OpcViewer.SourceLinking
+
 type Message =
-  | Camera           of FreeFlyController.Message
-  | KeyUp            of key : Keys
-  | KeyDown          of key : Keys  
-  | UpdateDockConfig of DockConfig    
-  | PickingAction    of PickingAction
-  | AttributeAction  of AttributeAction
-  | DrawingAction    of DrawingAction
-  | AnnotationAction of AnnotationAction
+  | Camera              of FreeFlyController.Message
+  | KeyUp               of key : Keys
+  | KeyDown             of key : Keys  
+  | UpdateDockConfig    of DockConfig
+  | PickingAction       of PickingAction
+  | AttributeAction     of AttributeAction
+  | DrawingAction       of DrawingAction
+  | AnnotationAction    of AnnotationAction
+  | SourceLinkingAction of SourceLinkingAction
 
-type CameraStateLean = 
-  { 
-     location : V3d
-     forward  : V3d
-     sky      : V3d
-  }
+type CameraStateLean =  { 
+    location : V3d
+    forward  : V3d
+    sky      : V3d
+}
 
-  type Stationing = {
-      sh : double
-      sv : double
-  }
+type Stationing = {
+    sh : double
+    sv : double
+}
 
-  type OrientedPoint = {
-      direction             : V3d
-      offsetToMainAxisPoint : V3d
-      position              : V3d
-      stationing            : Stationing
-  }
+type OrientedPoint = {
+    direction             : V3d
+    offsetToMainAxisPoint : V3d
+    position              : V3d
+    stationing            : Stationing
+}
 
 [<ModelType>]
 type Axis = {
@@ -56,23 +58,24 @@ type Axis = {
 }
 
 [<ModelType>]
-type Model =
-    {
-        cameraState          : CameraControllerState
-        mainFrustum          : Frustum
-        fillMode             : FillMode                                
-        [<NonAdaptive>]
-        patchHierarchies     : list<PatchHierarchy> 
-        boundingBox          : Box3d
-        axis                 : Option<Axis>
-        boxes                : list<Box3d>        
-        opcInfos             : HashMap<Box3d, OpcData>
-        threads              : ThreadPool<Message>
-        dockConfig           : DockConfig
-        picking              : PickingModel
-        pickingActive        : bool
+type Model = {
+    cameraState          : CameraControllerState
+    mainFrustum          : Frustum
+    fillMode             : FillMode                                
+    [<NonAdaptive>]
+    patchHierarchies     : list<PatchHierarchy> 
+    boundingBox          : Box3d
+    axis                 : Option<Axis>
+    boxes                : list<Box3d>        
+    opcInfos             : HashMap<Box3d, OpcData>
+    threads              : ThreadPool<Message>
+    dockConfig           : DockConfig
+    picking              : PickingModel
+    pickingActive        : bool
 
-        opcAttributes        : AttributeModel
-        drawing              : DrawingModel
-        annotations          : AnnotationModel
-    }  
+    opcAttributes        : AttributeModel
+    drawing              : DrawingModel
+    annotations          : AnnotationModel
+
+    sourceLinking        : SourceLinkingModel
+}
