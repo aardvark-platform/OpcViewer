@@ -18,7 +18,7 @@ open OpcViewer.Base
 
 module SourceLinkingApp =
 
-    let update (m : SourceLinkingModel) (a : SourceLinkingAction ) : SourceLinkingModel =
+    let update (m : SourceLinkingModel) (view : CameraView) (a : SourceLinkingAction ) : SourceLinkingModel =
         match a with
         | LoadCameras folderPath -> 
             let cameras = 
@@ -27,35 +27,31 @@ module SourceLinkingApp =
                     (Directory.GetFiles x) 
                     |> Array.filter(fun y -> Path.GetExtension(y) = ".qpos")
                 )
-                |> Array.collect (fun x -> x |> Array.map CameraShot.fromFileName)
+                |> Array.collect (Array.map CameraShot.fromFileName)
                 |> IndexList.ofArray
 
             { m with cameras = cameras }
+        | PickQueryPoint pos ->
+            let viewTrafo = view.ViewTrafo
+            let filteredShots =
+                m.cameras 
+                |> IndexList.map(fun x ->
+                    x
+                )
+
+            { m with queryPoint = Some pos }
 
     let view (m : AdaptiveSourceLinkingModel) : ISg<SourceLinkingAction> = 
-                
-        let createFrustumProj (c: CameraShot) =
-            let aspectRatio = (float c.imageSize.Y) / (float c.imageSize.X)
-
-            let hFov = (float c.imageSize.X ) / c.info.focalLength.X |> atan 
-
-            Log.line "hFov %A" (hFov.DegreesFromRadians())
-
-            let vFov = hFov * aspectRatio
-            let frustum = Frustum.perspective (hFov.DegreesFromRadians()) 0.01 5.0 aspectRatio
-          
-            let proj = Frustum.projTrafo(frustum)
-            (proj, proj.Inverse)
-
+                        
         let frustra =
             m.cameras 
-            |> AList.map(fun x -> 
-                let proj, iProj = x |> createFrustumProj
-                let trans = x.info.position|> Trafo3d.Translation 
-                let rot = Trafo3d(x.info.rotation)
-                let trafo = (iProj * rot * trans) |> AVal.constant
+            |> AList.map(fun shot -> 
+                
+                let trans = shot.info.position|> Trafo3d.Translation 
+                let rot = Trafo3d(shot.info.rotation)
+                let trafo = (shot.proj.Inverse * rot * trans) |> AVal.constant
 
-                let dir = x.info.rotation.Transform(V3d.OOI * (-1.0))
+                let dir = shot.info.rotation.Transform(V3d.OOI * (-1.0))
                 let color = C4f(dir.Normalized.Abs()).ToC4b()
 
                 Sg.wireBox (AVal.constant color) (AVal.constant (Box3d(V3d.NNN, V3d.III)))
@@ -68,9 +64,7 @@ module SourceLinkingApp =
                 do! DefaultSurfaces.stableTrafo
                 do! DefaultSurfaces.vertexColor                    
             }    
-            
-            
-
+                        
         let directions =
             m.cameras
             |> AList.map(fun x ->
@@ -105,8 +99,26 @@ module SourceLinkingApp =
                 do! DefaultSurfaces.stableTrafo
                 do! DefaultSurfaces.vertexColor
                 do! DefaultSurfaces.stableHeadlight
-            }                    
+            }       
+            
+        let queryPoint =
+            m.queryPoint 
+            |> AVal.map(fun x ->
+                match x with
+                | Some q -> 
+                    Sg.sphere 4 (AVal.constant C4b.Crimson) (AVal.constant 0.05)
+                    |> Sg.trafo (q |> Trafo3d.Translation |> AVal.constant)
+                | None ->
+                    Sg.empty            
+            ) 
+            |> Sg.dynamic
+            |> Sg.shader {
+                do! DefaultSurfaces.stableTrafo
+                do! DefaultSurfaces.vertexColor
+                do! DefaultSurfaces.stableHeadlight
+            }   
 
-        [points; frustra] 
+
+        [points; frustra; queryPoint]
         |> Sg.ofList
         

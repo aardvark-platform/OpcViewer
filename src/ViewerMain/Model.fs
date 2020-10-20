@@ -20,15 +20,19 @@ open Adaptify
 open OpcViewer.SourceLinking
 
 type Message =
-  | Camera              of FreeFlyController.Message
-  | KeyUp               of key : Keys
-  | KeyDown             of key : Keys  
-  | UpdateDockConfig    of DockConfig
-  | PickingAction       of PickingAction
-  | AttributeAction     of AttributeAction
-  | DrawingAction       of DrawingAction
-  | AnnotationAction    of AnnotationAction
-  | SourceLinkingAction of SourceLinkingAction
+| Camera              of FreeFlyController.Message
+| KeyUp               of key : Keys
+| KeyDown             of key : Keys  
+| UpdateDockConfig    of DockConfig
+| PickingAction       of PickingAction
+| AttributeAction     of AttributeAction
+| DrawingAction       of DrawingAction
+| AnnotationAction    of AnnotationAction
+| SourceLinkingAction of SourceLinkingAction
+
+type InteractionMode =
+| DrawPolygons
+| PlaceQueryPoint
 
 type CameraStateLean =  { 
     location : V3d
@@ -78,4 +82,6 @@ type Model = {
     annotations          : AnnotationModel
 
     sourceLinking        : SourceLinkingModel
+
+    interactionMode      : InteractionMode
 }

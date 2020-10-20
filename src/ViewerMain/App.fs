@@ -64,7 +64,7 @@ module App =
         match msg with
         | Camera m when model.pickingActive = false -> 
           { model with cameraState = FreeFlyController.update model.cameraState m; }
-        | Message.KeyDown m ->
+        | Message.KeyDown m->
             match m with
             | Keys.LeftCtrl -> 
               { model with pickingActive = true }
@@ -104,47 +104,65 @@ module App =
             //  { model with axis = axis; drawing = updatedDrawing }
             | _ -> 
                 model
-        | PickingAction msg -> 
-            // TODO...refactor this!
-            let pickingModel, drawingModel =
-                match msg with
-                | HitSurface (a,b) -> //,_) -> 
-                    //match model.axis with
-                    //| Some axis -> 
-                    //  let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
-                    //  PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
-                    //| None -> PickingApp.update model.picking msg
-                    
-                    let hitF (queryPoint: V3d) = 
-                        let fray = FastRay3d(V3d.Zero, (queryPoint).Normalized)
-                        model.picking.pickingInfos 
-                        |> HashMap.tryFind model.boundingBox   // WRONG use local boundingbox
-                        |> Option.bind (fun kk -> 
-                            OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some kk.kdTree) fray 
-                            |> Option.map (fun closest ->
-                                fray.Ray.GetPointOnRay closest
+        | PickingAction msg  -> 
+            match model.interactionMode with
+            | InteractionMode.DrawPolygons ->
+                // TODO...refactor this!
+                let pickingModel, drawingModel =
+                    match msg with
+                    | HitSurface (a,b) -> //,_) -> 
+                        //match model.axis with
+                        //| Some axis -> 
+                        //  let axisNearstFunc = fun p -> (fst (AxisFunctions.getNearestPointOnAxis' p axis)).position
+                        //  PickingApp.update model.picking (HitSurface (a,b, axisNearstFunc))
+                        //| None -> PickingApp.update model.picking msg
+                        
+                        let hitF (queryPoint: V3d) = 
+                            let fray = FastRay3d(V3d.Zero, (queryPoint).Normalized)
+                            model.picking.pickingInfos 
+                            |> HashMap.tryFind model.boundingBox   // WRONG use local boundingbox
+                            |> Option.bind (fun kk -> 
+                                OpcViewer.Base.Picking.Intersect.intersectWithOpc (Some kk.kdTree) fray 
+                                |> Option.map (fun closest ->
+                                    fray.Ray.GetPointOnRay closest
+                                )
                             )
-                        )
+                        
+                        let updatePickM = PickingApp.update model.picking (HitSurface (a,b))
+                        let lastPick = updatePickM.intersectionPoints |> IndexList.tryFirst
+                        let updatedDrawM =
+                            match lastPick with
+                            | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, Some hitF))
+                            | None -> model.drawing
+                        updatePickM, updatedDrawM
+                    | _ -> PickingApp.update model.picking msg, model.drawing
                     
+                { model with picking = pickingModel; drawing = drawingModel }
+            | InteractionMode.PlaceQueryPoint ->
+                match msg with
+                | HitSurface (a,b) ->
                     let updatePickM = PickingApp.update model.picking (HitSurface (a,b))
                     let lastPick = updatePickM.intersectionPoints |> IndexList.tryFirst
-                    let updatedDrawM =
-                        match lastPick with
-                        | Some p -> DrawingApp.update model.drawing (DrawingAction.AddPoint (p, Some hitF))
-                        | None -> model.drawing
-                    updatePickM, updatedDrawM
-                | _ -> PickingApp.update model.picking msg, model.drawing
-            { model with picking = pickingModel; drawing = drawingModel }
-        | UpdateDockConfig cfg ->
+
+                    match lastPick with
+                    | Some p -> 
+                        { 
+                            model with 
+                                sourceLinking = SourceLinkingApp.update model.sourceLinking model.cameraState.view (SourceLinkingAction.PickQueryPoint p) 
+                        }
+                    | None -> model                              
+                | _ -> 
+                    model
+        | UpdateDockConfig cfg  ->
             { model with dockConfig = cfg }
-        | AttributeAction msg ->
+        | AttributeAction msg  ->
             {model with opcAttributes = SurfaceAttributes.update model.opcAttributes msg }
         | DrawingAction msg -> 
             { model with drawing = DrawingApp.update model.drawing msg }
         | AnnotationAction msg -> 
             { model with annotations = AnnotationApp.update model.annotations msg }
         | SourceLinkingAction msg ->
-            { model with sourceLinking = SourceLinkingApp.update model.sourceLinking msg }
+            { model with sourceLinking = SourceLinkingApp.update model.sourceLinking model.cameraState.view msg }
         | _ -> model
                       
     let view (m : AdaptiveModel) =
@@ -388,6 +406,8 @@ module App =
                 annotations        = AnnotationModel.initial
 
                 sourceLinking      = SourceLinkingModel.init()
+
+                interactionMode    = InteractionMode.PlaceQueryPoint
             }
                 
         let sourceLinking = 
