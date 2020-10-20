@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "opc=\"d:\\_WORK\\A10-Zetzenberg-RFB-Villach\" qpos=\"d:\\_WORK\\A10-Zetzenberg-RFB-Villach\\Qpos\""
+      "commandLineArgs": "opc=\"d:\\_WORK\\A10-Zetzenberg-RFB-Villach\\OPC\" qpos=\"d:\\_WORK\\A10-Zetzenberg-RFB-Villach\\Qpos\""
     }
   }
 }

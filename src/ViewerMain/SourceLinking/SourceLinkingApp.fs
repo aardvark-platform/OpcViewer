@@ -34,17 +34,16 @@ module SourceLinkingApp =
 
     let view (m : AdaptiveSourceLinkingModel) : ISg<SourceLinkingAction> = 
                 
-
         let createFrustumProj (c: CameraShot) =
-            let aspectRatio = (float c.imageSize.X) / (float c.imageSize.Y)
+            let aspectRatio = (float c.imageSize.Y) / (float c.imageSize.X)
 
-            let hFov = (float c.imageSize.X / 2.0) / c.info.focalLength.X |> atan 
+            let hFov = (float c.imageSize.X ) / c.info.focalLength.X |> atan 
 
             Log.line "hFov %A" (hFov.DegreesFromRadians())
 
             let vFov = hFov * aspectRatio
-            let frustum = Frustum.perspective (vFov.DegreesFromRadians()) 0.01 5.0 aspectRatio
-          //  let fullFrustum = Frustum.perspective fov 0.01 1000.0 aspectRatio
+            let frustum = Frustum.perspective (hFov.DegreesFromRadians()) 0.01 5.0 aspectRatio
+          
             let proj = Frustum.projTrafo(frustum)
             (proj, proj.Inverse)
 
