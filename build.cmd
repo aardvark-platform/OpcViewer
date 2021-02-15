@@ -17,6 +17,3 @@ if errorlevel 1 (
 )
 
 dotnet packages\build\fake-cli\tools\netcoreapp2.1\any\fake-cli.dll build %* 
-
-
-
