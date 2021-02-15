@@ -3,14 +3,14 @@ namespace OpcSelectionViewer
 open System
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.Rendering.Text
 open FShade
-open Aardvark.UI.``F# Sg``
+open Aardvark.Rendering
 open Aardvark.UI.Trafos
 open Aardvark.SceneGraph.Opc
 
+open Aardvark.UI
 open OpcViewer.Base
 open OpcViewer.Base.Picking
 open OpcOutlineTest
@@ -18,10 +18,23 @@ open OpcOutlineTest
 module OutlineSg =
    
   let read a =
-        StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
+    { StencilMode.None with 
+        Comparison = ComparisonFunction.Greater
+        CompareMask = StencilMask 0xff
+        Reference = a
+    }
+    //StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
 
   let write a =
-        StencilMode(StencilOperationFunction.Replace, StencilOperationFunction.Replace, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
+    { StencilMode.None with 
+        Comparison = ComparisonFunction.Greater
+        CompareMask = StencilMask 0xff
+        Reference = a
+        Pass = StencilOperation.Replace
+        DepthFail = StencilOperation.Replace
+        Fail = StencilOperation.Keep
+    }
+    //StencilMode(StencilOperationFunction.Replace, StencilOperationFunction.Replace, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
     
   let pass0 = RenderPass.main
   let pass1 = RenderPass.after "outline" RenderPassOrder.Arbitrary pass0
@@ -82,7 +95,7 @@ module OutlineSg =
                     sg
                         |> Sg.noEvents
                         |> Sg.stencilMode (AVal.constant (read 1))
-                        |> Sg.depthTest (AVal.constant DepthTestMode.None)
+                        |> Sg.depthTest (AVal.constant DepthTest.None)
                         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
                         |> Sg.pass pass1
                         |> Sg.effect [

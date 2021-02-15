@@ -4,7 +4,7 @@ open System
 
 //open Aardvark.GeoSpatial.Opc
 open Aardvark.Base
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Aardvark.Rendering.Text 
 open FSharp.Data.Adaptive
 open Aardvark.SceneGraph
@@ -254,7 +254,7 @@ module Drawing =
         AVal.map2(fun (x:Option<V3d>) (t:Trafo3d) ->  
           match x with 
           | None -> [||]
-          | Some a ->  [|t.Backward.TransformPos(a)|]) hoveredProduct trafo 
+          | Some a ->  [|V3f (t.Backward.TransformPos(a))|]) hoveredProduct trafo 
 
       drawSingleColorPoints hoveredPoint (C4f.Yellow.ToV4d()) (pointSize |> AVal.map(fun x -> x + 5.0)) |> Sg.trafo trafo
 
@@ -270,7 +270,7 @@ module Drawing =
         let inside = 
           drawFeaturePoints sgfeatures pointSize
           |> Sg.pass pass1
-          |> Sg.depthTest (AVal.constant(DepthTestMode.Always))
+          |> Sg.depthTest (AVal.constant(DepthTest.Always))
 
         Sg.ofList [inside; outline]
 

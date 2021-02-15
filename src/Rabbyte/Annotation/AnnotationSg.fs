@@ -2,17 +2,28 @@ namespace Rabbyte.Annotation
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Aardvark.SceneGraph
 open Aardvark.UI
 
 module StencilAreaMasking =
 
-    let private writeZFail =
-        let compare = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu)
-        let front   = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep)
-        let back    = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep)
-        StencilMode(front, compare, back, compare)
+    // TODO v51 - check if ok, and remove comments
+    //let private writeZFail =
+    //    let compare = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu)
+    //    let front   = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep)
+    //    let back    = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep)
+    //    StencilMode(front, compare, back, compare)
+
+
+    let private writeZFailFront, writeZFailBack = 
+        let front = 
+            { StencilMode.None with
+                DepthFail = StencilOperation.DecrementWrap
+                CompareMask = StencilMask 0xff }
+
+        let back = { front with DepthFail = StencilOperation.IncrementWrap }
+        front, back
 
   //let writeZPass =
   //    let compare = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu)
@@ -20,10 +31,19 @@ module StencilAreaMasking =
   //    let back    = new StencilOperation(StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep)
   //    StencilMode(front, compare, back, compare)
 
+    //let private readMaskAndReset = 
+    //    let compare = new StencilFunction(StencilCompareFunction.NotEqual, 0, 0xffu)
+    //    let operation = new StencilOperation(StencilOperationFunction.Zero, StencilOperationFunction.Zero, StencilOperationFunction.Zero)
+    //    StencilMode(operation, compare)
+
     let private readMaskAndReset = 
-        let compare = new StencilFunction(StencilCompareFunction.NotEqual, 0, 0xffu)
-        let operation = new StencilOperation(StencilOperationFunction.Zero, StencilOperationFunction.Zero, StencilOperationFunction.Zero)
-        StencilMode(operation, compare)
+        { StencilMode.None with
+            Comparison = ComparisonFunction.NotEqual
+            CompareMask = StencilMask 0xff
+            Pass = StencilOperation.Zero
+            DepthFail = StencilOperation.Zero
+            Fail = StencilOperation.Zero
+        }
 
   //let maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
   //let areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
@@ -31,7 +51,8 @@ module StencilAreaMasking =
     let private maskSG maskPass sg = 
         sg
         |> Sg.pass maskPass
-        |> Sg.stencilMode (AVal.constant writeZFail)
+        //|> Sg.stencilMode (AVal.constant writeZFail)
+        |> Sg.stencilModes' writeZFailFront writeZFailBack
         |> Sg.cullMode (AVal.constant CullMode.None)
         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
 
@@ -42,7 +63,7 @@ module StencilAreaMasking =
         //|> Sg.cullMode (AVal.constant CullMode.CounterClockwise)  // for zpass -> backface-culling
         //|> Sg.depthTest (AVal.constant DepthTestMode.Less)        // for zpass -> active depth-test
         |> Sg.cullMode (AVal.constant CullMode.None)
-        |> Sg.depthTest (AVal.constant DepthTestMode.None)
+        |> Sg.depthTest (AVal.constant DepthTest.None)
         |> Sg.blendMode (AVal.constant BlendMode.Blend)
         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
 
@@ -120,7 +141,7 @@ module ClippingVolume =
             Sg.draw IndexedGeometryMode.TriangleList
             |> Sg.vertexAttribute DefaultSemantic.Positions (AVal.map (fun (_,p,_) -> p) shiftAndPosAndCol)
             |> Sg.vertexBufferValue DefaultSemantic.Colors (AVal.map (fun (_,_,c) -> c) shiftAndPosAndCol)
-            |> Sg.translate' (AVal.map (fun (s,_,_) -> s) shiftAndPosAndCol)
+            |> Sg.translation (AVal.map (fun (s,_,_) -> s) shiftAndPosAndCol)
 
         let sg = extrusionOffset |> AVal.map (fun o -> generatePolygonTriangles o points) 
   
@@ -213,7 +234,7 @@ module ClippingVolume =
                 |> Sg.vertexAttribute DefaultSemantic.Positions (AVal.constant vertices) 
                 |> Sg.vertexBufferValue DefaultSemantic.Colors colorAlpha
                 |> Sg.index (AVal.constant indexArray)
-                |> Sg.translate' (AVal.constant shift)
+                |> Sg.translation (AVal.constant shift)
             )
         ) 
         |> AVal.map Seq.singleton 
@@ -232,7 +253,7 @@ module ClippingVolume =
         let debugShadowVolume =
             debugVolume
             |> Sg.uniform "UseDebugColor" (AVal.constant false)
-            |> Sg.depthTest (AVal.constant DepthTestMode.Always)
+            |> Sg.depthTest (AVal.constant DepthTest.Always)
             |> Sg.cullMode (AVal.constant CullMode.Front)
             |> Sg.blendMode (AVal.constant BlendMode.Blend)
         

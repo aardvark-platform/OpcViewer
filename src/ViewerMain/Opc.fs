@@ -5,6 +5,7 @@ open Aardvark.Base.Geometry
 open FSharp.Data.Adaptive
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Opc
+open Aardvark.Rendering
 
 module Opc =
   open System.IO

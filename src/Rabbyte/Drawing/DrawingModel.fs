@@ -4,7 +4,7 @@ open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
-open Aardvark.Base.IndexedGeometryPrimitives
+open Aardvark.SceneGraph
 open Aardvark.Geometry
 open Aardvark.Base
 

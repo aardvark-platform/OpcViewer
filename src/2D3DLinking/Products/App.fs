@@ -4,6 +4,7 @@ open System
 
 open Aardvark.Base
 open Aardvark.Rendering.Text 
+open Aardvark.Rendering
 
 open Aardvark.SceneGraph
 open Aardvark.UI
@@ -119,7 +120,7 @@ module MinervaApp =
             model
           | LoadTifs access ->
             Log.startTimed "[Minerva] Fetching all TIFs from data file"
-            model.data.features.Map(fun f ->
+            model.data.features.ForEach(fun f ->
                 Files.loadTif access f.id
             ) |> ignore
             Log.stop()  

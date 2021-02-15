@@ -1,12 +1,13 @@
 namespace OpcSelectionViewer
 
 open Aardvark.Base  
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open FSharp.Data.Adaptive
-open Aardvark.UI
 open OpcViewer.Base
-
 open Adaptify.FSharp.Core
+open Aardvark.SceneGraph
+
+open Aardvark.UI
 
 module AxisSg =
 

@@ -1,7 +1,7 @@
 namespace OpcViewer.Base.Attributes
 
 open Aardvark.Base
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open FSharp.Data.Adaptive
 open Adaptify
 

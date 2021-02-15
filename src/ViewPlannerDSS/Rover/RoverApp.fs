@@ -1,6 +1,7 @@
 ﻿namespace ViewPlanner.Rover
 
 open Aardvark.Base
+open Aardvark.Rendering
 
 module RoverApp =
 

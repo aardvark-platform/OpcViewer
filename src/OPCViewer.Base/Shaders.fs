@@ -1,9 +1,9 @@
 ﻿namespace OpcViewer.Base
 
 module Shader =
-    open Aardvark.Base.Rendering.Effects
+    open Aardvark.Rendering
+    open Aardvark.Rendering.Effects
     open Aardvark.Base
-    open Aardvark.Base.Rendering
     open FShade
 
     type SuperVertex = 
