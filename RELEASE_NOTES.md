@@ -1,1 +1,1 @@
-* 1.0.2 upgraded to base 5.1/adaptive 1.1 track
+* 1.0.5 upgraded to base 5.1/adaptive 1.1 track
