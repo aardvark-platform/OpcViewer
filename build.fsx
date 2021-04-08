@@ -12,9 +12,9 @@ do Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 DefaultSetup.install ["src/OPCViewer.sln"]
 
 
-#if DEBUG
+//#if DEBUG
 do System.Diagnostics.Debugger.Launch() |> ignore
-#endif
+//#endif
 
 
 entry()

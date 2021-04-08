@@ -3,6 +3,8 @@ source https://api.nuget.org/v3/index.json
 // for dev packages not yet published to nuget
 source https://vrvis.myget.org/F/aardvark_public/api/v2
 
+storage: none
+
 nuget FSharp.Core                           ~> 4.6.2
 nuget FSharp.Data                           ~> 3.1.1
                                             

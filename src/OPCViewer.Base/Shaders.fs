@@ -254,6 +254,7 @@ module Shader =
                     } 
             } 
 
+
         let Effect = 
             toEffect stableTrafo
 
@@ -362,7 +363,7 @@ module Shader =
         type UniformScope with
             member x.DepthOffset : float = x?DepthOffset
         
-        [<GLSLIntrinsic("gl_DepthRange.diff")>]
+        [<GLSLIntrinsic("(gl_DepthRange.far - gl_DepthRange.near)")>]
         let depthDiff()  : float = onlyInShaderCode ""
     
         [<GLSLIntrinsic("gl_DepthRange.near")>]
