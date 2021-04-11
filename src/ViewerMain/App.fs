@@ -63,7 +63,7 @@ module App =
     let rec update (model : Model) (msg : Message) =   
         match msg with
         | Camera m when model.pickingActive = false -> 
-          { model with cameraState = FreeFlyController.update model.cameraState m; }
+            { model with cameraState = FreeFlyController.update model.cameraState m; }
         | Message.KeyDown m->
             match m with
             | Keys.LeftCtrl -> 
@@ -148,7 +148,7 @@ module App =
                     | Some p -> 
                         { 
                             model with 
-                                sourceLinking = SourceLinkingApp.update model.sourceLinking model.cameraState.view (SourceLinkingAction.PickQueryPoint p) 
+                                sourceLinking = SourceLinkingApp.update model.sourceLinking (SourceLinkingAction.PickQueryPoint p) 
                         }
                     | None -> model                              
                 | _ -> 
@@ -162,7 +162,7 @@ module App =
         | AnnotationAction msg -> 
             { model with annotations = AnnotationApp.update model.annotations msg }
         | SourceLinkingAction msg ->
-            { model with sourceLinking = SourceLinkingApp.update model.sourceLinking model.cameraState.view msg }
+            { model with sourceLinking = SourceLinkingApp.update model.sourceLinking msg }
         | _ -> model
                       
     let view (m : AdaptiveModel) =
@@ -234,11 +234,11 @@ module App =
         let renderControl =
             FreeFlyController.controlledControl m.cameraState Camera m.mainFrustum
                 (AttributeMap.ofList [ 
-                    style "width: 100%; height:100%"; 
-                    attribute "showFPS" "true";       // optional, default is false
+                    style "width: 100%; height:100%; background-color:darkgrey;" 
+                    attribute "showFPS" "false";       // optional, default is false
                     attribute "useMapping" "true"
                     attribute "data-renderalways" "false"
-                    attribute "data-samples" "4"
+                    attribute "data-samples" "4"                    
                     onKeyDown (Message.KeyDown)
                     onKeyUp (Message.KeyUp)
                     //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
@@ -353,7 +353,7 @@ module App =
                 let csLight : CameraStateLean = Serialization.loadAs ".\camstate"
                 { FreeFlyController.initial with view = csLight |> fromCameraStateLean }
             else 
-                { FreeFlyController.initial with view = CameraView.lookAt (box.Max) box.Center up; }                    
+                { FreeFlyController.initial with view = CameraView.lookAt (box.Max) box.Center up; }    
     
         let camState = restoreCamState
     
@@ -381,9 +381,7 @@ module App =
                 appName "OpcSelectionViewer"
                 useCachedConfig true
             }
-              
-        
-
+                      
         let initialModel : Model =     
             { 
                 cameraState        = camState
@@ -410,7 +408,8 @@ module App =
                 interactionMode    = InteractionMode.PlaceQueryPoint
             }
                 
-        let sourceLinking = 
+        let sourceLinking =             
+
             match qposFolder with
             | Some p -> SourceLinkingApp.update initialModel.sourceLinking (SourceLinkingAction.LoadCameras p)
             | None -> initialModel.sourceLinking

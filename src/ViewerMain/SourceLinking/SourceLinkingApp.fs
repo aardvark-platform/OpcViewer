@@ -5,6 +5,7 @@ open System.IO
 open Aardvark.Base
 open Aardvark.Base.Ag
 open FSharp.Data.Adaptive
+open FSharp.Data.Adaptive.Operators
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Semantics
@@ -15,48 +16,111 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.UI.Trafos
 open OpcViewer.Base
+open OpcViewer.Base
 
 module SourceLinkingApp =
 
-    let update (m : SourceLinkingModel) (view : CameraView) (a : SourceLinkingAction ) : SourceLinkingModel =
+    let update (m : SourceLinkingModel) (a : SourceLinkingAction ) : SourceLinkingModel =
         match a with
-        | LoadCameras folderPath -> 
+        | LoadCameras folderPath ->
             let cameras = 
                 Directory.GetDirectories folderPath 
                 |> Array.map (fun x -> 
                     (Directory.GetFiles x) 
-                    |> Array.filter(fun y -> Path.GetExtension(y) = ".qpos")
+                    |> Array.filter(fun y -> (Path.GetExtension(y) = ".qpos"))                    
                 )
-                |> Array.collect (Array.map CameraShot.fromFileName)
+                |> Array.collect (fun x -> 
+                    Array.map CameraShot.fromFileName x
+                )
                 |> IndexList.ofArray
+            
+            //{ m with cameras = cameras }
+            //let cameras = 
+            //    Directory.GetDirectories folderPath 
+            //    |> Array.head
+            //    |> Directory.GetFiles
+            //    |> Array.filter(fun y -> (Path.GetExtension(y) = ".qpos"))
+            //    //|> Array.head |> Array.singleton
+            //    |> Array.map (fun x -> 
+            //        Log.line "[SourceLinking] file name %A" x
+            //        CameraShot.fromFileName x
+            //    )
+            //    |> IndexList.ofArray             
 
             { m with cameras = cameras }
-        | PickQueryPoint pos ->
-            let viewTrafo = view.ViewTrafo
+        | PickQueryPoint pos ->            
+
             let filteredShots =
                 m.cameras 
-                |> IndexList.map(fun x ->
-                    x
-                )
+                |> IndexList.filter(fun shot ->                     
 
-            { m with queryPoint = Some pos }
+                    let trans = shot.info.position |> Trafo3d.Translation
+
+                    shot.hull.Contains(trans.Backward.TransformPos(pos))
+                    //shot.box.Contains(pos)
+                )            
+
+            { m with queryPoint = Some pos; filteredCameras = filteredShots }
 
     let view (m : AdaptiveSourceLinkingModel) : ISg<SourceLinkingAction> = 
                         
         let frustra =
-            m.cameras 
+            m.filteredCameras 
             |> AList.map(fun shot -> 
                 
-                let trans = shot.info.position|> Trafo3d.Translation 
-                let rot = Trafo3d(shot.info.rotation)
-                let trafo = (shot.proj.Inverse * rot * trans) |> AVal.constant
+                //let trans = shot.info.position|> Trafo3d.Translation 
+                //let rot = Trafo3d(shot.info.rotation)
+                //let trafo = (shot.proj.Inverse * rot * trans)               
 
                 let dir = shot.info.rotation.Transform(V3d.OOI * (-1.0))
                 let color = C4f(dir.Normalized.Abs()).ToC4b()
+              
+                let trans = shot.info.position|> Trafo3d.Translation 
+                let rot = Trafo3d(shot.info.rotation)
+                let trafo = (shot.proj.Inverse * rot)
 
-                Sg.wireBox (AVal.constant color) (AVal.constant (Box3d(V3d.NNN, V3d.III)))
+                //option1
+                let points = 
+                    Box3d(V3d.NNN, V3d.III).ComputeCorners() 
+                    |> Array.map(trafo.Forward.TransformPosProj)
+
+                //option2
+                //let hull =
+                //    Box3d(V3d.NNN, V3d.III) |> Hull3d.Create
+
+                //let points =
+                //    hull.Transformed(trafo).ComputeCorners() 
+                //    |> Seq.toArray
+
+                
+                //option3
+               // let hull = (CameraShot.toHull3d2 points)
+
+             //   Log.warn "[view] shot %A hull computation %A" shot.id hull.PlaneArray
+
+                //let points = 
+                //    shot.hull.ComputeCorners() |> Seq.toArray
+
+
+                //let a = Line3d(points.[0], points.[1])
+                //let b = Line3d(points.[1], points.[2])
+                //let c = Line3d(points.[2], points.[3])
+                //let d = Line3d(points.[3], points.[4])
+                //let e = Line3d(points.[4], points.[5])
+                //let f = Line3d(points.[5], points.[6])
+                //let g = Line3d(points.[6], points.[7])
+                //let h = Line3d(points.[7], points.[0])
+
+                //Sg.lines ~~C4b.Red ~~[|a;b;c;d;e;f;g;h|]
+                //|> Sg.noEvents
+                //|> Sg.trafo ~~trans
+                //|> Sg.andAlso(
+                   
+                //)  
+                
+                Sg.wireBox ~~color (~~Box3d(V3d.NNN, V3d.III))
                 |> Sg.noEvents
-                |> Sg.trafo trafo
+                |> Sg.trafo ~~(shot.proj.Inverse * rot * trans)
             )
             |> AList.toASet
             |> Sg.set
@@ -66,7 +130,7 @@ module SourceLinkingApp =
             }    
                         
         let directions =
-            m.cameras
+            m.filteredCameras
             |> AList.map(fun x ->
                 let dir = x.info.rotation.Transform(V3d.OOI * (-7.0))
                 let color = C4f(dir.Normalized.Abs()).ToC4b()
@@ -88,7 +152,7 @@ module SourceLinkingApp =
             ]
 
         let points = 
-            m.cameras 
+            m.filteredCameras 
             |> AList.map(fun x -> 
                 Sg.sphere 2 (AVal.constant C4b.Red) (AVal.constant 0.03)
                 |> Sg.trafo (x.info.position|> Trafo3d.Translation |> AVal.constant)

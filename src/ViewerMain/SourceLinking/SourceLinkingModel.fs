@@ -20,6 +20,10 @@ type CameraShot = {
     info      : CameraInfo
     imageSize : V2i
     proj      : Trafo3d    
+    hull      : Hull3d
+    box       : Box3d
+    qposFile  : string
+    tifFile   : string
 }
 
 [<ModelType>]
@@ -85,6 +89,10 @@ module CameraShot =
         info      = CameraInfo.init()
         imageSize = V2i.Zero
         proj      = Trafo3d.Identity        
+        hull      = Hull3d.Invalid
+        box       = Box3d.Invalid
+        qposFile  = String.Empty
+        tifFile   = String.Empty
     }
 
     // in Aardvark.Base.FSharp/Datastructures/Geometry/Boundable.fs as well as KdTreeFinds.fs (in both cases private)
@@ -106,12 +114,24 @@ module CameraShot =
             //r3 - r2 |> toPlane  // far
         |]
 
+    let toHull3d2 (cs : V3d[]) =
+        //let t = viewProj
+        //let cs = canonicalViewVolume.ComputeCorners() |> Array.map(fun x -> t.Forward.TransformPosProj x)
+        Hull3d [|
+            new Plane3d(cs.[0], cs.[1], cs.[2]) // near
+            new Plane3d(cs.[5], cs.[4], cs.[7]) // far
+            new Plane3d(cs.[0], cs.[4], cs.[1]) // bottom
+            new Plane3d(cs.[1], cs.[5], cs.[3]) // left
+            new Plane3d(cs.[4], cs.[0], cs.[6]) // right
+            new Plane3d(cs.[3], cs.[7], cs.[2]) // top
+        |]
+
     let createFrustumProj (c: CameraShot) =
-        let aspectRatio = (float c.imageSize.Y) / (float c.imageSize.X)
+        let aspectRatio = (float c.imageSize.X) / (float c.imageSize.Y)
 
         let hFov = (float c.imageSize.X ) / c.info.focalLength.X |> atan 
 
-        Log.line "hFov %A" (hFov.DegreesFromRadians())
+       // Log.line "hFov %A" (hFov.DegreesFromRadians())
 
         let vFov = hFov * aspectRatio
         let frustum = Frustum.perspective (hFov.DegreesFromRadians()) 0.01 5.0 aspectRatio
@@ -137,7 +157,29 @@ module CameraShot =
 
         let proj = shot |> createFrustumProj
 
-        { shot with proj = proj }
+        //let trans = shot.info.position |> Trafo3d.Translation
+
+        //let rot = Trafo3d(shot.info.rotation)
+        //let trafo = trans * rot * proj.Inverse
+
+        //let box = Box3d(V3d.NNN, V3d.III).Transformed(trafo) 
+        //blurg.Contains(V3d.Zero)
+        //let blurg = blurg |> Hull3d.Create
+
+        //let trans = shot.info.position|> Trafo3d.Translation 
+
+        let trans = shot.info.position|> Trafo3d.Translation 
+        let rot = Trafo3d(shot.info.rotation)
+        let trafo = (proj.Inverse * rot)
+
+        //option1
+        let points = 
+            Box3d(V3d.NNN, V3d.III).ComputeCorners() 
+            |> Array.map(trafo.Forward.TransformPosProj)
+
+        let hull = (toHull3d2 points)                
+
+        { shot with proj = proj; hull = hull; tifFile = tifFile; qposFile = qposFile }
                         
 module SourceLinkingModel =
     let init() =
