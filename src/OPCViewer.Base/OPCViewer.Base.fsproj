@@ -1,14 +1,18 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <OutputPath>..\..\bin\Release</OutputPath>
+    <OutputType>Library</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <GenerateLenses>True</GenerateLenses>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <OutputPath>..\..\bin\Debug</OutputPath>
+    <OutputPath>..\..\bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>..\..\bin\Release\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="IndexHelper.fs" />
@@ -26,6 +30,11 @@
     <Compile Include="OpcAttributes.fs" />
     <Compile Include="Sg.fs" />
     <None Include="paket.references" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="JR.Wrappers">
+      <HintPath>..\..\lib\JR.Wrappers.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

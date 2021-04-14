@@ -2,13 +2,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <GenerateLenses>True</GenerateLenses>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\bin\Debug\</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <OutputPath>..\..\bin\Release</OutputPath>
+    <OutputPath>..\..\bin\Release\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Drawing\DrawingModel.fs" />
@@ -23,6 +27,11 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OPCViewer.Base\OPCViewer.Base.fsproj" />
+  </ItemGroup>  
+  <ItemGroup>
+    <Reference Include="JR.Wrappers">
+      <HintPath>..\..\lib\JR.Wrappers.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

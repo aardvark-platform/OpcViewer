@@ -1,9 +1,4 @@
-﻿(*
-
-Thomas Ortners Drawing Example
-
-*)
-open System
+﻿open System
 
 open Aardvark.Base
 open Aardvark.Application
