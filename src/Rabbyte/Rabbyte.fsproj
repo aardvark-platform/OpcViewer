@@ -28,10 +28,10 @@
   <ItemGroup>
     <ProjectReference Include="..\OPCViewer.Base\OPCViewer.Base.fsproj" />
   </ItemGroup>  
-  <ItemGroup>
+  <!--<ItemGroup>
     <Reference Include="JR.Wrappers">
       <HintPath>..\..\lib\JR.Wrappers.dll</HintPath>
     </Reference>
-  </ItemGroup>
+  </ItemGroup>-->
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

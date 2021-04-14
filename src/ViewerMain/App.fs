@@ -237,7 +237,7 @@ module App =
                     style "width: 100%; height:100%; background-color:darkgrey;" 
                     attribute "showFPS" "false";       // optional, default is false
                     attribute "useMapping" "true"
-                    attribute "data-renderalways" "false"
+                    //attribute "data-renderalways" "false"
                     attribute "data-samples" "4"                    
                     onKeyDown (Message.KeyDown)
                     onKeyUp (Message.KeyUp)
