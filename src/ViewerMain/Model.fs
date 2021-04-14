@@ -19,6 +19,8 @@ open Adaptify
 
 open OpcViewer.SourceLinking
 
+open Chiron
+
 type Message =
 | Camera              of FreeFlyController.Message
 | KeyUp               of key : Keys
@@ -65,7 +67,8 @@ type Axis = {
 type Model = {
     cameraState          : CameraControllerState
     mainFrustum          : Frustum
-    fillMode             : FillMode                                
+    fillMode             : FillMode
+
     [<NonAdaptive>]
     patchHierarchies     : list<PatchHierarchy> 
     boundingBox          : Box3d

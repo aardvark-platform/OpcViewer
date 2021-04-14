@@ -24,6 +24,7 @@
     <Compile Include="Outline\OutlineModel.fs" />
     <Compile Include="Outline\OutlineSg.fs" />
     <Compile Include="SourceLinking\SourceLinkingModel.fs" />
+    <Compile Include="SourceLinking\SourceLinkingUtils.fs" />
     <Compile Include="SourceLinking\SourceLinkingApp.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="Axis.fs" />
