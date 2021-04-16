@@ -34,6 +34,8 @@ open Aardvark.Application
 open Aardvark.VRVis.Opc
 open OpcViewer.SourceLinking
 
+open Chiron
+
 module App =   
     
     let updateFreeFlyConfig (incr : float) (cam : CameraControllerState) = 
@@ -85,7 +87,16 @@ module App =
                 { model with cameraState = model.cameraState |>  updateFreeFlyConfig -0.5 }
             | Keys.Space ->    
                 Log.line "[App] saving camstate"
-                model.cameraState.view |> toCameraStateLean |> Serialization.save ".\camstate" |> ignore
+                model.cameraState.view 
+                |> toCameraStateLean 
+                |> Serialization.save ".\camstate"
+                |> ignore
+
+                model.sourceLinking
+                |> Json.serialize
+                |> Json.formatWith JsonFormattingOptions.Pretty
+                |> Serialization.Chiron.writeToFile ".\sourcelinking"
+
                 model
             | Keys.Enter ->
               //let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
@@ -95,7 +106,7 @@ module App =
     
                 let finished = { model with drawing = DrawingApp.update model.drawing (DrawingAction.FinishClose None) } // TODO add dummy-hitF
                 let newAnnotation = AnnotationApp.update finished.annotations (AnnotationAction.AddAnnotation (finished.drawing, None))
-                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing} // reset drawingApp, but keep brush-style
+                { finished with annotations = newAnnotation; drawing = DrawingModel.reset model.drawing } // reset drawingApp, but keep brush-style
             //| Keys.T ->
             //  let pointsOnAxisFunc = AxisFunctions.pointsOnAxis model.axis
             //  //let updatedPicking = PickingApp.update model.picking (PickingAction.AddTestBrushes pointsOnAxisFunc)
@@ -347,7 +358,7 @@ module App =
                         
         let up = if rotate then (box.Center.Normalized) else V3d.OOI
     
-        let restoreCamState : CameraControllerState =
+        let restoreCamState () : CameraControllerState =
             if File.Exists ".\camstate" then          
                 Log.line "[App] restoring camstate"
                 let csLight : CameraStateLean = Serialization.loadAs ".\camstate"
@@ -355,7 +366,15 @@ module App =
             else 
                 { FreeFlyController.initial with view = CameraView.lookAt (box.Max) box.Center up; }    
     
-        let camState = restoreCamState
+        let restoreSourceLinking () : SourceLinkingModel =
+            if File.Exists ".\sourcelinking" then          
+                Log.line "[App] restoring sourcelinking"
+                ".\sourcelinking" |> Serialization.Chiron.readFromFile |> Json.parse |> Json.deserialize
+            else
+                SourceLinkingModel.initial
+                
+
+        let camState = restoreCamState()
     
         let ffConfig = 
             { 
@@ -382,6 +401,13 @@ module App =
                 useCachedConfig true
             }
                       
+        let sourceLinking = restoreSourceLinking()
+
+        let sourceLinking =
+            match sourceLinking.queryPoint with
+            | Some p -> SourceLinkingApp.update sourceLinking (PickQueryPoint p)
+            | None -> sourceLinking
+
         let initialModel : Model =     
             { 
                 cameraState        = camState
@@ -403,7 +429,7 @@ module App =
                 drawing            = DrawingModel.initial
                 annotations        = AnnotationModel.initial
 
-                sourceLinking      = SourceLinkingModel.init()
+                sourceLinking      = sourceLinking 
 
                 interactionMode    = InteractionMode.PlaceQueryPoint
             }

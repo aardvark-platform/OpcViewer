@@ -33,6 +33,13 @@ module Serialization =
           | true  -> Some filePath
           | false -> None
 
+    module Chiron =
+        let writeToFile path (contents : string) =
+            System.IO.File.WriteAllText(path, contents)
+        
+        let readFromFile path =
+            System.IO.File.ReadAllText(path)  
+
 module Lenses = 
     open Aardvark.Base
 
