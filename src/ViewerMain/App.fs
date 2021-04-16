@@ -304,6 +304,12 @@ module App =
                 require semui (
                     SurfaceAttributes.view m.opcAttributes |> UI.map AttributeAction
                 )
+            | Some "sourceLinking" -> 
+                require Html.semui (
+                    body [style "width: 100%; height:100%; background: #252525; overflow-x: hidden; overflow-y: scroll"] [                                                                           
+                        SourceLinkingApp.viewImagesList m.sourceLinking |> UI.map SourceLinkingAction
+                    ]
+                )
             | Some other -> 
                 let msg = sprintf "Unknown page: %A" other
                 body [] [
@@ -394,6 +400,7 @@ module App =
                     horizontal 10.0 [
                         element { id "render"; title "Render View"; weight 7.0 }
                         //element { id "controls"; title "Controls"; weight 3.0 } 
+                        element { id "sourceLinking"; title "Source Images"; weight 3.0 } 
                         //element { id "falseColors"; title "FalseColors"; weight 3.0 }  
                     ]
                 )

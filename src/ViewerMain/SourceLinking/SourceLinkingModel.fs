@@ -144,28 +144,30 @@ with
 
 [<ModelType>]
 type SourceLinkingModel = {
-    cameras         : IndexList<CameraShot>
-    filteredCameras : IndexList<CameraShot>
-    queryPoint      : option<V3d>
+    cameras                : IndexList<CameraShot>
+    filteredCameras        : IndexList<CameraShot *V2d>
+    reprojectedQueryPoints : IndexList<V2d>
+    queryPoint             : option<V3d>
 }
 with 
     static member FromJson (_ : SourceLinkingModel) =
         json  {
             let! cameras         =  Json.read "cameras"
-            let! filteredCameras =  Json.read "filteredCameras"
+            //let! filteredCameras =  Json.read "filteredCameras"
             let! queryPoint      =  Json.readWith Ext.fromJson<option<V3d>,Ext> "queryPoint"
 
             return {
                 cameras         = cameras |> IndexList.ofList
-                filteredCameras = filteredCameras |> IndexList.ofList
+                filteredCameras = IndexList.empty//filteredCameras |> IndexList.ofList
                 queryPoint      = queryPoint     
+                reprojectedQueryPoints = IndexList.empty
             }
         }
 
     static member ToJson (x : SourceLinkingModel) =
         json {            
             do!  Json.write  "cameras"          (x.cameras |> IndexList.toList)
-            do!  Json.write  "filteredCameras"  (x.filteredCameras |> IndexList.toList)
+            //do!  Json.write  "filteredCameras"  (x.filteredCameras |> IndexList.toList)
             do!  Json.writeWith Ext.toJson<option<V3d>,Ext>  "queryPoint" x.queryPoint
         }
 
@@ -286,6 +288,15 @@ module CameraShot =
 
         let tifFile = Path.ChangeExtension(path, ".tif")
         let qposFile = Path.ChangeExtension(path, ".qpos")
+        let pngFile = Path.ChangeExtension(path, ".png")
+
+        if pngFile |> File.Exists |> not then
+            Log.startTimed "[SourceLinking] creating png"
+            try                
+                PixImage.Create(tifFile).ToPixImage<byte>().SaveAsImage(pngFile)
+            with
+                | e -> Log.line "[SourceLinking] png conversion failed: %A" e
+            Log.stop()
         
         let info = CameraInfo.fromQpos qposFile
         
@@ -293,7 +304,7 @@ module CameraShot =
             {
                 init() with
                     info = info
-                    imageSize = V2i(4104,3006)
+                    imageSize = V2i(4104, 3006)
             }
 
         let proj = shot |> createFrustumProj        
@@ -317,6 +328,7 @@ module SourceLinkingModel =
             cameras = IndexList.empty
             filteredCameras = IndexList.empty
             queryPoint = None
+            reprojectedQueryPoints = IndexList.empty
         }
 
 

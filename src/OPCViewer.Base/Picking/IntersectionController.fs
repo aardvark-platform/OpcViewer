@@ -222,7 +222,7 @@ module Intersect =
   
   let perform (m : PickingModel) (hit : SceneHit) (boxId : Box3d) = // (hitFun: V3d->V3d) = 
     let fray = hit.globalRay.Ray
-    Log.line "try intersecting %A" boxId    
+    //Log.line "try intersecting %A" boxId    
     
     match m.pickingInfos |> HashMap.tryFind boxId with
     | Some kk ->

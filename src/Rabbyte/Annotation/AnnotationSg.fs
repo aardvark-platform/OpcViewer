@@ -283,6 +283,7 @@ module AnnotationSg =
             |> ASet.map snd
             |> Sg.set
 
+        
 
         let nextRenderPass = RenderPass.after "" RenderPassOrder.Arbitrary areaPass
         (sg, nextRenderPass)

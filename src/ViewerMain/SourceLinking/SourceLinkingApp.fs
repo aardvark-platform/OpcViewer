@@ -30,24 +30,24 @@ module SourceLinkingApp =
                     |> Array.filter(fun y -> (Path.GetExtension(y) = ".qpos"))                    
                 )
                 |> Array.collect (fun x -> 
-                    Array.map CameraShot.fromFileName x
+                    Array.map CameraShot.fromFileName x                    
                 )
                 |> IndexList.ofArray
             
-            //{ m with cameras = cameras }
+            { m with cameras = cameras }
             //let cameras = 
             //    Directory.GetDirectories folderPath 
             //    |> Array.head
             //    |> Directory.GetFiles
             //    |> Array.filter(fun y -> (Path.GetExtension(y) = ".qpos"))
-            //    //|> Array.head |> Array.singleton
+            //    |> Array.head |> Array.singleton
             //    |> Array.map (fun x -> 
             //        Log.line "[SourceLinking] file name %A" x
             //        CameraShot.fromFileName x
             //    )
             //    |> IndexList.ofArray             
 
-            { m with cameras = cameras }
+            //{ m with cameras = cameras }
         | PickQueryPoint pos ->            
 
             let filteredShots =
@@ -58,49 +58,66 @@ module SourceLinkingApp =
 
                     shot.hull.Contains(trans.Backward.TransformPos(pos))
                     //shot.box.Contains(pos)
-                )            
+                )
 
-            { m with queryPoint = Some pos; filteredCameras = filteredShots }
+            let filteredShots =
+                filteredShots
+                |> IndexList.map(fun x -> 
+                    //|> fun p -> V4d(p, 1.0)
+                    //|> prod.trafoInv.Forward.Transform
+                    //|> fun p -> V3d((p.XY / p.W), p.Z)
+
+
+                    
+                    //let viewTrafo = (rot * trans).Inverse
+
+                    //|> fun p -> V4d(p, 1.0)
+                    //|> prod.trafoInv.Forward.Transform
+                    //|> fun p -> V3d((p.XY / p.W), p.Z)
+
+                    //let point = viewTrafo.Forward.TransformPos(pos)
+
+                    //Log.line "[blurg2] %A" point
+                    let proj = x.proj.Inverse
+                    let trans = (x.info.position |> Trafo3d.Translation)
+                    let rot = (x.info.rotation) |> Trafo3d
+                    
+                    let reprojectedQueryPoint = 
+                        //(proj * rot * trans).Backward.TransformPos(pos)
+                        (proj * rot * trans).Backward.Transform(pos.XYZI)
+                        |> fun p -> ((V3d((p.XY / p.W), p.Z).XY) + V2d.One) * 0.5 //
+
+                    Log.line "[blurg2] %A" reprojectedQueryPoint
+                                        
+
+                    Log.warn "[SourceLinking] %A" x.tifFile
+                    //trans.Forward.TransformPos(reprojectedQueryPoint)
+                    x, reprojectedQueryPoint
+                )
+                |> IndexList.sortBy(fun (_, point) ->
+                    let distance = point.DistanceSquared(V2d.One * 0.5)
+                    Log.line "[distance] %A %A" point distance
+                    distance
+                )
+
+            { m with queryPoint = Some pos; filteredCameras = filteredShots; reprojectedQueryPoints = IndexList.empty }
 
     let view (m : AdaptiveSourceLinkingModel) : ISg<SourceLinkingAction> = 
                         
         let frustra =
             m.filteredCameras 
-            |> AList.map(fun shot -> 
-                
-                //let trans = shot.info.position|> Trafo3d.Translation 
-                //let rot = Trafo3d(shot.info.rotation)
-                //let trafo = (shot.proj.Inverse * rot * trans)               
-
+            |> AList.map(fun (shot, _) -> 
+                                
                 let dir = shot.info.rotation.Transform(V3d.OOI * (-1.0))
                 let color = C4f(dir.Normalized.Abs()).ToC4b()
               
                 let trans = shot.info.position|> Trafo3d.Translation 
                 let rot = Trafo3d(shot.info.rotation)
                 let trafo = (shot.proj.Inverse * rot)
-
-                //option1
+                
                 let points = 
                     Box3d(V3d.NNN, V3d.III).ComputeCorners() 
                     |> Array.map(trafo.Forward.TransformPosProj)
-
-                //option2
-                //let hull =
-                //    Box3d(V3d.NNN, V3d.III) |> Hull3d.Create
-
-                //let points =
-                //    hull.Transformed(trafo).ComputeCorners() 
-                //    |> Seq.toArray
-
-                
-                //option3
-               // let hull = (CameraShot.toHull3d2 points)
-
-             //   Log.warn "[view] shot %A hull computation %A" shot.id hull.PlaneArray
-
-                //let points = 
-                //    shot.hull.ComputeCorners() |> Seq.toArray
-
 
                 //let a = Line3d(points.[0], points.[1])
                 //let b = Line3d(points.[1], points.[2])
@@ -131,7 +148,7 @@ module SourceLinkingApp =
                         
         let directions =
             m.filteredCameras
-            |> AList.map(fun x ->
+            |> AList.map(fun (x, _) ->
                 let dir = x.info.rotation.Transform(V3d.OOI * (-7.0))
                 let color = C4f(dir.Normalized.Abs()).ToC4b()
 
@@ -153,7 +170,7 @@ module SourceLinkingApp =
 
         let points = 
             m.filteredCameras 
-            |> AList.map(fun x -> 
+            |> AList.map(fun (x, _) -> 
                 Sg.sphere 2 (AVal.constant C4b.Red) (AVal.constant 0.03)
                 |> Sg.trafo (x.info.position|> Trafo3d.Translation |> AVal.constant)
             )
@@ -164,6 +181,20 @@ module SourceLinkingApp =
                 do! DefaultSurfaces.vertexColor
                 do! DefaultSurfaces.stableHeadlight
             }       
+
+        //let queryPoints = 
+        //    m.reprojectedQueryPoints
+        //    |> AList.map(fun x -> 
+        //        Sg.sphere 2 (AVal.constant C4b.Yellow) (AVal.constant 0.03)
+        //        |> Sg.trafo (x |> Trafo3d.Translation |> AVal.constant)
+        //    )
+        //    |> AList.toASet
+        //    |> Sg.set
+        //    |> Sg.shader {
+        //        do! DefaultSurfaces.stableTrafo
+        //        do! DefaultSurfaces.vertexColor
+        //        do! DefaultSurfaces.stableHeadlight
+        //    }       
             
         let queryPoint =
             m.queryPoint 
@@ -186,3 +217,29 @@ module SourceLinkingApp =
         [points; frustra; queryPoint]
         |> Sg.ofList
         
+    let cssColor (c: C4b) =
+        sprintf "rgba(%d, %d, %d, %f)" c.R c.G c.B c.Opacity
+
+    let viewImagesList (model:AdaptiveSourceLinkingModel) = 
+        Incremental.div ([clazz "ui very compact stackable inverted relaxed divided list"] |> AttributeMap.ofList) (
+            alist {                
+                for (cam, query) in model.filteredCameras do                                        
+
+                    Log.line "x:%f%% y:%f%%" (query.X * 100.0) (query.Y * 100.0)                    
+
+                    yield Svg.svg [attribute "viewBox" (sprintf "0 0 %d %d" cam.imageSize.Y cam.imageSize.X)] [
+                        Svg.image [attribute "href" (Path.ChangeExtension(cam.tifFile, ".png")); attribute "width" "100%"]                        
+                        Svg.circle[
+                            attribute "cx" (sprintf "%f%%" ((1.0-query.Y) * 100.0))
+                            attribute "cy" (sprintf "%f%%" ((1.0-query.X) * 100.0))
+                            attribute "r" "100.0"
+                            attribute "fill" "transparent"
+                            attribute "stroke" (C4b.Red |> cssColor)
+                            attribute "stroke-width" "10.0"
+                        ]                                        
+                    ]
+                   // yield img [attribute "src" cam.tifFile]
+            }
+        )
+
+    
