@@ -13,7 +13,7 @@ DefaultSetup.install ["src/OPCViewer.sln"]
 
 
 //#if DEBUG
-do System.Diagnostics.Debugger.Launch() |> ignore
+//do System.Diagnostics.Debugger.Launch() |> ignore
 //#endif
 
 
