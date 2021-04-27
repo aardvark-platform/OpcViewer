@@ -174,7 +174,7 @@ module Sg =
   let border = { left = 0.01; right = 0.01; top = 0.01; bottom = 0.01 }
   
   let pickable' (pick :aval<Pickable>) (sg: ISg) =
-    Sg.PickableApplicator (pick, AVal.constant sg)
+    Sg.PickableApplicator (pick, AVal.constant sg) :> ISg
 
   let opcSg loadedHierarchies (selectedScalar:aval<Option<_>>) (picking : aval<bool>) (bb : Box3d) = 
     

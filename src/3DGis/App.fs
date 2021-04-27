@@ -701,8 +701,8 @@ module App =
                     ( m.hoverTriangles |> 
                         AVal.map ( fun s -> { shape = PickShape.Triangles(KdTree(Spatial.triangle, s)); trafo = Trafo3d.Identity } )
                     )
-                |> Sg.requirePicking
                 |> Sg.noEvents
+                |> Sg.requirePicking
                 |> Sg.withEvents[ 
                     Sg.onEnter (fun x -> Hoverin3D x) 
                     Sg.onLeave (fun _ -> HoveredCircleLeave)   
