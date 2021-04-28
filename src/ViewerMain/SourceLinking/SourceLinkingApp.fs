@@ -105,8 +105,8 @@ module SourceLinkingApp =
     let view (m : AdaptiveSourceLinkingModel) : ISg<SourceLinkingAction> = 
                         
         let frustra =
-            m.filteredCameras 
-            |> AList.map(fun (shot, _) -> 
+            m.cameras 
+            |> AList.map(fun (shot) -> 
                                 
                 let dir = shot.info.rotation.Transform(V3d.OOI * (-1.0))
                 let color = C4f(dir.Normalized.Abs()).ToC4b()
@@ -141,6 +141,7 @@ module SourceLinkingApp =
             )
             |> AList.toASet
             |> Sg.set
+            |> Sg.uniform "LineWidth" (AVal.constant 4.0)
             |> Sg.shader {
                 do! DefaultSurfaces.stableTrafo
                 do! DefaultSurfaces.vertexColor                    
@@ -169,9 +170,13 @@ module SourceLinkingApp =
             ]
 
         let points = 
-            m.filteredCameras 
-            |> AList.map(fun (x, _) -> 
-                Sg.sphere 2 (AVal.constant C4b.Red) (AVal.constant 0.03)
+            m.cameras 
+            |> AList.map(fun (x) -> 
+                let dir = x.info.rotation.Transform(V3d.OOI * (-7.0))
+                let color = C4f(dir.Normalized.Abs()).ToC4b()
+                
+
+                Sg.sphere 2 (AVal.constant color) (AVal.constant 0.03)
                 |> Sg.trafo (x.info.position|> Trafo3d.Translation |> AVal.constant)
             )
             |> AList.toASet
