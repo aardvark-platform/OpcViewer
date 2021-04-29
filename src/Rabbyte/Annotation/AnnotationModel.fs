@@ -9,10 +9,8 @@ open Rabbyte.Drawing
 
 open Adaptify
 
-type ClippingVolumeType = 
-    | Direction of V3d
-    | Point of V3d
-    | Points of IndexList<V3d>
+open OpcViewer.Base
+open OpcViewer.Base.StencilVolumes
 
 [<ModelType>]
 type Annotation = 

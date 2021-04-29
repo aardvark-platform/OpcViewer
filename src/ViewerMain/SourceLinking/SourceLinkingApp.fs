@@ -128,16 +128,19 @@ module SourceLinkingApp =
                 //let g = Line3d(points.[6], points.[7])
                 //let h = Line3d(points.[7], points.[0])
 
-                //Sg.lines ~~C4b.Red ~~[|a;b;c;d;e;f;g;h|]
-                //|> Sg.noEvents
-                //|> Sg.trafo ~~trans
-                //|> Sg.andAlso(
-                   
-                //)  
-                
-                Sg.wireBox ~~color (~~Box3d(V3d.NNN, V3d.III))
+                let a = Line3d(points.[4], points.[5])
+                let b = Line3d(points.[5], points.[7])
+                let c = Line3d(points.[7], points.[6])
+                let d = Line3d(points.[6], points.[4])
+
+                Sg.lines ~~C4b.Red ~~[|a;b;c;d|]
                 |> Sg.noEvents
-                |> Sg.trafo ~~(shot.proj.Inverse * rot * trans)
+                |> Sg.trafo ~~trans
+                |> Sg.andAlso(                                                     
+                    Sg.wireBox ~~color (~~Box3d(V3d.NNN, V3d.III))
+                    |> Sg.noEvents
+                    |> Sg.trafo ~~(shot.proj.Inverse * rot * trans)
+                )
             )
             |> AList.toASet
             |> Sg.set
@@ -149,7 +152,7 @@ module SourceLinkingApp =
         let directions =
             m.filteredCameras
             |> AList.map(fun (x, _) ->
-                let dir = x.info.rotation.Transform(V3d.OOI * (-7.0))
+                let dir = x.info.rotation.Transform(V3d.OON)
                 let color = C4f(dir.Normalized.Abs()).ToC4b()
 
                 let line = Line3d(V3d.Zero, dir)
@@ -161,7 +164,7 @@ module SourceLinkingApp =
             )
             |> AList.toASet
             |> Sg.set
-            |> Sg.uniform "LineWidth" (AVal.constant 1.0)
+            |> Sg.uniform "LineWidth" (AVal.constant 3.0)
             |> Sg.uniform "DepthOffset" (AVal.constant 0.0)
             |> Sg.effect [
                 Shader.StableTrafo.Effect
@@ -171,7 +174,10 @@ module SourceLinkingApp =
         let points = 
             m.filteredCameras 
             |> AList.map(fun (x, _) -> 
-                Sg.sphere 2 (AVal.constant C4b.Red) (AVal.constant 0.03)
+                let dir = x.info.rotation.Transform(V3d.OOI)
+                let color = C4f(dir.Normalized.Abs()).ToC4b()
+
+                Sg.sphere 2 ~~color ~~0.03
                 |> Sg.trafo (x.info.position|> Trafo3d.Translation |> AVal.constant)
             )
             |> AList.toASet
@@ -213,9 +219,21 @@ module SourceLinkingApp =
                 do! DefaultSurfaces.stableHeadlight
             }   
 
+        let footprints, nextRenderPass = 
+            m.filteredCameras 
+            |> AList.map(fst) 
+            |> FootprintProjection.drawFootPrints (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
 
-        [points; frustra; queryPoint]
+
+        let solidSg = [points; directions; queryPoint] |> Sg.ofList |> Sg.pass nextRenderPass
+
+        [
+            footprints
+            solidSg
+        ]        
         |> Sg.ofList
+        |> Sg.fillMode (AVal.constant FillMode.Fill)
+        |> Sg.cullMode (AVal.constant CullMode.None)
         
     let cssColor (c: C4b) =
         sprintf "rgba(%d, %d, %d, %f)" c.R c.G c.B c.Opacity

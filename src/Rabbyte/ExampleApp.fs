@@ -15,6 +15,9 @@ open ExampleModel
 open Rabbyte.Drawing
 open Rabbyte.Annotation
 
+open OpcViewer.Base
+open OpcViewer.Base.StencilVolumes
+
 type ExampleAction =
     | CameraMessage of ArcBallController.Message
     | Move          of V3d

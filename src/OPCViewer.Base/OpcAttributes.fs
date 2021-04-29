@@ -95,9 +95,9 @@ module SurfaceAttributes =
 
     let getScalars (layers : seq<AttributeLayer>) =
         layers 
-          |> Seq.choose (fun x -> match x with | ScalarLayer l -> Some l | _ -> None) 
-          |> Seq.mapi(fun i x -> { x with index = i}) 
-          |> IndexList.ofSeq
+        |> Seq.choose (fun x -> match x with | ScalarLayer l -> Some l | _ -> None) 
+        |> Seq.mapi(fun i x -> { x with index = i}) 
+        |> IndexList.ofSeq
 
     let getScalarsHmap (layers : seq<AttributeLayer>) =
         layers 
@@ -113,7 +113,7 @@ module SurfaceAttributes =
         Path.ChangeExtension(Path.Combine(surfacePath, parent), ".opcx")
 
     let addSurfaceAttributes (path:string) : (HashMap<string, ScalarLayer> * IndexList<TextureLayer>)  = 
-      match (System.IO.File.Exists path) with
+        match (System.IO.File.Exists path) with
         | true ->        
             let layers = read path
             let textures = layers |> getTextures
@@ -140,26 +140,25 @@ module SurfaceAttributes =
 
     let update (model : AttributeModel) (msg : AttributeAction) =   
         match msg with
-            | SetScalarMap a ->
-                //let test = model.scalarLayers |> HashMap.tryFind("B")
-                match a with
-                    | Some s -> { model with selectedScalar = Some s;} 
-                    | None -> { model with selectedScalar = None }
-            | ScalarsColorLegendMessage msg ->
-                match model.selectedScalar with
-                  | Some s -> 
-                    let sc = { s with colorLegend = (FalseColorLegendApp.update s.colorLegend msg) }                        
-                    let scs = model.scalarLayers |> HashMap.alter sc.label (Option.map(fun _ -> sc))
-                    { model with selectedScalar = Some sc; scalarLayers = scs; }
-                  | None -> model
-            | _ -> model
+        | SetScalarMap a ->
+            //let test = model.scalarLayers |> HashMap.tryFind("B")
+            match a with
+            | Some s -> { model with selectedScalar = Some s;} 
+            | None -> { model with selectedScalar = None }
+        | ScalarsColorLegendMessage msg ->
+            match model.selectedScalar with
+            | Some s -> 
+              let sc = { s with colorLegend = (FalseColorLegendApp.update s.colorLegend msg) }                        
+              let scs = model.scalarLayers |> HashMap.alter sc.label (Option.map(fun _ -> sc))
+              { model with selectedScalar = Some sc; scalarLayers = scs; }
+            | None -> model            
 
     let showColorLegend (model: AdaptiveAttributeModel) =
         alist {
                 let! scalar = model.selectedScalar
                 match scalar with
-                    | AdaptiveSome s -> yield FalseColorLegendApp.Draw.createColorLegendScalars s.colorLegend
-                    | AdaptiveNone -> yield div[ style "font-style:italic"][ text "no scalar selected" ]
+                | AdaptiveSome s -> yield FalseColorLegendApp.Draw.createColorLegendScalars s.colorLegend
+                | AdaptiveNone -> yield div[ style "font-style:italic"][ text "no scalar selected" ]
         }  
 
     let scalarsColorLegend (m:AdaptiveAttributeModel) =
