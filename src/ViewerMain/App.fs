@@ -245,7 +245,7 @@ module App =
         let renderControl =
             FreeFlyController.controlledControl m.cameraState Camera m.mainFrustum
                 (AttributeMap.ofList [ 
-                    style "width: 100%; height:100%; background-color:darkgrey;" 
+                    style "width: 100%; height:100%; background-color:white;" 
                     attribute "showFPS" "false";       // optional, default is false
                     attribute "useMapping" "true"
                     //attribute "data-renderalways" "false"

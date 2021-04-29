@@ -105,8 +105,8 @@ module SourceLinkingApp =
     let view (m : AdaptiveSourceLinkingModel) : ISg<SourceLinkingAction> = 
                         
         let frustra =
-            m.filteredCameras 
-            |> AList.map(fun (shot, _) -> 
+            m.cameras 
+            |> AList.map(fun (shot) -> 
                                 
                 let dir = shot.info.rotation.Transform(V3d.OOI * (-1.0))
                 let color = C4f(dir.Normalized.Abs()).ToC4b()
@@ -144,6 +144,7 @@ module SourceLinkingApp =
             )
             |> AList.toASet
             |> Sg.set
+            |> Sg.uniform "LineWidth" (AVal.constant 4.0)
             |> Sg.shader {
                 do! DefaultSurfaces.stableTrafo
                 do! DefaultSurfaces.vertexColor                    
