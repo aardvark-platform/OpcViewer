@@ -19,6 +19,8 @@ nuget Aardvark.Application.Slim             ~> 5.0.9
 nuget Aardvark.Application.Slim.GL          ~> 5.0.9
 nuget Aardvark.Application.Slim.Vulkan      ~> 5.0.9
 
+nuget FShade.Core                           ~> 5.0.4
+
 nuget Aardvark.Geometry                     ~> 5.0.15
 nuget Aardvark.Geometry.Intersection        ~> 5.0.15
 nuget Aardvark.Geometry.PolyMesh            ~> 5.0.15
