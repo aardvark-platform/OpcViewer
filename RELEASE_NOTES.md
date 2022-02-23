@@ -1,3 +1,4 @@
+* 1.0.11 updated to f# 5
 * 1.0.10 updated packages
 * 1.0.8 updated packages
 * 1.0.7 vulkan shader compatibility
