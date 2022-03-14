@@ -1,18 +1,13 @@
 namespace Rabbyte.Annotation
 
-open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.Rendering
-open Aardvark.Application
 open Aardvark.SceneGraph
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open OpcViewer.Base
-open FShade.Primitives
-
-open AnnotationModel
 
 module AnnotationApp =
     open Rabbyte.Drawing

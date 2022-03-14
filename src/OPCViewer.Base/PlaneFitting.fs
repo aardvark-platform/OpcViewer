@@ -9,7 +9,7 @@ module PlaneFitting =
         let length = points |> Seq.length |> float
 
         let c = 
-            let sum = points |> Seq.reduce (fun x y -> V3d.Add(x,y))
+            let sum = points |> Seq.sum
             sum / length
 
         let pDiffAvg = points |> Seq.map (fun x -> x - c)

@@ -77,7 +77,7 @@ module LinkingApp =
 
         // map minerva features to linking features
         let linkingFeatures : HashMap<string, LinkingFeature> = 
-            reducedFeatures.Map (fun _ f ->
+            reducedFeatures.Map (fun _ (f : Feature) ->
 
                 let position = originTrafoInv.TransformPos(f.geometry.positions.Head)
                 let angles = f.geometry.coordinates.Head
@@ -200,8 +200,6 @@ module LinkingApp =
                 { m with minervaModel = MinervaApp.update view m.minervaModel a; selectedFrustums = HashSet.Empty}
 
             | _ -> { m with minervaModel = MinervaApp.update view m.minervaModel a}
-
-        | _ -> failwith "Not implemented yet"
 
     //---Helpers
     let dependencies =
@@ -348,10 +346,10 @@ module LinkingApp =
             )
 
         require dependencies (
-            div [][
+            div [] [
                 div [clazz "inverted fluid ui vertical buttons"] [
-                    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.UpdateSelection(m.frustums |> AMap.keys |> ASet.force |> HashSet.toList)))][text "Select All"]         
-                    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.ClearSelection))][text "Clear Selection"]                 
+                    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.UpdateSelection(m.frustums |> AMap.keys |> ASet.force |> HashSet.toList)))] [text "Select All"]         
+                    button [clazz "inverted ui button"; onClick (fun _ -> MinervaAction(MinervaAction.ClearSelection))] [text "Clear Selection"]                 
                 ]
                 Incremental.div 
                     (AttributeMap.ofAMap (amap { 
@@ -378,7 +376,7 @@ module LinkingApp =
                                 | None -> yield clazz (classString + " disabled")
 
                             })) (AList.ofList [
-                                i [clazz "caret left icon"][]
+                                i [clazz "caret left icon"] []
                                 text "Previous"
                             ])
                             Incremental.button (AttributeMap.ofAMap (amap {
@@ -392,13 +390,13 @@ module LinkingApp =
                                 | None -> yield clazz (classString + " disabled")
 
                             })) (AList.ofList [
-                                i [clazz "caret right icon"][]
+                                i [clazz "caret right icon"] []
                                 text "Next"
                             ])
                         ]
 
-                        button [clazz "fluid inverted ui button"; onClick (fun _ -> LinkingAction.CloseFrustum)][
-                            i [clazz "close icon"][]
+                        button [clazz "fluid inverted ui button"; onClick (fun _ -> LinkingAction.CloseFrustum)] [
+                            i [clazz "close icon"] []
                             text "Close"
                         ]
                     ])
@@ -424,7 +422,7 @@ module LinkingApp =
                     attribute "id" "frustum-overlay-svg"
                     attribute "viewBox" "0 0 1600 1200"
                     style (sprintf "border-color: %s" (instrumentColor f.instrument))
-                ][
+                ] [
                     Svg.path [
                         attribute "fill" "rgba(0,0,0,0.5)"
                         attribute "d" (sprintf "M0 0 h%d v%d h-%dz M%d %d v%d h%d v-%dz"
@@ -636,7 +634,7 @@ module LinkingApp =
                                     svgLine (0.0, 0.0) (rc.X, rc.Y) "black" 0.01 // direction line
                                 ]
                                 text f.id
-                                div [clazz "product-indexed"; style "position: absolute; bottom: 1.2em"][
+                                div [clazz "product-indexed"; style "position: absolute; bottom: 1.2em"] [
      (* ༼つಠ益ಠ༽つ ─=≡ΣO) *)        text (string (before.Count + 1)) // geologists probably start their indices at 1
                                 ]
                             ])

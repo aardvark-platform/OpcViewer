@@ -725,7 +725,7 @@ module App =
         let onResize (cb : V2i -> 'msg) =
             onEvent "onresize" ["{ X: $(document).width(), Y: $(document).height()  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
     
-        let renderControl (state : AdaptiveModel) (f : Message -> 'msg)=
+        let renderControl (state : AdaptiveModel) (f : Message -> Message)=
             FreeFlyController.controlledControl m.cameraState Camera projFrustum
                 (AttributeMap.ofListCond [ 
                   always (style "width: 100%; height:100%"; )

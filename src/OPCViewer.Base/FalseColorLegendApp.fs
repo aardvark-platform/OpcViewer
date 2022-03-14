@@ -199,7 +199,7 @@ module FalseColorLegendApp =
                                                     buildSvgStop off col)                                                    
                                             |> AList.ofList
 
-                        yield Svg.defs [][
+                        yield Svg.defs [] [
                             onBoot "$('#__ID__').attr('id','falseColorLegend')" (
                                 Incremental.Svg.linearGradient 
                                     (AttributeMap.ofList [  "x1" => "0%"; "y1" => "0%"; 

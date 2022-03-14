@@ -2,16 +2,12 @@ namespace Rabbyte.Drawing
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Rendering
-open Aardvark.Application
 open Aardvark.SceneGraph
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
-open DrawingModel
 open OpcViewer.Base
-open FShade.Primitives
 
 module DrawingApp =
 

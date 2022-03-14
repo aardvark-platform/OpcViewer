@@ -4,6 +4,7 @@ Aardvark.Base.FSharp
 
 Aardvark.Rendering.Vulkan
 Aardvark.Rendering.Text
+Aardvark.PixImage.DevIL
 Aardvark.UI.Primitives
 Aardvark.Application.Slim.GL
 Aardvark.SceneGraph

@@ -54,7 +54,7 @@ module StencilAreaMasking =
         //|> Sg.stencilMode (AVal.constant writeZFail)
         |> Sg.stencilModes' writeZFailFront writeZFailBack
         |> Sg.cullMode (AVal.constant CullMode.None)
-        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
+        |> Sg.writeBuffers' (Set.ofList [WriteBuffer.Stencil])
 
     let private fillSG areaPass sg =
         sg
@@ -65,7 +65,7 @@ module StencilAreaMasking =
         |> Sg.cullMode (AVal.constant CullMode.None)
         |> Sg.depthTest (AVal.constant DepthTest.None)
         |> Sg.blendMode (AVal.constant BlendMode.Blend)
-        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
+        |> Sg.writeBuffers' (Set.ofList [WriteBuffer.Color DefaultSemantic.Colors; WriteBuffer.Stencil])
 
     let stencilArea (pass1: RenderPass) (pass2: RenderPass) sg1 sg2 =
         [

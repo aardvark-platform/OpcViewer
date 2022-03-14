@@ -152,7 +152,6 @@ module SurfaceAttributes =
                     let scs = model.scalarLayers |> HashMap.alter sc.label (Option.map(fun _ -> sc))
                     { model with selectedScalar = Some sc; scalarLayers = scs; }
                   | None -> model
-            | _ -> model
 
     let showColorLegend (model: AdaptiveAttributeModel) =
         alist {

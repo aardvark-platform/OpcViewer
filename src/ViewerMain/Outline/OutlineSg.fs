@@ -85,7 +85,7 @@ module OutlineSg =
                         |> Sg.noEvents 
                         |> Sg.pass pass0
                         |> Sg.stencilMode (AVal.constant (write 1))
-                        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
+                        |> Sg.writeBuffers' (Set.ofList [WriteBuffer.Stencil])
                         |> Sg.effect [ 
                             toEffect Shader.stableTrafo
                             toEffect DefaultSurfaces.diffuseTexture       
@@ -96,7 +96,7 @@ module OutlineSg =
                         |> Sg.noEvents
                         |> Sg.stencilMode (AVal.constant (read 1))
                         |> Sg.depthTest (AVal.constant DepthTest.None)
-                        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
+                        |> Sg.writeBuffers' (Set.ofList [WriteBuffer.Color DefaultSemantic.Colors])
                         |> Sg.pass pass1
                         |> Sg.effect [
                             Shader.stableTrafo |> toEffect

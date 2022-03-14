@@ -1,7 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\bin\Debug\</OutputPath>
@@ -10,15 +11,13 @@
     <OutputPath>..\..\bin\Release</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Drawing\DrawingModel.fs" />
-    <Compile Include="Drawing\DrawingApp.fs" />
-    <Compile Include="Annotation\AnnotationModel.fs" />
-    <Compile Include="Annotation\AnnotationSg.fs" />
-    <Compile Include="Annotation\AnnotationApp.fs" />
+    <Compile Include="ExampleModel.fs" />
+    <Compile Include="ExampleApp.fs" />
+    <Compile Include="Program.fs" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\OPCViewer.Base\OPCViewer.Base.fsproj" />
+    <ProjectReference Include="..\Rabbyte\Rabbyte.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

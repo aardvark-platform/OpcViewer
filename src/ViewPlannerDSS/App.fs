@@ -148,9 +148,9 @@ module App =
 
         | RoverAction msg -> 
             match msg with
-                  | ChangePosition pos -> 
-                        let r = RoverApp.update model.rover (ChangePosition pos)
-                        {model with rover = r}
+            | ChangePosition pos -> 
+                let r = RoverApp.update model.rover (ChangePosition pos)
+                {model with rover = r}
                 //| ChangePan p -> 
                 //    let r = RoverApp.update model.rover (ChangePan p)
                 //    {model with rover = r}
@@ -158,7 +158,8 @@ module App =
                 //| ChangeTilt t -> 
                 //    let r = RoverApp.update model.rover (ChangeTilt t)
                 //    {model with rover = r}
-
+            | _ ->
+                model
 
         | _ -> model
     

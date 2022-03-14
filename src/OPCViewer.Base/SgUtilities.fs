@@ -80,7 +80,7 @@ module SgUtilities =
             Shader.DepthOffset.Effect
             Shader.PointSize.EffectPointSpriteFragment
         ] 
-        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
+        |> Sg.writeBuffers' (Set.ofList [WriteBuffer.Color DefaultSemantic.Colors])
 
     let drawSingleColorPoints (color: aval<V4f>) (pointSize: aval<float>) (offsetNormalized: aval<float>) (pointsF: aval<V3f[]>) =
         drawPoints pointSize offsetNormalized pointsF
@@ -111,7 +111,7 @@ module SgUtilities =
             Shader.DepthOffset.Effect
         ]
         |> Sg.trafo trafo
-        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
+        |> Sg.writeBuffers' (Set.ofList [WriteBuffer.Color DefaultSemantic.Colors])
 
     let lines' (offsetWorld: aval<float>) (color: aval<C4b>) (width: aval<float>) (near: aval<float>) (far: aval<float>) (points: alist<V3d>) =
         let nearFar = AVal.map2 (fun near far -> near,far) near far

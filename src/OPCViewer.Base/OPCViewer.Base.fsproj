@@ -10,6 +10,9 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\bin\Debug</OutputPath>
   </PropertyGroup>
+  <PropertyGroup Condition="($(DesignTimeBuild) == true)">
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="IndexHelper.fs" />
     <Compile Include="PlaneFitting.fs" />

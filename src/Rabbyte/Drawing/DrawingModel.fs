@@ -3,10 +3,6 @@ namespace Rabbyte.Drawing
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI
-open Aardvark.UI.Primitives
-open Aardvark.SceneGraph
-open Aardvark.Geometry
-open Aardvark.Base
 
 open Adaptify
 
