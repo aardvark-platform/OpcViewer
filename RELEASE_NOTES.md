@@ -1,5 +1,5 @@
 ### 1.1.0
-- updated to Aardvark 5.2
+- updated to Aardvark 5.2 libraries
 
 ### 1.0.11
 - updated to f# 5
