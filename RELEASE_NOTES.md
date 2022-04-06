@@ -1,3 +1,6 @@
+### 1.1.1
+- updated media to 5.3
+
 ### 1.1.0
 - updated to Aardvark 5.2 libraries
 
