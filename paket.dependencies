@@ -21,6 +21,8 @@ nuget Aardvark.Application.Slim.Vulkan      ~> 5.0.9
 
 nuget FShade.Core                           ~> 5.0.4
 
+nuget Silk.NET.Core ~> 1.7.0
+
 nuget Aardvark.Geometry                     ~> 5.0.15
 nuget Aardvark.Geometry.Intersection        ~> 5.0.15
 nuget Aardvark.Geometry.PolyMesh            ~> 5.0.15

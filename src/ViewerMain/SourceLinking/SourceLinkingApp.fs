@@ -105,8 +105,8 @@ module SourceLinkingApp =
     let view (m : AdaptiveSourceLinkingModel) : ISg<SourceLinkingAction> = 
                         
         let frustra =
-            m.cameras 
-            |> AList.map(fun (shot) -> 
+            m.filteredCameras 
+            |> AList.map(fun (shot, _) -> 
                                 
                 let dir = shot.info.rotation.Transform(V3d.OOI * (-1.0))
                 let color = C4f(dir.Normalized.Abs()).ToC4b()
@@ -144,7 +144,7 @@ module SourceLinkingApp =
             )
             |> AList.toASet
             |> Sg.set
-            |> Sg.uniform "LineWidth" (AVal.constant 4.0)
+            |> Sg.uniform "LineWidth" (AVal.constant 3.0)
             |> Sg.shader {
                 do! DefaultSurfaces.stableTrafo
                 do! DefaultSurfaces.vertexColor                    
@@ -226,7 +226,7 @@ module SourceLinkingApp =
             |> FootprintProjection.drawFootPrints (RenderPass.after "" RenderPassOrder.Arbitrary RenderPass.main)
 
 
-        let solidSg = [points; directions; queryPoint] |> Sg.ofList |> Sg.pass nextRenderPass
+        let solidSg = [points; frustra; directions; queryPoint] |> Sg.ofList |> Sg.pass nextRenderPass
 
         [
             footprints
