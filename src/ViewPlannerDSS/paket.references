@@ -1,23 +1,9 @@
-Aardvark.Base
-Aardvark.Base.Incremental
-Aardvark.Base.FSharp
+group Examples
+    FSharp.Core
 
-Aardvark.Rendering.Vulkan
-Aardvark.Rendering.Text
-Aardvark.PixImage.DevIL
-Aardvark.UI.Primitives
-Aardvark.Application.Slim.GL
-Aardvark.SceneGraph
-Aardvark.SceneGraph.IO
-Aardvark.SceneGraph.Opc
-Aardvark.Geometry.Intersection
-
-FsPickler
-FsPickler.Json
-
-Aardium
-
-Suave
-FSharp.Core
-
-Adaptify.MSBuild
+    Aardvark.PixImage.FreeImage
+    Aardvark.Application.Slim.GL
+    Aardvark.Application.Slim.Vulkan
+    Aardvark.UI
+    Aardium
+    Adaptify.MSBuild

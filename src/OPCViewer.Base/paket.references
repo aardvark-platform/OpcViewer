@@ -1,27 +1,16 @@
 Aardvark.Build
 Aardvark.Base
-Aardvark.Base.Incremental
 Aardvark.Base.FSharp
 
 Aardvark.Rendering
-Aardvark.Rendering.Vulkan
 Aardvark.Rendering.Text
 Aardvark.UI.Primitives
-Aardvark.Application.Slim.GL
 Aardvark.SceneGraph
-Aardvark.SceneGraph.IO
 Aardvark.SceneGraph.Opc
 Aardvark.Geometry.Intersection
 
 Adaptify.MSBuild
 
-FSharp.Data.Adaptive
+Uncodium.Eigensystems
 
-FsPickler
-FsPickler.Json
-
-Aardium
-Uncodium.Eigensystems 
-
-Suave
 FSharp.Core

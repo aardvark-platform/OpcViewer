@@ -1,8 +1,11 @@
-Aardvark.Build
-Aardvark.Base
-Aardvark.UI
-Aardvark.Geometry.PolyMesh
+group Examples
+    FSharp.Core
 
-Adaptify.MSBuild
+    Aardvark.Application.Slim.GL
+    Aardvark.Application.Slim.Vulkan
+    Aardvark.UI
+    Aardvark.Geometry.PolyMesh
 
-FSharp.Core
+    Aardium
+
+    Adaptify.MSBuild
