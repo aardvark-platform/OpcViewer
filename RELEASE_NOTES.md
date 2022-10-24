@@ -1,3 +1,7 @@
+### 1.2.0
+- updated to Aardvark.Rendering 5.3
+- cleaned dependencies
+
 ### 1.1.1
 - updated media to 5.3
 
