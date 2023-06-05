@@ -3,6 +3,7 @@ group Examples
 
     FSharp.Data
 
+    Aardvark.PixImage.Pfim
     Aardvark.PixImage.FreeImage
     Aardvark.Geometry.PointTree
     Aardvark.UI.Primitives

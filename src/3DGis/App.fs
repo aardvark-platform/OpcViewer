@@ -390,9 +390,9 @@ module App =
             | SetProjection a ->
                 if model.inJumpedPosition then
                     model
-                elif a = Some O && model.perspectiveView then
+                elif a = O && model.perspectiveView then
                     update { model with currentOption = a } Message.AnimateCameraViewSwitch
-                elif a = Some P && not model.perspectiveView then
+                elif a = P && not model.perspectiveView then
                     update { model with currentOption = a } Message.AnimateCameraViewSwitch
                 else
                     { model with currentOption = a }
@@ -767,7 +767,7 @@ module App =
                     div[style "color:white; margin: 5px 15px 5px 5px"] [
                         Html.SemUi.accordion "Camera" "camera" true [     
                             div [ clazz "item" ] [ 
-                                dropdown { placeholder = "Thingy"; allowEmpty = false } [ clazz "ui simple inverted selection dropdown" ] dropDownValues m.currentOption SetProjection
+                                dropdownUnclearable [ clazz "ui simple inverted selection dropdown" ] dropDownValues m.currentOption SetProjection
                             ]                                                                       
                         ]
                         br[]
@@ -915,7 +915,7 @@ module App =
                 maxHeight                       = 0.0
                 minHeight                       = 0.0
                 dropDownOptions                 = HashMap.ofList [P, "Perspective"; O, "Orthographic";]
-                currentOption                   = Some O
+                currentOption                   = O
                 offsetUIDrawX                   = 0.05
                 offsetUIDrawY                   = 0.15
                 pointList                       = []

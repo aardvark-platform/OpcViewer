@@ -261,11 +261,11 @@ module DrawingApp =
             ]
             tr[][
                 td[style style'][text "AreaStyle:"]
-                td[style style'][dropdown { placeholder = "AreaStyle"; allowEmpty = false } [ clazz "ui inverted selection dropdown" ] (model.areaStyleNames |> AMap.map (fun k v -> text v)) (model.style.areaStyle) ChangeAreaStyle]
+                td[style style'][dropdownUnclearable [ clazz "ui inverted selection dropdown" ] (model.areaStyleNames |> AMap.map (fun k v -> text v)) (model.style.areaStyle) ChangeAreaStyle]
             ]
             tr[][
                 td[style style'][text "LineStyle:"]
-                td[style style'][dropdown { placeholder = "LineStyle"; allowEmpty = false } [ clazz "ui inverted selection dropdown" ] (model.lineStyleNames |> AMap.map (fun k v -> text v)) (model.style.lineStyle) ChangeLineStyle]
+                td[style style'][dropdownUnclearable [ clazz "ui inverted selection dropdown" ] (model.lineStyleNames |> AMap.map (fun k v -> text v)) (model.style.lineStyle) ChangeLineStyle]
             ]
             tr[][
                 td[style style'][text "PrimaryColor:"]

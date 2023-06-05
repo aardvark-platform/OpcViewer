@@ -43,7 +43,7 @@ type Message =
   | AnimateCameraComplete
   | AnimateCameraReturn
   | Tick                    of Time
-  | SetProjection           of Option<Alternative>
+  | SetProjection           of Alternative
   | SetSamplingRate         of Numeric.Action
   | MouseWheel              of V2d
   | ResizeRenderView        of V2i
@@ -140,7 +140,7 @@ type Model =
         perspectiveView                : bool
         persToOrthoValue               : float
         dropDownOptions                : HashMap<Alternative, string>
-        currentOption                  : Option<Alternative>
+        currentOption                  : Alternative
                                        
         camViewAnimRunning             : bool
         camJumpAnimRunning             : bool

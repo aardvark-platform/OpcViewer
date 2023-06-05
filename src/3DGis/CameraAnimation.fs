@@ -23,7 +23,7 @@ module CameraAnimation =
                         perspectiveView = false
                         persToOrthoValue = 1.0
                         camViewAnimRunning = false 
-                        currentOption = Some O 
+                        currentOption = O 
                 }
             else
                 let duration = TimeSpan.FromSeconds 2.0
@@ -36,7 +36,7 @@ module CameraAnimation =
                         camJumpAnimRunning = model.camCompAnimRunning
                         camRetAnimRunning = false
                         cameraAnimEndTime = float total.Ticks
-                        currentOption = Some P 
+                        currentOption = P 
                 }
         else
             model

@@ -34,8 +34,8 @@ type BrushStyle =
     {
         primary     : ColorInput
         secondary   : ColorInput
-        lineStyle   : Option<LineStyle>
-        areaStyle   : Option<AreaStyle>
+        lineStyle   : LineStyle
+        areaStyle   : AreaStyle
         thickness   : float
         samplingRate: float 
     }
@@ -69,8 +69,8 @@ type DrawingAction =
     | ChangeColorAuto       of ColorPicker.Action
     | ChangeThickness       of float
     | ChangeSamplingRate    of float
-    | ChangeLineStyle       of Option<LineStyle>
-    | ChangeAreaStyle       of Option<AreaStyle>
+    | ChangeLineStyle       of LineStyle
+    | ChangeAreaStyle       of AreaStyle
     | AddPoint              of V3d * (Option<V3d -> Option<V3d>>)
     | RecalculateSegments   of (V3d -> Option<V3d>)
     | RemoveLastPoint  
@@ -87,8 +87,8 @@ module DrawingModel =
         {
             primary = { c = C4b.VRVisGreen }
             secondary = { c = C4b.Yellow }
-            lineStyle = Some Solid
-            areaStyle = Some Filled
+            lineStyle = Solid
+            areaStyle = Filled
             thickness = 3.0
             samplingRate = 0.2
         }
