@@ -1,3 +1,7 @@
+### 1.3.0
+- updated to Aardvark.Rendering 5.4
+- [Rabbyte] simplified model and actions by using dropdownUnclearable
+
 ### 1.2.0
 - updated to Aardvark.Rendering 5.3
 - cleaned dependencies
