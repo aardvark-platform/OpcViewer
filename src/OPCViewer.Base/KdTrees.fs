@@ -225,7 +225,7 @@ module KdTrees =
 
                 Log.stop ()
 
-                kdTrees |> save cacheFile b |> ignore
+                kdTrees |> Array.toList |> save cacheFile b |> ignore
 
                 if load then
                     kdTrees |> HashMap.ofArray

@@ -1,3 +1,7 @@
+### 1.4.1
+- LazyKdTree caches need to be list not array (accidently introduced serialization issue)
+
+
 ### 1.4.0
 - KdTree loading now parametrized and allows to create kdtrees
 
