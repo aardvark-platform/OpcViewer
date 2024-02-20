@@ -277,7 +277,7 @@ module App =
                 for h in patchHierarchies do
             
                     let rootTree = h.tree |> QTree.getRoot
-                    let kd = (KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ OpcSelectionViewer.Serialization.binarySerializer false) false (fun _ -> failwith "no function for creating triangle sets")
+                    let kd = (KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ OpcSelectionViewer.Serialization.binarySerializer false) false (fun _ -> failwith "no function for creating triangle sets") false
 
                     yield {
                         patchHierarchy = h

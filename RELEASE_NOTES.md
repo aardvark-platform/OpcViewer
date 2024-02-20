@@ -1,3 +1,7 @@
+### 1.5.0
+- added option to prevent new file construction for read only file systems & to control loading runtime
+
+
 ### 1.4.1
 - LazyKdTree caches need to be list not array (accidently introduced serialization issue)
 

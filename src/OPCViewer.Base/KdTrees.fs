@@ -123,6 +123,7 @@ module KdTrees =
         (forceRebuild : bool)
         (ignoreMasterKdTree : bool)
         (loadTriangles : Trafo3d -> string -> TriangleSet)
+        (surpressFileConstruction : bool)
         : HashMap<Box3d, Level0KdTree> =
 
         let masterKdPath =
@@ -147,7 +148,7 @@ module KdTrees =
 
             if not ignoreMasterKdTree && (File.Exists masterKdPath && not (Array.isEmpty missingKd0Paths)) && not forceRebuild then
 
-                Log.line "Found master kdtree - loading incore"
+                Log.warn "Found master kdtree - loading incore. THIS NEEDS A LOT OF MEMORY. CONSIDER CREATING PER-PATCH KD TREES. see: "
                 let tree = loadKdtree masterKdPath
 
                 let kd =
@@ -164,7 +165,8 @@ module KdTrees =
 
                 let kdTrees =
                     kd0Paths
-                    |> Array.mapi (fun i (info,kdPath) ->
+                    |> Array.indexed
+                    |> Array.map (fun (i, (info,kdPath)) ->
                         
                         let dir = h.opcPaths.Patches_DirAbsPath +/ info.Name
                         let pos =
@@ -196,41 +198,51 @@ module KdTrees =
                         let t = 
                             if File.Exists kdPath && not forceRebuild then 
                                 try 
-                                    loadKdtree kdPath
+                                    loadKdtree kdPath |> Some
                                 with e -> 
                                     Log.warn "[KdTrees] could not load kdtree: %A" e
-                                    createConcreteTree()
-                            else
-                                createConcreteTree()
+                                    if surpressFileConstruction then None
+                                    else createConcreteTree() |> Some
+                            elif not surpressFileConstruction then
+                                createConcreteTree() |> Some
+                            else 
+                                None
 
 
+                        match t with
+                        | Some t -> 
+                            let lazyTree: LazyKdTree =
+                                { kdTree = None
+                                  objectSetPath = objectSetPath
+                                  coordinatesPath = dir +/ (List.head info.Coordinates)
+                                  texturePath = Patch.extractTexturePath (OpcPaths h.opcPaths.Opc_DirAbsPath) info 0
+                                  kdtreePath = kdPath
+                                  affine =
+                                    mode
+                                    |> ViewerModality.matchy info.Local2Global info.Local2Global2d
+                                  boundingBox = t.KdIntersectionTree.BoundingBox3d 
+                                }
 
-                        let lazyTree: LazyKdTree =
-                            { kdTree = None
-                              objectSetPath = objectSetPath
-                              coordinatesPath = dir +/ (List.head info.Coordinates)
-                              texturePath = Patch.extractTexturePath (OpcPaths h.opcPaths.Opc_DirAbsPath) info 0
-                              kdtreePath = kdPath
-                              affine =
-                                mode
-                                |> ViewerModality.matchy info.Local2Global info.Local2Global2d
-                              boundingBox = t.KdIntersectionTree.BoundingBox3d 
-                            }
+                            Report.Progress(float i / float num)
 
-                        Report.Progress(float i / float num)
-
-                        (lazyTree.boundingBox, (LazyKdTree lazyTree)))
+                            (lazyTree.boundingBox, (LazyKdTree lazyTree)) |> Some
+                        | _ -> 
+                            None
+                    )
 
                 
-
                 Log.stop ()
 
-                kdTrees |> Array.toList |> save cacheFile b |> ignore
-
-                if load then
-                    kdTrees |> HashMap.ofArray
-                else
+                if kdTrees |> Array.exists Option.isNone then 
                     HashMap.empty
+                else
+                    let trees = kdTrees |> Array.map Option.get |> Array.toList // safe because check above
+                    trees |> save cacheFile b |> ignore
+
+                    if load then
+                        trees |> HashMap.ofList
+                    else
+                        HashMap.empty
 
 
         if File.Exists cacheFile then
@@ -256,6 +268,6 @@ module KdTrees =
     let loadKdTrees
         (h: PatchHierarchy) (trafo: Trafo3d) (mode: ViewerModality)
         (b: BinarySerializer) (forceRebuild : bool) (ignoreMasterKdTree : bool)
-        (loadTriangles : Trafo3d -> string -> TriangleSet) : HashMap<Box3d, Level0KdTree> =
+        (loadTriangles : Trafo3d -> string -> TriangleSet) (surpressFileConstruction : bool) : HashMap<Box3d, Level0KdTree> =
 
-        loadKdTrees' h trafo true mode b forceRebuild ignoreMasterKdTree loadTriangles
+        loadKdTrees' h trafo true mode b forceRebuild ignoreMasterKdTree loadTriangles surpressFileConstruction
