@@ -307,10 +307,11 @@ module App =
                 for h in patchHierarchies do
                   
                     let rootTree = h.tree |> QTree.getRoot
-                    
+                    let kd = KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer false false (fun _ _ -> failwith "no function for creating triangle sets")
+
                     yield {
                         patchHierarchy = h
-                        kdTree         = Aardvark.VRVis.Opc.KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath (KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer)
+                        kdTree         = Aardvark.VRVis.Opc.KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath kd
                         localBB        = rootTree.info.LocalBoundingBox 
                         globalBB       = rootTree.info.GlobalBoundingBox
                         neighborMap    = HashMap.empty

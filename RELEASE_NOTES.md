@@ -1,3 +1,6 @@
+### 1.4.0
+- KdTree loading now parametrized and allows to create kdtrees
+
 ### 1.3.0
 - updated to Aardvark.Rendering 5.4
 - [Rabbyte] simplified model and actions by using dropdownUnclearable
