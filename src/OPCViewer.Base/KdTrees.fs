@@ -283,7 +283,14 @@ module KdTrees =
                     HashMap.empty
                 else
                     let trees = kdTrees |> Array.map Option.get |> Array.toList // safe because check above
-                    trees |> save cacheFile b |> ignore
+
+                    try
+                        trees |> save cacheFile b |> ignore
+                    with e -> 
+                        Log.warn "[KdTrees] could not save LazyKdTree to %s" cacheFile
+                        Log.warn "the exception is: %A" e.Message
+                        Log.warn "Maybe this is a readonly file system? We often see this with NTFS disks and macs. I will continue without the kdtree cache, but"
+                        Log.warn "be aware that reloading the surface requires re-creation of the LazyKdTree"
 
                     if load then
                         trees |> HashMap.ofList
