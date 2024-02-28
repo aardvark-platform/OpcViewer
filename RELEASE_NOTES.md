@@ -1,3 +1,6 @@
+### 1.5.1
+- robustness for readonly file systems, validation and repair of broken cache files if possible.
+
 ### 1.5.0
 - added option to prevent new file construction for read only file systems & to control loading runtime
 
