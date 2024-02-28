@@ -1,6 +1,7 @@
 namespace Aardvark.VRVis.Opc
 // copy of https://raw.githubusercontent.com/aardvark-platform/OpcViewer/master/src/OPCViewer.Base/KdTrees.fs
 // should be consolidated
+open System
 open System.IO
 open Aardvark.Geometry
 open Aardvark.Base
@@ -31,7 +32,7 @@ module KdTrees =
         | InCoreKdTree of InCoreKdTree
 
     let relativePath (path: string) (remaining: int) =
-        path.Split(Path.DirectorySeparatorChar)
+        path.Split([| "/"; "\\" |], StringSplitOptions.None)
         |> List.ofArray
         |> List.rev
         |> List.take remaining
@@ -47,6 +48,13 @@ module KdTrees =
             | Level0KdTree.LazyKdTree lkt ->
                 let kdTreeSub = lkt.kdtreePath |> relativePath'
                 let triangleSub = lkt.objectSetPath |> relativePath'
+
+                let kdPath = Path.Combine(basePath, kdTreeSub)
+                let objectSetPath = Path.Combine(basePath, triangleSub)
+
+                Log.line "[KdTrees] path: %s" kdPath
+                if not (File.Exists(kdPath)) then
+                    Log.warn "KdPath does not exist"
 
                 LazyKdTree
                     { lkt with
