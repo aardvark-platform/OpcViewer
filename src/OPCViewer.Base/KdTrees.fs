@@ -41,6 +41,14 @@ module KdTrees =
 
     let relativePath' (path: string) = relativePath path 3
 
+    let tryRepairCaseInsitivityInCaches (pathToFileInPatchDir : string) =
+        let components = pathToFileInPatchDir.Split([| "/"; "\\" |], StringSplitOptions.None) 
+        "Dinosaur_Quarry_2/OPC_000_000/patches/00-Patch-00007~0001/someFile.aara"
+        let prefix = components[0..components.Length - 4]
+        let suffix = components[components.Length - 2 ..]
+        let patches = components[components.Length - 3]
+        prefix,patches,suffix
+
     let expandKdTreePaths basePath kd =
         kd
         |> HashMap.map (fun _ k ->
