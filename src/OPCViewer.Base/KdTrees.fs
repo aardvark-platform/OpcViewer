@@ -41,13 +41,46 @@ module KdTrees =
 
     let relativePath' (path: string) = relativePath path 3
 
+    // tries to repair caches with broken capitalization in patches vs Patches
+    // Background: We have dozens cache files out there with inconsistent capitalization for "patches" vs "Patches".
+    // Fixing it is expensive. On readonly filesystem we can't even fix them.
+    // this we need to workaround rather brutal. Here we try variants 
+    // of valid patch file paths to resolve a file from within a patch directory.
+    // e.g. "Dinosaur_Quarry_2/OPC_000_000/patches/00-Patch-00007~0001/someFile.aara" => 
+    // "Dinosaur_Quarry_2/OPC_000_000/Patches/00-Patch-00007~0001/someFile.aara"
     let tryRepairCaseInsitivityInCaches (pathToFileInPatchDir : string) =
         let components = pathToFileInPatchDir.Split([| "/"; "\\" |], StringSplitOptions.None) 
-        "Dinosaur_Quarry_2/OPC_000_000/patches/00-Patch-00007~0001/someFile.aara"
         let prefix = components[0..components.Length - 4]
         let suffix = components[components.Length - 2 ..]
         let patches = components[components.Length - 3]
-        prefix,patches,suffix
+        OpcPaths.Patches_DirNames |> List.tryPick (fun p -> 
+            let path = Path.Combine(Array.concat [prefix; [| p |]; suffix])
+            Log.line "[KdTrees] trying to fix KdPath: %s" path
+            if File.Exists path then 
+                Some path
+            else 
+                None
+        )
+
+    // checks whether the file exists, if not, it tries to repair it.
+    let tryFixPatchFileIfNeeded (original : string) = 
+        if File.Exists original then
+            Some original
+        else
+            Log.warn "KdPath does not exist, trying to fix it.. (%s)" original
+            match tryRepairCaseInsitivityInCaches original with
+            | Some f -> 
+                Log.line "fixed kdTree path, %s -> %s" original f
+                Some f
+            | None -> 
+                Log.warn "could not fix patch file: %s" original
+                None
+
+    // tries to fix kdTree path in lazyKdtree. Throws if not fixable.
+    let validateLazyKdtreePaths (l : LazyKdTree) =
+        match tryFixPatchFileIfNeeded l.kdtreePath with
+        | Some fixedPath -> { l with kdtreePath = fixedPath }
+        | None -> failwithf "[KdTrees] could not fix KdTree path: %s" l.kdtreePath
 
     let expandKdTreePaths basePath kd =
         kd
@@ -60,14 +93,11 @@ module KdTrees =
                 let kdPath = Path.Combine(basePath, kdTreeSub)
                 let objectSetPath = Path.Combine(basePath, triangleSub)
 
-                Log.line "[KdTrees] path: %s" kdPath
-                if not (File.Exists(kdPath)) then
-                    Log.warn "KdPath does not exist"
-
                 LazyKdTree
                     { lkt with
-                        kdtreePath = Path.Combine(basePath, kdTreeSub)
-                        objectSetPath = Path.Combine(basePath, triangleSub) }
+                        kdtreePath = tryFixPatchFileIfNeeded kdPath |> Option.defaultValue kdPath // no chance repairing this here, see docs/KdTrees.md for a discussion
+                        objectSetPath = tryFixPatchFileIfNeeded objectSetPath |> Option.defaultValue objectSetPath // no chance repairing this here, , see docs/KdTrees.md for a discussion
+                    }
             | Level0KdTree.InCoreKdTree ik -> InCoreKdTree ik)
 
     let makeInCoreKd a =
@@ -271,7 +301,15 @@ module KdTrees =
                 else
                     try
                         let trees = loadAs<list<Box3d * Level0KdTree>> cacheFile b
-                        trees |> HashMap.ofList
+                        let validatedTrees = 
+                            trees |> List.map (fun (b, kdTree) -> 
+                                match kdTree with
+                                | Level0KdTree.InCoreKdTree k -> b, kdTree
+                                | Level0KdTree.LazyKdTree l -> 
+                                    let fixedTree = validateLazyKdtreePaths l
+                                    b, Level0KdTree.LazyKdTree fixedTree
+                            )
+                        validatedTrees |> HashMap.ofList
                     with
                     | e ->
                         Log.warn "could not load lazy KdTree cache. (%A) rebuilding..." e
