@@ -207,7 +207,7 @@ module KdTrees =
                 |> Array.map (fun x -> x, h.kdTree_FileAbsPath x.Name 0 mode)
 
             let missingKd0Paths = kd0Paths |> Array.filter (not << System.IO.File.Exists << snd)
-            Log.line "missing kd0 paths: %d/%d" missingKd0Paths.Length kd0Paths.Length
+            Log.line "[KdTrees] valid kd0 paths: %d/%d" missingKd0Paths.Length kd0Paths.Length
 
             if not ignoreMasterKdTree && (File.Exists masterKdPath && not (Array.isEmpty missingKd0Paths)) && not forceRebuild then
 
