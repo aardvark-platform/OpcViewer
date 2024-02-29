@@ -76,29 +76,46 @@ module KdTrees =
                 Log.warn "could not fix patch file: %s" original
                 None
 
-    // tries to fix kdTree path in lazyKdtree. Throws if not fixable.
-    let validateLazyKdtreePaths (l : LazyKdTree) =
-        match tryFixPatchFileIfNeeded l.kdtreePath with
-        | Some fixedPath -> { l with kdtreePath = fixedPath }
-        | None -> failwithf "[KdTrees] could not fix KdTree path: %s" l.kdtreePath
+
+    let tryExpandKdTreePath (basePath : string) (lkt : LazyKdTree) =
+        let kdTreeSub = lkt.kdtreePath |> relativePath'
+        let triangleSub = lkt.objectSetPath |> relativePath'
+
+        let kdPath = Path.Combine(basePath, kdTreeSub)
+        let objectSetPath = Path.Combine(basePath, triangleSub)
+
+        match tryFixPatchFileIfNeeded kdPath, tryFixPatchFileIfNeeded objectSetPath with
+        | Some kdPath, Some objsetSetPath -> 
+            Some { lkt with kdtreePath = kdPath; objectSetPath = objsetSetPath } 
+        | _ -> None
 
     let expandKdTreePaths basePath kd =
-        kd
-        |> HashMap.map (fun _ k ->
+        kd 
+        |> HashMap.map (fun _ k -> 
             match k with
             | Level0KdTree.LazyKdTree lkt ->
-                let kdTreeSub = lkt.kdtreePath |> relativePath'
-                let triangleSub = lkt.objectSetPath |> relativePath'
+                match tryExpandKdTreePath basePath lkt with
+                | Some kd -> 
+                    Level0KdTree.LazyKdTree kd
+                | None -> 
+                    Log.warn "could not fix lazy kdtree path"
+                    k
+            | Level0KdTree.InCoreKdTree ik -> 
+                InCoreKdTree ik
+        )
 
-                let kdPath = Path.Combine(basePath, kdTreeSub)
-                let objectSetPath = Path.Combine(basePath, triangleSub)
+    // tries to fix kdTree path in lazyKdtree. Throws if not fixable.
+    let validateLazyKdtreePaths (paths : OpcPaths) (l : LazyKdTree) =
+        match tryFixPatchFileIfNeeded l.kdtreePath with
+        | Some fixedPath -> { l with kdtreePath = fixedPath }
+        | _ -> 
+            // try fixing relative paths.
+            match tryExpandKdTreePath paths.Opc_DirAbsPath l with
+            | Some o -> 
+                o
+            | None -> 
+                failwithf "[KdTrees] could not fix KdTree path: %s" l.kdtreePath
 
-                LazyKdTree
-                    { lkt with
-                        kdtreePath = tryFixPatchFileIfNeeded kdPath |> Option.defaultValue kdPath // no chance repairing this here, see docs/KdTrees.md for a discussion
-                        objectSetPath = tryFixPatchFileIfNeeded objectSetPath |> Option.defaultValue objectSetPath // no chance repairing this here, , see docs/KdTrees.md for a discussion
-                    }
-            | Level0KdTree.InCoreKdTree ik -> InCoreKdTree ik)
 
     let makeInCoreKd a =
         { kdTree = new ConcreteKdIntersectionTree()
@@ -313,7 +330,7 @@ module KdTrees =
                                 match kdTree with
                                 | Level0KdTree.InCoreKdTree k -> b, kdTree
                                 | Level0KdTree.LazyKdTree l -> 
-                                    let fixedTree = validateLazyKdtreePaths l
+                                    let fixedTree = validateLazyKdtreePaths h.opcPaths l
                                     b, Level0KdTree.LazyKdTree fixedTree
                             )
                         validatedTrees |> HashMap.ofList
