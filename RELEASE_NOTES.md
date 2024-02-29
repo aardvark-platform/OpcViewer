@@ -1,3 +1,6 @@
+### 1.5.2
+- creates relative paths for kdtrees as early as possible
+
 ### 1.5.1
 - robustness for readonly file systems, validation and repair of broken cache files if possible.
 
