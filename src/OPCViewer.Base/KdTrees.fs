@@ -176,6 +176,22 @@ module KdTrees =
         b.CodeT(ref kdTree)
         Log.stop()
 
+    type KdTreeParameters = { 
+        flags : KdIntersectionTree.BuildFlags 
+        relativeMinCellSize : float
+        splitPlaneEpsilon : float
+        setObjectSetToNull : bool // can be recomputed on load
+    }
+
+    module KdTreeParameters = 
+        let legacyDefault = 
+            {
+                // retrieved from 2016 TextureConverter tool
+                flags = KdIntersectionTree.BuildFlags.Hierarchical ||| KdIntersectionTree.BuildFlags.MediumIntersection
+                relativeMinCellSize = 1E-06
+                splitPlaneEpsilon = 1E-07
+                setObjectSetToNull = true
+            }
 
     let loadKdTrees'
         (h: PatchHierarchy)
@@ -187,6 +203,7 @@ module KdTrees =
         (ignoreMasterKdTree : bool)
         (loadTriangles : Trafo3d -> string -> TriangleSet)
         (surpressFileConstruction : bool)
+        (kdTreeParameters : KdTreeParameters)
         : HashMap<Box3d, Level0KdTree> =
 
         let masterKdPath =
@@ -244,13 +261,13 @@ module KdTrees =
                             let triangleSet = loadTriangles trafo objectSetPath
 
                             Log.startTimed $"Building KdTree for {info.Name}"
-                            let flags =
-                                 KdIntersectionTree.BuildFlags.Picking 
-                                 ||| KdIntersectionTree.BuildFlags.FastBuild 
-                                 ||| KdIntersectionTree.BuildFlags.EmptySpaceOptimization
-                                 
-                            let kdTree = KdIntersectionTree(triangleSet, flags )
+                            let kdTree = KdIntersectionTree(triangleSet, kdTreeParameters.flags, kdTreeParameters.relativeMinCellSize, kdTreeParameters.splitPlaneEpsilon)
                             Log.stop()
+
+                            // can (and will) be recomputed from vertex data on load
+                            if kdTreeParameters.setObjectSetToNull then
+                                kdTree.ObjectSet <- null
+
                             Log.startTimed "saving KdTree to: %s" info.Name
                             saveKdTree kdTree kdPath
                             Log.stop()
@@ -348,4 +365,4 @@ module KdTrees =
         (b: BinarySerializer) (forceRebuild : bool) (ignoreMasterKdTree : bool)
         (loadTriangles : Trafo3d -> string -> TriangleSet) (surpressFileConstruction : bool) : HashMap<Box3d, Level0KdTree> =
 
-        loadKdTrees' h trafo true mode b forceRebuild ignoreMasterKdTree loadTriangles surpressFileConstruction
+        loadKdTrees' h trafo true mode b forceRebuild ignoreMasterKdTree loadTriangles surpressFileConstruction KdTreeParameters.legacyDefault
