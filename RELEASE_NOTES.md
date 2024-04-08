@@ -1,4 +1,4 @@
-### 1.6.0
+### 1.6.0 
 - exposed kdtree build flags
 
 ### 1.5.2

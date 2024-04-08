@@ -22,6 +22,7 @@ open ``F# Sg``
 open OpcViewer.Base
 open OpcViewer.Base.Picking
 open OpcSelectionViewer
+open Aardvark.VRVis.Opc.KdTrees
 
 module GuiEx =
     let iconToggle (dings : aval<bool>) onIcon offIcon action =
@@ -128,7 +129,7 @@ module OutlineApp =
           for h in patchHierarchies do
             
             let rootTree = h.tree |> QTree.getRoot
-            let kd = KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer false false (fun _ -> failwith "no function for creating triangle sets") false
+            let kd = KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer false false (fun _ -> failwith "no function for creating triangle sets") false  KdTreeParameters.legacyDefault
 
             yield {
               patchHierarchy = h
