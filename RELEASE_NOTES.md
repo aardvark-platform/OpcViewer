@@ -1,5 +1,5 @@
 ### 1.6.0 
-- exposed kdtree build flags
+- exposed kdtree build flags 
 
 ### 1.5.2 
 - creates relative paths for kdtrees as early as possible
