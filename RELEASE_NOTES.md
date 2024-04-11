@@ -1,3 +1,6 @@
+### 1.6.1
+- changed KdTree loading order in favor of lazy kdtree's and rebuilding fading out InCore Level0 KdTrees.
+
 ### 1.6.0 
 - exposed kdtree build flags 
 

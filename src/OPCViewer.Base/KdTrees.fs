@@ -226,17 +226,9 @@ module KdTrees =
             let missingKd0Paths = kd0Paths |> Array.filter (not << System.IO.File.Exists << snd)
             Log.line "[KdTrees] valid kd0 paths: %d/%d" missingKd0Paths.Length kd0Paths.Length
 
-            if not ignoreMasterKdTree && (File.Exists masterKdPath && not (Array.isEmpty missingKd0Paths)) && not forceRebuild then
+            let allKd0Available = Array.isEmpty missingKd0Paths
 
-                Log.warn "Found master kdtree - loading incore. THIS NEEDS A LOT OF MEMORY. CONSIDER CREATING PER-PATCH KD TREES. see: "
-                let tree = loadKdtree masterKdPath
-
-                let kd =
-                    { kdTree = tree
-                      boundingBox = tree.KdIntersectionTree.BoundingBox3d.Transformed(trafo) }
-
-                HashMap.single kd.boundingBox (InCoreKdTree kd) 
-            else
+            if allKd0Available || ignoreMasterKdTree || forceRebuild then
                 Log.line "Found master kdtree and patch trees"
                 Log.startTimed "building lazy kdtree cache"
 
@@ -268,9 +260,13 @@ module KdTrees =
                             if kdTreeParameters.setObjectSetToNull then
                                 kdTree.ObjectSet <- null
 
-                            Log.startTimed "saving KdTree to: %s" info.Name
-                            saveKdTree kdTree kdPath
-                            Log.stop()
+                            if not surpressFileConstruction then
+                                Log.startTimed "saving KdTree to: %s" info.Name
+                                saveKdTree kdTree kdPath
+                                Log.stop()
+                            else
+                                Log.warn "[KdTrees] live KdTree construction is supressed, please create KdTrees manually."
+
                             let fi = FileInfo(kdPath)
                             Log.line $"{info.Name} has size: {Mem(fi.Length)}."
                             ConcreteKdIntersectionTree(kdTree, Trafo3d.Identity)
@@ -283,10 +279,12 @@ module KdTrees =
                                     Log.warn "[KdTrees] could not load kdtree: %A" e
                                     if surpressFileConstruction then None
                                     else createConcreteTree() |> Some
-                            elif not surpressFileConstruction then
-                                createConcreteTree() |> Some
-                            else 
-                                None
+                            else
+                                if not surpressFileConstruction then
+                                    createConcreteTree() |> Some
+                                else
+                                    Log.warn "[KdTrees] Kdtree not available, please build it manually using opc-tool or pro3d."
+                                    None
 
 
                         match t with
@@ -330,6 +328,16 @@ module KdTrees =
                         trees |> HashMap.ofList
                     else
                         HashMap.empty
+
+            else
+                Log.warn "Found master kdtree - loading incore. THIS NEEDS A LOT OF MEMORY. CONSIDER CREATING PER-PATCH KD TREES. see: "
+                let tree = loadKdtree masterKdPath
+
+                let kd =
+                    { kdTree = tree
+                      boundingBox = tree.KdIntersectionTree.BoundingBox3d.Transformed(trafo) }
+
+                HashMap.single kd.boundingBox (InCoreKdTree kd) 
 
 
         if File.Exists cacheFile then
