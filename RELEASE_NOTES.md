@@ -1,3 +1,6 @@
+### 1.7.1
+- reactivated master kdtree path
+
 ### 1.7.0
 - Optimized KdTree loading
 

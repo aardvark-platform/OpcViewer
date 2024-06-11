@@ -112,6 +112,7 @@ module KdTrees =
             // try fixing relative paths.
             match tryExpandKdTreePath paths.Opc_DirAbsPath l with
             | Some o -> 
+                Log.warn "[KdTrees] repaired KdTree path %s => %s." l.kdtreePath o.kdtreePath
                 o
             | None -> 
                 failwithf "[KdTrees] could not fix KdTree path: %s" l.kdtreePath
@@ -231,9 +232,7 @@ module KdTrees =
             if missingKd0Paths.Length > 0 then
                 Log.line "[KdTrees] missing kd0 paths: %d/%d" missingKd0Paths.Length kd0Paths.Length
 
-            let allKd0Available = Array.isEmpty missingKd0Paths
-
-            if allKd0Available || ignoreMasterKdTree || forceRebuild then
+            if ignoreMasterKdTree || forceRebuild || (tryFixPatchFileIfNeeded masterKdPath).IsNone  then
                 Log.line "Found master kdtree and patch trees"
                 Log.startTimed "building lazy kdtree cache"
 
@@ -291,7 +290,7 @@ module KdTrees =
                                             if File.Exists kdPath then Some kdPath else None
                                 elif forceRebuild then
                                     createConcreteTree() |> ignore
-                                    if File.Exists kdPath then Some kdPath else None
+                                    Some kdPath
                                 else
                                     Some kdPath
                             else
