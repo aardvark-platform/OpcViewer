@@ -67,13 +67,13 @@ module KdTrees =
         if File.Exists original then
             Some original
         else
-            Log.warn "KdPath does not exist, trying to fix it.. (%s)" original
+            Log.debug "KdPath does not exist, trying to fix it.. (%s)" original
             match tryRepairCaseInsitivityInCaches original with
             | Some f -> 
-                Log.line "fixed kdTree path, %s -> %s" original f
+                Log.debug "fixed kdTree path, %s -> %s" original f
                 Some f
             | None -> 
-                Log.warn "could not fix patch file: %s" original
+                Log.warn "could not fix path: %s" original
                 None
 
 
@@ -203,12 +203,16 @@ module KdTrees =
         (ignoreMasterKdTree : bool)
         (loadTriangles : Trafo3d -> string -> TriangleSet)
         (surpressFileConstruction : bool)
+        (validateKdTrees : bool)
         (kdTreeParameters : KdTreeParameters)
         : HashMap<Box3d, Level0KdTree> =
 
         let masterKdPath =
             mode
             |> ViewerModality.matchy (h.kdTreeAggZero_FileAbsPath) (h.kdTreeAggZero2d_FileAbsPath)
+
+        if surpressFileConstruction && forceRebuild then
+            Log.warn "[KdTrees] forced recreation, but surpressFileConstruction is true. The build will not have any effect."
 
         let cacheFile = System.IO.Path.ChangeExtension(masterKdPath, ".cache")
 
@@ -224,7 +228,8 @@ module KdTrees =
                 |> Array.map (fun x -> x, h.kdTree_FileAbsPath x.Name 0 mode)
 
             let missingKd0Paths = kd0Paths |> Array.filter (not << System.IO.File.Exists << snd)
-            Log.line "[KdTrees] valid kd0 paths: %d/%d" missingKd0Paths.Length kd0Paths.Length
+            if missingKd0Paths.Length > 0 then
+                Log.line "[KdTrees] missing kd0 paths: %d/%d" missingKd0Paths.Length kd0Paths.Length
 
             let allKd0Available = Array.isEmpty missingKd0Paths
 
@@ -271,22 +276,33 @@ module KdTrees =
                             Log.line $"{info.Name} has size: {Mem(fi.Length)}."
                             ConcreteKdIntersectionTree(kdTree, Trafo3d.Identity)
 
-                        let t = 
-                            if File.Exists kdPath && not forceRebuild then 
-                                try 
-                                    loadKdtree kdPath |> Some
-                                with e -> 
-                                    Log.warn "[KdTrees] could not load kdtree: %A" e
-                                    if surpressFileConstruction then None
-                                    else createConcreteTree() |> Some
-                            else
-                                if not surpressFileConstruction then
-                                    createConcreteTree() |> Some
+
+                        let t =
+                            if File.Exists kdPath then 
+                                if validateKdTrees then
+                                    try 
+                                        createConcreteTree() |> ignore
+                                        Some kdPath
+                                    with e -> 
+                                        Log.warn "[KdTrees] could not load kdtree: %A" e
+                                        if surpressFileConstruction then None
+                                        else 
+                                            createConcreteTree() |> ignore
+                                            if File.Exists kdPath then Some kdPath else None
+                                elif forceRebuild then
+                                    createConcreteTree() |> ignore
+                                    if File.Exists kdPath then Some kdPath else None
                                 else
+                                    Some kdPath
+                            else
+                                if not surpressFileConstruction || forceRebuild then
+                                    createConcreteTree() |> ignore
+                                    Some kdPath
+                                else
+                                    // no existing, did not want to rebuild
                                     Log.warn "[KdTrees] Kdtree not available, please build it manually using opc-tool or pro3d."
                                     None
-
-
+                        
                         match t with
                         | Some t -> 
                             let lazyTree: LazyKdTree =
@@ -298,7 +314,7 @@ module KdTrees =
                                   affine =
                                     mode
                                     |> ViewerModality.matchy info.Local2Global info.Local2Global2d
-                                  boundingBox = t.KdIntersectionTree.BoundingBox3d 
+                                  boundingBox = info.GlobalBoundingBox //t.KdIntersectionTree.BoundingBox3d 
                                 }
 
                             Report.Progress(float i / float num)
@@ -344,7 +360,6 @@ module KdTrees =
             Log.line "Found lazy KdTree cache"
 
             if load then
-
                 if forceRebuild then
                     loadAndCreateCache()
                 else
@@ -361,8 +376,10 @@ module KdTrees =
                         validatedTrees |> HashMap.ofList
                     with
                     | e ->
-                        Log.warn "could not load lazy KdTree cache. (%A) rebuilding..." e
-                        loadAndCreateCache ()
+                        Log.startTimed "could not load lazy KdTree cache. (%A) rebuilding..." e
+                        let r = loadAndCreateCache ()
+                        Log.stop()
+                        r
             else
                 HashMap.empty
         else
@@ -373,4 +390,4 @@ module KdTrees =
         (b: BinarySerializer) (forceRebuild : bool) (ignoreMasterKdTree : bool)
         (loadTriangles : Trafo3d -> string -> TriangleSet) (surpressFileConstruction : bool) : HashMap<Box3d, Level0KdTree> =
 
-        loadKdTrees' h trafo true mode b forceRebuild ignoreMasterKdTree loadTriangles surpressFileConstruction KdTreeParameters.legacyDefault
+        loadKdTrees' h trafo true mode b forceRebuild ignoreMasterKdTree loadTriangles surpressFileConstruction false KdTreeParameters.legacyDefault
