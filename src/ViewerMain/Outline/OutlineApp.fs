@@ -129,7 +129,7 @@ module OutlineApp =
           for h in patchHierarchies do
             
             let rootTree = h.tree |> QTree.getRoot
-            let kd = KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer false false (fun _ -> failwith "no function for creating triangle sets") false  KdTreeParameters.legacyDefault
+            let kd = KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer false false (fun _ -> failwith "no function for creating triangle sets") false false KdTreeParameters.legacyDefault
 
             yield {
               patchHierarchy = h

@@ -1,3 +1,6 @@
+### 1.7.0
+- Optimized KdTree loading
+
 ### 1.6.1
 - changed KdTree loading order in favor of lazy kdtree's and rebuilding fading out InCore Level0 KdTrees.
 
