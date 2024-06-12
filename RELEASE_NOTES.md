@@ -1,3 +1,6 @@
+### 1.7.2
+- cleaned up kd loading code
+
 ### 1.7.1
 - reactivated master kdtree path
 

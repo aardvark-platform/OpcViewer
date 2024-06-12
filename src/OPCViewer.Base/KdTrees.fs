@@ -232,7 +232,17 @@ module KdTrees =
             if missingKd0Paths.Length > 0 then
                 Log.line "[KdTrees] missing kd0 paths: %d/%d" missingKd0Paths.Length kd0Paths.Length
 
-            if ignoreMasterKdTree || forceRebuild || (tryFixPatchFileIfNeeded masterKdPath).IsNone  then
+            match tryFixPatchFileIfNeeded masterKdPath with
+            | Some masterKdPath when not ignoreMasterKdTree && not forceRebuild ->
+                Log.warn "Found master kdtree - loading incore. THIS NEEDS A LOT OF MEMORY. CONSIDER CREATING PER-PATCH KD TREES. see: https://github.com/pro3d-space/PRo3D/blob/9821c8882b024c7ed85c23ee76110c70e249e480/docs/KdTrees.md#create-kdtrees-for-an-opc-hierarchy"
+                let tree = loadKdtree masterKdPath
+
+                let kd =
+                    { kdTree = tree
+                      boundingBox = tree.KdIntersectionTree.BoundingBox3d.Transformed(trafo) }
+
+                HashMap.single kd.boundingBox (InCoreKdTree kd) 
+            | _ -> 
                 Log.line "Found master kdtree and patch trees"
                 Log.startTimed "building lazy kdtree cache"
 
@@ -344,15 +354,8 @@ module KdTrees =
                     else
                         HashMap.empty
 
-            else
-                Log.warn "Found master kdtree - loading incore. THIS NEEDS A LOT OF MEMORY. CONSIDER CREATING PER-PATCH KD TREES. see: "
-                let tree = loadKdtree masterKdPath
 
-                let kd =
-                    { kdTree = tree
-                      boundingBox = tree.KdIntersectionTree.BoundingBox3d.Transformed(trafo) }
 
-                HashMap.single kd.boundingBox (InCoreKdTree kd) 
 
 
         if File.Exists cacheFile then
@@ -389,4 +392,5 @@ module KdTrees =
         (b: BinarySerializer) (forceRebuild : bool) (ignoreMasterKdTree : bool)
         (loadTriangles : Trafo3d -> string -> TriangleSet) (surpressFileConstruction : bool) : HashMap<Box3d, Level0KdTree> =
 
-        loadKdTrees' h trafo true mode b forceRebuild ignoreMasterKdTree loadTriangles surpressFileConstruction false KdTreeParameters.legacyDefault
+        let flags = KdTreeParameters.legacyDefault //{ KdTreeParameters.legacyDefault with flags = KdIntersectionTree.BuildFlags.Picking ||| KdIntersectionTree.BuildFlags.FastBuild }
+        loadKdTrees' h trafo true mode b forceRebuild ignoreMasterKdTree loadTriangles surpressFileConstruction false flags
