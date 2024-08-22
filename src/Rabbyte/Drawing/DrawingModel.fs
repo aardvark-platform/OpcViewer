@@ -32,8 +32,8 @@ type SegmentCreation =
 [<ModelType>]
 type BrushStyle = 
     {
-        primary     : ColorInput
-        secondary   : ColorInput
+        primary     : C4b
+        secondary   : C4b
         lineStyle   : LineStyle
         areaStyle   : AreaStyle
         thickness   : float
@@ -64,9 +64,9 @@ type DrawingModel =
     }
 
 type DrawingAction =
-    | ChangeColorPrimary    of ColorPicker.Action
-    | ChangeColorSecondary  of ColorPicker.Action
-    | ChangeColorAuto       of ColorPicker.Action
+    | ChangeColorPrimary    of C4b
+    | ChangeColorSecondary  of C4b
+    | ChangeColorAuto       of C4b
     | ChangeThickness       of float
     | ChangeSamplingRate    of float
     | ChangeLineStyle       of LineStyle
@@ -85,8 +85,8 @@ module DrawingModel =
 
     let defaultStyle = 
         {
-            primary = { c = C4b.VRVisGreen }
-            secondary = { c = C4b.Yellow }
+            primary = C4b.VRVisGreen
+            secondary = C4b.Yellow
             lineStyle = Solid
             areaStyle = Filled
             thickness = 3.0

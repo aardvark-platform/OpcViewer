@@ -4,6 +4,7 @@ open System
 
 //open Aardvark.GeoSpatial.Opc
 open Aardvark.Base
+open Aardvark.Base.Fonts
 open Aardvark.Rendering
 open Aardvark.Rendering.Text 
 open FSharp.Data.Adaptive

@@ -3,6 +3,7 @@ namespace OpcViewer.Base.FalseColors
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI
+open Aardvark.UI.Primitives
 open Adaptify
 
 
@@ -13,8 +14,8 @@ type FalseColorsModel = {
     upperBound      : NumericInput
     interval        : NumericInput
     invertMapping   : bool
-    lowerColor      : ColorInput 
-    upperColor      : ColorInput 
+    lowerColor      : C4b 
+    upperColor      : C4b 
     showColors      : bool
 }
 
@@ -47,8 +48,8 @@ module FalseColorsModel =
             upperBound      = initub range 
             interval        = scalarsInterv 
             invertMapping   = false
-            lowerColor      = { c = C4b.Blue }
-            upperColor      = { c = C4b.Red }
+            lowerColor      = C4b.Blue
+            upperColor      = C4b.Red
             showColors      = true
         }
 

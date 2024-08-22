@@ -9,7 +9,7 @@ open Aardvark.Rendering
 open Aardvark.Rendering.Text
 
 open Aardvark.SceneGraph
-open Aardvark.SceneGraph.Opc
+open Aardvark.Data.Opc
 open FShade
 
 open Aardvark.Application

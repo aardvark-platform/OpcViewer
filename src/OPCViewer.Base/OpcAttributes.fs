@@ -11,7 +11,7 @@ open FShade
 open Aardvark.UI
 open Aardvark.UI.Operators
 open Aardvark.UI.Trafos
-open Aardvark.SceneGraph.Opc
+open Aardvark.Data.Opc
 
 open OpcViewer.Base.FalseColors //OpcSelectionViewer.Picking
 

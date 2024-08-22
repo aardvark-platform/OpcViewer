@@ -8,6 +8,7 @@ open Aardvark.Rendering
 
 open Aardvark.SceneGraph
 open Aardvark.UI
+open Aardvark.UI.Primitives
 open KdTreeHelper
 open FSharp.Data.Adaptive
 

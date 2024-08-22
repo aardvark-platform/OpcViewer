@@ -2,7 +2,7 @@
   "profiles": {
     "OpcViewer": {
       "commandName": "Project",
-      "commandLineArgs": "opc=\"F:\\pro3d\\data\\20200220_DinosaurQuarry2\\Dinosaur_Quarry_2\""
+      "commandLineArgs": "opc=\"D:\\_WORK\\OPC\\VictoriaCrater\\HiRISE_VictoriaCrater\" -rotate"
     }
   }
 }

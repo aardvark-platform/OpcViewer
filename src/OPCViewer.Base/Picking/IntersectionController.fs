@@ -8,7 +8,7 @@ open Aardvark.Base.Geometry
 open Aardvark.Application
 open Aardvark.UI  
 open Aardvark.Geometry
-open Aardvark.SceneGraph.Opc
+open Aardvark.Data.Opc
 open Aardvark.VRVis.Opc
 open Aardvark.VRVis.Opc.KdTrees 
 open OpcViewer.Base
@@ -17,12 +17,12 @@ open FSharp.Data.Adaptive
 module IntersectionController =   
 
   let loadTrianglesFromFileWithIndices (aaraFile : string) (matrix : M44d) =
-    let positions = aaraFile |> fromFile<V3f>
+    let positions = aaraFile |> Aara.fromFile<V3f>
     
     let data = 
       positions.Data |> Array.map (fun x ->  x.ToV3d() |> matrix.TransformPos)
  
-    let invalidIndices = getInvalidIndices data
+    let invalidIndices = Aara.getInvalidIndices data
     let index = IndexHelper.computeIndexArray (positions.Size.XY.ToV2i()) invalidIndices
         
     let triangleIndices = 
@@ -47,7 +47,7 @@ module IntersectionController =
    
   let loadTriangles (kd : LazyKdTree) = 
     let indexing = (fun size invalidIndices -> IndexHelper.computeIndexArray size invalidIndices)
-    loadTrianglesFromFile' kd.objectSetPath indexing kd.affine.Forward
+    Aara.loadTrianglesFromFile' kd.objectSetPath indexing kd.affine.Forward
     
   let loadTriangleSet (kd : LazyKdTree) =
     kd |> loadTriangles |> TriangleSet
@@ -93,7 +93,7 @@ module IntersectionController =
 
     Log.line "barycentricCoords: u: %f, v: %f, w: %f" baryCentricCoords.X baryCentricCoords.Y baryCentricCoords.Z 
     
-    let coordinates = kdTree.coordinatesPath |> fromFile<V2f>
+    let coordinates = kdTree.coordinatesPath |> Aara.fromFile<V2f>
 
     let coordinateIndices = triangleIndices.[index]
 

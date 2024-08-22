@@ -1,7 +1,7 @@
 namespace OpcSelectionViewer
 
 open Aardvark.Base
-open Aardvark.SceneGraph.Opc
+open Aardvark.Data.Opc
 open OpcViewer.Base.Picking
 open FSharp.Data.Adaptive
 

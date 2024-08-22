@@ -317,7 +317,7 @@ module AnnotationSg =
         let sg = 
             model.annotations 
             |> AList.map (fun x -> 
-                let colorAlpha = SgUtilities.colorAlpha x.style.primary.c (AVal.constant 0.5)
+                let colorAlpha = SgUtilities.colorAlpha x.style.primary (AVal.constant 0.5)
                 let sg = 
                     clippingVolume colorAlpha model.extrusionOffset x.clippingVolume x.points
                     |> Sg.effect [

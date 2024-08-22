@@ -24,7 +24,7 @@ module AnnotationApp =
                 match drawingModel.primitiveType with
                     | Polygon -> 
                         model.annotationsGrouped 
-                            |> HashMap.alter annotation.style.primary.c (fun x -> 
+                            |> HashMap.alter annotation.style.primary (fun x -> 
                                 match x with 
                                     | Some y -> Some (y |> IndexList.prepend annotation)
                                     | None -> Some (IndexList.single annotation))    

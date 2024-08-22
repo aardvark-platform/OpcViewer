@@ -20,8 +20,8 @@ module FalseColorLegendApp =
         | SetUpperBound     of Numeric.Action
         | SetInterval       of Numeric.Action
         | InvertMapping     
-        | SetLowerColor     of ColorPicker.Action //C4b
-        | SetUpperColor     of ColorPicker.Action //C4b 
+        | SetLowerColor     of C4b
+        | SetUpperColor     of C4b 
         | ShowColors
 
     let bindOption (m : aval<Option<'a>>) (defaultValue : 'b) (project : 'a -> aval<'b>)  : aval<'b> =
@@ -42,9 +42,9 @@ module FalseColorLegendApp =
             | InvertMapping ->
                     { model with invertMapping = not model.invertMapping }
             | SetLowerColor lc -> 
-                    { model with lowerColor = ColorPicker.update model.lowerColor lc }            
+                    { model with lowerColor = lc }            
             | SetUpperColor uc -> 
-                    { model with upperColor = ColorPicker.update model.upperColor uc } 
+                    { model with upperColor = uc } 
             | ShowColors -> 
                     { model with showColors = (not model.showColors) }      
             
@@ -96,8 +96,8 @@ module FalseColorLegendApp =
                     Html.row "upper bound:"             [Numeric.view' [InputBox] model.upperBound |> UI.map SetUpperBound ]
                     Html.row "lower bound:"             [Numeric.view' [InputBox] model.lowerBound |> UI.map SetLowerBound ]
                     Html.row "interval:"                [Numeric.view' [InputBox] model.interval |> UI.map SetInterval ]
-                    Html.row "upper color:"             [ColorPicker.view model.upperColor |> UI.map SetUpperColor ]
-                    Html.row "lower color:"             [ColorPicker.view model.lowerColor |> UI.map SetLowerColor ]
+                    Html.row "upper color:"             [ColorPicker.view ColorPicker.Config.Default SetUpperColor model.upperColor ]
+                    Html.row "lower color:"             [ColorPicker.view ColorPicker.Config.Default SetLowerColor model.lowerColor ]
                     Html.row "invert mapping:"          [iconCheckBox model.invertMapping InvertMapping ]
                     Html.row "show colors:"             [iconCheckBox model.showColors ShowColors ]
                 ] 
@@ -168,8 +168,8 @@ module FalseColorLegendApp =
                     let! fcUpperBound   = falseColor.upperBound.value
                     let! fcLowerBound   = falseColor.lowerBound.value
                     let! fcInterval     = falseColor.interval.value
-                    let! startColor     = falseColor.upperColor.c
-                    let! endColor       = falseColor.lowerColor.c
+                    let! startColor     = falseColor.upperColor
+                    let! endColor       = falseColor.lowerColor
                     let! invertMapping  = falseColor.invertMapping
 
 

@@ -10,7 +10,7 @@ open FSharp.Data.Adaptive
 open Aardvark.Rendering
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Semantics
-open Aardvark.SceneGraph.Opc
+open Aardvark.Data.Opc
 open Aardvark.SceneGraph.SgPrimitives
 open Aardvark.Rendering.Text
 open Aardvark.UI.Primitives
@@ -135,8 +135,8 @@ module App =
                                 { 
                                     DrawingModel.initial.style with 
                                         thickness = 0.0
-                                        primary = { c = C4b(50,208,255) }
-                                        secondary = { c = C4b(132,226,255) }
+                                        primary = C4b(50,208,255)
+                                        secondary = C4b(132,226,255)
                                 }
                             } 
                          
@@ -365,8 +365,8 @@ module App =
                         style = 
                         { drawingModel.style with 
                             thickness = 2.0; 
-                            primary = { c = C4b(50,208,255) }
-                            secondary = { c = C4b(132,226,255) } 
+                            primary = C4b(50,208,255)
+                            secondary = C4b(132,226,255) 
                         } 
                     } 
                 
@@ -767,8 +767,8 @@ module App =
                     div[style "color:white; margin: 5px 15px 5px 5px"] [
                         Html.SemUi.accordion "Camera" "camera" true [     
                             div [ clazz "item" ] [ 
-                                dropdownUnclearable [ clazz "ui simple inverted selection dropdown" ] dropDownValues m.currentOption SetProjection
-                            ]                                                                       
+                                Dropdown.dropdown SetProjection false None m.currentOption [ clazz "ui simple inverted selection dropdown" ] dropDownValues
+                            ]
                         ]
                         br[]
                         br[]

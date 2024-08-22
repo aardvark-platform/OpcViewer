@@ -2,6 +2,7 @@ namespace OpcViewer.Base
 
 open System
 open Aardvark.Base
+open Aardvark.Base.Fonts
 open FSharp.Data.Adaptive
 open Aardvark.Rendering
 open Aardvark.SceneGraph
@@ -9,7 +10,7 @@ open Aardvark.Rendering.Text
 open FShade
 open Aardvark.UI.``F# Sg``
 open Aardvark.UI.Trafos
-open Aardvark.SceneGraph.Opc
+open Aardvark.Data.Opc
 
 open Adaptify.FSharp.Core
 
@@ -26,15 +27,15 @@ module Patch =
           | ViewerModality.SvBR, Some p2 -> p2
           | _ -> p.Positions          
         
-        let positions   = patch_DirAbsPath +/ pos |> fromFile<V3f>
-        let coordinates = patch_DirAbsPath +/ (List.head p.Coordinates) |> fromFile<V2f>
+        let positions   = patch_DirAbsPath +/ pos |> Aara.fromFile<V3f>
+        let coordinates = patch_DirAbsPath +/ (List.head p.Coordinates) |> Aara.fromFile<V2f>
 
         let scl = 
             let x = p.Attributes |> List.tryFind( fun x -> x = (selAttribute + ".aara")) 
             match x with
             | Some name ->
                 let data =                    
-                    let a = Path.combine [patch_DirAbsPath; name] |> fromFile<double>
+                    let a = Path.combine [patch_DirAbsPath; name] |> Aara.fromFile<double>
                     a.Data |> Array.map (fun a -> float32 a)                     
                 
                 data :> Array
@@ -44,7 +45,7 @@ module Patch =
 
         let coordinates = coordinates.Data |> Array.map (fun v -> V2f(v.X, 1.0f-v.Y))
 
-        let index = createIndex (positions.AsMatrix())
+        let index = Aara.createIndex (positions.AsMatrix())
 
         let a : float = 0.0
 
@@ -134,7 +135,7 @@ module Sg =
             |> AVal.bind (fun x ->
                match x with 
                  | Some (s : AdaptiveScalarLayer) -> 
-                   s.colorLegend.upperColor.c 
+                   s.colorLegend.upperColor
                      |> AVal.map(fun x -> 
                        let t = x.ToC3f()
                        let t1 = HSVf.FromC3f(t)
@@ -147,7 +148,7 @@ module Sg =
             |> AVal.bind ( fun x ->
               match x with 
                 | Some s -> 
-                  s.colorLegend.lowerColor.c 
+                  s.colorLegend.lowerColor
                     |> AVal.map(fun x -> ((float)(HSVf.FromC3f (x.ToC3f())).H))
                 | _   -> AVal.constant(0.0)
               )
@@ -256,6 +257,8 @@ module Sg =
       
               return screenAligned v.Forward v.Up modelt
           }           
+
+      // TODO: Don't use system font, use a font provider
       Sg.text (Font.create "Consolas" FontStyle.Regular) C4b.White text
           |> Sg.noEvents
           |> Sg.effect [

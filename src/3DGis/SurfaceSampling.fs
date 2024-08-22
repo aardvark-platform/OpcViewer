@@ -174,8 +174,8 @@ module SurfaceSampling =
                         style = 
                             { DrawingModel.initial.style with 
                                 thickness = 1.0
-                                primary = { c = C4b(255,255,255) }
-                                secondary = { c = C4b(205,243,255) } 
+                                primary = C4b(255,255,255)
+                                secondary = C4b(205,243,255)
                             } 
                     } 
             else

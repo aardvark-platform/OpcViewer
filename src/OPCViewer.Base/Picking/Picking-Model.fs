@@ -4,7 +4,7 @@ open Aardvark.UI
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.VRVis.Opc.KdTrees
-open Aardvark.SceneGraph.Opc
+open Aardvark.Data.Opc
 
 open Adaptify
 

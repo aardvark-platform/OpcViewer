@@ -4,6 +4,7 @@ open System
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI
+open Aardvark.UI.Primitives
 
 open Aardvark.Geometry
 
@@ -171,7 +172,7 @@ type InstrumentColor = {
     mastcamL     : C4b 
     chemLib      : C4b 
     chemRmi      : C4b  
-    color        : ColorInput
+    color        : C4b
 }
 
 [<ModelType>]

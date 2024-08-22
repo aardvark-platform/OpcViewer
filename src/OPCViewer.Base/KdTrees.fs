@@ -6,7 +6,7 @@ open System.IO
 open Aardvark.Geometry
 open Aardvark.Base
 open Aardvark.Base.Coder
-open Aardvark.SceneGraph.Opc
+open Aardvark.Data.Opc
 open MBrace.FsPickler
 open MBrace.FsPickler.Combinators
 open FSharp.Data.Adaptive
@@ -257,8 +257,8 @@ module KdTrees =
                         let dir = h.opcPaths.Patches_DirAbsPath +/ info.Name
                         let pos =
                             match mode with
-                            | XYZ -> info.Positions
-                            | SvBR -> info.Positions2d.Value
+                            | ViewerModality.XYZ -> info.Positions
+                            | ViewerModality.SvBR -> info.Positions2d.Value
 
                         let objectSetPath = dir +/ pos
                         let trafo = mode |> ViewerModality.matchy info.Local2Global info.Local2Global2d

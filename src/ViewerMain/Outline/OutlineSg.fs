@@ -8,7 +8,7 @@ open Aardvark.Rendering.Text
 open FShade
 open Aardvark.Rendering
 open Aardvark.UI.Trafos
-open Aardvark.SceneGraph.Opc
+open Aardvark.Data.Opc
 
 open Aardvark.UI
 open OpcViewer.Base
@@ -52,7 +52,7 @@ module OutlineSg =
       let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
     
       leaves 
-        |> List.map(fun (dir,patch) -> (Aardvark.SceneGraph.Opc.Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info,dir, patch.info)) 
+        |> List.map(fun (dir,patch) -> (Aardvark.Data.Opc.Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info,dir, patch.info)) 
         |> List.map(fun ((a,_),c,d) -> (a,c,d))
         |> List.map (fun (g,dir,info) -> 
         
