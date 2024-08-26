@@ -1,3 +1,8 @@
+### 1.8.0
+- Updated to Aardvark.Base 5.3
+- Added Prinziple support
+- Renamed Aardvark.VRVis.Opc namespace to OpcViewer.Base
+
 ### 1.7.2
 - cleaned up kd loading code
 
