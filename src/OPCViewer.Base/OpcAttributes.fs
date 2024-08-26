@@ -84,7 +84,9 @@ module SurfaceAttributes =
             |> Seq.mapi parseLayer
 
     let read (path:string) =
-        let doc = new XmlDocument() in doc.Load path
+        use s = Prinziple.openRead path
+        let doc = XmlDocument()
+        doc.Load s
         doc |> layers
     
     let getTextures (layers : seq<AttributeLayer>) =
@@ -112,14 +114,13 @@ module SurfaceAttributes =
         //let path = surfacePath + "\" + parent + ".opcx"
         Path.ChangeExtension(Path.Combine(surfacePath, parent), ".opcx")
 
-    let addSurfaceAttributes (path:string) : (HashMap<string, ScalarLayer> * IndexList<TextureLayer>)  = 
-      match (System.IO.File.Exists path) with
-        | true ->        
+    let addSurfaceAttributes (path:string) : (HashMap<string, ScalarLayer> * IndexList<TextureLayer>)=
+        if Prinziple.fileExists path then  
             let layers = read path
             let textures = layers |> getTextures
-            ((layers |> getScalarsHmap),textures)
-        | false -> (HashMap.Empty,IndexList.empty)
-        
+            (layers |> getScalarsHmap), textures
+        else
+            HashMap.Empty, IndexList.empty
 
     let mapTolist (input : amap<_,'a>) : alist<'a> = 
         input |> AMap.toASet |> AList.ofASet |> AList.map snd 

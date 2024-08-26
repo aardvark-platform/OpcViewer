@@ -1,6 +1,5 @@
 namespace Aardvark.VRVis.Opc
-// copy of https://raw.githubusercontent.com/aardvark-platform/OpcViewer/master/src/OPCViewer.Base/KdTrees.fs
-// should be consolidated
+
 open System
 open System.IO
 open Aardvark.Geometry
@@ -10,7 +9,6 @@ open Aardvark.Data.Opc
 open MBrace.FsPickler
 open MBrace.FsPickler.Combinators
 open FSharp.Data.Adaptive
-open System.Collections.Generic
 
 module KdTrees =
 
@@ -56,7 +54,7 @@ module KdTrees =
         OpcPaths.Patches_DirNames |> List.tryPick (fun p -> 
             let path = Path.Combine(Array.concat [prefix; [| p |]; suffix])
             Log.line "[KdTrees] trying to fix KdPath: %s" path
-            if File.Exists path then 
+            if Prinziple.fileExists path then 
                 Some path
             else 
                 None
@@ -64,7 +62,7 @@ module KdTrees =
 
     // checks whether the file exists, if not, it tries to repair it.
     let tryFixPatchFileIfNeeded (original : string) = 
-        if File.Exists original then
+        if Prinziple.fileExists original then
             Some original
         else
             Log.debug "KdPath does not exist, trying to fix it.. (%s)" original
@@ -156,16 +154,16 @@ module KdTrees =
     // SAVE LOAD
     let save path (b: BinarySerializer) (d: 'a) =
         let arr = b.Pickle d
-        System.IO.File.WriteAllBytes(path, arr)
+        Prinziple.writeAllBytes path arr
         d
 
     let loadAs<'a> path (b: BinarySerializer) : 'a =
-        let arr = System.IO.File.ReadAllBytes(path)
+        let arr = Prinziple.readAllBytes path
         b.UnPickle arr
 
     let loadKdtree path =
         //Log.startTimed "loading tree"
-        use b = new BinaryReadingCoder(System.IO.File.OpenRead(path))
+        use b = new BinaryReadingCoder(Prinziple.openRead path)
         let mutable kdTree = Unchecked.defaultof<KdIntersectionTree>
         b.CodeT(&kdTree)
         //Log.stop()
@@ -173,7 +171,7 @@ module KdTrees =
 
     let saveKdTree (kdTree : KdIntersectionTree) path =
         Log.startTimed "saving kd tree"
-        use b = new BinaryWritingCoder(System.IO.File.OpenWrite(path))
+        use b = new BinaryWritingCoder(Prinziple.openWrite path)
         b.CodeT(ref kdTree)
         Log.stop()
 
@@ -228,7 +226,7 @@ module KdTrees =
                 patchInfos
                 |> Array.map (fun x -> x, h.kdTree_FileAbsPath x.Name 0 mode)
 
-            let missingKd0Paths = kd0Paths |> Array.filter (not << System.IO.File.Exists << snd)
+            let missingKd0Paths = kd0Paths |> Array.filter (not << Prinziple.fileExists << snd)
             if missingKd0Paths.Length > 0 then
                 Log.line "[KdTrees] missing kd0 paths: %d/%d" missingKd0Paths.Length kd0Paths.Length
 
@@ -281,13 +279,16 @@ module KdTrees =
                             else
                                 Log.warn "[KdTrees] live KdTree construction is supressed, please create KdTrees manually."
 
-                            let fi = FileInfo(kdPath)
-                            Log.line $"{info.Name} has size: {Mem(fi.Length)}."
+                            // TODO: Use Prinziple
+                            if File.Exists kdPath then
+                                let fi = FileInfo(kdPath)
+                                Log.line $"{info.Name} has size: {Mem(fi.Length)}."
+
                             ConcreteKdIntersectionTree(kdTree, Trafo3d.Identity)
 
 
                         let t =
-                            if File.Exists kdPath then 
+                            if Prinziple.fileExists kdPath then 
                                 if validateKdTrees then
                                     try 
                                         createConcreteTree() |> ignore
@@ -297,7 +298,7 @@ module KdTrees =
                                         if surpressFileConstruction then None
                                         else 
                                             createConcreteTree() |> ignore
-                                            if File.Exists kdPath then Some kdPath else None
+                                            if Prinziple.fileExists kdPath then Some kdPath else None
                                 elif forceRebuild then
                                     createConcreteTree() |> ignore
                                     Some kdPath
@@ -358,7 +359,7 @@ module KdTrees =
 
 
 
-        if File.Exists cacheFile then
+        if Prinziple.fileExists cacheFile then
             Log.line "Found lazy KdTree cache"
 
             if load then
