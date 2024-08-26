@@ -3,7 +3,7 @@ namespace OpcViewer.Base.Picking
 open Aardvark.UI
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.VRVis.Opc.KdTrees
+open OpcViewer.Base.KdTrees
 open Aardvark.Data.Opc
 
 open Adaptify

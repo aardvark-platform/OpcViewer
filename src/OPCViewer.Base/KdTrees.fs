@@ -1,4 +1,4 @@
-namespace Aardvark.VRVis.Opc
+namespace OpcViewer.Base
 
 open System
 open System.IO

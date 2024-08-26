@@ -22,7 +22,7 @@ open ``F# Sg``
 open OpcViewer.Base
 open OpcViewer.Base.Picking
 open OpcSelectionViewer
-open Aardvark.VRVis.Opc.KdTrees
+open OpcViewer.Base.KdTrees
 
 module GuiEx =
     let iconToggle (dings : aval<bool>) onIcon offIcon action =
@@ -43,7 +43,6 @@ module GuiEx =
 module OutlineApp =   
   open Aardvark.Application
   open Aardvark.Base.DynamicLinkerTypes  
-  open Aardvark.VRVis.Opc
   
   let update (model : OutlineModel) (msg : OutlineMessage) =   
     match msg with

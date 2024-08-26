@@ -31,8 +31,7 @@ open Aether
 open Aether.Operators
 
 open Aardvark.Application
-open Aardvark.VRVis.Opc
-open Aardvark.VRVis.Opc.KdTrees
+open OpcViewer.Base.KdTrees
 
 module App =   
   
@@ -312,7 +311,7 @@ module App =
 
                     yield {
                         patchHierarchy = h
-                        kdTree         = Aardvark.VRVis.Opc.KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath kd
+                        kdTree         = KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath kd
                         localBB        = rootTree.info.LocalBoundingBox 
                         globalBB       = rootTree.info.GlobalBoundingBox
                         neighborMap    = HashMap.empty

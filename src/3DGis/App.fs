@@ -55,8 +55,6 @@ open OpcViewer.Base
 open OpcViewer.Base.Picking
 open OpcViewer.Base.Attributes
 
-open Aardvark.VRVis.Opc
-
 
 
 module App = 
@@ -830,11 +828,11 @@ module App =
                 for h in patchHierarchies do
                   
                   let rootTree = h.tree |> QTree.getRoot
-                  let kd = KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ OpcSelectionViewer.Serialization.binarySerializer false false (fun _ _ -> failwith "no triangleset function") false false Aardvark.VRVis.Opc.KdTrees.KdTreeParameters.legacyDefault
+                  let kd = KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ OpcSelectionViewer.Serialization.binarySerializer false false (fun _ _ -> failwith "no triangleset function") false false KdTrees.KdTreeParameters.legacyDefault
 
                   yield {
                       patchHierarchy = h
-                      kdTree         = Aardvark.VRVis.Opc.KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath kd
+                      kdTree         = KdTrees.expandKdTreePaths h.opcPaths.Opc_DirAbsPath kd
                       localBB        = rootTree.info.LocalBoundingBox 
                       globalBB       = rootTree.info.GlobalBoundingBox
                       neighborMap    = HashMap.empty
