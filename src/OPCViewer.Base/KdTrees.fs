@@ -9,6 +9,7 @@ open Aardvark.Data.Opc
 open MBrace.FsPickler
 open MBrace.FsPickler.Combinators
 open FSharp.Data.Adaptive
+open System.Collections.Generic
 
 module KdTrees =
 
@@ -39,6 +40,8 @@ module KdTrees =
 
     let relativePath' (path: string) = relativePath path 3
 
+    let Patches_DirNames = OpcPaths.Patches_DirNames |> List.toArray
+
     // tries to repair caches with broken capitalization in patches vs Patches
     // Background: We have dozens cache files out there with inconsistent capitalization for "patches" vs "Patches".
     // Fixing it is expensive. On readonly filesystem we can't even fix them.
@@ -51,9 +54,9 @@ module KdTrees =
         let prefix = components[0..components.Length - 4]
         let suffix = components[components.Length - 2 ..]
         let patches = components[components.Length - 3]
-        OpcPaths.Patches_DirNames |> List.tryPick (fun p -> 
+        Patches_DirNames |> Array.tryPick (fun p -> 
             let path = Path.Combine(Array.concat [prefix; [| p |]; suffix])
-            Log.line "[KdTrees] trying to fix KdPath: %s" path
+            //Report.Line(5, $"[KdTrees] trying to fix KdPath: {path}")
             if Prinziple.fileExists path then 
                 Some path
             else 
@@ -65,13 +68,13 @@ module KdTrees =
         if Prinziple.fileExists original then
             Some original
         else
-            Log.debug "KdPath does not exist, trying to fix it.. (%s)" original
+            //Report.Line(4, $"KdPath does not exist, trying to fix it.. ({original})")
             match tryRepairCaseInsitivityInCaches original with
             | Some f -> 
-                Log.debug "fixed kdTree path, %s -> %s" original f
+                //Report.Line(4, $"fixed kdTree path, {original} -> {f}")
                 Some f
             | None -> 
-                Log.warn "could not fix path: %s" original
+                //Report.Line(2, $"could not fix path: {original}")
                 None
 
 
@@ -104,13 +107,13 @@ module KdTrees =
 
     // tries to fix kdTree path in lazyKdtree. Throws if not fixable.
     let validateLazyKdtreePaths (paths : OpcPaths) (l : LazyKdTree) =
-        match tryFixPatchFileIfNeeded l.kdtreePath with
+        match (*tryFixPatchFileIfNeeded l.kdtreePath*) None with
         | Some fixedPath -> { l with kdtreePath = fixedPath }
         | _ -> 
             // try fixing relative paths.
             match tryExpandKdTreePath paths.Opc_DirAbsPath l with
             | Some o -> 
-                Log.warn "[KdTrees] repaired KdTree path %s => %s." l.kdtreePath o.kdtreePath
+                Report.Line(12, $"[KdTrees] repaired KdTree path {l.kdtreePath} => {o.kdtreePath}.")
                 o
             | None -> 
                 failwithf "[KdTrees] could not fix KdTree path: %s" l.kdtreePath
@@ -368,6 +371,7 @@ module KdTrees =
                 else
                     try
                         let trees = loadAs<list<Box3d * Level0KdTree>> cacheFile b
+                        Report.BeginTimed(5, "tree validation")
                         let validatedTrees = 
                             trees |> List.map (fun (b, kdTree) -> 
                                 match kdTree with
@@ -376,6 +380,7 @@ module KdTrees =
                                     let fixedTree = validateLazyKdtreePaths h.opcPaths l
                                     b, Level0KdTree.LazyKdTree fixedTree
                             )
+                        Report.EndTimed() |> ignore
                         validatedTrees |> HashMap.ofList
                     with
                     | e ->
