@@ -1,4 +1,4 @@
-### 1.8.0
+### 1.8.1
 - ported over KdTree loading optimization from https://github.com/pro3d-space/PRo3D/pull/418
 
 ### 1.8.0
