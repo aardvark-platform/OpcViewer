@@ -1,3 +1,6 @@
+### 1.9.0
+- moved Lazy Kdtree Structures to old namespace to prevent deserialization troubles.
+
 ### 1.8.1
 - ported over KdTree loading optimization from https://github.com/pro3d-space/PRo3D/pull/418
 
