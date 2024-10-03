@@ -10,7 +10,7 @@ open Aardvark.UI
 open Aardvark.Geometry
 open Aardvark.Data.Opc
 open OpcViewer.Base
-open OpcViewer.Base.KdTrees
+open Aardvark.VRVis.Opc.KdTrees
 open FSharp.Data.Adaptive
 
 module IntersectionController =   

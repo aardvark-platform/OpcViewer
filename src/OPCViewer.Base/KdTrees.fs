@@ -1,15 +1,8 @@
-namespace OpcViewer.Base
+// The KdTree types live in the legacy namespace Aardvark.VRVis.Opc for compatibility reasons (hurdleless legacy code and deserialization)
+namespace Aardvark.VRVis.Opc
 
-open System
-open System.IO
 open Aardvark.Geometry
 open Aardvark.Base
-open Aardvark.Base.Coder
-open Aardvark.Data.Opc
-open MBrace.FsPickler
-open MBrace.FsPickler.Combinators
-open FSharp.Data.Adaptive
-open System.Collections.Generic
 
 module KdTrees =
 
@@ -29,6 +22,30 @@ module KdTrees =
     type Level0KdTree =
         | LazyKdTree of LazyKdTree
         | InCoreKdTree of InCoreKdTree
+
+
+namespace OpcViewer.Base
+
+
+open System
+open System.IO
+open Aardvark.Geometry
+open Aardvark.Base
+open Aardvark.Base.Coder
+open Aardvark.Data.Opc
+open MBrace.FsPickler
+open MBrace.FsPickler.Combinators
+open FSharp.Data.Adaptive
+open System.Collections.Generic
+
+open Aardvark.VRVis.Opc.KdTrees
+
+module KdTrees =
+
+    type LazyKdTree = Aardvark.VRVis.Opc.KdTrees.LazyKdTree
+    type InCoreKdTree = Aardvark.VRVis.Opc.KdTrees.InCoreKdTree
+    type Level0KdTree = Aardvark.VRVis.Opc.KdTrees.Level0KdTree
+
 
     let relativePath (path: string) (remaining: int) =
         path.Split([| "/"; "\\" |], StringSplitOptions.None)
