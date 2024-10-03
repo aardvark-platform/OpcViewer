@@ -1,3 +1,6 @@
+### 1.9.2
+- updated aardvark.data.opc
+
 ### 1.9.1
 - fixed verbosity in kdtree loading
 

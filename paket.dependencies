@@ -10,7 +10,7 @@ nuget Aardvark.Base                         ~> 5.3.2
 nuget Aardvark.Base.FSharp                  ~> 5.3.2
 nuget Aardvark.Geometry                     ~> 5.3.2
 
-nuget Aardvark.Data.Opc                     ~> 0.10.0
+nuget Aardvark.Data.Opc                     ~> 0.11.0
 
 nuget Aardvark.Rendering                    ~> 5.5.0
 nuget Aardvark.Rendering.Text               ~> 5.5.0

@@ -11,6 +11,7 @@ open FShade
 open Aardvark.UI.``F# Sg``
 open Aardvark.UI.Trafos
 open Aardvark.Data.Opc
+open Aardvark.SceneGraph.Opc
 
 open Adaptify.FSharp.Core
 

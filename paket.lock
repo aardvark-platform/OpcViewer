@@ -54,7 +54,7 @@ NUGET
     Aardvark.Base.TypeProviders (4.5.15)
       FSharp.Core (>= 4.2.3)
     Aardvark.Build (1.0.25)
-    Aardvark.Data.OPC (0.10)
+    Aardvark.Data.OPC (0.11)
       Aardvark.Base.Tensors (>= 5.3.4 < 5.4)
       Aardvark.Rendering.Common (>= 5.5)
       FSharp.Core (>= 8.0)
