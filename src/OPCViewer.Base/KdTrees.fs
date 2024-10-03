@@ -397,7 +397,7 @@ module KdTrees =
                                     let fixedTree = validateLazyKdtreePaths h.opcPaths l
                                     b, Level0KdTree.LazyKdTree fixedTree
                             )
-                        Report.EndTimed() |> ignore
+                        Report.EndTimed(5) |> ignore
                         validatedTrees |> HashMap.ofList
                     with
                     | e ->
