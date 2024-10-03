@@ -1,3 +1,6 @@
+### 1.9.1
+- fixed verbosity in kdtree loading
+
 ### 1.9.0
 - moved Lazy Kdtree Structures to old namespace to prevent deserialization troubles.
 
